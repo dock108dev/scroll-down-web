@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#2d64be" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Scroll Down Sports</title>
+  <link rel="stylesheet" href="css/theme.css">
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/responsive.css">
+</head>
+<body>
+  <!-- Beta Disclaimer Modal -->
+  <div id="beta-modal" class="modal-overlay" style="display:none">
+    <div class="modal-card">
+      <h2>Welcome to Scroll Down Sports</h2>
+      <p class="modal-subtitle">Public Beta</p>
+      <ul class="modal-list">
+        <li>This is an early public beta</li>
+        <li>Data may be delayed up to ~15 minutes</li>
+        <li>Some games or markets may be missing</li>
+        <li>Odds and EV calculations are estimates</li>
+      </ul>
+      <button id="beta-dismiss" class="btn-primary">Got it</button>
+    </div>
+  </div>
+
+  <!-- App Shell -->
+  <div id="app">
+    <!-- Top Navigation -->
+    <header id="app-header">
+      <div class="header-inner">
+        <div class="header-left">
+          <button id="back-btn" class="icon-btn" style="display:none" aria-label="Back">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+        <div class="header-title">
+          <span class="header-logo">SD</span>
+          <span class="header-text">Scroll Down Sports</span>
+        </div>
+        <div class="header-right">
+          <!-- placeholder for balance -->
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Container -->
+    <main id="page-container">
+      <!-- Home Page -->
+      <div id="home-page" class="page active">
+        <!-- Tab Switcher -->
+        <div class="tab-bar">
+          <button class="tab-btn active" data-tab="games">Games</button>
+          <button class="tab-btn" data-tab="fairbet">FairBet</button>
+          <button class="tab-btn" data-tab="settings">Settings</button>
+        </div>
+
+        <!-- Games Tab -->
+        <div id="tab-games" class="tab-content active">
+          <!-- League Filters -->
+          <div class="filter-bar">
+            <div class="filter-scroll">
+              <button class="filter-chip active" data-league="">All</button>
+              <button class="filter-chip" data-league="NBA">NBA</button>
+              <button class="filter-chip" data-league="NCAAB">NCAAB</button>
+              <button class="filter-chip" data-league="NHL">NHL</button>
+              <button class="filter-chip" data-league="NFL">NFL</button>
+              <button class="filter-chip" data-league="MLB">MLB</button>
+            </div>
+            <button id="refresh-btn" class="icon-btn refresh-btn" aria-label="Refresh">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.65 2.35A7.96 7.96 0 008 0C3.58 0 .01 3.58.01 8S3.58 16 8 16c3.73 0 6.84-2.55 7.73-6h-2.08A5.99 5.99 0 018 14 6 6 0 012 8a6 6 0 016-6c1.66 0 3.14.69 4.22 1.78L9 7h7V0l-2.35 2.35z" fill="currentColor"/></svg>
+            </button>
+          </div>
+
+          <!-- Search Bar -->
+          <div class="search-bar">
+            <svg class="search-icon" width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="6.5" cy="6.5" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M11 11L15 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            <input type="text" id="search-input" placeholder="Search teams..." autocomplete="off">
+            <button id="search-clear" class="search-clear" style="display:none" aria-label="Clear search">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" fill="currentColor" opacity="0.3"/><path d="M5.5 5.5L10.5 10.5M10.5 5.5L5.5 10.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+            </button>
+          </div>
+
+          <!-- Game Sections -->
+          <div id="games-list" class="games-list">
+            <div id="games-loading" class="loading-state">
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- FairBet Tab -->
+        <div id="tab-fairbet" class="tab-content">
+          <div class="fairbet-header">
+            <p class="fairbet-explainer">Compare odds across sportsbooks. Bets with estimated fair value shown.</p>
+            <div class="filter-bar">
+              <div class="filter-scroll">
+                <button class="fb-league-chip active" data-league="">All</button>
+                <button class="fb-league-chip" data-league="NBA">NBA</button>
+                <button class="fb-league-chip" data-league="NCAAB">NCAAB</button>
+                <button class="fb-league-chip" data-league="NHL">NHL</button>
+              </div>
+            </div>
+          </div>
+          <div id="fairbet-list" class="fairbet-list">
+            <div id="fairbet-loading" class="loading-state">
+              <div class="skeleton-card tall"></div>
+              <div class="skeleton-card tall"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content">
+          <div class="settings-panel">
+            <h3 class="settings-title">Preferences</h3>
+
+            <div class="setting-row">
+              <label class="setting-label">Theme</label>
+              <select id="setting-theme" class="setting-select">
+                <option value="system">System</option>
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <label class="setting-label">Odds Format</label>
+              <select id="setting-odds" class="setting-select">
+                <option value="american">American (+150)</option>
+                <option value="decimal">Decimal (2.50)</option>
+              </select>
+            </div>
+
+            <div class="setting-row">
+              <label class="setting-label">Score Display</label>
+              <select id="setting-scores" class="setting-select">
+                <option value="always">Always show scores</option>
+                <option value="onReveal">Spoiler-free (reveal on click)</option>
+              </select>
+            </div>
+
+            <div class="settings-footer">
+              <p class="settings-version">Scroll Down Sports &middot; Web Beta</p>
+              <p class="settings-note">Data provided for informational purposes only.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Game Detail Page -->
+      <div id="game-detail-page" class="page">
+        <div id="game-detail-content" class="game-detail">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,332 @@
+@import "tailwindcss";
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Tailwind @theme — design token integration
+   Maps to iOS DesignSystem / GameTheme / FairBetTheme exactly.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@theme inline {
+  /* ── Neutral palette ─────────────────────────────────── */
+  --color-neutral-950: #0a0a0a;
+  --color-neutral-900: #171717;
+  --color-neutral-800: #262626;
+  --color-neutral-700: #404040;
+  --color-neutral-600: #525252;
+  --color-neutral-500: #737373;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-50: #fafafa;
+
+  /* ── Semantic colours ────────────────────────────────── */
+  --color-green-500: #22c55e;
+  --color-green-400: #4ade80;
+  --color-red-500: #ef4444;
+  --color-yellow-500: #eab308;
+  --color-blue-500: #3b82f6;
+
+  /* ── Radius tokens (matches iOS DesignSystem.Radius) ── */
+  --radius-card: 10px;
+  --radius-element: 8px;
+  --radius-small: 5px;
+  --radius-game-card: 12px;
+
+  /* ── Spacing tokens (matches iOS DesignSystem.Spacing) ── */
+  --spacing-section: 14px;
+  --spacing-list: 6px;
+  --spacing-card-padding: 12px;
+  --spacing-element-padding: 10px;
+  --spacing-text: 3px;
+  --spacing-tight: 2px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   CSS Custom Properties (design tokens)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+  /* ── Radii ─────────────────────────────────────────── */
+  --ds-radius-card: 10px;
+  --ds-radius-element: 8px;
+  --ds-radius-small: 5px;
+  --ds-radius-game-card: 12px;
+
+  /* ── Spacing ───────────────────────────────────────── */
+  --ds-spacing-section: 14px;
+  --ds-spacing-list: 6px;
+  --ds-spacing-card-padding: 12px;
+  --ds-spacing-element-padding: 10px;
+  --ds-spacing-text: 3px;
+  --ds-spacing-tight: 2px;
+
+  /* ── Shadow ────────────────────────────────────────── */
+  --ds-shadow-color: rgba(0, 0, 0, 0.06);
+  --ds-shadow-radius: 4px;
+  --ds-shadow-y: 1px;
+  --ds-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --ds-shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.35);
+  --ds-shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.06);
+
+  /* ── Text colours ──────────────────────────────────── */
+  --ds-text-primary: rgba(255, 255, 255, 1);
+  --ds-text-secondary: rgba(255, 255, 255, 0.7);
+  --ds-text-tertiary: rgba(255, 255, 255, 0.5);
+  --ds-text-score-highlight: rgb(255, 85, 85);
+
+  /* ── GameTheme ─────────────────────────────────────── */
+  --ds-accent: rgb(80, 140, 220);
+  --ds-accent-bg: rgba(0, 122, 255, 0.12);
+  --ds-card-bg: rgb(28, 28, 30);
+  --ds-card-border: rgba(255, 255, 255, 0.08);
+  --ds-background: rgb(0, 0, 0);
+
+  /* ── FairBetTheme ──────────────────────────────────── */
+  --fb-positive: rgb(46, 184, 115);
+  --fb-positive-muted: rgb(89, 166, 128);
+  --fb-success-soft: rgba(46, 184, 115, 0.12);
+  --fb-success-soft-muted: rgba(89, 166, 128, 0.10);
+  --fb-negative: rgb(209, 107, 102);
+  --fb-neutral: rgb(140, 145, 158);
+  --fb-info: rgb(89, 140, 242);
+  --fb-info-soft: rgba(89, 140, 242, 0.10);
+  --fb-card-bg: rgb(36, 41, 51);
+  --fb-surface-tint: rgb(26, 31, 41);
+  --fb-surface-secondary: rgb(46, 51, 64);
+  --fb-card-border: rgba(255, 255, 255, 0.08);
+  --fb-border-subtle: rgba(255, 255, 255, 0.12);
+
+  /* ── Default team colours ──────────────────────────── */
+  --ds-team-a: rgb(160, 130, 255);
+  --ds-team-a-bg: rgba(160, 130, 255, 0.15);
+  --ds-team-a-bar: rgba(160, 130, 255, 0.8);
+  --ds-team-b: rgb(100, 200, 180);
+  --ds-team-b-bg: rgba(100, 200, 180, 0.15);
+  --ds-team-b-bar: rgba(100, 200, 180, 0.8);
+
+  /* ── Border defaults ───────────────────────────────── */
+  --ds-border-color: rgba(255, 255, 255, 0.08);
+  --ds-border-width: 0.5px;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Base styles
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+body {
+  background: var(--ds-background);
+  color: var(--ds-text-primary);
+  font-family: system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Card utility classes
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.card {
+  background: var(--ds-card-bg);
+  border: var(--ds-border-width) solid var(--ds-card-border);
+  border-radius: var(--ds-radius-game-card);
+  padding: var(--ds-spacing-card-padding);
+  box-shadow: var(--ds-shadow-card);
+}
+
+.card-elevated {
+  background: var(--ds-card-bg);
+  border: var(--ds-border-width) solid var(--ds-card-border);
+  border-radius: var(--ds-radius-game-card);
+  padding: var(--ds-spacing-card-padding);
+  box-shadow: var(--ds-shadow-elevated);
+}
+
+.card-flat {
+  background: var(--ds-card-bg);
+  border: var(--ds-border-width) solid var(--ds-card-border);
+  border-radius: var(--ds-radius-card);
+  padding: var(--ds-spacing-card-padding);
+}
+
+.card-fairbet {
+  background: var(--fb-card-bg);
+  border: var(--ds-border-width) solid var(--fb-card-border);
+  border-radius: var(--ds-radius-card);
+  padding: var(--ds-spacing-card-padding);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Button press animation
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.press {
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.press:active {
+  transform: scale(0.97);
+  opacity: 0.85;
+}
+
+.press-subtle {
+  transition: transform 100ms ease, opacity 100ms ease;
+}
+
+.press-subtle:active {
+  transform: scale(0.98);
+  opacity: 0.9;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Loading skeleton shimmer animation
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Scrollbar hiding utility
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Typography scale classes (matching iOS DesignSystem.Typography)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.text-narrative {
+  font-size: 0.9375rem;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.text-section-header {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-weight: 600;
+}
+
+.text-label {
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.text-metadata {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  font-weight: 400;
+}
+
+.text-score {
+  font-size: 0.75rem;
+  line-height: 1.35;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.text-stat-label {
+  font-size: 0.6875rem;
+  line-height: 1.35;
+  font-weight: 600;
+}
+
+/* ── Text colour utilities ───────────────────────────────────────── */
+.text-ds-primary {
+  color: var(--ds-text-primary);
+}
+
+.text-ds-secondary {
+  color: var(--ds-text-secondary);
+}
+
+.text-ds-tertiary {
+  color: var(--ds-text-tertiary);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Team color bar animation for stats comparison
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@keyframes team-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.team-bar {
+  transform-origin: left center;
+  animation: team-bar-grow 0.6s ease-out forwards;
+}
+
+.team-bar-right {
+  transform-origin: right center;
+  animation: team-bar-grow 0.6s ease-out forwards;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FairBet semantic colour utilities
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.text-fb-positive {
+  color: var(--fb-positive);
+}
+
+.text-fb-positive-muted {
+  color: var(--fb-positive-muted);
+}
+
+.text-fb-negative {
+  color: var(--fb-negative);
+}
+
+.text-fb-neutral {
+  color: var(--fb-neutral);
+}
+
+.text-fb-info {
+  color: var(--fb-info);
+}
+
+.bg-fb-success-soft {
+  background-color: var(--fb-success-soft);
+}
+
+.bg-fb-success-soft-muted {
+  background-color: var(--fb-success-soft-muted);
+}
+
+.bg-fb-info-soft {
+  background-color: var(--fb-info-soft);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Score reveal blur transition
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.score-blur {
+  filter: blur(8px);
+  transition: filter 0.3s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.score-blur.revealed {
+  filter: blur(0);
+}

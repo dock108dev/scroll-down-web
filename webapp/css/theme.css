@@ -1,0 +1,169 @@
+/* ============================================
+   Theme System — CSS Custom Properties
+   Dark/Light mode + semantic color tokens
+   ============================================ */
+
+:root {
+  /* Breakpoints (reference only — used in responsive.css) */
+  /* Mobile: ≤480px | Tablet: 481–1024px | Desktop: ≥1025px */
+
+  /* Base spacing */
+  --space-xs: 2px;
+  --space-sm: 4px;
+  --space-md: 8px;
+  --space-lg: 12px;
+  --space-xl: 16px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+
+  /* Radii */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 14px;
+
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Monaco, monospace;
+
+  --font-size-xs: 0.6875rem;   /* 11px */
+  --font-size-sm: 0.75rem;     /* 12px */
+  --font-size-base: 0.8125rem; /* 13px */
+  --font-size-md: 0.875rem;    /* 14px */
+  --font-size-lg: 1rem;        /* 16px */
+  --font-size-xl: 1.125rem;    /* 18px */
+  --font-size-2xl: 1.25rem;    /* 20px */
+
+  /* Tap target minimum */
+  --tap-min: 44px;
+
+  /* Transition */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+
+  /* League colors */
+  --league-nba: rgb(59, 92, 161);
+  --league-nfl: rgb(56, 115, 82);
+  --league-mlb: rgb(166, 56, 56);
+  --league-nhl: rgb(46, 112, 107);
+  --league-ncaab: rgb(179, 107, 38);
+  --league-ncaaf: rgb(115, 64, 128);
+
+  /* FairBet semantic */
+  --ev-positive: rgb(46, 184, 115);
+  --ev-positive-muted: rgb(89, 166, 128);
+  --ev-negative: rgb(209, 107, 102);
+  --ev-neutral: rgb(140, 146, 158);
+  --ev-info: rgb(89, 140, 242);
+}
+
+/* ============================================
+   Light Mode (default)
+   ============================================ */
+:root,
+[data-theme="light"] {
+  --color-bg: #f8f8fa;
+  --color-bg-elevated: #ffffff;
+  --color-card: #ffffff;
+  --color-card-hover: #f5f5f7;
+  --color-surface: #f2f2f7;
+  --color-surface-secondary: #eff0f4;
+
+  --color-text-primary: rgba(0, 0, 0, 0.88);
+  --color-text-secondary: rgba(0, 0, 0, 0.55);
+  --color-text-tertiary: rgba(0, 0, 0, 0.38);
+  --color-text-inverse: #ffffff;
+
+  --color-border: rgba(0, 0, 0, 0.08);
+  --color-border-strong: rgba(0, 0, 0, 0.12);
+  --color-divider: rgba(0, 0, 0, 0.06);
+
+  --color-accent: rgb(45, 100, 190);
+  --color-accent-bg: rgba(45, 100, 190, 0.1);
+  --color-accent-text: rgb(45, 100, 190);
+
+  --color-score-highlight: rgb(30, 100, 200);
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.06);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.1);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.1);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.2);
+
+  --fairbet-card-bg: #ffffff;
+  --fairbet-surface: #f5f6f9;
+  --fairbet-border: rgba(0, 0, 0, 0.06);
+  --fairbet-border-subtle: rgba(0, 0, 0, 0.10);
+}
+
+/* ============================================
+   Dark Mode
+   ============================================ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-bg: #000000;
+    --color-bg-elevated: #1c1c1e;
+    --color-card: #1c1c1e;
+    --color-card-hover: #2c2c2e;
+    --color-surface: #2c2c2e;
+    --color-surface-secondary: #3a3a3c;
+
+    --color-text-primary: rgba(255, 255, 255, 0.92);
+    --color-text-secondary: rgba(255, 255, 255, 0.60);
+    --color-text-tertiary: rgba(255, 255, 255, 0.40);
+    --color-text-inverse: #000000;
+
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-border-strong: rgba(255, 255, 255, 0.15);
+    --color-divider: rgba(255, 255, 255, 0.08);
+
+    --color-accent: rgb(80, 140, 220);
+    --color-accent-bg: rgba(80, 140, 220, 0.15);
+    --color-accent-text: rgb(80, 140, 220);
+
+    --color-score-highlight: rgb(255, 85, 85);
+
+    --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+    --fairbet-card-bg: rgb(36, 41, 51);
+    --fairbet-surface: rgb(26, 31, 41);
+    --fairbet-border: rgba(255, 255, 255, 0.08);
+    --fairbet-border-subtle: rgba(255, 255, 255, 0.12);
+  }
+}
+
+[data-theme="dark"] {
+  --color-bg: #000000;
+  --color-bg-elevated: #1c1c1e;
+  --color-card: #1c1c1e;
+  --color-card-hover: #2c2c2e;
+  --color-surface: #2c2c2e;
+  --color-surface-secondary: #3a3a3c;
+
+  --color-text-primary: rgba(255, 255, 255, 0.92);
+  --color-text-secondary: rgba(255, 255, 255, 0.60);
+  --color-text-tertiary: rgba(255, 255, 255, 0.40);
+  --color-text-inverse: #000000;
+
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-border-strong: rgba(255, 255, 255, 0.15);
+  --color-divider: rgba(255, 255, 255, 0.08);
+
+  --color-accent: rgb(80, 140, 220);
+  --color-accent-bg: rgba(80, 140, 220, 0.15);
+  --color-accent-text: rgb(80, 140, 220);
+
+  --color-score-highlight: rgb(255, 85, 85);
+
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+  --fairbet-card-bg: rgb(36, 41, 51);
+  --fairbet-surface: rgb(26, 31, 41);
+  --fairbet-border: rgba(255, 255, 255, 0.08);
+  --fairbet-border-subtle: rgba(255, 255, 255, 0.12);
+}
