@@ -67,7 +67,7 @@ export function GameSection({
         )}
       </div>
       {expanded && (
-        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-2 px-4 pb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-5 auto-rows-fr gap-3 md:gap-2 px-4 pb-4">
           {games.map((game) => (
             <GameCard key={game.id} game={game} />
           ))}
