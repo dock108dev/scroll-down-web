@@ -14,6 +14,7 @@ interface SettingsState {
   hideLimitedData: boolean;
   showOnlyPositiveEV: boolean;
   fairbetSortOption: FairbetSortOption;
+  timelineDefaultTiers: number[];
 
   setTheme: (t: "system" | "light" | "dark") => void;
   setScoreRevealMode: (m: "always" | "onMarkRead") => void;
@@ -25,6 +26,8 @@ interface SettingsState {
   setHideLimitedData: (v: boolean) => void;
   setShowOnlyPositiveEV: (v: boolean) => void;
   setFairbetSortOption: (o: FairbetSortOption) => void;
+  setTimelineDefaultTiers: (tiers: number[]) => void;
+  toggleTimelineTier: (tier: number) => void;
   toggleHomeSection: (section: string) => void;
   toggleGameSection: (section: string) => void;
 }
@@ -42,6 +45,7 @@ export const useSettings = create<SettingsState>()(
       hideLimitedData: true,
       showOnlyPositiveEV: false,
       fairbetSortOption: "bestEV",
+      timelineDefaultTiers: [1, 2, 3],
 
       setTheme: (theme) => set({ theme }),
       setScoreRevealMode: (scoreRevealMode) => set({ scoreRevealMode }),
@@ -58,6 +62,15 @@ export const useSettings = create<SettingsState>()(
       setShowOnlyPositiveEV: (showOnlyPositiveEV) =>
         set({ showOnlyPositiveEV }),
       setFairbetSortOption: (fairbetSortOption) => set({ fairbetSortOption }),
+      setTimelineDefaultTiers: (timelineDefaultTiers) =>
+        set({ timelineDefaultTiers }),
+      toggleTimelineTier: (tier) => {
+        const current = get().timelineDefaultTiers;
+        const next = current.includes(tier)
+          ? current.filter((t) => t !== tier)
+          : [...current, tier].sort();
+        set({ timelineDefaultTiers: next });
+      },
       toggleHomeSection: (section) => {
         const current = get().homeExpandedSections;
         const next = current.includes(section)

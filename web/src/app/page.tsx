@@ -97,8 +97,7 @@ export default function HomePage() {
       if (!pos || pos.homeScore == null || pos.awayScore == null) return false;
       return (
         g.homeScore !== pos.homeScore ||
-        g.awayScore !== pos.awayScore ||
-        (g.playCount != null && pos.playCount != null && g.playCount > pos.playCount)
+        g.awayScore !== pos.awayScore
       );
     });
   }, [visibleGames, readState, getPosition, scoreRevealMode]);

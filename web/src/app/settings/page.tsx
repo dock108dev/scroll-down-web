@@ -41,6 +41,8 @@ export default function SettingsPage() {
     toggleHomeSection,
     gameExpandedSections,
     toggleGameSection,
+    timelineDefaultTiers,
+    toggleTimelineTier,
   } = useSettings();
 
   return (
@@ -84,6 +86,35 @@ export default function SettingsPage() {
             onToggle={() => toggleGameSection(section)}
           />
         ))}
+      </SettingsSection>
+
+      {/* ─── Timeline — Default Tiers ────────────────────── */}
+      <SettingsSection title="Timeline — Default Tiers">
+        {([
+          { tier: 1, label: "Key Plays", desc: "Scoring, turnovers, big moments" },
+          { tier: 2, label: "Secondary", desc: "Fouls, rebounds, stoppages" },
+          { tier: 3, label: "Minor", desc: "Subs, period starts, low-signal" },
+        ] as const).map(({ tier, label, desc }) => (
+          <button
+            key={tier}
+            onClick={() => toggleTimelineTier(tier)}
+            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
+          >
+            <div>
+              <span className="text-sm text-neutral-200">{label}</span>
+              <p className="text-xs text-neutral-500">{desc}</p>
+            </div>
+            {timelineDefaultTiers.includes(tier) && (
+              <span className="text-green-400 text-sm font-medium">&#10003;</span>
+            )}
+          </button>
+        ))}
+        <div className="px-4 pb-3 pt-2">
+          <p className="text-xs text-neutral-500 leading-relaxed">
+            Controls which play tiers are visible by default in the timeline.
+            You can also toggle tiers per-game from the timeline header.
+          </p>
+        </div>
       </SettingsSection>
 
       {/* ─── Score Display ──────────────────────────────── */}

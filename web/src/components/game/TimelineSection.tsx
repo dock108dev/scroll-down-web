@@ -1,9 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { PlayEntry } from "@/lib/types";
 import { TimelineRow } from "./TimelineRow";
+import { CollapsedPlayGroup } from "./CollapsedPlayGroup";
+import { useSettings } from "@/stores/settings";
 import { cn } from "@/lib/utils";
+
+// ─── Tier filter config ─────────────────────────────────────
+
+const TIER_FILTERS = [
+  { tier: 1, label: "Key" },
+  { tier: 2, label: "Secondary" },
+  { tier: 3, label: "Minor" },
+] as const;
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -16,7 +26,9 @@ interface TimelineSectionProps {
 }
 
 /** A renderable item inside a period. */
-type PeriodItem = { kind: "play"; play: PlayEntry; previousPlay?: PlayEntry };
+type PeriodItem =
+  | { kind: "play"; play: PlayEntry; previousPlay?: PlayEntry }
+  | { kind: "tier3-group"; plays: PlayEntry[] };
 
 // ─── Helpers ────────────────────────────────────────────────
 
@@ -38,17 +50,54 @@ function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
 }
 
 /**
+ * Returns true for any tier 3 play.
+ */
+function isTier3(play: PlayEntry): boolean {
+  return (play.tier ?? 3) === 3;
+}
+
+/**
  * Converts an array of plays within a period into renderable items.
- * All plays (including tier 3) are rendered individually for full clarity.
+ * Consecutive tier 3 plays are collapsed into a single tier3-group.
  */
 function buildPeriodItems(
   periodPlays: PlayEntry[],
   allPlays: PlayEntry[],
 ): PeriodItem[] {
-  return periodPlays.map((play) => {
-    const prevIdx = play.playIndex - 1;
-    const prevPlay = allPlays.find((p) => p.playIndex === prevIdx);
-    return { kind: "play" as const, play, previousPlay: prevPlay };
+  const items: PeriodItem[] = [];
+  let i = 0;
+
+  while (i < periodPlays.length) {
+    const play = periodPlays[i];
+
+    if (isTier3(play)) {
+      // Collect consecutive tier 3 plays
+      const group: PlayEntry[] = [play];
+      let j = i + 1;
+      while (j < periodPlays.length && isTier3(periodPlays[j])) {
+        group.push(periodPlays[j]);
+        j++;
+      }
+      items.push({ kind: "tier3-group", plays: group });
+      i = j;
+    } else {
+      const prevIdx = play.playIndex - 1;
+      const prevPlay = allPlays.find((p) => p.playIndex === prevIdx);
+      items.push({ kind: "play", play, previousPlay: prevPlay });
+      i++;
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Filters period items by visible tiers.
+ */
+function filterItems(items: PeriodItem[], visibleTiers: number[]): PeriodItem[] {
+  return items.filter((item) => {
+    if (item.kind === "tier3-group") return visibleTiers.includes(3);
+    return visibleTiers.includes(item.play.tier ?? 3);
   });
 }
 
@@ -57,6 +106,7 @@ function buildPeriodItems(
 interface PeriodCardProps {
   period: string;
   items: PeriodItem[];
+  visibleTiers: number[];
   defaultOpen: boolean;
   homeTeamAbbr?: string;
   awayTeamAbbr?: string;
@@ -67,6 +117,7 @@ interface PeriodCardProps {
 function PeriodCard({
   period,
   items,
+  visibleTiers,
   defaultOpen,
   homeTeamAbbr,
   awayTeamAbbr,
@@ -74,6 +125,7 @@ function PeriodCard({
   awayColor,
 }: PeriodCardProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const filtered = useMemo(() => filterItems(items, visibleTiers), [items, visibleTiers]);
 
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
@@ -107,17 +159,32 @@ function PeriodCard({
       >
         <div className="overflow-hidden">
           <div className="px-2 py-2 space-y-0.5">
-            {items.map((item) => (
-              <TimelineRow
-                key={item.play.playIndex}
-                play={item.play}
-                previousPlay={item.previousPlay}
-                homeTeamAbbr={homeTeamAbbr}
-                awayTeamAbbr={awayTeamAbbr}
-                homeColor={homeColor}
-                awayColor={awayColor}
-              />
-            ))}
+            {filtered.length === 0 ? (
+              <p className="text-xs text-neutral-600 px-3 py-2">No plays match filters</p>
+            ) : (
+              filtered.map((item) =>
+                item.kind === "tier3-group" ? (
+                  <CollapsedPlayGroup
+                    key={`tier3-${item.plays[0].playIndex}`}
+                    plays={item.plays}
+                    homeTeamAbbr={homeTeamAbbr}
+                    awayTeamAbbr={awayTeamAbbr}
+                    homeColor={homeColor}
+                    awayColor={awayColor}
+                  />
+                ) : (
+                  <TimelineRow
+                    key={item.play.playIndex}
+                    play={item.play}
+                    previousPlay={item.previousPlay}
+                    homeTeamAbbr={homeTeamAbbr}
+                    awayTeamAbbr={awayTeamAbbr}
+                    homeColor={homeColor}
+                    awayColor={awayColor}
+                  />
+                ),
+              )
+            )}
           </div>
         </div>
       </div>
@@ -134,6 +201,17 @@ export function TimelineSection({
   homeColor,
   awayColor,
 }: TimelineSectionProps) {
+  const defaultTiers = useSettings((s) => s.timelineDefaultTiers);
+  const [visibleTiers, setVisibleTiers] = useState<number[]>(defaultTiers);
+
+  const toggleTier = (tier: number) => {
+    setVisibleTiers((prev) =>
+      prev.includes(tier)
+        ? prev.filter((t) => t !== tier)
+        : [...prev, tier].sort(),
+    );
+  };
+
   if (plays.length === 0) {
     return (
       <div className="px-4 py-4 text-sm text-neutral-500">
@@ -154,11 +232,33 @@ export function TimelineSection({
 
   return (
     <div className="px-4 space-y-2">
+      {/* Tier filter pills */}
+      <div className="flex items-center gap-1.5">
+        {TIER_FILTERS.map(({ tier, label }) => {
+          const active = visibleTiers.includes(tier);
+          return (
+            <button
+              key={tier}
+              onClick={() => toggleTier(tier)}
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[11px] font-medium transition",
+                active
+                  ? "bg-neutral-700 text-neutral-200"
+                  : "bg-transparent text-neutral-600 ring-1 ring-neutral-700/60",
+              )}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
+
       {periods.map(({ period, items }) => (
         <PeriodCard
           key={period}
           period={period}
           items={items}
+          visibleTiers={visibleTiers}
           defaultOpen={false}
           homeTeamAbbr={homeTeamAbbr}
           awayTeamAbbr={awayTeamAbbr}

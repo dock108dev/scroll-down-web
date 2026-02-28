@@ -16,6 +16,7 @@ export function GameHeader({ game }: GameHeaderProps) {
   const { isRead, markRead, markUnread } = useReadState();
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const savedPosition = useReadingPosition((s) => s.getPosition)(game.id);
+  const savePosition = useReadingPosition((s) => s.savePosition);
 
   const read = isRead(game.id);
   const live = isLive(game.status);
@@ -29,12 +30,51 @@ export function GameHeader({ game }: GameHeaderProps) {
     hasScoreData &&
     (scoreRevealMode === "always" || read);
 
+  // Score freeze: when a live game is revealed (not "always" mode),
+  // display the snapshot scores instead of live-updating ones.
+  const scoreFrozen =
+    live &&
+    read &&
+    scoreRevealMode !== "always" &&
+    savedPosition?.homeScore != null &&
+    savedPosition?.awayScore != null;
+
+  const hasScoreUpdate =
+    scoreFrozen &&
+    (game.homeScore !== savedPosition!.homeScore ||
+      game.awayScore !== savedPosition!.awayScore);
+
   // Use saved scores from card reveal if available, otherwise use API scores
-  const displayAwayScore = savedPosition?.awayScore ?? game.awayScore;
-  const displayHomeScore = savedPosition?.homeScore ?? game.homeScore;
+  const displayAwayScore = scoreFrozen
+    ? savedPosition!.awayScore
+    : savedPosition?.awayScore ?? game.awayScore;
+  const displayHomeScore = scoreFrozen
+    ? savedPosition!.homeScore
+    : savedPosition?.homeScore ?? game.homeScore;
+
+  const freshSnapshot = () => {
+    savePosition(game.id, {
+      playIndex: -1,
+      homeScore: game.homeScore ?? undefined,
+      awayScore: game.awayScore ?? undefined,
+      period: game.currentPeriod,
+      gameClock: game.gameClock,
+      periodLabel: game.currentPeriodLabel ?? undefined,
+      timeLabel: game.currentPeriodLabel
+        ? `${game.currentPeriodLabel}${game.gameClock ? ` ${game.gameClock}` : ""}`
+        : undefined,
+      playCount: game.playCount,
+      savedAt: new Date().toISOString(),
+    });
+  };
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
+    // When showing UPDATED, click refreshes to latest scores
+    if (hasScoreUpdate) {
+      freshSnapshot();
+      return;
+    }
     if (read) markUnread(game.id);
     else markRead(game.id, game.status);
   };
@@ -49,7 +89,19 @@ export function GameHeader({ game }: GameHeaderProps) {
         <span className="text-xs uppercase font-medium text-neutral-500 tracking-wide">
           {game.leagueCode.toUpperCase()} &middot; {formatDate(game.gameDate)}
         </span>
-        {live && (
+        {live && hasScoreUpdate && (
+          <button
+            onClick={(e) => { e.stopPropagation(); freshSnapshot(); }}
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 cursor-pointer hover:text-amber-300 transition"
+          >
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+            </span>
+            UPDATED
+          </button>
+        )}
+        {live && !hasScoreUpdate && (
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-400">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />

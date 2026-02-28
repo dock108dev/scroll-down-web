@@ -80,10 +80,7 @@ export function GameCard({ game }: GameCardProps) {
   const hasNewData =
     scoreFrozen &&
     (game.homeScore !== savedPosition!.homeScore ||
-      game.awayScore !== savedPosition!.awayScore ||
-      (game.playCount != null &&
-        savedPosition!.playCount != null &&
-        game.playCount > savedPosition!.playCount));
+      game.awayScore !== savedPosition!.awayScore);
 
   const displayAwayScore = scoreFrozen
     ? savedPosition!.awayScore

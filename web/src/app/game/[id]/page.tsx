@@ -74,11 +74,13 @@ function CollapsibleSection({
   title,
   defaultOpen,
   onExpand,
+  badge,
   children,
 }: {
   title: string;
   defaultOpen: boolean;
   onExpand?: () => void;
+  badge?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(defaultOpen);
@@ -97,7 +99,10 @@ function CollapsibleSection({
         onClick={handleToggle}
         className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-200 hover:bg-neutral-800/30 transition-colors"
       >
-        <span>{title}</span>
+        <span className="flex items-center gap-2">
+          {title}
+          {!open && badge}
+        </span>
         <span
           className={`text-xs text-neutral-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
         >
@@ -132,6 +137,15 @@ export default function GameDetailPage({
 
   // Has flow data (for expansion defaults)
   const hasFlow = data?.game.hasFlow ?? false;
+
+  // New play count for badge on collapsed Timeline
+  const savedPos = data ? getPosition(gameId) : undefined;
+  const newPlayCount = useMemo(() => {
+    if (!data?.plays) return 0;
+    const saved = savedPos?.playCount;
+    if (saved == null) return 0;
+    return Math.max(0, data.plays.length - saved);
+  }, [data?.plays, savedPos?.playCount]);
 
   // Read state - mark as read when user expands Wrap-Up section
   // (matches iOS where expanding wrap-up marks as read)
@@ -334,6 +348,13 @@ export default function GameDetailPage({
           <CollapsibleSection
             title="Timeline"
             defaultOpen={getDefaultExpanded("Timeline", hasFlow)}
+            badge={
+              newPlayCount > 0 ? (
+                <span className="text-[11px] font-medium text-amber-400/80">
+                  {newPlayCount} new play{newPlayCount !== 1 ? "s" : ""}
+                </span>
+              ) : undefined
+            }
           >
             <TimelineSection
               plays={data.plays}

@@ -33,8 +33,8 @@ function generateSummary(plays: PlayEntry[]): string {
       counts["turnover"] = (counts["turnover"] ?? 0) + 1;
     } else if (desc.includes("foul") || type.includes("foul")) {
       counts["foul"] = (counts["foul"] ?? 0) + 1;
-    } else if (desc.includes("substitution") || type.includes("substitution")) {
-      counts["substitution"] = (counts["substitution"] ?? 0) + 1;
+    } else if (desc.startsWith("sub ") || desc.includes("substitution") || type.includes("substitution")) {
+      counts["sub"] = (counts["sub"] ?? 0) + 1;
     } else if (desc.includes("timeout") || type.includes("timeout")) {
       counts["timeout"] = (counts["timeout"] ?? 0) + 1;
     } else if (desc.includes("violation") || type.includes("violation")) {
@@ -50,7 +50,7 @@ function generateSummary(plays: PlayEntry[]): string {
     parts.push(`${count} ${plural}`);
   }
 
-  return parts.join(", ") || `${plays.length} plays`;
+  return parts.join(" · ") || `${plays.length} plays`;
 }
 
 export function CollapsedPlayGroup({
