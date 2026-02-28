@@ -4,7 +4,6 @@ import {
   formatStatValue,
   getGroupsForSport,
   buildGroupsFromNormalized,
-  generateAnnotations,
 } from "@/lib/team-stats-config";
 
 // ─── Comparison bar row ─────────────────────────────────────────
@@ -28,10 +27,11 @@ function ComparisonRow({
 }) {
   const av = awayValue ?? 0;
   const hv = homeValue ?? 0;
-  const max = Math.max(av, hv, 1); // avoid division by zero
+  const total = av + hv;
 
-  const awayPct = (av / max) * 100;
-  const homePct = (hv / max) * 100;
+  // Each side as a percentage of the whole bar
+  const awayPct = total > 0 ? (av / total) * 100 : 50;
+  const homePct = total > 0 ? (hv / total) * 100 : 50;
 
   // Determine winner
   let awayWins: boolean;
@@ -44,57 +44,52 @@ function ComparisonRow({
   const tied = av === hv;
 
   return (
-    <div className="px-3 py-2 border-b border-neutral-800/50">
-      {/* Labels + values row */}
-      <div className="flex items-center justify-between text-xs mb-1.5">
+    <div className="px-3 py-2.5 border-b border-neutral-800/50">
+      {/* Stat label centered above */}
+      <div className="text-center text-neutral-500 text-stat-label uppercase tracking-wide mb-1.5">
+        {label}
+      </div>
+
+      {/* Values + bar inline */}
+      <div className="flex items-center gap-2.5">
+        {/* Away value */}
         <span
-          className={`tabular-nums min-w-[40px] ${
-            awayWins || tied ? "font-bold" : "opacity-50"
+          className={`text-sm tabular-nums min-w-[40px] ${
+            awayWins || tied ? "font-semibold text-neutral-100" : "text-neutral-500"
           }`}
-          style={{ color: awayWins || tied ? undefined : undefined }}
         >
           {formatStatValue(awayValue, isPercentage)}
         </span>
-        <span className="text-neutral-500 text-stat-label uppercase tracking-wide">
-          {label}
-        </span>
+
+        {/* Bar between values */}
+        <div className="flex-1 flex h-1.5 rounded-full overflow-hidden">
+          <div
+            className="h-full transition-all duration-500"
+            style={{
+              width: `${awayPct}%`,
+              backgroundColor: awayColor,
+              opacity: awayWins || tied ? 0.8 : 0.25,
+            }}
+          />
+          <div className="w-px bg-neutral-700 shrink-0" />
+          <div
+            className="h-full transition-all duration-500"
+            style={{
+              width: `${homePct}%`,
+              backgroundColor: homeColor,
+              opacity: homeWins || tied ? 0.8 : 0.25,
+            }}
+          />
+        </div>
+
+        {/* Home value */}
         <span
-          className={`tabular-nums min-w-[40px] text-right ${
-            homeWins || tied ? "font-bold" : "opacity-50"
+          className={`text-sm tabular-nums min-w-[40px] text-right ${
+            homeWins || tied ? "font-semibold text-neutral-100" : "text-neutral-500"
           }`}
         >
           {formatStatValue(homeValue, isPercentage)}
         </span>
-      </div>
-
-      {/* Visual bars */}
-      <div className="flex items-center gap-1 h-2">
-        {/* Away bar (grows right-to-left) */}
-        <div className="flex-1 flex justify-end">
-          <div
-            className="h-full rounded-sm team-bar-right"
-            style={{
-              width: `${awayPct}%`,
-              backgroundColor: awayColor,
-              opacity: awayWins || tied ? 1 : 0.5,
-            }}
-          />
-        </div>
-
-        {/* Divider */}
-        <div className="w-px h-3 bg-neutral-700 shrink-0" />
-
-        {/* Home bar (grows left-to-right) */}
-        <div className="flex-1">
-          <div
-            className="h-full rounded-sm team-bar"
-            style={{
-              width: `${homePct}%`,
-              backgroundColor: homeColor,
-              opacity: homeWins || tied ? 1 : 0.5,
-            }}
-          />
-        </div>
       </div>
     </div>
   );
@@ -146,15 +141,6 @@ export function TeamStatsComparison({
           }),
         }))
         .filter((group) => group.stats.length > 0);
-
-  // Generate annotations (always from raw stats)
-  const annotations = generateAnnotations(
-    home.stats,
-    away.stats,
-    homeTeam,
-    awayTeam,
-    leagueCode,
-  );
 
   return (
     <div className="space-y-3">
@@ -211,23 +197,6 @@ export function TeamStatsComparison({
         ))}
       </div>
 
-      {/* Annotations */}
-      {annotations.length > 0 && (
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 space-y-1.5">
-          <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
-            Key Takeaways
-          </div>
-          {annotations.map((a, i) => (
-            <div
-              key={i}
-              className="text-xs text-neutral-400 flex items-start gap-2"
-            >
-              <span className="text-neutral-600 mt-0.5 shrink-0">--</span>
-              <span>{a.text}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

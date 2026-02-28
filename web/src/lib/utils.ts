@@ -87,6 +87,90 @@ const MASCOT_PREFIXES = new Set([
   "screaming", "mean", "sun", "green", "river", "orange",
 ]);
 
+/**
+ * Multi-word college school names (lowercase) where a word collides with
+ * MASCOT_PREFIXES. These are checked first so the mascot-prefix heuristic
+ * doesn't accidentally eat part of the school name.
+ * e.g. "Bowling Green Falcons" — "Green" is a mascot prefix but here
+ *      "Bowling Green" is the school.
+ */
+const COLLEGE_MULTI_WORD_SCHOOLS: string[] = [
+  "bowling green",
+  "green bay",
+  "ball state",        // no collision, but safety
+  "boston college",
+  "san diego state",
+  "san jose state",
+  "fresno state",
+  "boise state",
+  "colorado state",
+  "ohio state",
+  "michigan state",
+  "penn state",
+  "florida state",
+  "iowa state",
+  "kansas state",
+  "oklahoma state",
+  "oregon state",
+  "washington state",
+  "mississippi state",
+  "arizona state",
+  "north carolina",
+  "south carolina",
+  "west virginia",
+  "virginia tech",
+  "georgia tech",
+  "texas tech",
+  "louisiana tech",
+  "boston university",
+  "mount st. mary's",
+  "saint mary's",
+  "saint louis",
+  "saint peter's",
+  "saint joseph's",
+  "stony brook",
+  "long beach state",
+  "south florida",
+  "central florida",
+  "north texas",
+  "middle tennessee",
+  "east carolina",
+  "western kentucky",
+  "eastern kentucky",
+  "western michigan",
+  "eastern michigan",
+  "northern illinois",
+  "southern illinois",
+  "southern mississippi",
+  "northern iowa",
+  "southern methodist",
+  "old dominion",
+  "wake forest",
+  "air force",
+  "army west point",
+  "rhode island",
+  "new mexico",
+  "new mexico state",
+  "new hampshire",
+  "new orleans",
+  "grand canyon",
+  "little rock",
+  "le moyne",
+  "sacred heart",
+  "holy cross",
+  "high point",
+  "sam houston",
+  "southeastern louisiana",
+  "stephen f. austin",
+  "uc davis",
+  "uc irvine",
+  "uc riverside",
+  "uc santa barbara",
+  "ut arlington",
+  "ut martin",
+  "ut rio grande valley",
+];
+
 function extractNickname(fullName: string): string {
   const lower = fullName.toLowerCase();
   for (const multi of PRO_MULTI_WORD) {
@@ -108,7 +192,15 @@ function extractSchoolName(fullName: string): string {
     }
   }
 
-  // 2. Mascot-prefix heuristic: if second-to-last word is a common mascot
+  // 2. Known multi-word school names — if the name starts with one,
+  //    the rest is the mascot; return the school portion.
+  for (const school of COLLEGE_MULTI_WORD_SCHOOLS) {
+    if (lower.startsWith(school + " ") || lower === school) {
+      return fullName.slice(0, school.length);
+    }
+  }
+
+  // 3. Mascot-prefix heuristic: if second-to-last word is a common mascot
   //    prefix, the mascot is two words — drop both.
   const parts = fullName.split(" ");
   if (parts.length >= 3) {
@@ -118,7 +210,7 @@ function extractSchoolName(fullName: string): string {
     }
   }
 
-  // 3. Default: drop last word (single-word mascot)
+  // 4. Default: drop last word (single-word mascot)
   if (parts.length <= 1) return fullName;
   return parts.slice(0, -1).join(" ");
 }

@@ -2,10 +2,10 @@
 
 import type { GameDetailResponse, OddsEntry } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
-import { formatOdds, formatDate, formatTime, cn } from "@/lib/utils";
+import { formatOdds } from "@/lib/utils";
 import { SocialSection } from "./SocialSection";
 
-interface OverviewSectionProps {
+interface PregameBuzzSectionProps {
   data: GameDetailResponse;
 }
 
@@ -26,10 +26,9 @@ function getBestLine(
     .sort((a, b) => (b.price ?? -Infinity) - (a.price ?? -Infinity))[0];
 }
 
-export function OverviewSection({ data }: OverviewSectionProps) {
+export function PregameBuzzSection({ data }: PregameBuzzSectionProps) {
   const game = data.game;
   const odds = data.odds;
-  const metrics = data.derivedMetrics;
   const oddsFormat = useSettings((s) => s.oddsFormat);
 
   // Pregame odds: spread, moneyline, total
@@ -43,65 +42,13 @@ export function OverviewSection({ data }: OverviewSectionProps) {
   const hasOdds =
     homeSpread || awaySpread || homeML || awayML || over || under;
 
-  // Derived metrics for pregame display
-  const metricSpread =
-    metrics && typeof metrics.spread === "string"
-      ? (metrics.spread as string)
-      : null;
-  const metricTotal =
-    metrics && typeof metrics.total === "string"
-      ? (metrics.total as string)
-      : null;
-
   return (
     <div className="px-4 space-y-4">
-      {/* Game Info Card */}
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 space-y-4">
-        <div className="grid grid-cols-2 gap-3 text-sm">
-          <div>
-            <div className="text-xs text-neutral-500 mb-0.5">Date</div>
-            <div className="text-neutral-200">{formatDate(game.gameDate)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-neutral-500 mb-0.5">Time</div>
-            <div className="text-neutral-200">{formatTime(game.gameDate)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-neutral-500 mb-0.5">League</div>
-            <div className="text-neutral-200 uppercase font-medium">
-              {game.leagueCode}
-            </div>
-          </div>
-          {game.season && (
-            <div>
-              <div className="text-xs text-neutral-500 mb-0.5">Season</div>
-              <div className="text-neutral-200">
-                {game.season}
-                {game.seasonType ? ` ${game.seasonType}` : ""}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Data Availability Indicators */}
-        <div>
-          <div className="text-xs text-neutral-500 mb-2">Data Available</div>
-          <div className="flex flex-wrap gap-2">
-            <DataBadge label="Box Score" available={game.hasBoxscore} />
-            <DataBadge label="Odds" available={game.hasOdds} />
-            <DataBadge label="PBP" available={game.hasPbp} />
-            <DataBadge label="Social" available={game.hasSocial} />
-            <DataBadge label="Flow" available={game.hasFlow} />
-            <DataBadge label="Player Stats" available={game.hasPlayerStats} />
-          </div>
-        </div>
-      </div>
-
-      {/* Pregame Odds */}
+      {/* Lines */}
       {hasOdds && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
           <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">
-            Pregame Odds
+            Lines
           </h3>
           <div className="space-y-3">
             {/* Spread */}
@@ -168,61 +115,9 @@ export function OverviewSection({ data }: OverviewSectionProps) {
         </div>
       )}
 
-      {/* Derived metrics summary if present */}
-      {(metricSpread || metricTotal) && (
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide mb-3">
-            Consensus
-          </h3>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            {metricSpread && (
-              <div>
-                <div className="text-xs text-neutral-500 mb-0.5">Spread</div>
-                <div className="text-neutral-200 tabular-nums">
-                  {metricSpread}
-                </div>
-              </div>
-            )}
-            {metricTotal && (
-              <div>
-                <div className="text-xs text-neutral-500 mb-0.5">Total</div>
-                <div className="text-neutral-200 tabular-nums">{metricTotal}</div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
       {/* Pregame Social Posts */}
       <SocialSection posts={data.socialPosts} phase="pregame" outcomeRevealed={false} />
     </div>
-  );
-}
-
-function DataBadge({
-  label,
-  available,
-}: {
-  label: string;
-  available?: boolean;
-}) {
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
-        available
-          ? "bg-green-500/10 text-green-400 border border-green-500/20"
-          : "bg-neutral-800 text-neutral-500 border border-neutral-700/50",
-      )}
-    >
-      <span
-        className={cn(
-          "w-1.5 h-1.5 rounded-full",
-          available ? "bg-green-400" : "bg-neutral-600",
-        )}
-      />
-      {label}
-    </span>
   );
 }
 

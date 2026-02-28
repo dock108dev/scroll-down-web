@@ -3,7 +3,7 @@
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useGame } from "@/hooks/useGame";
 import { isFinal, isLive, isPregame } from "@/lib/types";
-import type { GameDetailResponse } from "@/lib/types";
+import type { GameDetailResponse, GameStatus } from "@/lib/types";
 import { GameHeader } from "@/components/game/GameHeader";
 import { SectionNav } from "@/components/game/SectionNav";
 import { FlowContainer } from "@/components/game/FlowContainer";
@@ -11,7 +11,7 @@ import { TimelineSection } from "@/components/game/TimelineSection";
 import { PlayerStatsSection, TeamStatsSection } from "@/components/game/StatsSection";
 import { OddsSection } from "@/components/game/OddsSection";
 import { WrapUpSection } from "@/components/game/WrapUpSection";
-import { OverviewSection } from "@/components/game/OverviewSection";
+import { PregameBuzzSection } from "@/components/game/PregameBuzzSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useReadState } from "@/stores/read-state";
@@ -21,9 +21,15 @@ import { useSectionLayout } from "@/stores/section-layout";
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
   const status = data.game.status;
+  const hasBuzz =
+    data.socialPosts?.some((p) => p.gamePhase === "pregame") ||
+    data.odds?.length > 0;
 
   if (isPregame(status)) {
-    return ["Overview", "Odds"];
+    const s: string[] = [];
+    if (hasBuzz) s.push("Pregame Buzz");
+    s.push("Odds");
+    return s;
   }
 
   if (isLive(status)) {
@@ -31,16 +37,22 @@ function getSections(data: GameDetailResponse): string[] {
   }
 
   if (isFinal(status)) {
-    return ["Flow", "Timeline", "Player Stats", "Team Stats", "Odds", "Wrap-Up"];
+    const s: string[] = [];
+    if (hasBuzz) s.push("Pregame Buzz");
+    s.push("Flow", "Timeline", "Player Stats", "Team Stats", "Odds", "Wrap-Up");
+    return s;
   }
 
   // Fallback
-  return ["Overview", "Odds"];
+  const s: string[] = [];
+  if (hasBuzz) s.push("Pregame Buzz");
+  s.push("Odds");
+  return s;
 }
 
 // ─── Default active section ────────────────────────────────────
 function getDefaultSection(sections: string[]): string {
-  return sections[0] ?? "Overview";
+  return sections[0] ?? "Pregame Buzz";
 }
 
 // ─── Section expansion defaults ────────────────────────────────
@@ -51,8 +63,11 @@ function getDefaultSection(sections: string[]): string {
 function getDefaultExpanded(
   section: string,
   hasFlow: boolean,
+  status: GameStatus,
 ): boolean {
   switch (section) {
+    case "Pregame Buzz":
+      return isPregame(status);
     case "Flow":
       return true;
     case "Timeline":
@@ -62,8 +77,6 @@ function getDefaultExpanded(
       return false;
     case "Odds":
       return false;
-    case "Overview":
-      return true;
     case "Wrap-Up":
       return true;
     default:
@@ -135,9 +148,10 @@ export default function GameDetailPage({
   const savedLayout = sectionLayout.getLayout(gameId);
 
   // Compute default expanded list (used on first visit only)
+  const status: GameStatus = data?.game.status ?? "scheduled";
   const defaultExpanded = useMemo(
-    () => sections.filter((s) => getDefaultExpanded(s, hasFlow)),
-    [sections, hasFlow],
+    () => sections.filter((s) => getDefaultExpanded(s, hasFlow, status)),
+    [sections, hasFlow, status],
   );
 
   // Persisted layout wins; otherwise use defaults
@@ -343,14 +357,14 @@ export default function GameDetailPage({
       />
 
       <div ref={contentRef} className="py-4 space-y-2">
-        {/* ─── Overview (Pregame only) ──────────────────── */}
-        {sections.includes("Overview") && (
+        {/* ─── Pregame Buzz ──────────────────────────────── */}
+        {sections.includes("Pregame Buzz") && (
           <CollapsibleSection
-            title="Overview"
-            open={isSectionOpen("Overview")}
-            onToggle={() => handleToggle("Overview")}
+            title="Pregame Buzz"
+            open={isSectionOpen("Pregame Buzz")}
+            onToggle={() => handleToggle("Pregame Buzz")}
           >
-            <OverviewSection data={data} />
+            <PregameBuzzSection data={data} />
           </CollapsibleSection>
         )}
 
