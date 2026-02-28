@@ -22,8 +22,12 @@ export function GameSection({
     (s) => s.setHomeExpandedSections,
   );
 
-  // Section is expanded only if explicitly in the persisted list.
-  const expanded = homeExpandedSections.includes(title);
+  const DEFAULT_EXPANDED = ["Today", "Yesterday"];
+
+  // If user hasn't toggled any sections yet (empty list), fall back to defaults.
+  const expanded = homeExpandedSections.length === 0
+    ? DEFAULT_EXPANDED.includes(title)
+    : homeExpandedSections.includes(title);
 
   const handleToggle = useCallback(() => {
     const next = expanded

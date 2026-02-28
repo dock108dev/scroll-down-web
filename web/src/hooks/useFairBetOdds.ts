@@ -80,7 +80,7 @@ export interface UseFairBetOddsReturn {
 
 // ── Constants ──────────────────────────────────────────────────────
 
-const PAGE_SIZE = 500;
+const PAGE_SIZE = 100;
 const MAX_CONCURRENT = 3;
 
 // ── Hook ───────────────────────────────────────────────────────────

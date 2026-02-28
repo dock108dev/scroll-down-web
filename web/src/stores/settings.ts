@@ -37,7 +37,7 @@ export const useSettings = create<SettingsState>()(
       preferredSportsbook: "",
       oddsFormat: "american",
       autoResumePosition: true,
-      homeExpandedSections: [],
+      homeExpandedSections: ["Today", "Yesterday"],
       gameExpandedSections: [],
       hideLimitedData: true,
       showOnlyPositiveEV: false,
