@@ -16,8 +16,8 @@ export function LeagueFilter({ selected, onChange }: LeagueFilterProps) {
         className={cn(
           "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition",
           selected === ""
-            ? "bg-white text-black"
-            : "bg-neutral-800 text-neutral-400 hover:text-white",
+            ? "bg-neutral-50 text-neutral-950"
+            : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
         )}
       >
         All
@@ -29,8 +29,8 @@ export function LeagueFilter({ selected, onChange }: LeagueFilterProps) {
           className={cn(
             "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition",
             selected === league.code
-              ? "bg-white text-black"
-              : "bg-neutral-800 text-neutral-400 hover:text-white",
+              ? "bg-neutral-50 text-neutral-950"
+              : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
           )}
         >
           {league.label}

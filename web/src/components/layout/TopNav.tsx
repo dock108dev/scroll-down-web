@@ -35,8 +35,8 @@ export function TopNav() {
               key={link.href}
               href={link.href}
               className={cn(
-                "hover:text-white transition",
-                pathname === link.href && "text-white",
+                "hover:text-neutral-50 transition",
+                pathname === link.href && "text-neutral-50",
               )}
             >
               {link.label}

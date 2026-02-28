@@ -211,20 +211,20 @@ export function PlayerStatsTable({
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
       {/* Table header with team name */}
-      <div className="px-3 py-2 text-xs font-semibold text-neutral-300 bg-neutral-800/50">
+      <div className="px-3 py-2 text-sm font-semibold text-neutral-300 bg-neutral-800/50">
         {title}
       </div>
 
       {/* Scrollable table wrapper */}
       <div className="relative overflow-x-auto hide-scrollbar">
-        <table className="w-full text-xs border-collapse">
+        <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-neutral-800 text-neutral-500">
               {/* Frozen player name column */}
               <th
                 className="text-left px-3 py-2 font-medium bg-neutral-900 sticky left-0 z-10 min-w-[120px] max-w-[140px]"
                 style={{
-                  boxShadow: "2px 0 4px rgba(0,0,0,0.3)",
+                  boxShadow: "2px 0 4px rgba(0,0,0,0.1)",
                 }}
               >
                 Player
@@ -250,7 +250,7 @@ export function PlayerStatsTable({
                 <td
                   className="px-3 py-1.5 bg-neutral-900 sticky left-0 z-10 truncate min-w-[120px] max-w-[140px]"
                   style={{
-                    boxShadow: "2px 0 4px rgba(0,0,0,0.3)",
+                    boxShadow: "2px 0 4px rgba(0,0,0,0.1)",
                   }}
                   title={p.playerName}
                 >

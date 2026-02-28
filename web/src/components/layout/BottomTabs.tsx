@@ -27,7 +27,7 @@ export function BottomTabs() {
               href={tab.href}
               className={cn(
                 "flex flex-col items-center gap-1 text-xs transition",
-                isActive ? "text-white" : "text-neutral-500",
+                isActive ? "text-neutral-50" : "text-neutral-500",
               )}
             >
               <span className="text-lg">{tab.icon}</span>

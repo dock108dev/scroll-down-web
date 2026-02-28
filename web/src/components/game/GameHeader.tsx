@@ -76,7 +76,7 @@ export function GameHeader({ game }: GameHeaderProps) {
           >
             {game.awayTeamAbbr ?? game.awayTeam}
           </div>
-          <div className="text-[11px] text-neutral-500 mt-0.5 truncate px-1">
+          <div className="text-xs text-neutral-500 mt-0.5 truncate px-1">
             {game.awayTeam}
           </div>
           {showScore ? (
@@ -102,14 +102,14 @@ export function GameHeader({ game }: GameHeaderProps) {
             <>
               <span className="text-neutral-600 text-sm font-medium">@</span>
               {live && (game.currentPeriodLabel || game.gameClock || savedPosition?.timeLabel) && (
-                <p className="text-[11px] text-neutral-500 mt-0.5">
+                <p className="text-xs text-neutral-500 mt-0.5">
                   {game.currentPeriodLabel || game.gameClock
                     ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
                     : savedPosition?.timeLabel}
                 </p>
               )}
               {scoreRevealMode !== "always" && (
-                <p className="text-[10px] text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
+                <p className="text-xs text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
                   Hide score
                 </p>
               )}
@@ -125,7 +125,7 @@ export function GameHeader({ game }: GameHeaderProps) {
                 vs
               </span>
               {!pregame && hasScoreData && (
-                <p className="text-[10px] text-neutral-700 mt-1">
+                <p className="text-xs text-neutral-700 mt-1">
                   {live ? "Click to update" : "Click to reveal"}
                 </p>
               )}
@@ -141,7 +141,7 @@ export function GameHeader({ game }: GameHeaderProps) {
           >
             {game.homeTeamAbbr ?? game.homeTeam}
           </div>
-          <div className="text-[11px] text-neutral-500 mt-0.5 truncate px-1">
+          <div className="text-xs text-neutral-500 mt-0.5 truncate px-1">
             {game.homeTeam}
           </div>
           {showScore ? (

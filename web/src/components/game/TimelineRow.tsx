@@ -86,9 +86,9 @@ function StyledDescription({
     <p
       className={cn(
         "leading-snug",
-        tier === 1 && "text-sm font-semibold text-white",
+        tier === 1 && "text-sm font-semibold text-neutral-100",
         tier === 2 && "text-sm text-neutral-300 font-medium",
-        tier === 3 && "text-xs text-neutral-500",
+        tier === 3 && "text-sm text-neutral-500",
       )}
     >
       {parts}
@@ -147,7 +147,7 @@ export function TimelineRow({
         {/* Team abbreviation badge */}
         {play.teamAbbreviation && (
           <span
-            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
+            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white"
             style={{ backgroundColor: accentColor }}
           >
             {play.teamAbbreviation}
@@ -193,7 +193,7 @@ export function TimelineRow({
         {/* Team abbreviation badge at 50% opacity */}
         {play.teamAbbreviation && (
           <span
-            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/70"
+            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-medium uppercase tracking-wide text-white/70"
             style={{ backgroundColor: `${accentColor}80` }}
           >
             {play.teamAbbreviation}
@@ -222,7 +222,7 @@ export function TimelineRow({
       <span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-neutral-600" />
 
       {/* Time label */}
-      <span className="shrink-0 w-10 text-right text-[10px] text-neutral-600 font-mono">
+      <span className="shrink-0 w-10 text-right text-xs text-neutral-600 font-mono">
         {play.timeLabel ?? play.gameClock ?? ""}
       </span>
 

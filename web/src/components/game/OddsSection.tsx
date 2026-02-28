@@ -161,8 +161,8 @@ export function OddsSection({ odds }: OddsSectionProps) {
               className={cn(
                 "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition",
                 activeCategory === cat
-                  ? "bg-white text-black"
-                  : "bg-neutral-800 text-neutral-400 hover:text-white",
+                  ? "bg-neutral-50 text-neutral-950"
+                  : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
               )}
             >
               {CATEGORY_LABELS[cat] ?? cat}
@@ -178,7 +178,7 @@ export function OddsSection({ odds }: OddsSectionProps) {
           placeholder="Search by player name..."
           value={playerSearch}
           onChange={(e) => setPlayerSearch(e.target.value)}
-          className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
+          className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-neutral-50 placeholder-neutral-500 focus:outline-none focus:border-neutral-500"
         />
       )}
 

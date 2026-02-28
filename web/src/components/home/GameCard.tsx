@@ -247,7 +247,7 @@ export function GameCard({ game }: GameCardProps) {
             className={cn(
               "shrink-0 flex flex-col items-end justify-start gap-1.5 pl-2",
               canToggle
-                ? "cursor-pointer hover:text-white"
+                ? "cursor-pointer hover:text-neutral-50"
                 : "cursor-pointer",
             )}
           >

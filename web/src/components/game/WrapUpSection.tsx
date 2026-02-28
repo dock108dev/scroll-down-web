@@ -119,14 +119,14 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
       {/* Outcomes */}
       {outcomes.length > 0 && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
             Outcomes
           </h3>
           <div className="space-y-2">
             {outcomes.map(([key, value]) => (
               <div key={key} className="flex items-center justify-between">
-                <span className="text-xs text-neutral-500">{humanLabel(key)}</span>
-                <span className="text-sm font-medium text-neutral-100">
+                <span className="text-sm text-neutral-500">{humanLabel(key)}</span>
+                <span className="text-base font-medium text-neutral-100">
                   {formatValue(value)}
                 </span>
               </div>
@@ -138,16 +138,16 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
       {/* Key Metrics — two-column grid matching iOS */}
       {keyMetrics.length > 0 && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
             Key Metrics
           </h3>
           <div className="grid grid-cols-2 gap-x-6 gap-y-3">
             {keyMetrics.map(([key, value]) => (
               <div key={key}>
-                <div className="text-[11px] text-neutral-500 leading-tight">
+                <div className="text-xs text-neutral-500 leading-tight">
                   {humanLabel(key)}
                 </div>
-                <div className="text-sm font-medium text-neutral-100 mt-0.5">
+                <div className="text-base font-medium text-neutral-100 mt-0.5">
                   {formatValue(value)}
                 </div>
               </div>
@@ -159,11 +159,11 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
       {/* Opening vs Closing Lines (from odds data) */}
       {lineComparisons.length > 0 && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <h3 className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-3">
+          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
             Opening vs Closing Lines
           </h3>
           <div className="space-y-1">
-            <div className="flex items-center text-[10px] text-neutral-500 font-medium mb-2">
+            <div className="flex items-center text-xs text-neutral-500 font-medium mb-2">
               <span className="flex-1">Market</span>
               <span className="w-20 text-center">Open</span>
               <span className="w-20 text-center">Close</span>
@@ -173,7 +173,7 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
                 key={i}
                 className="flex items-center py-1.5 text-sm border-t border-neutral-800/30"
               >
-                <span className="flex-1 text-neutral-300 text-xs truncate pr-2">
+                <span className="flex-1 text-neutral-300 text-sm truncate pr-2">
                   {comp.label}
                   {comp.line != null && (
                     <span className="text-neutral-500 ml-1">
@@ -181,12 +181,12 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
                     </span>
                   )}
                 </span>
-                <span className="w-20 text-center font-mono text-xs text-neutral-400">
+                <span className="w-20 text-center font-mono text-sm text-neutral-400">
                   {comp.openPrice != null
                     ? formatOdds(comp.openPrice, oddsFormat)
                     : "—"}
                 </span>
-                <span className="w-20 text-center font-mono text-xs text-neutral-200">
+                <span className="w-20 text-center font-mono text-sm text-neutral-200">
                   {comp.closePrice != null
                     ? formatOdds(comp.closePrice, oddsFormat)
                     : "—"}

@@ -17,27 +17,27 @@ function periodDisplay(
   playsById: Map<number, FlowPlay>,
   moments?: FlowMoment[],
 ): string {
-  // Get plays for this block, sorted by play_index
-  const blockPlays = (block.play_ids ?? [])
+  // Get plays for this block, sorted by playIndex
+  const blockPlays = (block.playIds ?? [])
     .map((id) => playsById.get(id))
     .filter((p): p is FlowPlay => p != null)
-    .sort((a, b) => a.play_index - b.play_index);
+    .sort((a, b) => a.playIndex - b.playIndex);
 
   const startClock = blockPlays[0]?.clock;
   const endClock = blockPlays[blockPlays.length - 1]?.clock;
 
   // Resolve period: block fields → plays → moments
-  let periodStart = block.period_start;
-  let periodEnd = block.period_end;
+  let periodStart = block.periodStart;
+  let periodEnd = block.periodEnd;
 
   if (periodStart == null && blockPlays.length > 0) {
     periodStart = blockPlays[0].period;
     periodEnd = blockPlays[blockPlays.length - 1].period;
   }
 
-  if (periodStart == null && moments && block.moment_indices?.length > 0) {
-    const firstMoment = moments[block.moment_indices[0]];
-    const lastMoment = moments[block.moment_indices[block.moment_indices.length - 1]];
+  if (periodStart == null && moments && block.momentIndices?.length > 0) {
+    const firstMoment = moments[block.momentIndices[0]];
+    const lastMoment = moments[block.momentIndices[block.momentIndices.length - 1]];
     if (firstMoment) periodStart = firstMoment.period;
     if (lastMoment) periodEnd = lastMoment.period;
   }
@@ -65,15 +65,15 @@ function resolveScoreAfter(
   block: FlowBlock,
   moments?: FlowMoment[],
 ): number[] | undefined {
-  if (Array.isArray(block.score_after) && block.score_after.length >= 2) {
-    return block.score_after;
+  if (Array.isArray(block.scoreAfter) && block.scoreAfter.length >= 2) {
+    return block.scoreAfter;
   }
   // Fall back to last moment's score_after
-  if (moments && block.moment_indices?.length > 0) {
-    const lastIdx = block.moment_indices[block.moment_indices.length - 1];
+  if (moments && block.momentIndices?.length > 0) {
+    const lastIdx = block.momentIndices[block.momentIndices.length - 1];
     const lastMoment = moments[lastIdx];
-    if (lastMoment && Array.isArray(lastMoment.score_after) && lastMoment.score_after.length >= 2) {
-      return lastMoment.score_after;
+    if (lastMoment && Array.isArray(lastMoment.scoreAfter) && lastMoment.scoreAfter.length >= 2) {
+      return lastMoment.scoreAfter;
     }
   }
   return undefined;
@@ -88,7 +88,7 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
     if (!plays) return new Map<number, FlowPlay>();
     const map = new Map<number, FlowPlay>();
     for (const p of plays) {
-      map.set(p.play_id, p);
+      map.set(p.playId, p);
     }
     return map;
   }, [plays]);
@@ -120,20 +120,20 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
       <div className="relative">
         <div className="absolute left-6 top-0 bottom-0 w-px bg-neutral-800" />
         <div className="space-y-4 relative">
-          {data.blocks.map((block, i) => (
+          {data.flow.blocks.map((block, i) => (
             <FlowBlockCard
-              key={block.block_index ?? i}
+              key={block.blockIndex ?? i}
               block={block}
-              periodLabel={periodDisplay(block, playsById, data.moments)}
-              scoreAfter={resolveScoreAfter(block, data.moments)}
-              homeTeam={data.home_team_abbr ?? data.home_team}
-              awayTeam={data.away_team_abbr ?? data.away_team}
-              homeColor={data.home_team_color_dark}
-              awayColor={data.away_team_color_dark}
+              periodLabel={periodDisplay(block, playsById, data.flow.moments)}
+              scoreAfter={resolveScoreAfter(block, data.flow.moments)}
+              homeTeam={data.homeTeamAbbr ?? data.homeTeam}
+              awayTeam={data.awayTeamAbbr ?? data.awayTeam}
+              homeColor={data.homeTeamColorDark}
+              awayColor={data.awayTeamColorDark}
               isFirstBlock={i === 0}
               embeddedSocialPost={
-                block.embedded_social_post_id != null
-                  ? socialPostsById.get(block.embedded_social_post_id)
+                block.embeddedSocialPostId != null
+                  ? socialPostsById.get(block.embeddedSocialPostId)
                   : undefined
               }
             />

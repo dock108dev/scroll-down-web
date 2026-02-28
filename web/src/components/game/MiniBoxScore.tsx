@@ -25,11 +25,11 @@ function statLine(p: BlockPlayerStat): string {
 /** Format a player's delta stat line (what they did in this block) */
 function deltaLine(p: BlockPlayerStat): string {
   const parts: string[] = [];
-  if (p.delta_pts != null && p.delta_pts !== 0) parts.push(`+${p.delta_pts}p`);
-  if (p.delta_reb != null && p.delta_reb !== 0) parts.push(`+${p.delta_reb}r`);
-  if (p.delta_ast != null && p.delta_ast !== 0) parts.push(`+${p.delta_ast}a`);
-  if (p.delta_goals != null && p.delta_goals !== 0) parts.push(`+${p.delta_goals}g`);
-  if (p.delta_assists != null && p.delta_assists !== 0) parts.push(`+${p.delta_assists}a`);
+  if (p.deltaPts != null && p.deltaPts !== 0) parts.push(`+${p.deltaPts}p`);
+  if (p.deltaReb != null && p.deltaReb !== 0) parts.push(`+${p.deltaReb}r`);
+  if (p.deltaAst != null && p.deltaAst !== 0) parts.push(`+${p.deltaAst}a`);
+  if (p.deltaGoals != null && p.deltaGoals !== 0) parts.push(`+${p.deltaGoals}g`);
+  if (p.deltaAssists != null && p.deltaAssists !== 0) parts.push(`+${p.deltaAssists}a`);
   return parts.join(" ");
 }
 
@@ -42,12 +42,12 @@ export function MiniBoxScore({
   awayColor,
   isFirstBlock,
 }: MiniBoxScoreProps) {
-  const blockStars = new Set(miniBox.block_stars);
+  const blockStars = new Set(miniBox.blockStars);
   const awayPlayers = miniBox.away.players.slice(0, 2);
   const homePlayers = miniBox.home.players.slice(0, 2);
 
   return (
-    <div className="mt-3 pt-3 border-t border-neutral-800 text-xs">
+    <div className="mt-3 pt-3 border-t border-neutral-800 text-sm">
       {/* Away team row */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">

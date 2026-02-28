@@ -98,7 +98,7 @@ export function BetCard({
       <div className="space-y-1">
         {/* Row 1: Selection + League badge + Market */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-white truncate">
+          <span className="text-sm font-semibold text-neutral-50 truncate">
             {bet.selectionDisplay ?? bet.selection_key}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
@@ -135,7 +135,7 @@ export function BetCard({
             >
               {showFullBookName ? primaryBook.book : bookAbbreviation(primaryBook.book)}
             </button>
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-neutral-50">
               {formatOdds(primaryBook.price, oddsFormat)}
             </span>
             {isPrimaryBest && (
@@ -170,7 +170,7 @@ export function BetCard({
             <span className="font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>
               {bookAbbreviation(bestBook.book)}
             </span>
-            <span className="font-bold text-white">
+            <span className="font-bold text-neutral-50">
               {formatOdds(bestBook.price, oddsFormat)}
             </span>
             {(bestBook.display_ev ?? bestBook.ev_percent) != null && (
@@ -192,7 +192,7 @@ export function BetCard({
             }}
           >
             <span style={{ color: "rgba(255,255,255,0.5)" }}>Est. fair</span>
-            <span className="font-semibold text-white">
+            <span className="font-semibold text-neutral-50">
               {formatOdds(bet.fairAmericanOdds, oddsFormat)}
             </span>
             {bet.true_prob != null && (

@@ -321,7 +321,7 @@ function DarkSelect({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
-      className="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-white appearance-none cursor-pointer min-w-[160px]"
+      className="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-50 appearance-none cursor-pointer min-w-[160px]"
     >
       {options.map((opt) => (
         <option key={opt.value} value={opt.value}>

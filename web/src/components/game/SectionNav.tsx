@@ -49,7 +49,7 @@ export function SectionNav({ sections, active, onSelect }: SectionNavProps) {
             className={cn(
               "shrink-0 px-3 py-2.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap",
               active === section
-                ? "border-white text-white"
+                ? "border-neutral-50 text-neutral-50"
                 : "border-transparent text-neutral-500 hover:text-neutral-300",
             )}
           >

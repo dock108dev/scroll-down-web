@@ -376,7 +376,7 @@ export function TeamStatsComparison({
         {activeGroups.map((group) => (
           <div key={group.title}>
             {/* Group header */}
-            <div className="px-3 py-1.5 bg-neutral-800/30 text-[10px] font-semibold text-neutral-500 uppercase tracking-wider">
+            <div className="px-3 py-1.5 bg-neutral-800/30 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
               {group.title}
             </div>
 
@@ -400,7 +400,7 @@ export function TeamStatsComparison({
       {/* Annotations */}
       {annotations.length > 0 && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-3 space-y-1.5">
-          <div className="text-[10px] font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+          <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
             Key Takeaways
           </div>
           {annotations.map((a, i) => (

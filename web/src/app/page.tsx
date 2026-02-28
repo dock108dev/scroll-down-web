@@ -161,8 +161,8 @@ export default function HomePage() {
             className={cn(
               "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition",
               league === ""
-                ? "bg-white text-black"
-                : "bg-neutral-800 text-neutral-400 hover:text-white",
+                ? "bg-neutral-50 text-neutral-950"
+                : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
             )}
           >
             All
@@ -174,8 +174,8 @@ export default function HomePage() {
               className={cn(
                 "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition uppercase",
                 league === code
-                  ? "bg-white text-black"
-                  : "bg-neutral-800 text-neutral-400 hover:text-white",
+                  ? "bg-neutral-50 text-neutral-950"
+                  : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
               )}
             >
               {code}
@@ -204,7 +204,7 @@ export default function HomePage() {
             {readCount > 0 && (
               <button
                 onClick={handleReset}
-                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white transition"
+                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-50 transition"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
@@ -219,7 +219,7 @@ export default function HomePage() {
             <div className="flex-1" />
             <button
               onClick={() => refetch()}
-              className="p-1.5 rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition"
+              className="p-1.5 rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
               title="Refresh"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

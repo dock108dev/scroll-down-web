@@ -50,10 +50,10 @@ export function ParlaySheet({
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">Parlay Builder</h2>
+          <h2 className="text-base font-semibold text-neutral-50">Parlay Builder</h2>
           <button
             onClick={onClose}
-            className="text-neutral-500 hover:text-white text-sm px-2 py-1"
+            className="text-neutral-500 hover:text-neutral-50 text-sm px-2 py-1"
           >
             Close
           </button>
@@ -71,7 +71,7 @@ export function ParlaySheet({
             <div className="text-xs font-semibold uppercase tracking-wider" style={{ color: FairBetTheme.info }}>
               {legCount} Leg Parlay
             </div>
-            <div className="text-2xl font-bold text-white">
+            <div className="text-2xl font-bold text-neutral-50">
               {parlayOdds !== 0
                 ? formatOdds(parlayOdds, oddsFormat)
                 : "---"}
@@ -81,7 +81,7 @@ export function ParlaySheet({
                 <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
                   Fair Probability
                 </div>
-                <div className="text-sm font-semibold text-white">
+                <div className="text-sm font-semibold text-neutral-50">
                   {parlayProbability > 0 ? formatProbability(parlayProbability) : "N/A"}
                 </div>
               </div>
@@ -135,7 +135,7 @@ export function ParlaySheet({
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2">
                       <LeagueBadge league={bet.league_code} />
-                      <span className="text-xs font-semibold text-white truncate">
+                      <span className="text-xs font-semibold text-neutral-50 truncate">
                         {bet.selectionDisplay ?? bet.selection_key}
                       </span>
                     </div>

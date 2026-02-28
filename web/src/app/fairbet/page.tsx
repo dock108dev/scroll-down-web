@@ -33,7 +33,7 @@ export default function FairBetPage() {
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-white">FairBet</h1>
+            <h1 className="text-xl font-bold text-neutral-50">FairBet</h1>
             {hook.canShowParlay && (
               <button
                 onClick={() => setShowParlay(true)}
@@ -221,22 +221,22 @@ export default function FairBetPage() {
             }}
           >
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">How FairBet Works</h2>
+              <h2 className="text-lg font-semibold text-neutral-50">How FairBet Works</h2>
               <button
                 onClick={() => setShowHowItWorks(false)}
-                className="text-neutral-500 hover:text-white text-sm"
+                className="text-neutral-500 hover:text-neutral-50 text-sm"
               >
                 Close
               </button>
             </div>
-            <div className="text-sm space-y-3" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <div className="text-sm space-y-3 text-neutral-400">
               <p>
-                FairBet calculates the <strong className="text-white">true probability</strong> of each
+                FairBet calculates the <strong className="text-neutral-50">true probability</strong> of each
                 outcome by removing the sportsbook&apos;s margin (vig) from sharp
                 lines.
               </p>
               <p>
-                A bet has <strong className="text-white">positive expected value (+EV)</strong> when a
+                A bet has <strong className="text-neutral-50">positive expected value (+EV)</strong> when a
                 book&apos;s price implies a lower probability than the true
                 probability. This means the payout exceeds what the risk
                 warrants.
@@ -248,7 +248,7 @@ export default function FairBetPage() {
                 indicate sharp (reference) books.
               </p>
               <p>
-                Use the <strong className="text-white">parlay builder</strong> to combine multiple +EV bets.
+                Use the <strong className="text-neutral-50">parlay builder</strong> to combine multiple +EV bets.
                 Fair probability for parlays assumes independent legs.
               </p>
             </div>

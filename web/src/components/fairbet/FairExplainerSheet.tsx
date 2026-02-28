@@ -43,10 +43,10 @@ export function FairExplainerSheet({
       >
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">Fair Value Breakdown</h2>
+          <h2 className="text-base font-semibold text-neutral-50">Fair Value Breakdown</h2>
           <button
             onClick={onClose}
-            className="text-neutral-500 hover:text-white text-sm px-2 py-1"
+            className="text-neutral-500 hover:text-neutral-50 text-sm px-2 py-1"
           >
             Close
           </button>
@@ -60,7 +60,7 @@ export function FairExplainerSheet({
             border: `1px solid ${FairBetTheme.borderSubtle}`,
           }}
         >
-          <div className="text-sm font-semibold text-white">{bet.selectionDisplay ?? bet.selection_key}</div>
+          <div className="text-sm font-semibold text-neutral-50">{bet.selectionDisplay ?? bet.selection_key}</div>
           <div className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
             {bet.away_team} @ {bet.home_team}
           </div>
@@ -118,7 +118,7 @@ export function FairExplainerSheet({
                   >
                     {step.step_number}
                   </span>
-                  <span className="text-xs font-semibold text-white">{step.title}</span>
+                  <span className="text-xs font-semibold text-neutral-50">{step.title}</span>
                 </div>
                 {step.description && (
                   <p className="text-xs pl-7" style={{ color: "rgba(255,255,255,0.5)" }}>
@@ -170,7 +170,7 @@ export function FairExplainerSheet({
                     style={{ backgroundColor: FairBetTheme.surfaceTint }}
                   >
                     <span className="flex items-center gap-2">
-                      <span className="font-medium text-white">
+                      <span className="font-medium text-neutral-50">
                         {bookAbbreviation(bp.book)}
                       </span>
                       {bp.is_sharp && (
@@ -180,7 +180,7 @@ export function FairExplainerSheet({
                       )}
                     </span>
                     <span className="flex items-center gap-3">
-                      <span className="text-white font-mono">{formatOdds(bp.price, oddsFormat)}</span>
+                      <span className="text-neutral-50 font-mono">{formatOdds(bp.price, oddsFormat)}</span>
                       <span style={{ color: "rgba(255,255,255,0.5)" }}>
                         {ip > 0 ? formatProbability(ip) : "—"}
                       </span>
@@ -218,7 +218,7 @@ export function FairExplainerSheet({
               className="w-2 h-2 rounded-full shrink-0"
               style={{ backgroundColor: getConfidenceColor(bet.ev_confidence_tier) }}
             />
-            <span className="text-xs font-semibold text-white">
+            <span className="text-xs font-semibold text-neutral-50">
               {bet.confidenceDisplayLabel ?? "N/A"}
             </span>
             <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>

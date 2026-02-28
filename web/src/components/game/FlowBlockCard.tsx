@@ -42,14 +42,14 @@ export function FlowBlockCard({
       {/* Period label + role badge row */}
       <div className="flex items-center gap-2 mb-2">
         {periodLabel && (
-          <span className="text-[11px] font-mono text-neutral-500">
+          <span className="text-xs font-mono text-neutral-500">
             {periodLabel}
           </span>
         )}
         {roleLabel && (
           <span
             className={cn(
-              "text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded",
+              "text-xs uppercase tracking-wide font-semibold px-2 py-0.5 rounded",
               block.role === "momentum_shift" &&
                 "bg-yellow-500/10 text-yellow-500",
               block.role === "resolution" && "bg-green-500/10 text-green-500",
@@ -64,19 +64,19 @@ export function FlowBlockCard({
           </span>
         )}
         {scoreAfter && (
-          <span className="text-xs text-neutral-400 ml-auto font-mono tabular-nums">
+          <span className="text-sm text-neutral-400 ml-auto font-mono tabular-nums">
             {scoreAfter[0]}–{scoreAfter[1]}
           </span>
         )}
       </div>
 
-      <p className="text-sm text-neutral-200 leading-relaxed">
+      <p className="text-base text-neutral-200 leading-relaxed">
         {block.narrative}
       </p>
 
-      {block.mini_box && (
+      {block.miniBox && (
         <MiniBoxScore
-          miniBox={block.mini_box}
+          miniBox={block.miniBox}
           scoreAfter={scoreAfter}
           homeTeam={homeTeam}
           awayTeam={awayTeam}
