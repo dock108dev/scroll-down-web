@@ -17,6 +17,7 @@ import { useReadingPosition } from "@/stores/reading-position";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
 import { useSectionLayout } from "@/stores/section-layout";
+import { usePinnedGames } from "@/stores/pinned-games";
 
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
@@ -152,6 +153,26 @@ export default function GameDetailPage({
 
   // Has flow data (for expansion defaults)
   const hasFlow = data?.game.hasFlow ?? false;
+
+  // ─── Sync pinned chip scores with latest game data ────────
+  const syncPinned = usePinnedGames((s) => s.syncDisplayData);
+  useEffect(() => {
+    if (!data) return;
+    const g = data.game;
+    const lastPlay = data.plays?.length
+      ? data.plays[data.plays.length - 1]
+      : null;
+    syncPinned([
+      {
+        id: g.id,
+        awayTeamAbbr: g.awayTeamAbbr,
+        homeTeamAbbr: g.homeTeamAbbr,
+        awayScore: lastPlay?.awayScore ?? g.awayScore,
+        homeScore: lastPlay?.homeScore ?? g.homeScore,
+        status: g.status,
+      },
+    ]);
+  }, [data, syncPinned]);
 
   // ─── Per-game section layout persistence ───────────────────
   const sectionLayout = useSectionLayout();
