@@ -1,18 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import type { GameSummary } from "@/lib/types";
+import type { GameStatus } from "@/lib/types";
 import { isLive, isFinal } from "@/lib/types";
+import { usePinnedGames } from "@/stores/pinned-games";
+import type { PinnedGameDisplay } from "@/stores/pinned-games";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
 import { useReadingPosition } from "@/stores/reading-position";
-import { usePinnedGames } from "@/stores/pinned-games";
 
-interface PinnedBarProps {
-  games: GameSummary[];
-}
-
-function ChipScore({ game }: { game: GameSummary }) {
+function ChipScore({ game }: { game: PinnedGameDisplay }) {
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const isRead = useReadState((s) => s.isRead);
   const getPosition = useReadingPosition((s) => s.getPosition);
@@ -37,8 +34,8 @@ function ChipScore({ game }: { game: GameSummary }) {
   );
 }
 
-function StatusDot({ game }: { game: GameSummary }) {
-  if (isLive(game.status)) {
+function StatusDot({ status }: { status: GameStatus }) {
+  if (isLive(status)) {
     return (
       <span className="relative flex h-1.5 w-1.5 shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -46,29 +43,40 @@ function StatusDot({ game }: { game: GameSummary }) {
       </span>
     );
   }
-  if (isFinal(game.status)) {
+  if (isFinal(status)) {
     return <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-600" />;
   }
   return null;
 }
 
-export function PinnedBar({ games }: PinnedBarProps) {
+export function PinnedBar() {
   const router = useRouter();
+  const pinnedIds = usePinnedGames((s) => s.pinnedIds);
+  const displayData = usePinnedGames((s) => s.displayData);
   const togglePin = usePinnedGames((s) => s.togglePin);
+
+  if (pinnedIds.size === 0) return null;
+
+  // Build ordered list from Set iteration order
+  const games: PinnedGameDisplay[] = [];
+  for (const id of pinnedIds) {
+    const d = displayData.get(id);
+    if (d) games.push(d);
+  }
 
   if (games.length === 0) return null;
 
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">
+    <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 px-4">
       {games.map((game) => (
         <button
           key={game.id}
           onClick={() => router.push(`/game/${game.id}`)}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-neutral-800 pl-2.5 pr-1.5 py-1 text-xs text-neutral-300 hover:bg-neutral-700 transition group"
         >
-          <StatusDot game={game} />
+          <StatusDot status={game.status} />
           <span className="whitespace-nowrap">
-            {game.awayTeamAbbr ?? "AWY"} – {game.homeTeamAbbr ?? "HME"}
+            {game.awayTeamAbbr} – {game.homeTeamAbbr}
           </span>
           <ChipScore game={game} />
           <span

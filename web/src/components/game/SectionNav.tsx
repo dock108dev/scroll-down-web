@@ -36,7 +36,7 @@ export function SectionNav({ sections, active, onSelect }: SectionNavProps) {
   };
 
   return (
-    <div className="sticky top-14 z-30 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur">
+    <div className="sticky z-30 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur" style={{ top: "var(--header-h)" }}>
       <div
         ref={navRef}
         className="flex overflow-x-auto scrollbar-none px-4 gap-1"

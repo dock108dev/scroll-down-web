@@ -5,7 +5,6 @@ import { useGames, SECTION_ORDER } from "@/hooks/useGames";
 
 import { SearchBar } from "@/components/home/SearchBar";
 import { GameSection } from "@/components/home/GameSection";
-import { PinnedBar } from "@/components/home/PinnedBar";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal } from "@/lib/types";
 import type { GameSummary } from "@/lib/types";
@@ -54,27 +53,16 @@ export default function HomePage() {
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
-  const pinnedIds = usePinnedGames((s) => s.pinnedIds);
   const pruneStale = usePinnedGames((s) => s.pruneStale);
+  const syncDisplayData = usePinnedGames((s) => s.syncDisplayData);
 
-  // Auto-prune pins for games no longer in the fetched range
+  // Auto-prune pins for games no longer in the fetched range & sync display data
   useEffect(() => {
     if (allGames.length > 0) {
       pruneStale(allGames.map((g) => g.id));
+      syncDisplayData(allGames);
     }
-  }, [allGames, pruneStale]);
-
-  // Derive pinned games, preserving insertion order from the store Set
-  const pinnedGames = useMemo(() => {
-    const lookup = new Map<number, GameSummary>();
-    for (const g of allGames) lookup.set(g.id, g);
-    const result: GameSummary[] = [];
-    for (const id of pinnedIds) {
-      const g = lookup.get(id);
-      if (g) result.push(g);
-    }
-    return result;
-  }, [allGames, pinnedIds]);
+  }, [allGames, pruneStale, syncDisplayData]);
 
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
@@ -174,7 +162,7 @@ export default function HomePage() {
   return (
     <div className="mx-auto max-w-7xl">
       {/* Sticky toolbar */}
-      <div className="sticky top-14 z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800">
+      <div className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
         <SearchBar value={search} onChange={setSearch} />
 
         {/* League filter pills */}
@@ -205,9 +193,6 @@ export default function HomePage() {
             </button>
           ))}
         </div>
-
-        {/* Pinned games bar */}
-        <PinnedBar games={pinnedGames} />
 
         {/* Batch actions + refresh */}
         {hasAnyGames && (

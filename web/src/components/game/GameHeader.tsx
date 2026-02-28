@@ -5,6 +5,8 @@ import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
 import { useReadingPosition } from "@/stores/reading-position";
+import { usePinnedGames } from "@/stores/pinned-games";
+import type { PinnedGameDisplay } from "@/stores/pinned-games";
 import { cn, formatDate } from "@/lib/utils";
 
 interface GameHeaderProps {
@@ -16,6 +18,10 @@ export function GameHeader({ game }: GameHeaderProps) {
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const savedPosition = useReadingPosition((s) => s.getPosition)(game.id);
   const savePosition = useReadingPosition((s) => s.savePosition);
+
+  const pinned = usePinnedGames((s) => s.isPinned)(game.id);
+  const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
+  const togglePin = usePinnedGames((s) => s.togglePin);
 
   const read = isRead(game.id);
   const live = isLive(game.status);
@@ -86,8 +92,37 @@ export function GameHeader({ game }: GameHeaderProps) {
       <div className="rounded-xl bg-neutral-800/30 border border-neutral-800/60 px-5 py-5">
         {/* League + date + status */}
         <div className="flex items-center justify-between mb-5">
-          <span className="text-xs uppercase font-medium text-neutral-500 tracking-wide">
-            {game.leagueCode.toUpperCase()} &middot; {formatDate(game.gameDate)}
+          <span className="inline-flex items-center gap-2">
+            <span className="text-xs uppercase font-medium text-neutral-500 tracking-wide">
+              {game.leagueCode.toUpperCase()} &middot; {formatDate(game.gameDate)}
+            </span>
+            {(pinned || pinnedCount < 10) && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const display: PinnedGameDisplay = {
+                    id: game.id,
+                    awayTeamAbbr: game.awayTeamAbbr ?? "AWY",
+                    homeTeamAbbr: game.homeTeamAbbr ?? "HME",
+                    awayScore: game.awayScore ?? null,
+                    homeScore: game.homeScore ?? null,
+                    status: game.status,
+                  };
+                  togglePin(game.id, display);
+                }}
+                className={cn(
+                  "p-0.5 rounded transition",
+                  pinned
+                    ? "text-blue-400 hover:text-blue-300"
+                    : "text-neutral-600 hover:text-neutral-400",
+                )}
+                title={pinned ? "Unpin game" : "Pin game"}
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill={pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l2.09 6.26L21 9.27l-5 4.87L17.18 22 12 18.56 6.82 22 8 14.14l-5-4.87 6.91-1.01L12 2z" />
+                </svg>
+              </button>
+            )}
           </span>
           {live && hasScoreUpdate && (
             <button

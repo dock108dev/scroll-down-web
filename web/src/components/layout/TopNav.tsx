@@ -1,9 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUI } from "@/stores/ui";
+import { usePinnedGames } from "@/stores/pinned-games";
+import { PinnedBar } from "@/components/home/PinnedBar";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
@@ -14,6 +17,15 @@ const NAV_LINKS = [
 export function TopNav() {
   const pathname = usePathname();
   const openSettings = useUI((s) => s.openSettings);
+  const hasPins = usePinnedGames((s) => s.pinnedIds.size > 0);
+
+  // Update --header-h CSS variable when pin count changes
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--header-h",
+      hasPins ? "88px" : "56px",
+    );
+  }, [hasPins]);
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
@@ -56,6 +68,13 @@ export function TopNav() {
           </svg>
         </button>
       </nav>
+      {hasPins && (
+        <div className="border-t border-neutral-800/50">
+          <div className="mx-auto max-w-7xl">
+            <PinnedBar />
+          </div>
+        </div>
+      )}
     </header>
   );
 }

@@ -86,7 +86,7 @@ function CollapsibleSection({
   children: React.ReactNode;
 }) {
   return (
-    <div id={`section-${title}`} className="scroll-mt-24">
+    <div id={`section-${title}`} className="scroll-mt-24" style={{ scrollMarginTop: "calc(var(--header-h) + 40px)" }}>
       <button
         onClick={onToggle}
         className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-200 hover:bg-neutral-800/30 transition-colors"
@@ -356,7 +356,7 @@ export default function GameDetailPage({
 
         {/* ─── Flow (Final only, always expanded) ───────── */}
         {sections.includes("Flow") && (
-          <div id="section-Flow" className="scroll-mt-24">
+          <div id="section-Flow" className="scroll-mt-24" style={{ scrollMarginTop: "calc(var(--header-h) + 40px)" }}>
             <FlowContainer gameId={gameId} socialPosts={data.socialPosts} />
           </div>
         )}

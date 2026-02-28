@@ -22,8 +22,9 @@ export function SectionHeader({
       onClick={onToggle}
       className={cn(
         "flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-neutral-300 bg-neutral-950",
-        sticky && "sticky top-14 z-40",
+        sticky && "sticky z-20",
       )}
+      style={sticky ? { top: "var(--header-h)" } : undefined}
     >
       <span
         className={cn(

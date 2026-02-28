@@ -7,6 +7,7 @@ import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
+import type { PinnedGameDisplay } from "@/stores/pinned-games";
 import { TeamColorDot } from "@/components/shared/TeamColorDot";
 import { cn, cardDisplayName } from "@/lib/utils";
 import { useReadingPosition } from "@/stores/reading-position";
@@ -219,7 +220,18 @@ export function GameCard({ game }: GameCardProps) {
           </span>
           {(pinned || pinnedCount < 10) && (
             <button
-              onClick={(e) => { e.stopPropagation(); togglePin(game.id); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                const display: PinnedGameDisplay = {
+                  id: game.id,
+                  awayTeamAbbr: game.awayTeamAbbr ?? "AWY",
+                  homeTeamAbbr: game.homeTeamAbbr ?? "HME",
+                  awayScore: game.awayScore ?? null,
+                  homeScore: game.homeScore ?? null,
+                  status: game.status,
+                };
+                togglePin(game.id, display);
+              }}
               className={cn(
                 "p-0.5 rounded transition",
                 pinned
