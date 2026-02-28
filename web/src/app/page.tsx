@@ -96,15 +96,10 @@ export default function HomePage() {
   );
 
   // Which sections are currently expanded (visible)?
-  const defaultExpanded = new Set(["Today", "Yesterday"]);
   const visibleGames = useMemo(() => {
-    return sortedSections.flatMap((s) => {
-      const expanded =
-        homeExpandedSections.length > 0
-          ? homeExpandedSections.includes(s.key)
-          : defaultExpanded.has(s.key);
-      return expanded ? s.games : [];
-    });
+    return sortedSections.flatMap((s) =>
+      homeExpandedSections.includes(s.key) ? s.games : [],
+    );
   }, [sortedSections, homeExpandedSections]);
 
   // Count unread final games in visible sections only
@@ -251,9 +246,6 @@ export default function HomePage() {
           key={section.key}
           title={section.key}
           games={section.games}
-          defaultExpanded={
-            section.key === "Today" || section.key === "Yesterday"
-          }
         />
       ))}
     </div>

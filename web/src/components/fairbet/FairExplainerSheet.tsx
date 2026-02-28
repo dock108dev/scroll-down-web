@@ -222,11 +222,11 @@ export function FairExplainerSheet({
               {bet.confidenceDisplayLabel ?? "N/A"}
             </span>
             <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
-              {bet.ev_confidence_tier === "sharp"
-                ? "Based on sharp sportsbook lines - high reliability"
-                : bet.ev_confidence_tier === "market"
-                  ? "Based on market consensus - moderate reliability"
-                  : "Limited data available - lower confidence"}
+              {bet.ev_confidence_tier === "full" || bet.ev_confidence_tier === "sharp" || bet.ev_confidence_tier === "high"
+                ? "Broad book coverage — high confidence"
+                : bet.ev_confidence_tier === "decent" || bet.ev_confidence_tier === "market" || bet.ev_confidence_tier === "medium"
+                  ? "Moderate book coverage — reasonable confidence"
+                  : "Limited data available — lower confidence"}
             </span>
           </div>
         </div>

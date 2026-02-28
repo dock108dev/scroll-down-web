@@ -11,7 +11,6 @@ import {
   formatEV,
   formatProbability,
   getEVColor,
-  getConfidenceColor,
   isConfidenceReliable,
   betId,
 } from "@/lib/fairbet-utils";
@@ -156,18 +155,6 @@ export function BetCard({
                 style={{ color: getEVColor(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0) }}
               >
                 {formatEV(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0)}
-              </span>
-            )}
-            {/* Confidence badge */}
-            {bet.ev_confidence_tier && bet.ev_confidence_tier !== "none" && (
-              <span
-                className="text-[9px] font-medium px-1.5 py-0.5 rounded-full"
-                style={{
-                  color: getConfidenceColor(bet.ev_confidence_tier),
-                  backgroundColor: `${getConfidenceColor(bet.ev_confidence_tier)}1A`,
-                }}
-              >
-                {bet.confidenceDisplayLabel ?? "N/A"}
               </span>
             )}
           </div>

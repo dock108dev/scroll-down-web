@@ -27,18 +27,18 @@ export function formatProbability(prob: number): string {
 
 /**
  * Map API confidence tier to display label.
- * API sends: "full" (sharp), "decent" (market), "thin" (thin)
+ * API sends: "full", "decent", "thin"
  */
 export function getConfidenceLabel(tier?: string): string {
   switch (tier) {
     case "full":
     case "sharp":
     case "high":
-      return "Sharp";
+      return "Strong";
     case "decent":
     case "market":
     case "medium":
-      return "Market";
+      return "Decent";
     case "thin":
     case "low":
       return "Thin";

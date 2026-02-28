@@ -9,14 +9,12 @@ import { useCallback } from "react";
 interface GameSectionProps {
   title: string;
   games: GameSummary[];
-  defaultExpanded?: boolean;
   actions?: React.ReactNode;
 }
 
 export function GameSection({
   title,
   games,
-  defaultExpanded = true,
   actions,
 }: GameSectionProps) {
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
@@ -24,28 +22,13 @@ export function GameSection({
     (s) => s.setHomeExpandedSections,
   );
 
-  // If the section is in the persisted list, it is expanded.
-  // If the list is empty (fresh user), fall back to defaultExpanded.
-  const expanded =
-    homeExpandedSections.length > 0
-      ? homeExpandedSections.includes(title)
-      : defaultExpanded;
+  // Section is expanded only if explicitly in the persisted list.
+  const expanded = homeExpandedSections.includes(title);
 
   const handleToggle = useCallback(() => {
-    let next: string[];
-    if (homeExpandedSections.length === 0) {
-      // First interaction: initialize from defaults, then toggle
-      const defaults = ["Today", "Yesterday"];
-      if (expanded) {
-        next = defaults.filter((s) => s !== title);
-      } else {
-        next = [...defaults, title];
-      }
-    } else if (expanded) {
-      next = homeExpandedSections.filter((s) => s !== title);
-    } else {
-      next = [...homeExpandedSections, title];
-    }
+    const next = expanded
+      ? homeExpandedSections.filter((s) => s !== title)
+      : [...homeExpandedSections, title];
     setHomeExpandedSections(next);
   }, [expanded, homeExpandedSections, setHomeExpandedSections, title]);
 

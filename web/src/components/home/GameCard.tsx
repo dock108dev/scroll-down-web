@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { GameSummary } from "@/lib/types";
 import { isLive, isFinal, isPregame } from "@/lib/types";
@@ -49,6 +50,17 @@ export function GameCard({ game }: GameCardProps) {
   const pregame = isPregame(game.status);
   const noData = hasNoData(game);
 
+  // Track previous live status for live→final auto-hide
+  const wasLiveRef = useRef(live);
+  useEffect(() => {
+    // Game just went final while user had it revealed as live
+    if (final && wasLiveRef.current && read && savedPosition) {
+      markUnread(game.id);
+      clearPosition(game.id);
+    }
+    wasLiveRef.current = live;
+  }, [final, live, read, savedPosition, game.id, markUnread, clearPosition]);
+
   const hasScoreData = game.homeScore != null && game.awayScore != null;
 
   const showScore =
@@ -56,16 +68,37 @@ export function GameCard({ game }: GameCardProps) {
     hasScoreData &&
     (scoreRevealMode === "always" || read);
 
-  const displayAwayScore = showScore
-    ? game.awayScore
-    : savedPosition?.awayScore != null && !pregame
-      ? savedPosition.awayScore
-      : null;
-  const displayHomeScore = showScore
-    ? game.homeScore
-    : savedPosition?.homeScore != null && !pregame
-      ? savedPosition.homeScore
-      : null;
+  // Score freeze: when a live game is revealed (not "always" mode),
+  // display the snapshot scores instead of live-updating ones.
+  const scoreFrozen =
+    live &&
+    read &&
+    scoreRevealMode !== "always" &&
+    savedPosition?.homeScore != null &&
+    savedPosition?.awayScore != null;
+
+  const hasNewData =
+    scoreFrozen &&
+    (game.homeScore !== savedPosition!.homeScore ||
+      game.awayScore !== savedPosition!.awayScore ||
+      (game.playCount != null &&
+        savedPosition!.playCount != null &&
+        game.playCount > savedPosition!.playCount));
+
+  const displayAwayScore = scoreFrozen
+    ? savedPosition!.awayScore
+    : showScore
+      ? game.awayScore
+      : savedPosition?.awayScore != null && !pregame
+        ? savedPosition.awayScore
+        : null;
+  const displayHomeScore = scoreFrozen
+    ? savedPosition!.homeScore
+    : showScore
+      ? game.homeScore
+      : savedPosition?.homeScore != null && !pregame
+        ? savedPosition.homeScore
+        : null;
   const hasSavedScores = displayAwayScore != null && displayHomeScore != null;
 
   const canToggle = (final || live) && hasScoreData && scoreRevealMode !== "always";
@@ -97,6 +130,7 @@ export function GameCard({ game }: GameCardProps) {
           timeLabel: game.currentPeriodLabel
             ? `${game.currentPeriodLabel}${game.gameClock ? ` ${game.gameClock}` : ""}`
             : undefined,
+          playCount: game.playCount,
           savedAt: new Date().toISOString(),
         });
       }
@@ -106,8 +140,9 @@ export function GameCard({ game }: GameCardProps) {
   // Status label
   const statusLabel = (() => {
     if (live) {
-      const timeStr =
-        showScore && (game.currentPeriodLabel || game.gameClock)
+      const timeStr = scoreFrozen && savedPosition?.timeLabel
+        ? savedPosition.timeLabel
+        : showScore && (game.currentPeriodLabel || game.gameClock)
           ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
           : !showScore && hasSavedScores && savedPosition?.timeLabel
             ? savedPosition.timeLabel
@@ -193,11 +228,12 @@ export function GameCard({ game }: GameCardProps) {
           >
             <span
               className={cn(
-                "text-sm font-mono tabular-nums h-5 flex items-center",
+                "text-sm font-mono tabular-nums h-5 flex items-center gap-1",
                 !scoresVisible && "blur-sm select-none",
               )}
             >
               {scoresVisible ? displayAwayScore : game.awayScore}
+              {hasNewData && <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-400" />}
             </span>
             <span
               className={cn(
