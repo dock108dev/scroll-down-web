@@ -135,6 +135,7 @@ export function GameCard({ game }: GameCardProps) {
     // When showing UPDATED, click refreshes to latest scores
     if (hasNewData) {
       freshSnapshot();
+      markRead(game.id, game.status);
       return;
     }
 

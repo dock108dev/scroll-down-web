@@ -8,7 +8,7 @@ import { GameHeader } from "@/components/game/GameHeader";
 import { SectionNav } from "@/components/game/SectionNav";
 import { FlowContainer } from "@/components/game/FlowContainer";
 import { TimelineSection } from "@/components/game/TimelineSection";
-import { StatsSection } from "@/components/game/StatsSection";
+import { PlayerStatsSection, TeamStatsSection } from "@/components/game/StatsSection";
 import { OddsSection } from "@/components/game/OddsSection";
 import { WrapUpSection } from "@/components/game/WrapUpSection";
 import { OverviewSection } from "@/components/game/OverviewSection";
@@ -27,11 +27,11 @@ function getSections(data: GameDetailResponse): string[] {
   }
 
   if (isLive(status)) {
-    return ["Timeline", "Stats", "Odds"];
+    return ["Timeline", "Player Stats", "Team Stats", "Odds"];
   }
 
   if (isFinal(status)) {
-    return ["Flow", "Timeline", "Stats", "Odds", "Wrap-Up"];
+    return ["Flow", "Timeline", "Player Stats", "Team Stats", "Odds", "Wrap-Up"];
   }
 
   // Fallback
@@ -57,7 +57,8 @@ function getDefaultExpanded(
       return true;
     case "Timeline":
       return !hasFlow;
-    case "Stats":
+    case "Player Stats":
+    case "Team Stats":
       return false;
     case "Odds":
       return false;
@@ -385,23 +386,38 @@ export default function GameDetailPage({
           </CollapsibleSection>
         )}
 
-        {/* ─── Stats ────────────────────────────────────── */}
-        {sections.includes("Stats") && (
+        {/* ─── Player Stats ─────────────────────────────── */}
+        {sections.includes("Player Stats") && (
           <CollapsibleSection
-            title="Stats"
-            open={isSectionOpen("Stats")}
-            onToggle={() => handleToggle("Stats")}
+            title="Player Stats"
+            open={isSectionOpen("Player Stats")}
+            onToggle={() => handleToggle("Player Stats")}
           >
-            <StatsSection
+            <PlayerStatsSection
               playerStats={data.playerStats}
+              homeTeam={game.homeTeam}
+              awayTeam={game.awayTeam}
+              leagueCode={game.leagueCode}
+              nhlSkaters={data.nhlSkaters}
+              nhlGoalies={data.nhlGoalies}
+            />
+          </CollapsibleSection>
+        )}
+
+        {/* ─── Team Stats ──────────────────────────────── */}
+        {sections.includes("Team Stats") && (
+          <CollapsibleSection
+            title="Team Stats"
+            open={isSectionOpen("Team Stats")}
+            onToggle={() => handleToggle("Team Stats")}
+          >
+            <TeamStatsSection
               teamStats={data.teamStats}
               homeTeam={game.homeTeam}
               awayTeam={game.awayTeam}
               leagueCode={game.leagueCode}
               homeColor={game.homeTeamColorDark}
               awayColor={game.awayTeamColorDark}
-              nhlSkaters={data.nhlSkaters}
-              nhlGoalies={data.nhlGoalies}
             />
           </CollapsibleSection>
         )}
