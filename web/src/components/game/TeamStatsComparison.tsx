@@ -1,4 +1,4 @@
-import type { TeamStat } from "@/lib/types";
+import type { TeamStat, NormalizedStat } from "@/lib/types";
 
 // ─── Stat category grouping ────────────────────────────────────
 
@@ -117,6 +117,125 @@ function getGroupsForSport(leagueCode: string): StatGroup[] {
     default:
       return BASKETBALL_GROUPS;
   }
+}
+
+// ─── Build groups from normalizedStats ──────────────────────────
+
+const GROUP_DISPLAY_TITLES: Record<string, string> = {
+  scoring: "Scoring",
+  shooting: "Shooting",
+  rebounds: "Rebounds",
+  playmaking: "Playmaking",
+  defense: "Defense",
+};
+
+const GROUP_ORDER = ["scoring", "shooting", "rebounds", "playmaking", "defense"];
+
+const LOWER_IS_BETTER_KEYS = new Set([
+  "turnovers",
+  "personal_fouls",
+  "penalty_minutes",
+]);
+
+interface NormalizedRow {
+  key: string;
+  label: string;
+  homeValue: number | undefined;
+  awayValue: number | undefined;
+  lowerIsBetter: boolean;
+  isPercentage: boolean;
+}
+
+interface NormalizedGroup {
+  title: string;
+  rows: NormalizedRow[];
+}
+
+function parseNormalizedValue(val: number | string | null): number | undefined {
+  if (val == null) return undefined;
+  const num = Number(val);
+  return isNaN(num) ? undefined : num;
+}
+
+function buildGroupsFromNormalized(
+  homeStats: NormalizedStat[],
+  awayStats: NormalizedStat[],
+): NormalizedGroup[] {
+  // Index away stats by key for quick lookup
+  const awayByKey = new Map<string, NormalizedStat>();
+  for (const s of awayStats) awayByKey.set(s.key, s);
+
+  // Collect all unique keys preserving home order, then away extras
+  const seen = new Set<string>();
+  const allStats: NormalizedStat[] = [];
+  for (const s of homeStats) {
+    if (!seen.has(s.key)) {
+      seen.add(s.key);
+      allStats.push(s);
+    }
+  }
+  for (const s of awayStats) {
+    if (!seen.has(s.key)) {
+      seen.add(s.key);
+      allStats.push(s);
+    }
+  }
+
+  // Group rows by group name
+  const groupMap = new Map<string, NormalizedRow[]>();
+
+  for (const stat of allStats) {
+    const homeVal = parseNormalizedValue(
+      homeStats.find((s) => s.key === stat.key)?.value ?? null,
+    );
+    const awayVal = parseNormalizedValue(awayByKey.get(stat.key)?.value ?? null);
+
+    // Skip "points" if both are 0 (data not yet available)
+    if (stat.key === "points" && (homeVal ?? 0) === 0 && (awayVal ?? 0) === 0) {
+      continue;
+    }
+
+    // Skip rows where neither team has data
+    if (homeVal == null && awayVal == null) continue;
+
+    const groupKey = stat.group || "other";
+    if (!groupMap.has(groupKey)) groupMap.set(groupKey, []);
+
+    groupMap.get(groupKey)!.push({
+      key: stat.key,
+      label: stat.displayLabel,
+      homeValue: homeVal,
+      awayValue: awayVal,
+      lowerIsBetter: LOWER_IS_BETTER_KEYS.has(stat.key),
+      isPercentage: stat.formatType === "pct",
+    });
+  }
+
+  // Order groups according to GROUP_ORDER, then any extras alphabetically
+  const ordered: NormalizedGroup[] = [];
+  for (const gk of GROUP_ORDER) {
+    const rows = groupMap.get(gk);
+    if (rows && rows.length > 0) {
+      ordered.push({
+        title: GROUP_DISPLAY_TITLES[gk] || gk,
+        rows,
+      });
+      groupMap.delete(gk);
+    }
+  }
+  // Remaining groups not in GROUP_ORDER
+  for (const [gk, rows] of [...groupMap.entries()].sort((a, b) =>
+    a[0].localeCompare(b[0]),
+  )) {
+    if (rows.length > 0) {
+      ordered.push({
+        title: GROUP_DISPLAY_TITLES[gk] || gk.charAt(0).toUpperCase() + gk.slice(1),
+        rows,
+      });
+    }
+  }
+
+  return ordered;
 }
 
 // ─── Stat annotations ──────────────────────────────────────────
@@ -337,21 +456,30 @@ export function TeamStatsComparison({
 
   if (!home || !away) return null;
 
-  const groups = getGroupsForSport(leagueCode);
+  // Prefer normalizedStats when available; fall back to hardcoded groups
+  const useNormalized = !!(home.normalizedStats?.length || away.normalizedStats?.length);
 
-  // Filter groups/stats to only those with data
-  const activeGroups = groups
-    .map((group) => ({
-      ...group,
-      stats: group.stats.filter((stat) => {
-        const hv = resolveStatValue(home.stats, stat.aliases);
-        const av = resolveStatValue(away.stats, stat.aliases);
-        return hv != null || av != null;
-      }),
-    }))
-    .filter((group) => group.stats.length > 0);
+  const normalizedGroups = useNormalized
+    ? buildGroupsFromNormalized(
+        home.normalizedStats ?? [],
+        away.normalizedStats ?? [],
+      )
+    : null;
 
-  // Generate annotations
+  const legacyActiveGroups = useNormalized
+    ? []
+    : getGroupsForSport(leagueCode)
+        .map((group) => ({
+          ...group,
+          stats: group.stats.filter((stat) => {
+            const hv = resolveStatValue(home.stats, stat.aliases);
+            const av = resolveStatValue(away.stats, stat.aliases);
+            return hv != null || av != null;
+          }),
+        }))
+        .filter((group) => group.stats.length > 0);
+
+  // Generate annotations (always from raw stats)
   const annotations = generateAnnotations(
     home.stats,
     away.stats,
@@ -372,15 +500,33 @@ export function TeamStatsComparison({
           </span>
         </div>
 
-        {/* Stat groups */}
-        {activeGroups.map((group) => (
+        {/* Stat groups — normalized path */}
+        {normalizedGroups?.map((group) => (
           <div key={group.title}>
-            {/* Group header */}
             <div className="px-3 py-1.5 bg-neutral-800/30 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
               {group.title}
             </div>
+            {group.rows.map((row) => (
+              <ComparisonRow
+                key={row.key}
+                label={row.label}
+                awayValue={row.awayValue}
+                homeValue={row.homeValue}
+                awayColor={awayColor}
+                homeColor={homeColor}
+                lowerIsBetter={row.lowerIsBetter}
+                isPercentage={row.isPercentage}
+              />
+            ))}
+          </div>
+        ))}
 
-            {/* Stat rows */}
+        {/* Stat groups — legacy fallback path */}
+        {legacyActiveGroups.map((group) => (
+          <div key={group.title}>
+            <div className="px-3 py-1.5 bg-neutral-800/30 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              {group.title}
+            </div>
             {group.stats.map((stat) => (
               <ComparisonRow
                 key={stat.key}

@@ -66,9 +66,9 @@
   --color-neutral-900: #fafafa;
   --color-neutral-800: #f0f0f0;
   --color-neutral-700: #e0e0e0;
-  --color-neutral-600: #a0a0a0;
-  --color-neutral-500: #737373;
-  --color-neutral-400: #525252;
+  --color-neutral-600: #888888;
+  --color-neutral-500: #5c5c5c;
+  --color-neutral-400: #454545;
   --color-neutral-300: #3a3a3a;
   --color-neutral-200: #262626;
   --color-neutral-100: #171717;
@@ -80,9 +80,9 @@
   --ds-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.04);
 
   /* ── Text colours (light mode) ──────────────────── */
-  --ds-text-primary: rgba(0, 0, 0, 0.87);
-  --ds-text-secondary: rgba(0, 0, 0, 0.6);
-  --ds-text-tertiary: rgba(0, 0, 0, 0.38);
+  --ds-text-primary: rgba(0, 0, 0, 0.9);
+  --ds-text-secondary: rgba(0, 0, 0, 0.72);
+  --ds-text-tertiary: rgba(0, 0, 0, 0.5);
   --ds-text-score-highlight: rgb(220, 38, 38);
 
   /* ── GameTheme (light mode) ──────────────────────── */

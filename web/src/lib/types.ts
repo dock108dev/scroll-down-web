@@ -174,10 +174,19 @@ export interface Game {
 
 // ─── Stats ──────────────────────────────────────────────
 
+export interface NormalizedStat {
+  key: string;
+  displayLabel: string;
+  group: string;
+  value: number | string | null;
+  formatType: string;
+}
+
 export interface TeamStat {
   team: string;
   isHome: boolean;
   stats: Record<string, unknown>;
+  normalizedStats?: NormalizedStat[] | null;
   source?: string;
   updatedAt?: string;
 }

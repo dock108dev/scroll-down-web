@@ -371,7 +371,7 @@ export default function GameDetailPage({
             title="Odds"
             defaultOpen={getDefaultExpanded("Odds", hasFlow)}
           >
-            <OddsSection odds={data.odds} />
+            <OddsSection odds={data.odds} homeTeam={game.homeTeam} awayTeam={game.awayTeam} />
           </CollapsibleSection>
         )}
 

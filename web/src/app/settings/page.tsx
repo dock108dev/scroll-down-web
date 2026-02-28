@@ -103,7 +103,7 @@ export default function SettingsPage() {
             ]}
           />
         </SettingsRow>
-        <div className="px-4 pb-3 -mt-1">
+        <div className="px-4 pb-3 pt-2">
           <p className="text-xs text-neutral-500 leading-relaxed">
             Spoiler free hides scores until you tap. &apos;Always show&apos;
             displays live and final scores automatically.
@@ -143,7 +143,7 @@ export default function SettingsPage() {
           checked={hideLimitedData}
           onChange={setHideLimitedData}
         />
-        <div className="px-4 pb-3 -mt-1">
+        <div className="px-4 pb-3 pt-2">
           <p className="text-xs text-neutral-500 leading-relaxed">
             Filters out bets where only a few books are posting or they
             can&apos;t agree on a number. If the market is thin, the fair
@@ -151,6 +151,56 @@ export default function SettingsPage() {
           </p>
         </div>
       </SettingsSection>
+
+      {/* ─── EV Disclaimer ─────────────────────────────── */}
+      <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
+        <h2 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
+          Real talk on EV
+        </h2>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Positive expected value doesn&apos;t mean the bet is going to hit. It
+          just means the number is off. That&apos;s it. If math and probability
+          aren&apos;t really your thing, this probably isn&apos;t going to be the
+          magic switch that fixes everything.
+        </p>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Now, if it <span className="italic">is</span> working and
+          we&apos;re consistently
+          beating{" "}
+          <span className="relative inline-block group">
+            <span className="underline decoration-dotted decoration-neutral-600 cursor-help">
+              closing line value
+            </span>
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[200px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              How much better our bet was compared to the closing line.
+            </span>
+          </span>
+          , first of all: nice. Second of all: enjoy it while it lasts. Because
+          every American sportsbook on earth will limit your account the second
+          they catch on. Trust us. Shoutout to the $4 max bets on basically
+          every major book in the country. And if you don&apos;t know what
+          CLV is... honestly, maybe just watch the games.
+        </p>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Once we do get limited, the next move is{" "}
+          <span className="relative inline-block group">
+            <span className="underline decoration-dotted decoration-neutral-600 cursor-help">
+              peer-to-peer exchanges
+            </span>
+            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[200px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              Bet against people not books. No limits but you post a price or find one you like if it exists.
+            </span>
+          </span>
+          , not books. No limits, but we&apos;re either posting a price or
+          finding one we like if it exists. They&apos;re not available
+          everywhere, but that&apos;s where you go if you want to keep pressing
+          after stacking some cash. And again, if you don&apos;t know what those
+          are, you probably shouldn&apos;t be trying this yet either.
+        </p>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Tracking and odds comps for p2p coming soon... maybe &#128064;&#129300;&#10071;
+        </p>
+      </div>
 
       {/* ─── About ──────────────────────────────────────── */}
       <SettingsSection title="About">
@@ -162,15 +212,15 @@ export default function SettingsPage() {
         </SettingsRow>
         <div className="px-4 py-3 space-y-2">
           <a
-            href="https://scrolldown.app"
+            href="https://scrolldownsports.dev"
             target="_blank"
             rel="noopener noreferrer"
             className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
           >
-            scrolldown.app
+            scrolldownsports.dev
           </a>
           <a
-            href="https://scrolldown.app/privacy"
+            href="https://scrolldownsports.dev/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
@@ -178,7 +228,7 @@ export default function SettingsPage() {
             Privacy Policy
           </a>
           <a
-            href="https://scrolldown.app/terms"
+            href="https://scrolldownsports.dev/terms"
             target="_blank"
             rel="noopener noreferrer"
             className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"

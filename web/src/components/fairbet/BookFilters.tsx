@@ -117,7 +117,7 @@ export function BookFilters({
             placeholder="Search teams, players..."
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-lg px-3 py-1.5 text-xs text-neutral-50 placeholder-neutral-500 outline-none"
+            className="w-full rounded-lg px-3 py-1.5 text-xs text-neutral-200 placeholder-neutral-500 outline-none"
             style={{
               backgroundColor: "var(--fb-surface-secondary)",
               border: "1px solid var(--fb-border-subtle)",
@@ -126,7 +126,7 @@ export function BookFilters({
           {searchText && (
             <button
               onClick={() => onSearchChange("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-50 text-xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-200 text-xs"
             >
               x
             </button>
@@ -137,7 +137,7 @@ export function BookFilters({
         <select
           value={sort}
           onChange={(e) => onSortChange(e.target.value as SortMode)}
-          className="rounded-lg px-2 py-1.5 text-xs text-neutral-50 outline-none cursor-pointer appearance-none"
+          className="rounded-lg px-2 py-1.5 text-xs text-neutral-200 outline-none cursor-pointer appearance-none"
           style={{
             backgroundColor: "var(--fb-surface-secondary)",
             border: "1px solid var(--fb-border-subtle)",
@@ -224,8 +224,9 @@ function FilterPill({
               color: "#fff",
             }
           : {
-              backgroundColor: "rgb(38, 38, 38)",
-              color: "var(--ds-text-tertiary)",
+              backgroundColor: "var(--fb-surface-secondary)",
+              color: "var(--ds-text-secondary)",
+              border: "1px solid var(--fb-border-subtle)",
             }
       }
     >
@@ -255,9 +256,9 @@ function TogglePill({
               border: `1px solid ${FairBetTheme.positive}40`,
             }
           : {
-              backgroundColor: "rgb(38, 38, 38)",
-              color: "var(--ds-text-tertiary)",
-              border: "1px solid transparent",
+              backgroundColor: "var(--fb-surface-secondary)",
+              color: "var(--ds-text-secondary)",
+              border: "1px solid var(--fb-border-subtle)",
             }
       }
     >
