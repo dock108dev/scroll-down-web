@@ -7,7 +7,7 @@ Next.js 16 web frontend for Scroll Down Sports. Deployed to Hetzner via Docker.
 ```bash
 cp .env.local.example .env.local   # Add your SPORTS_DATA_API_KEY
 npm install
-npm run dev                         # http://localhost:3000
+npm run dev                         # http://localhost:3001
 ```
 
 ## Commands
@@ -39,7 +39,7 @@ src/
 │   └── api/          # Server-side API proxies
 ├── components/       # React components (home, game, fairbet, layout, shared)
 ├── hooks/            # Data fetching hooks (useGames, useGame, useFlow, useFairBetOdds)
-├── stores/           # Zustand stores (settings, read-state, reading-position)
+├── stores/           # Zustand stores (settings, read-state, reading-position, section-layout, pinned-games, ui)
 └── lib/              # Types, API clients, utilities, constants
 ```
 
@@ -49,4 +49,4 @@ The web app is a **thin display layer**. All game data, EV calculations, and der
 
 For full documentation, see the [main README](../README.md) and [Architecture](../docs/architecture.md).
 
-Client-side logic catalog: [APP_LOGIC.md](APP_LOGIC.md)
+Client-side logic catalog: [client-logic.md](../docs/client-logic.md)

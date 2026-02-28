@@ -31,12 +31,7 @@ All backend calls go through Next.js API routes (`/api/*`), which add the `X-API
 | `GET /api/games` | `/api/admin/sports/games` | 60s | Game list by date range |
 | `GET /api/games/{id}` | `/api/admin/sports/games/{id}` | 30s | Game detail (stats, odds, plays, social) |
 | `GET /api/games/{id}/flow` | `/api/games/{id}/flow` | 60s | Game flow narrative (blocks + moments) |
-| `GET /api/games/{id}/pbp` | `/api/games/{id}/pbp` | 30s | Play-by-play events |
-| `GET /api/games/{id}/timeline` | `/api/games/{id}/timeline` | 60s | Timeline artifacts |
-| `GET /api/games/{id}/social` | `/api/games/{id}/social` | 120s | Social posts |
-| `GET /api/teams` | `/api/admin/sports/teams` | 3600s | Team list with colors |
 | `GET /api/fairbet/odds` | `/api/fairbet/odds` | 60s | FairBet odds with EV |
-| `POST /api/fairbet/parlay/evaluate` | `/api/fairbet/parlay/evaluate` | none | Parlay fair odds evaluation |
 
 Revalidation uses Next.js ISR (`next: { revalidate }` on server-side fetch).
 
@@ -55,11 +50,12 @@ Components are organized by feature:
 
 ```
 components/
-├── home/       # Home page: GameSection, GameCard, SearchBar, LeagueFilter
+├── home/       # Home page: GameSection, GameCard, SearchBar, LeagueFilter, PinnedBar
 ├── game/       # Game detail: GameHeader, FlowContainer, TimelineSection,
-│               # StatsSection, OddsSection, WrapUpSection, SocialSection, etc.
+│               # PlayerStatsSection, TeamStatsSection, OddsSection, WrapUpSection, etc.
 ├── fairbet/    # FairBet: BetCard, BookFilters, FairExplainerSheet, ParlaySheet
-├── layout/     # TopNav, BottomTabs, ThemeProvider
+├── settings/   # SettingsContent
+├── layout/     # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
 └── shared/     # LoadingSkeleton, CollapsibleCard, SectionHeader, TeamColorDot
 ```
 
@@ -93,18 +89,21 @@ Complex hook for FairBet odds with pagination, filtering, sorting, and parlay ma
 - **Pagination:** 100 bets/page, first page renders immediately, remaining pages load with up to 3 concurrent fetches
 - **Filtering:** League, market category, book, search, +EV only, hide thin confidence, hide started. Minimum 3 books per bet. Client-side deduplication
 - **Sorting:** By best EV% (descending), game time, or league
-- **Parlay:** Toggle bets, API evaluates fair odds for combined legs
+- **Parlay:** Toggle bets, client-side `parlayProbIndependent()` computes combined fair odds
 - **Enrichment:** `enrichBet()` adds camelCase aliases and display labels to snake_case API responses
 
 ## State Management
 
-Three Zustand stores persist to localStorage:
+Six Zustand stores persist to localStorage:
 
 | Store | Key | Purpose |
 |---|---|---|
-| `settings` | `sd-settings` | Theme, odds format, score reveal mode, preferred book, section expansion, sort option |
+| `settings` | `sd-settings` | Theme, odds format, score reveal mode, preferred book, section expansion |
 | `read-state` | `sd-read-state` | Which games the user has marked as read (score revealed) |
 | `reading-position` | `sd-reading-position` | Per-game scroll position and score snapshot |
+| `section-layout` | `sd-section-layout` | Game detail section collapse/expand state |
+| `pinned-games` | `sd-pinned-games` | User-pinned games for quick access |
+| `ui` | `sd-ui` | Transient UI state (drawers, sheets, modals) |
 
 ### Settings Store Fields
 
@@ -117,7 +116,6 @@ Three Zustand stores persist to localStorage:
 | `autoResumePosition` | `boolean` | `true` | Resume scroll on game return |
 | `homeExpandedSections` | `string[]` | `["Today", "Yesterday"]` | Expanded home sections |
 | `hideLimitedData` | `boolean` | `true` | Hide thin-market odds |
-| `fairbetSortOption` | `"bestEV" \| "gameTime" \| "league"` | `"bestEV"` | FairBet sort order |
 
 ## Game Status Lifecycle
 
@@ -181,8 +179,8 @@ Color clash detection (`matchupColor()` in `theme.ts`) prevents two similar team
 
 **Client-side responsibilities:**
 - Display formatting: EV color mapping, confidence labels, odds format conversion
-- Filtering and sorting (see items 13-14 in [APP_LOGIC.md](../web/APP_LOGIC.md))
-- Parlay selection state and server-side evaluation via `POST /api/fairbet/parlay/evaluate`
+- Filtering and sorting (see items 13-14 in [client-logic.md](client-logic.md))
+- Parlay selection state and client-side evaluation via `parlayProbIndependent()`
 - Bet enrichment: adding camelCase aliases to snake_case API fields (`enrichBet()`)
 
 ## NHL-Specific Stats
@@ -226,5 +224,5 @@ NBA, NCAAB, NFL, NCAAF, MLB, NHL.
 - **No authentication** — The web app has no user accounts. All state is local to the browser via localStorage.
 - **No service worker** — Cache is in-memory only, cleared on page reload.
 - **No offline support** — Requires network connectivity.
-- **Parlay assumes independent legs** — No correlation modeling between parlay legs.
+- **Parlay assumes independent legs** — Client-side `parlayProbIndependent()` multiplies leg probabilities; no correlation modeling.
 - **FairBet client-side fallback removed** — All EV computation is server-side. If the server doesn't provide EV data for a bet, it's displayed without EV.

@@ -258,7 +258,6 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     }
 
     // No cache — normal full fetch
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching-on-mount pattern requires setState for loading/error/data
     fetchOdds();
     return () => {
       abortRef.current?.abort();

@@ -95,5 +95,3 @@ The web container binds to `127.0.0.1:3000` and is reverse-proxied to `scrolldow
 | `SPORTS_DATA_API_KEY` | Backend API authentication (server-side only) |
 
 These are set on the Hetzner server via docker-compose environment or `.env` file. See `web/.env.production.example` for the template.
-
-**Note:** The `.env.production.example` file also lists `NEXTAUTH_URL` and `NEXTAUTH_SECRET`. These are unused placeholders — the app does not currently implement authentication.

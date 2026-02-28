@@ -10,7 +10,7 @@ Guide for local development, testing, and debugging.
 cd web
 cp .env.local.example .env.local   # Add your SPORTS_DATA_API_KEY
 npm install
-npm run dev                         # http://localhost:3000
+npm run dev                         # http://localhost:3001
 ```
 
 ## Environment Variables
@@ -37,7 +37,7 @@ See `web/.env.local.example` for local development defaults.
 ```bash
 cd web
 docker build -t scrolldown-web .
-docker run -p 3000:3000 --env-file .env.local scrolldown-web
+docker run -p 3001:3001 --env-file .env.local scrolldown-web
 ```
 
 ## Project Structure
@@ -49,13 +49,14 @@ src/
 │   ├── game/[id]/page.tsx    # Game detail
 │   ├── fairbet/page.tsx      # FairBet odds comparison
 │   ├── settings/page.tsx     # User preferences
-│   └── api/                  # Server-side API proxy routes (9 routes)
+│   └── api/                  # Server-side API proxy routes (4 routes)
 ├── components/
-│   ├── home/                 # GameSection, GameCard, SearchBar, LeagueFilter
-│   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
-│   │                         # OddsSection, WrapUpSection, PlayerStatsTable, etc.
+│   ├── home/                 # GameSection, GameCard, SearchBar, LeagueFilter, PinnedBar
+│   ├── game/                 # GameHeader, FlowContainer, TimelineSection, PlayerStatsSection,
+│   │                         # TeamStatsSection, OddsSection, WrapUpSection, etc.
 │   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet
-│   ├── layout/               # TopNav, BottomTabs, ThemeProvider
+│   ├── settings/             # SettingsContent
+│   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
 │   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader, TeamColorDot
 ├── hooks/
 │   ├── useGames.ts           # Home feed: date sections, 60s auto-refresh, client search
@@ -65,7 +66,10 @@ src/
 ├── stores/
 │   ├── settings.ts           # Theme, odds format, score reveal, section expansion
 │   ├── read-state.ts         # Which games user has read (Set<gameId>)
-│   └── reading-position.ts   # Per-game scroll position with score snapshot
+│   ├── reading-position.ts   # Per-game scroll position with score snapshot
+│   ├── section-layout.ts     # Game detail section collapse/expand state
+│   ├── pinned-games.ts       # User-pinned games for quick access
+│   └── ui.ts                 # Transient UI state (drawers, sheets, modals)
 └── lib/
     ├── types.ts              # All TypeScript interfaces (GameSummary, APIBet, FlowBlock, etc.)
     ├── api.ts                # Client-side fetch wrapper (browser → /api/* proxy routes)
@@ -103,7 +107,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - First 100 bets render immediately
 - Remaining pages load in background (3 concurrent fetches)
 - Client filters, sorts, and deduplicates the full bet list
-- Parlay evaluation is server-side (`POST /api/fairbet/parlay/evaluate`)
+- Parlay evaluation is client-side (`parlayProbIndependent()` in `fairbet-utils.ts`)
 
 ### Theming
 - CSS variable system: `:root` = light, `.dark` = dark
@@ -123,7 +127,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Scores respect reveal mode setting
 
 ### Game Detail
-- [ ] Sections render based on status (Overview, Flow, Timeline, Stats, Odds, Wrap-Up)
+- [ ] Sections render based on status (Overview, Flow, Timeline, Player Stats, Team Stats, Odds, Wrap-Up)
 - [ ] Flow blocks display for completed games
 - [ ] Timeline shows tiered plays for live games
 - [ ] Odds table shows cross-book comparison with category tabs
@@ -136,7 +140,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] BetCard shows EV, fair odds, book chips
 - [ ] FairExplainer sheet opens with method explanation
 - [ ] Filters work (league, market, +EV only, search)
-- [ ] Parlay builder works (select bets, evaluate via API)
+- [ ] Parlay builder works (select bets, client-side evaluation)
 
 ### Settings
 - [ ] Theme toggle works (system, light, dark)

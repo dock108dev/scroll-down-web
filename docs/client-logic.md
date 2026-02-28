@@ -14,7 +14,7 @@ Local `Set<gameId>` persisted to localStorage via `read-state` Zustand store (`s
 Per-game scroll position with score snapshot saved to localStorage (`sd-reading-position`). Stores `playIndex`, period, clock, scores, and `playCount`. Used for auto-resume on return to a game detail page and for detecting new data on live games (score freeze with amber dot).
 
 ## 4. Section Expansion State
-Which home sections (Earlier, Yesterday, Today, Tomorrow) and game detail sections are collapsed/expanded. Defaults: Today and Yesterday expanded. Persisted in `sd-settings` store.
+Which home sections (Earlier, Yesterday, Today, Tomorrow) and game detail sections are collapsed/expanded. Defaults: Today and Yesterday expanded. Persisted in `sd-settings` and `sd-section-layout` stores.
 
 ## 5. Client-side Search Filtering
 Instant team name / abbreviation filtering on the home page for responsiveness (no round-trip to API).
@@ -50,8 +50,8 @@ By best EV% (descending), game time, or league. Applied client-side to the filte
 ## 15. FairBet Pagination
 100 bets per page with up to 3 concurrent page fetches. First page renders immediately, remaining pages load in the background with progress indicator.
 
-## 16. Parlay Selection State
-Which bets are selected for parlay building (UI state). Evaluation calls the API (`POST /api/fairbet/parlay/evaluate`) which returns fair probability, fair american odds, and confidence tier. Assumes independent legs.
+## 16. Parlay Fair Odds (Client-side)
+Which bets are selected for parlay building (UI state). Fair probability computed client-side via `parlayProbIndependent()` in `fairbet-utils.ts`, which multiplies individual leg true probabilities. Assumes independent legs — no correlation modeling.
 
 ## 17. EV Color Mapping
 `getEVColor()`, `getConfidenceColor()` — pure UI theming based on numeric thresholds. Maps EV percent and confidence tier to CSS colors. Strong positive (>=5%) gets bright green, mild positive gets muted green, negative gets coral.
@@ -73,3 +73,15 @@ When a user reveals a live game's score, the displayed score freezes at the mome
 
 ## 23. Team Name Display
 `cardDisplayName()` in `utils.ts` extracts display-appropriate names: school names for college sports (NCAAB, NCAAF) and nicknames/mascots for pro leagues (NBA, NFL, NHL, MLB). Falls back to abbreviation when names exceed 15 characters.
+
+## 24. Pinned Games
+Users can pin games from the home feed for quick access. Pinned game IDs are persisted in `sd-pinned-games` Zustand store. The `PinnedBar` component renders pinned games at the top of the home page.
+
+## 25. Section Layout Persistence
+Game detail section collapse/expand state is persisted in `sd-section-layout` Zustand store, so users returning to a game see their preferred layout.
+
+## 26. UTF-8 Mojibake Repair
+`fixMojibake()` in `utils.ts` detects and repairs common UTF-8 double-encoding artifacts in text from the API (e.g., `â€™` → `'`).
+
+## 27. Timeline Deduplication
+Timeline entries are deduplicated client-side to handle cases where the API returns overlapping play-by-play data from multiple sources.

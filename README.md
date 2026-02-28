@@ -19,7 +19,7 @@ Sports fans don't always watch games live. Most apps immediately show final scor
 cd web
 cp .env.local.example .env.local   # Add your API key
 npm install
-npm run dev                         # http://localhost:3000
+npm run dev                         # http://localhost:3001
 ```
 
 ## Features
@@ -38,7 +38,7 @@ npm run dev                         # http://localhost:3000
 | Theme selection (system / light / dark) | Yes |
 | Live game auto-polling | Yes |
 | NHL skater / goalie stats | Yes |
-| Parlay builder with server-side evaluation | Yes |
+| Parlay builder with client-side evaluation | Yes |
 
 ## Architecture
 
@@ -70,13 +70,12 @@ Browser → React hook → Component re-render
 | [Architecture](docs/architecture.md) | System architecture and data flow |
 | [Development](docs/development.md) | Local dev, testing, debugging |
 | [CI/CD](docs/ci-cd.md) | GitHub Actions, Docker, deployment |
-| [Client-Side Logic](web/APP_LOGIC.md) | What intentionally stays in-browser |
+| [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
 
 ## Repository Layout
 
 ```
 web/             # Next.js web application (active, deployed)
-webapp/          # Legacy vanilla HTML/JS/CSS prototype (superseded, not deployed)
 docs/            # Documentation
 .github/         # CI/CD workflows
 ```
