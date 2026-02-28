@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { STORAGE_KEYS } from "@/lib/config";
 
 interface SectionLayoutState {
   /** gameId → list of expanded section names */
@@ -59,6 +60,6 @@ export const useSectionLayout = create<SectionLayoutState>()(
       },
       clearAll: () => set({ layouts: {}, periods: {} }),
     }),
-    { name: "sd-section-layout" },
+    { name: STORAGE_KEYS.SECTION_LAYOUT },
   ),
 );

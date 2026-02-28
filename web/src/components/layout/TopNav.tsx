@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUI } from "@/stores/ui";
 import { usePinnedGames } from "@/stores/pinned-games";
+import { LAYOUT } from "@/lib/config";
 import { PinnedBar } from "@/components/home/PinnedBar";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +24,7 @@ export function TopNav() {
   useEffect(() => {
     document.documentElement.style.setProperty(
       "--header-h",
-      hasPins ? "88px" : "56px",
+      hasPins ? LAYOUT.HEADER_HEIGHT_WITH_PINS : LAYOUT.HEADER_HEIGHT_DEFAULT,
     );
   }, [hasPins]);
 

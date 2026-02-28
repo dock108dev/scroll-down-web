@@ -11,8 +11,6 @@ const MARKET_FILTERS = [
   { key: "moneyline", label: "Moneyline" },
   { key: "spread", label: "Spread" },
   { key: "total", label: "Total" },
-  { key: "player_props", label: "Player Props" },
-  { key: "team_props", label: "Team Props" },
 ] as const;
 
 const SORT_OPTIONS: { key: SortMode; label: string }[] = [

@@ -7,6 +7,7 @@ import { formatOdds, cn } from "@/lib/utils";
 import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
 import { MiniBookChip } from "./MiniBookChip";
 import { LeagueBadge } from "./LeagueBadge";
+import { FAIRBET } from "@/lib/config";
 import {
   formatEV,
   formatProbability,
@@ -52,7 +53,7 @@ export function BetCard({
   const otherBooksCount = otherBooks.length;
 
   const ev = bestBook?.display_ev ?? bestBook?.ev_percent ?? 0;
-  const hasHighEV = ev >= 5 && isConfidenceReliable(bet.ev_confidence_tier);
+  const hasHighEV = ev >= FAIRBET.EV_HIGHLIGHT_THRESHOLD && isConfidenceReliable(bet.ev_confidence_tier);
   const id = betId(bet);
 
   // Card border

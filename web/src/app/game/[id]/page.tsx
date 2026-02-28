@@ -16,6 +16,7 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
+import { POLLING } from "@/lib/config";
 import { useSectionLayout } from "@/stores/section-layout";
 import { usePinnedGames } from "@/stores/pinned-games";
 
@@ -340,7 +341,7 @@ export default function GameDetailPage({
       if (playEl) {
         playEl.scrollIntoView({ behavior: "smooth", block: "center" });
       }
-    }, 300);
+    }, POLLING.READING_RESUME_DELAY_MS);
 
     return () => clearTimeout(timeout);
   }, [data, autoResumePosition, gameId, getPosition]);

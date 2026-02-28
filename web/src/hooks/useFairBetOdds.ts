@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { APIBet } from "@/lib/types";
+import { CACHE, API, FAIRBET } from "@/lib/config";
 import {
   betId,
   enrichBet,
@@ -85,14 +86,7 @@ export interface UseFairBetOddsReturn {
   clearParlay: () => void;
 }
 
-// ── Constants ──────────────────────────────────────────────────────
-
-const PAGE_SIZE = 100;
-const MAX_CONCURRENT = 3;
-
-// ── In-memory cache (3-min TTL) ────────────────────────────────────
-const FAIRBET_CACHE_TTL_MS = 3 * 60 * 1000;
-const FAIRBET_CACHE_FRESH_MS = 90 * 1000;
+// ── In-memory cache ────────────────────────────────────────────────
 
 interface FairBetCacheEntry {
   allBets: APIBet[];
@@ -105,7 +99,7 @@ let fairbetCache: FairBetCacheEntry | null = null;
 
 function getFairbetCached(): FairBetCacheEntry | null {
   if (!fairbetCache) return null;
-  if (Date.now() - fairbetCache.fetchedAt > FAIRBET_CACHE_TTL_MS) {
+  if (Date.now() - fairbetCache.fetchedAt > CACHE.FAIRBET_TTL_MS) {
     fairbetCache = null;
     return null;
   }
@@ -156,7 +150,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     // First page
     const params = new URLSearchParams();
     params.set("has_fair", "true");
-    params.set("limit", String(PAGE_SIZE));
+    params.set("limit", String(API.FAIRBET_PAGE_SIZE));
     params.set("offset", "0");
 
     const firstPage = await api.fairbetOdds(params);
@@ -177,21 +171,21 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     if (firstPage.bets.length < total) {
       setIsLoadingMore(true);
       const remainingOffsets: number[] = [];
-      for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) {
+      for (let offset = API.FAIRBET_PAGE_SIZE; offset < total; offset += API.FAIRBET_PAGE_SIZE) {
         remainingOffsets.push(offset);
       }
 
       // Fetch remaining pages with concurrency limit
       let loaded = firstPage.bets.length;
 
-      for (let i = 0; i < remainingOffsets.length; i += MAX_CONCURRENT) {
+      for (let i = 0; i < remainingOffsets.length; i += API.FAIRBET_MAX_CONCURRENT) {
         if (controller.signal.aborted) return;
-        const batch = remainingOffsets.slice(i, i + MAX_CONCURRENT);
+        const batch = remainingOffsets.slice(i, i + API.FAIRBET_MAX_CONCURRENT);
         const results = await Promise.all(
           batch.map((offset) => {
             const p = new URLSearchParams();
             p.set("has_fair", "true");
-            p.set("limit", String(PAGE_SIZE));
+            p.set("limit", String(API.FAIRBET_PAGE_SIZE));
             p.set("offset", String(offset));
             return api.fairbetOdds(p);
           }),
@@ -242,7 +236,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     const entry = getFairbetCached();
     if (entry) {
       const age = Date.now() - entry.fetchedAt;
-      if (age < FAIRBET_CACHE_FRESH_MS) {
+      if (age < CACHE.FAIRBET_FRESH_MS) {
         // Fresh cache — skip network entirely
         return;
       }
@@ -308,8 +302,14 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     const now = new Date();
     let result = allBets;
 
-    // Filter: only bets with 3+ books
-    result = result.filter((b) => b.books.length >= 3);
+    // Filter: only bets with enough books
+    result = result.filter((b) => b.books.length >= FAIRBET.MIN_BOOKS);
+
+    // Filter: main lines only (exclude player props and team props)
+    result = result.filter((b) => {
+      const cat = marketKeyToCategory(b.market_key);
+      return cat !== "player_props" && cat !== "team_props";
+    });
 
     // Deduplicate by betId (API can return same market from different methods)
     const seen = new Set<string>();
@@ -409,7 +409,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   // ── Computed stats ───────────────────────────────────────────────
 
   const betsWithEnoughBooks = useMemo(
-    () => allBets.filter((b) => b.books.length >= 3),
+    () => allBets.filter((b) => b.books.length >= FAIRBET.MIN_BOOKS),
     [allBets],
   );
 

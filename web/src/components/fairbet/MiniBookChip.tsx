@@ -1,8 +1,8 @@
 "use client";
 
-import { cn } from "@/lib/utils";
 import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
 import { formatEV } from "@/lib/fairbet-utils";
+import { FAIRBET } from "@/lib/config";
 
 interface MiniBookChipProps {
   book: string;
@@ -18,7 +18,7 @@ export function MiniBookChip({ book, price, ev, isSharp }: MiniBookChipProps) {
   // Background colours by EV tier — use real borders instead of box-shadow
   // so they don't get clipped near container edges
   let bgStyle: React.CSSProperties;
-  if (evVal >= 5) {
+  if (evVal >= FAIRBET.EV_HIGHLIGHT_THRESHOLD) {
     bgStyle = {
       backgroundColor: FairBetTheme.successSoft,
       borderColor: `${FairBetTheme.positive}33`,
@@ -51,7 +51,7 @@ export function MiniBookChip({ book, price, ev, isSharp }: MiniBookChipProps) {
       {ev != null && (
         <span
           className="text-[10px] font-medium"
-          style={{ color: evVal >= 5 ? FairBetTheme.positive : evVal > 0 ? FairBetTheme.positiveMuted : FairBetTheme.neutral }}
+          style={{ color: evVal >= FAIRBET.EV_HIGHLIGHT_THRESHOLD ? FairBetTheme.positive : evVal > 0 ? FairBetTheme.positiveMuted : FairBetTheme.neutral }}
         >
           {formatEV(evVal)}
         </span>

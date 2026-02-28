@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiFetch, ApiError } from "@/lib/api-server";
 import type { GameFlowResponse } from "@/lib/types";
+import { API } from "@/lib/config";
 
 export async function GET(
   _req: NextRequest,
@@ -10,7 +11,7 @@ export async function GET(
   try {
     const data = await apiFetch<GameFlowResponse>(
       `/api/admin/sports/games/${id}/flow`,
-      { revalidate: 60 },
+      { revalidate: API.ISR_REVALIDATE_S },
     );
     return NextResponse.json(data);
   } catch (err) {

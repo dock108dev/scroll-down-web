@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { GameStatus } from "@/lib/types";
-
-const MAX_PINS = 10;
+import { LAYOUT, STORAGE_KEYS, DEFAULTS } from "@/lib/config";
 
 export interface PinnedGameDisplay {
   id: number;
@@ -39,7 +38,7 @@ export const usePinnedGames = create<PinnedGamesState>()(
             nextDisplay.delete(id);
             return { pinnedIds: nextIds, displayData: nextDisplay };
           }
-          if (s.pinnedIds.size >= MAX_PINS) return s;
+          if (s.pinnedIds.size >= LAYOUT.MAX_PINNED_GAMES) return s;
           const nextIds = new Set(s.pinnedIds).add(id);
           const nextDisplay = new Map(s.displayData);
           if (display) nextDisplay.set(id, display);
@@ -74,8 +73,8 @@ export const usePinnedGames = create<PinnedGamesState>()(
             const existing = nextDisplay.get(g.id);
             const updated: PinnedGameDisplay = {
               id: g.id,
-              awayTeamAbbr: g.awayTeamAbbr ?? existing?.awayTeamAbbr ?? "AWY",
-              homeTeamAbbr: g.homeTeamAbbr ?? existing?.homeTeamAbbr ?? "HME",
+              awayTeamAbbr: g.awayTeamAbbr ?? existing?.awayTeamAbbr ?? DEFAULTS.AWAY_ABBR_FALLBACK,
+              homeTeamAbbr: g.homeTeamAbbr ?? existing?.homeTeamAbbr ?? DEFAULTS.HOME_ABBR_FALLBACK,
               awayScore: g.awayScore ?? null,
               homeScore: g.homeScore ?? null,
               status: g.status,
@@ -97,7 +96,7 @@ export const usePinnedGames = create<PinnedGamesState>()(
       },
     }),
     {
-      name: "sd-pinned-games",
+      name: STORAGE_KEYS.PINNED_GAMES,
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);

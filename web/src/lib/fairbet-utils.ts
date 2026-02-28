@@ -8,6 +8,7 @@
  */
 
 import { FairBetTheme } from "./theme";
+import { FAIRBET } from "./config";
 import type { APIBet } from "./types";
 
 // ── Formatting ─────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ export function isConfidenceReliable(tier?: string): boolean {
 
 /** Get EV display colour by tier threshold. */
 export function getEVColor(ev: number): string {
-  if (ev >= 5) return FairBetTheme.positive;
+  if (ev >= FAIRBET.EV_HIGHLIGHT_THRESHOLD) return FairBetTheme.positive;
   if (ev > 0) return FairBetTheme.positiveMuted;
   if (ev < 0) return FairBetTheme.negative;
   return FairBetTheme.neutral;

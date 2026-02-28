@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { STORAGE_KEYS, DEFAULTS } from "@/lib/config";
 
 interface SettingsState {
   theme: "system" | "light" | "dark";
@@ -29,15 +30,15 @@ interface SettingsState {
 export const useSettings = create<SettingsState>()(
   persist(
     (set, get) => ({
-      theme: "system",
+      theme: DEFAULTS.THEME as "system" | "light" | "dark",
       scoreRevealMode: "onMarkRead",
       preferredSportsbook: "",
-      oddsFormat: "american",
+      oddsFormat: DEFAULTS.ODDS_FORMAT as "american" | "decimal" | "fractional",
       autoResumePosition: true,
-      homeExpandedSections: ["Today", "Yesterday"],
+      homeExpandedSections: DEFAULTS.HOME_EXPANDED,
       gameExpandedSections: [],
       hideLimitedData: true,
-      timelineDefaultTiers: [1, 2, 3],
+      timelineDefaultTiers: DEFAULTS.TIMELINE_TIERS,
 
       setTheme: (theme) => set({ theme }),
       setScoreRevealMode: (scoreRevealMode) => set({ scoreRevealMode }),
@@ -76,7 +77,7 @@ export const useSettings = create<SettingsState>()(
       },
     }),
     {
-      name: "sd-settings",
+      name: STORAGE_KEYS.SETTINGS,
       version: 1,
       migrate: (persisted: unknown) => {
         const state = persisted as Record<string, unknown>;
@@ -86,7 +87,7 @@ export const useSettings = create<SettingsState>()(
           (Array.isArray(state.homeExpandedSections) &&
             state.homeExpandedSections.length === 0)
         ) {
-          state.homeExpandedSections = ["Today", "Yesterday"];
+          state.homeExpandedSections = DEFAULTS.HOME_EXPANDED;
         }
         return state as never;
       },

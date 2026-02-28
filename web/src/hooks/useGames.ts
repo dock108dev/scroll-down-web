@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { GameSummary } from "@/lib/types";
+import { CACHE, POLLING, API } from "@/lib/config";
 
 // ── Date helpers (US/Eastern) ──────────────────────────────
 
@@ -29,13 +30,11 @@ function fmt(d: Date): string {
 
 // ── Section date ranges ────────────────────────────────────
 
-export type SectionKey = "Earlier" | "Yesterday" | "Today" | "Tomorrow";
+export type SectionKey = "Yesterday" | "Today";
 
 export const SECTION_ORDER: SectionKey[] = [
-  "Earlier",
   "Yesterday",
   "Today",
-  "Tomorrow",
 ];
 
 interface DateRange {
@@ -46,10 +45,6 @@ interface DateRange {
 function getSectionDateRanges(): Record<SectionKey, DateRange> {
   const today = easternToday();
   return {
-    Earlier: {
-      startDate: fmt(addDays(today, -3)),
-      endDate: fmt(addDays(today, -2)),
-    },
     Yesterday: {
       startDate: fmt(addDays(today, -1)),
       endDate: fmt(addDays(today, -1)),
@@ -57,10 +52,6 @@ function getSectionDateRanges(): Record<SectionKey, DateRange> {
     Today: {
       startDate: fmt(today),
       endDate: fmt(today),
-    },
-    Tomorrow: {
-      startDate: fmt(addDays(today, 1)),
-      endDate: fmt(addDays(today, 1)),
     },
   };
 }
@@ -74,7 +65,7 @@ async function fetchSection(
   const params = new URLSearchParams();
   params.set("startDate", range.startDate);
   params.set("endDate", range.endDate);
-  params.set("limit", "200");
+  params.set("limit", String(API.GAMES_LIMIT));
   if (league) params.set("league", league);
   const data = await api.games(params);
   return data.games;
@@ -108,13 +99,7 @@ interface UseGamesReturn {
   refetch: () => Promise<void>;
 }
 
-// ── Auto-refresh interval ──────────────────────────────────
-const REFRESH_INTERVAL_MS = 60 * 1000; // 60 seconds
-
-// ── In-memory cache (90-sec TTL, max 5 entries) ────────────
-const GAMES_CACHE_TTL_MS = 90 * 1000;
-const GAMES_CACHE_FRESH_MS = 45 * 1000;
-const GAMES_CACHE_MAX_ENTRIES = 5;
+// ── In-memory cache ─────────────────────────────────────────
 
 interface GamesCacheEntry {
   sectionMap: Record<SectionKey, GameSummary[]>;
@@ -126,7 +111,7 @@ const gamesCache = new Map<string, GamesCacheEntry>();
 function getGamesCached(league: string): GamesCacheEntry | null {
   const entry = gamesCache.get(league);
   if (!entry) return null;
-  if (Date.now() - entry.fetchedAt > GAMES_CACHE_TTL_MS) {
+  if (Date.now() - entry.fetchedAt > CACHE.GAMES_TTL_MS) {
     gamesCache.delete(league);
     return null;
   }
@@ -134,7 +119,7 @@ function getGamesCached(league: string): GamesCacheEntry | null {
 }
 
 function setGamesCache(league: string, sectionMap: Record<SectionKey, GameSummary[]>) {
-  if (gamesCache.size >= GAMES_CACHE_MAX_ENTRIES && !gamesCache.has(league)) {
+  if (gamesCache.size >= CACHE.GAMES_MAX_ENTRIES && !gamesCache.has(league)) {
     let oldestKey: string | null = null;
     let oldestTime = Infinity;
     for (const [key, entry] of gamesCache) {
@@ -158,10 +143,8 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
     Record<SectionKey, GameSummary[]>
   >(
     cached?.sectionMap ?? {
-      Earlier: [],
       Yesterday: [],
       Today: [],
-      Tomorrow: [],
     },
   );
   const [loading, setLoading] = useState(!cached);
@@ -174,7 +157,7 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
     const entry = getGamesCached(cacheKey);
     if (entry && !showLoading) {
       const age = Date.now() - entry.fetchedAt;
-      if (age < GAMES_CACHE_FRESH_MS) {
+      if (age < CACHE.GAMES_FRESH_MS) {
         // Fresh cache — skip network entirely
         return;
       }
@@ -186,33 +169,17 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
     const ranges = getSectionDateRanges();
 
     try {
-      // Phase 1: fetch Yesterday + Today in parallel (highest priority)
       const [yesterday, today] = await Promise.all([
         fetchSection(ranges.Yesterday, league),
         fetchSection(ranges.Today, league),
       ]);
 
-      // Update immediately so the user sees data fast
-      setSectionMap((prev) => ({
-        ...prev,
-        Yesterday: yesterday,
-        Today: today,
-      }));
-      setLoading(false);
-
-      // Phase 2: fetch Earlier + Tomorrow in parallel
-      const [earlier, tomorrow] = await Promise.all([
-        fetchSection(ranges.Earlier, league),
-        fetchSection(ranges.Tomorrow, league),
-      ]);
-
       const fullMap = {
-        Earlier: earlier,
         Yesterday: yesterday,
         Today: today,
-        Tomorrow: tomorrow,
       };
       setSectionMap(fullMap);
+      setLoading(false);
       setGamesCache(cacheKey, fullMap);
     } catch (err) {
       setError(
@@ -234,7 +201,7 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
   useEffect(() => {
     const start = () => {
       if (!intervalRef.current) {
-        intervalRef.current = setInterval(() => fetchAll(), REFRESH_INTERVAL_MS);
+        intervalRef.current = setInterval(() => fetchAll(), POLLING.GAMES_REFRESH_MS);
       }
     };
     const stop = () => {

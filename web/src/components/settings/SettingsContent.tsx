@@ -16,7 +16,7 @@ const KNOWN_BOOKS = [
   "BetRivers",
 ] as const;
 
-const HOME_SECTIONS = ["Earlier", "Yesterday", "Today", "Tomorrow"] as const;
+const HOME_SECTIONS = ["Yesterday", "Today"] as const;
 const GAME_SECTIONS = [
   "Flow",
   "Timeline",
@@ -228,6 +228,30 @@ export function SettingsContent() {
         </p>
         <p className="text-xs text-neutral-500 leading-relaxed">
           Tracking and odds comps for p2p coming soon... maybe &#128064;&#129300;&#10071;
+        </p>
+      </div>
+
+      {/* ─── Data Disclaimer ─────────────────────────────── */}
+      <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
+        <h2 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
+          On the data
+        </h2>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Real-time data costs real money. We don&apos;t have real money. So
+          you&apos;re getting 5-minute delayed data and you&apos;re going to
+          like it. If the line moved while you were reading this, that&apos;s
+          on you.
+        </p>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Scores update every 60 seconds. If you&apos;re refreshing faster
+          than that, you need to put your phone down and watch the game.
+          That&apos;s literally the point of this app.
+        </p>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          We pull from the best sources we can afford, which is to say: free
+          ones and cheap ones. If something looks wrong, it probably is. But
+          also maybe check the other 14 apps on your phone that show the same
+          data before yelling at us.
         </p>
       </div>
 

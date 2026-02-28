@@ -4,10 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { GameDetailResponse } from "@/lib/types";
 import { isLive, isFinal } from "@/lib/types";
+import { CACHE, POLLING } from "@/lib/config";
 
-// ─── In-memory cache (5-min TTL, max 8 entries) ────────────────
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const CACHE_MAX_ENTRIES = 8;
+// ─── In-memory cache ───────────────────────────────────────────
 
 interface CacheEntry {
   data: GameDetailResponse;
@@ -19,7 +18,7 @@ const cache = new Map<number, CacheEntry>();
 function getCached(id: number): GameDetailResponse | null {
   const entry = cache.get(id);
   if (!entry) return null;
-  if (Date.now() - entry.fetchedAt > CACHE_TTL_MS) {
+  if (Date.now() - entry.fetchedAt > CACHE.GAME_DETAIL_TTL_MS) {
     cache.delete(id);
     return null;
   }
@@ -28,7 +27,7 @@ function getCached(id: number): GameDetailResponse | null {
 
 function setCache(id: number, data: GameDetailResponse) {
   // Evict oldest if at capacity
-  if (cache.size >= CACHE_MAX_ENTRIES && !cache.has(id)) {
+  if (cache.size >= CACHE.GAME_DETAIL_MAX_ENTRIES && !cache.has(id)) {
     let oldestKey: number | null = null;
     let oldestTime = Infinity;
     for (const [key, entry] of cache) {
@@ -43,7 +42,6 @@ function setCache(id: number, data: GameDetailResponse) {
 }
 
 // ─── Polling interval for live games ───────────────────────────
-const POLL_INTERVAL_MS = 45 * 1000; // 45 seconds
 
 // ─── Hook ──────────────────────────────────────────────────────
 
@@ -98,7 +96,7 @@ export function useGame(id: number) {
       // Start polling
       pollRef.current = setInterval(() => {
         fetchGame({ silent: true });
-      }, POLL_INTERVAL_MS);
+      }, POLLING.LIVE_GAME_POLL_MS);
     }
 
     return () => {

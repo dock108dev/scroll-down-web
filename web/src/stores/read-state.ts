@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { GameStatus } from "@/lib/types";
+import { STORAGE_KEYS } from "@/lib/config";
 
 interface ReadState {
   readGameIds: Set<number>;
@@ -42,7 +43,7 @@ export const useReadState = create<ReadState>()(
       },
     }),
     {
-      name: "sd-read-state",
+      name: STORAGE_KEYS.READ_STATE,
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);

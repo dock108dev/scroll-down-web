@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { STORAGE_KEYS } from "@/lib/config";
 
 interface ReadingPosition {
   playIndex: number;
@@ -40,6 +41,6 @@ export const useReadingPosition = create<ReadingPositionState>()(
       },
       clearAll: () => set({ positions: {} }),
     }),
-    { name: "sd-reading-position" },
+    { name: STORAGE_KEYS.READING_POSITION },
   ),
 );
