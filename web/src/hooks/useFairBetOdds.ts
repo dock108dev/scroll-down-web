@@ -8,6 +8,12 @@ import {
   enrichBet,
   isReliablyPositive,
   marketKeyToCategory,
+  legFairProb,
+  parlayProbIndependent,
+  probToDecimal,
+  decimalToAmerican,
+  hasCorrelatedLegs,
+  parlayConfidenceTier,
 } from "@/lib/fairbet-utils";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -74,6 +80,7 @@ export interface UseFairBetOddsReturn {
   parlayFairProbability: number;
   parlayFairAmericanOdds: number;
   parlayConfidence: string;
+  parlayCorrelated: boolean;
   toggleParlay: (id: string) => void;
   clearParlay: () => void;
 }
@@ -448,40 +455,52 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   const parlayCount = parlayBetIds.size;
   const canShowParlay = parlayCount >= 2;
 
-  // ── Parlay evaluation (API with client-side fallback) ──────────
+  // ── Client-side parlay evaluation ──────────────────────────────
 
-  const [parlayApiResult, setParlayApiResult] = useState<{
-    fair_probability: number;
-    fair_american_odds: number;
-    confidence: string;
-  } | null>(null);
+  const parlayCorrelated = useMemo(
+    () => parlayBets.length >= 2 && hasCorrelatedLegs(parlayBets),
+    [parlayBets],
+  );
 
-  // Call API when parlay legs change
-  useEffect(() => {
-    if (parlayBets.length < 2) return;
+  const parlayResult = useMemo(() => {
+    if (parlayBets.length < 2) {
+      return { probability: 0, americanOdds: 0, confidence: "none" };
+    }
 
-    const legs = parlayBets.map((b) => ({
-      game_id: b.game_id,
-      market_key: b.market_key,
-      selection_key: b.selection_key,
-      line_value: b.line_value,
-    }));
+    const legProbs: number[] = [];
+    let allValid = true;
+    for (const bet of parlayBets) {
+      const p = legFairProb(bet);
+      if (p == null) {
+        allValid = false;
+        break;
+      }
+      legProbs.push(p);
+    }
 
-    let cancelled = false;
-    api.parlayEvaluate(legs)
-      .then((result) => {
-        if (!cancelled) setParlayApiResult(result);
-      })
-      .catch(() => {
-        if (!cancelled) setParlayApiResult(null);
-      });
+    if (!allValid) {
+      return { probability: 0, americanOdds: 0, confidence: "none" };
+    }
 
-    return () => { cancelled = true; };
-  }, [parlayBets]);
+    const pFair = parlayProbIndependent(legProbs);
+    if (!Number.isFinite(pFair) || pFair <= 0) {
+      return { probability: 0, americanOdds: 0, confidence: "none" };
+    }
 
-  const parlayFairProbability = parlayBets.length >= 2 ? (parlayApiResult?.fair_probability ?? 0) : 0;
-  const parlayFairAmericanOdds = parlayBets.length >= 2 ? (parlayApiResult?.fair_american_odds ?? 0) : 0;
-  const parlayConfidence = parlayBets.length >= 2 ? (parlayApiResult?.confidence ?? "none") : "none";
+    const fairDecimal = probToDecimal(pFair);
+    const fairAmerican = decimalToAmerican(fairDecimal);
+    const confidence = parlayConfidenceTier(parlayBets, true, parlayCorrelated);
+
+    return {
+      probability: pFair,
+      americanOdds: Number.isFinite(fairAmerican) ? fairAmerican : 0,
+      confidence,
+    };
+  }, [parlayBets, parlayCorrelated]);
+
+  const parlayFairProbability = parlayResult.probability;
+  const parlayFairAmericanOdds = parlayResult.americanOdds;
+  const parlayConfidence = parlayResult.confidence;
 
   const toggleParlay = useCallback((id: string) => {
     setParlayBetIds((prev) => {
@@ -547,6 +566,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     parlayFairProbability,
     parlayFairAmericanOdds,
     parlayConfidence,
+    parlayCorrelated,
     toggleParlay,
     clearParlay,
   };

@@ -302,10 +302,11 @@ function titleCaseIfShoutyCaps(str: string, homeTeam?: string, awayTeam?: string
   });
 }
 
-// ── Probability / odds helpers (for display only) ──────────────────
+// ── Probability / odds helpers ──────────────────────────────────────
 
 /** Convert American odds to implied probability (0-1). */
 export function americanToImpliedProb(odds: number): number {
+  if (!Number.isFinite(odds) || odds === 0) return NaN;
   if (odds > 0) return 100 / (odds + 100);
   return Math.abs(odds) / (Math.abs(odds) + 100);
 }
@@ -317,6 +318,94 @@ export function impliedProbToAmerican(prob: number): number {
     return Math.round(-prob / (1 - prob) * 100);
   }
   return Math.round((1 - prob) / prob * 100);
+}
+
+/** Convert American odds to decimal odds. */
+export function americanToDecimal(american: number): number {
+  if (!Number.isFinite(american) || american === 0) return NaN;
+  if (american > 0) return 1 + american / 100;
+  return 1 + 100 / Math.abs(american);
+}
+
+/** Convert probability (0-1) to decimal odds. */
+export function probToDecimal(p: number): number {
+  if (!Number.isFinite(p) || p <= 0) return Infinity;
+  return 1 / p;
+}
+
+/** Convert decimal odds to American odds. */
+export function decimalToAmerican(decimal: number): number {
+  if (!Number.isFinite(decimal) || decimal <= 1) return NaN;
+  if (decimal >= 2) return Math.round((decimal - 1) * 100);
+  return -Math.round(100 / (decimal - 1));
+}
+
+/**
+ * Parlay fair probability assuming independent legs.
+ * Returns NaN if any leg probability is invalid.
+ */
+export function parlayProbIndependent(legProbs: number[]): number {
+  if (!legProbs.length) return NaN;
+  let p = 1;
+  for (const lp of legProbs) {
+    if (!Number.isFinite(lp) || lp <= 0 || lp >= 1) return NaN;
+    p *= lp;
+  }
+  return p;
+}
+
+/**
+ * EV% given true probability and offered American odds.
+ * Formula: (trueProb * decimalOffered - 1) * 100
+ */
+export function evPct(trueProb: number, offeredAmerican: number): number {
+  const d = americanToDecimal(offeredAmerican);
+  if (!Number.isFinite(trueProb) || !Number.isFinite(d)) return NaN;
+  return (trueProb * d - 1) * 100;
+}
+
+/**
+ * Extract the fair probability for a single leg.
+ * Prefers true_prob; falls back to deriving from fair_american_odds.
+ */
+export function legFairProb(bet: APIBet): number | null {
+  if (bet.true_prob != null && bet.true_prob > 0 && bet.true_prob < 1) {
+    return bet.true_prob;
+  }
+  const fairOdds = bet.fair_american_odds ?? bet.fairAmericanOdds;
+  if (fairOdds != null && fairOdds !== 0) {
+    const p = americanToImpliedProb(fairOdds);
+    if (Number.isFinite(p) && p > 0 && p < 1) return p;
+  }
+  return null;
+}
+
+/** Detect if any two legs share the same game_id. */
+export function hasCorrelatedLegs(bets: APIBet[]): boolean {
+  const seen = new Set<number>();
+  for (const b of bets) {
+    if (seen.has(b.game_id)) return true;
+    seen.add(b.game_id);
+  }
+  return false;
+}
+
+/**
+ * Derive parlay confidence tier.
+ * - correlated → "low"
+ * - any leg missing prob → "none"
+ * - 4+ legs → "low"
+ * - else → "medium"
+ */
+export function parlayConfidenceTier(
+  bets: APIBet[],
+  allProbsValid: boolean,
+  correlated: boolean,
+): string {
+  if (!allProbsValid) return "none";
+  if (correlated) return "low";
+  if (bets.length >= 4) return "low";
+  return "medium";
 }
 
 // ── Client-side bet enrichment ─────────────────────────────────────

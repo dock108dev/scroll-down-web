@@ -35,11 +35,31 @@ type PeriodItem =
 // ─── Helpers ────────────────────────────────────────────────
 
 /**
- * Groups plays by periodLabel. Maintains insertion order.
+ * Content-based dedup: the backend sometimes returns the same play
+ * event under different playIndex values (e.g. from overlapping
+ * scrape runs). Key on periodLabel + gameClock + description.
+ */
+function dedupePlays(plays: PlayEntry[]): PlayEntry[] {
+  const seen = new Set<string>();
+  const result: PlayEntry[] = [];
+  for (const play of plays) {
+    const key = `${play.periodLabel ?? ""}|${play.gameClock ?? ""}|${play.description ?? ""}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(play);
+    }
+  }
+  return result;
+}
+
+/**
+ * Groups plays by periodLabel, deduplicates, and sorts each period
+ * chronologically by total score ascending (scores only increase).
  */
 function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
+  const unique = dedupePlays(plays);
   const map = new Map<string, PlayEntry[]>();
-  for (const play of plays) {
+  for (const play of unique) {
     const key = play.periodLabel ?? "Unknown";
     const arr = map.get(key);
     if (arr) {
@@ -47,6 +67,15 @@ function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
     } else {
       map.set(key, [play]);
     }
+  }
+  // Sort each period chronologically: total score ASC, then playIndex ASC
+  for (const periodPlays of map.values()) {
+    periodPlays.sort((a, b) => {
+      const totalA = (a.homeScore ?? 0) + (a.awayScore ?? 0);
+      const totalB = (b.homeScore ?? 0) + (b.awayScore ?? 0);
+      if (totalA !== totalB) return totalA - totalB;
+      return a.playIndex - b.playIndex;
+    });
   }
   return map;
 }
