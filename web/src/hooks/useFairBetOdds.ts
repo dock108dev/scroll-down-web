@@ -83,16 +83,44 @@ export interface UseFairBetOddsReturn {
 const PAGE_SIZE = 100;
 const MAX_CONCURRENT = 3;
 
+// ── In-memory cache (3-min TTL) ────────────────────────────────────
+const FAIRBET_CACHE_TTL_MS = 3 * 60 * 1000;
+const FAIRBET_CACHE_FRESH_MS = 90 * 1000;
+
+interface FairBetCacheEntry {
+  allBets: APIBet[];
+  booksAvailable: string[];
+  totalFromServer: number;
+  fetchedAt: number;
+}
+
+let fairbetCache: FairBetCacheEntry | null = null;
+
+function getFairbetCached(): FairBetCacheEntry | null {
+  if (!fairbetCache) return null;
+  if (Date.now() - fairbetCache.fetchedAt > FAIRBET_CACHE_TTL_MS) {
+    fairbetCache = null;
+    return null;
+  }
+  return fairbetCache;
+}
+
+function setFairbetCache(allBets: APIBet[], booksAvailable: string[], totalFromServer: number) {
+  fairbetCache = { allBets, booksAvailable, totalFromServer, fetchedAt: Date.now() };
+}
+
 // ── Hook ───────────────────────────────────────────────────────────
 
 export function useFairBetOdds(): UseFairBetOddsReturn {
+  const cached = getFairbetCached();
+
   // Raw data
-  const [allBets, setAllBets] = useState<APIBet[]>([]);
-  const [booksAvailable, setBooksAvailable] = useState<string[]>([]);
-  const [totalFromServer, setTotalFromServer] = useState(0);
+  const [allBets, setAllBets] = useState<APIBet[]>(cached?.allBets ?? []);
+  const [booksAvailable, setBooksAvailable] = useState<string[]>(cached?.booksAvailable ?? []);
+  const [totalFromServer, setTotalFromServer] = useState(cached?.totalFromServer ?? 0);
 
   // Loading
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +143,71 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   // Abort controller for cancellation
   const abortRef = useRef<AbortController | null>(null);
 
-  // ── Fetch logic ──────────────────────────────────────────────────
+  // ── Core fetch logic ─────────────────────────────────────────────
+
+  const doFullFetch = useCallback(async (controller: AbortController) => {
+    // First page
+    const params = new URLSearchParams();
+    params.set("has_fair", "true");
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", "0");
+
+    const firstPage = await api.fairbetOdds(params);
+    if (controller.signal.aborted) return;
+
+    const total = firstPage.total ?? firstPage.bets.length;
+    setTotalFromServer(total);
+    setBooksAvailable(firstPage.books_available ?? []);
+    setAllBets(firstPage.bets.map(enrichBet));
+    setLoadedCount(firstPage.bets.length);
+
+    // Done with initial load
+    setLoading(false);
+
+    // Remaining pages
+    let finalBets = firstPage.bets.map(enrichBet);
+
+    if (firstPage.bets.length < total) {
+      setIsLoadingMore(true);
+      const remainingOffsets: number[] = [];
+      for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) {
+        remainingOffsets.push(offset);
+      }
+
+      // Fetch remaining pages with concurrency limit
+      let loaded = firstPage.bets.length;
+
+      for (let i = 0; i < remainingOffsets.length; i += MAX_CONCURRENT) {
+        if (controller.signal.aborted) return;
+        const batch = remainingOffsets.slice(i, i + MAX_CONCURRENT);
+        const results = await Promise.all(
+          batch.map((offset) => {
+            const p = new URLSearchParams();
+            p.set("has_fair", "true");
+            p.set("limit", String(PAGE_SIZE));
+            p.set("offset", String(offset));
+            return api.fairbetOdds(p);
+          }),
+        );
+        if (controller.signal.aborted) return;
+        const batchBets = results.flatMap((r) => r.bets).map(enrichBet);
+        finalBets = [...finalBets, ...batchBets];
+        for (const result of results) {
+          loaded += result.bets.length;
+        }
+        setLoadedCount(loaded);
+        // Append incrementally
+        setAllBets((prev) => [...prev, ...batchBets]);
+      }
+
+      setIsLoadingMore(false);
+    }
+
+    // Write completed data to cache
+    setFairbetCache(finalBets, firstPage.books_available ?? [], total);
+  }, []);
+
+  // ── Public fetch (with cache check) ─────────────────────────────
 
   const fetchOdds = useCallback(async () => {
     // Cancel any in-flight fetches
@@ -130,75 +222,42 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     setAllBets([]);
 
     try {
-      // First page
-      const params = new URLSearchParams();
-      params.set("has_fair", "true");
-      params.set("limit", String(PAGE_SIZE));
-      params.set("offset", "0");
-
-      const firstPage = await api.fairbetOdds(params);
-      if (controller.signal.aborted) return;
-
-      const total = firstPage.total ?? firstPage.bets.length;
-      setTotalFromServer(total);
-      setBooksAvailable(firstPage.books_available ?? []);
-      setAllBets(firstPage.bets.map(enrichBet));
-      setLoadedCount(firstPage.bets.length);
-
-      // Done with initial load
-      setLoading(false);
-
-      // Remaining pages
-      if (firstPage.bets.length < total) {
-        setIsLoadingMore(true);
-        const remainingOffsets: number[] = [];
-        for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) {
-          remainingOffsets.push(offset);
-        }
-
-        // Fetch remaining pages with concurrency limit
-        const allRemaining: APIBet[] = [];
-        let loaded = firstPage.bets.length;
-
-        for (let i = 0; i < remainingOffsets.length; i += MAX_CONCURRENT) {
-          if (controller.signal.aborted) return;
-          const batch = remainingOffsets.slice(i, i + MAX_CONCURRENT);
-          const results = await Promise.all(
-            batch.map((offset) => {
-              const p = new URLSearchParams();
-              p.set("has_fair", "true");
-              p.set("limit", String(PAGE_SIZE));
-              p.set("offset", String(offset));
-              return api.fairbetOdds(p);
-            }),
-          );
-          if (controller.signal.aborted) return;
-          for (const result of results) {
-            allRemaining.push(...result.bets);
-            loaded += result.bets.length;
-          }
-          setLoadedCount(loaded);
-          // Append incrementally
-          setAllBets((prev) => [...prev, ...results.flatMap((r) => r.bets).map(enrichBet)]);
-        }
-
-        setIsLoadingMore(false);
-      }
+      await doFullFetch(controller);
     } catch (err) {
       if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "Failed to fetch odds");
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, []);
+  }, [doFullFetch]);
 
   useEffect(() => {
+    const entry = getFairbetCached();
+    if (entry) {
+      const age = Date.now() - entry.fetchedAt;
+      if (age < FAIRBET_CACHE_FRESH_MS) {
+        // Fresh cache — skip network entirely
+        return;
+      }
+      // Stale cache — show cached data, do silent background refresh
+      const controller = new AbortController();
+      abortRef.current = controller;
+      doFullFetch(controller).catch(() => {
+        // Silent refresh failed — cached data still shown
+      });
+      return () => {
+        controller.abort();
+      };
+    }
+
+    // No cache — normal full fetch
     // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching-on-mount pattern requires setState for loading/error/data
     fetchOdds();
     return () => {
       abortRef.current?.abort();
     };
-  }, [fetchOdds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Loading progress ─────────────────────────────────────────────
 

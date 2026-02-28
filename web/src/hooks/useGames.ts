@@ -111,23 +111,76 @@ interface UseGamesReturn {
 // ── Auto-refresh interval ──────────────────────────────────
 const REFRESH_INTERVAL_MS = 60 * 1000; // 60 seconds
 
+// ── In-memory cache (90-sec TTL, max 5 entries) ────────────
+const GAMES_CACHE_TTL_MS = 90 * 1000;
+const GAMES_CACHE_FRESH_MS = 45 * 1000;
+const GAMES_CACHE_MAX_ENTRIES = 5;
+
+interface GamesCacheEntry {
+  sectionMap: Record<SectionKey, GameSummary[]>;
+  fetchedAt: number;
+}
+
+const gamesCache = new Map<string, GamesCacheEntry>();
+
+function getGamesCached(league: string): GamesCacheEntry | null {
+  const entry = gamesCache.get(league);
+  if (!entry) return null;
+  if (Date.now() - entry.fetchedAt > GAMES_CACHE_TTL_MS) {
+    gamesCache.delete(league);
+    return null;
+  }
+  return entry;
+}
+
+function setGamesCache(league: string, sectionMap: Record<SectionKey, GameSummary[]>) {
+  if (gamesCache.size >= GAMES_CACHE_MAX_ENTRIES && !gamesCache.has(league)) {
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+    for (const [key, entry] of gamesCache) {
+      if (entry.fetchedAt < oldestTime) {
+        oldestTime = entry.fetchedAt;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey !== null) gamesCache.delete(oldestKey);
+  }
+  gamesCache.set(league, { sectionMap, fetchedAt: Date.now() });
+}
+
 // ── Hook ───────────────────────────────────────────────────
 
 export function useGames(league?: string, search?: string): UseGamesReturn {
+  const cacheKey = league ?? "";
+  const cached = getGamesCached(cacheKey);
+
   const [sectionMap, setSectionMap] = useState<
     Record<SectionKey, GameSummary[]>
-  >({
-    Earlier: [],
-    Yesterday: [],
-    Today: [],
-    Tomorrow: [],
-  });
-  const [loading, setLoading] = useState(true);
+  >(
+    cached?.sectionMap ?? {
+      Earlier: [],
+      Yesterday: [],
+      Today: [],
+      Tomorrow: [],
+    },
+  );
+  const [loading, setLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevLeagueRef = useRef(league);
 
   const fetchAll = useCallback(async (showLoading?: boolean) => {
+    // Check cache freshness — skip network if fresh enough
+    const entry = getGamesCached(cacheKey);
+    if (entry && !showLoading) {
+      const age = Date.now() - entry.fetchedAt;
+      if (age < GAMES_CACHE_FRESH_MS) {
+        // Fresh cache — skip network entirely
+        return;
+      }
+      // Stale cache — use cached data, silent background refresh (no loading state)
+    }
+
     if (showLoading) setLoading(true);
     setError(null);
     const ranges = getSectionDateRanges();
@@ -153,19 +206,21 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
         fetchSection(ranges.Tomorrow, league),
       ]);
 
-      setSectionMap({
+      const fullMap = {
         Earlier: earlier,
         Yesterday: yesterday,
         Today: today,
         Tomorrow: tomorrow,
-      });
+      };
+      setSectionMap(fullMap);
+      setGamesCache(cacheKey, fullMap);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch games",
       );
       setLoading(false);
     }
-  }, [league]);
+  }, [league, cacheKey]);
 
   // Initial fetch + refetch on league change
   useEffect(() => {

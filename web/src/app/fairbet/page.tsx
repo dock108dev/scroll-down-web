@@ -102,21 +102,13 @@ export default function FairBetPage() {
         {hook.loading && (
           <div className="py-12 space-y-4">
             <div className="text-center text-sm text-neutral-500">
-              {hook.loadingProgress || "Loading bets..."}
+              Loading bets...
             </div>
-            {/* Animated progress bar */}
-            <div className="mx-auto w-48 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${Math.max(hook.loadingFraction * 100, 10)}%`,
-                  backgroundColor: FairBetTheme.info,
-                }}
-              />
-            </div>
+            {/* Indeterminate shimmer bar */}
+            <div className="mx-auto w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
             {/* Skeleton cards */}
             <div className="space-y-3 mt-4">
-              {Array.from({ length: 4 }, (_, i) => (
+              {Array.from({ length: 6 }, (_, i) => (
                 <div
                   key={i}
                   className="rounded-[14px] h-28 skeleton-shimmer"
@@ -241,9 +233,7 @@ export default function FairBetPage() {
               </p>
               <p>
                 <span style={{ color: FairBetTheme.positive }} className="font-medium">Green values</span>{" "}
-                indicate +EV prices.{" "}
-                <span style={{ color: FairBetTheme.info }} className="font-medium">Blue rings</span>{" "}
-                indicate sharp (reference) books.
+                indicate +EV prices.
               </p>
               <p>
                 Use the <strong className="text-neutral-50">parlay builder</strong> to combine multiple +EV bets.
