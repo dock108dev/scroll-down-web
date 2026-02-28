@@ -181,77 +181,26 @@ export function SettingsContent() {
         </div>
       </SettingsSection>
 
-      {/* ─── EV Disclaimer ─────────────────────────────── */}
+      {/* ─── Disclaimer ────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
         <h2 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
-          Real talk on EV
+          Quick thing we have to say
         </h2>
         <p className="text-xs text-neutral-500 leading-relaxed">
-          Positive expected value doesn&apos;t mean the bet is going to hit. It
-          just means the number is off. That&apos;s it. If math and probability
-          aren&apos;t really your thing, this probably isn&apos;t going to be the
-          magic switch that fixes everything.
+          Positive expected value does not mean a bet is going to win. It just
+          means the number was off. Sometimes that helps, sometimes it does not.
+          If it does work and we keep beating closing line value, cool. That
+          usually comes with limits, which is just how sportsbooks operate. When
+          that happens, people tend to move to peer to peer exchanges, where you
+          are betting against other people instead of books. We have thoughts
+          there. More on that later.
         </p>
         <p className="text-xs text-neutral-500 leading-relaxed">
-          Now, if it <span className="italic">is</span> working and
-          we&apos;re consistently
-          beating{" "}
-          <span className="relative inline-block group">
-            <span className="underline decoration-dotted decoration-neutral-600 cursor-help">
-              closing line value
-            </span>
-            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[200px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-              How much better our bet was compared to the closing line.
-            </span>
-          </span>
-          , first of all: nice. Second of all: enjoy it while it lasts. Because
-          every American sportsbook on earth will limit your account the second
-          they catch on. Trust us. Shoutout to the $4 max bets on basically
-          every major book in the country. And if you don&apos;t know what
-          CLV is... honestly, maybe just watch the games.
-        </p>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          Once we do get limited, the next move is{" "}
-          <span className="relative inline-block group">
-            <span className="underline decoration-dotted decoration-neutral-600 cursor-help">
-              peer-to-peer exchanges
-            </span>
-            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[200px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-              Bet against people not books. No limits but you post a price or find one you like if it exists.
-            </span>
-          </span>
-          , not books. No limits, but we&apos;re either posting a price or
-          finding one we like if it exists. They&apos;re not available
-          everywhere, but that&apos;s where you go if you want to keep pressing
-          after stacking some cash. And again, if you don&apos;t know what those
-          are, you probably shouldn&apos;t be trying this yet either.
-        </p>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          Tracking and odds comps for p2p coming soon... maybe &#128064;&#129300;&#10071;
-        </p>
-      </div>
-
-      {/* ─── Data Disclaimer ─────────────────────────────── */}
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
-        <h2 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
-          On the data
-        </h2>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          Real-time data costs real money. We don&apos;t have real money. So
-          you&apos;re getting 5-minute delayed data and you&apos;re going to
-          like it. If the line moved while you were reading this, that&apos;s
-          on you.
-        </p>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          Scores update every 60 seconds. If you&apos;re refreshing faster
-          than that, you need to put your phone down and watch the game.
-          That&apos;s literally the point of this app.
-        </p>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          We pull from the best sources we can afford, which is to say: free
-          ones and cheap ones. If something looks wrong, it probably is. But
-          also maybe check the other 14 apps on your phone that show the same
-          data before yelling at us.
+          On the app side, data is delayed because real time data costs real
+          money. Lines move, scores update on a timer, and occasionally things
+          change while you are looking at them. We use solid sources and do our
+          best, but nothing here is perfect or guaranteed. This is meant to help
+          you think, not think for you. Use it, enjoy it, and keep it fun.
         </p>
       </div>
 

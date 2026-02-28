@@ -72,10 +72,12 @@ function getDefaultSection(sections: string[]): string {
 // Timeline: collapsed if flow exists, expanded otherwise
 // Stats: collapsed by default
 // Odds: collapsed by default
+// Wrap-Up: expanded only when game is already read (expanding it marks read)
 function getDefaultExpanded(
   section: string,
   hasFlow: boolean,
   status: GameStatus,
+  isGameRead: boolean,
 ): boolean {
   switch (section) {
     case "Pregame Buzz":
@@ -90,7 +92,7 @@ function getDefaultExpanded(
     case "Odds":
       return false;
     case "Wrap-Up":
-      return true;
+      return isGameRead;
     default:
       return false;
   }
@@ -175,6 +177,16 @@ export default function GameDetailPage({
     ]);
   }, [data, syncPinned]);
 
+  // ─── Read state ────────────────────────────────────────────
+  const isRead = useReadState((s) => s.isRead);
+  const markRead = useReadState((s) => s.markRead);
+  const gameIsRead = isRead(gameId);
+  const handleWrapUpExpand = useCallback(() => {
+    if (data && isFinal(data.game.status)) {
+      markRead(data.game.id, data.game.status);
+    }
+  }, [data, markRead]);
+
   // ─── Per-game section layout persistence ───────────────────
   const sectionLayout = useSectionLayout();
   const savedLayout = sectionLayout.getLayout(gameId);
@@ -182,8 +194,8 @@ export default function GameDetailPage({
   // Compute default expanded list (used on first visit only)
   const status: GameStatus = data?.game.status ?? "scheduled";
   const defaultExpanded = useMemo(
-    () => sections.filter((s) => getDefaultExpanded(s, hasFlow, status)),
-    [sections, hasFlow, status],
+    () => sections.filter((s) => getDefaultExpanded(s, hasFlow, status, gameIsRead)),
+    [sections, hasFlow, status, gameIsRead],
   );
 
   // Persisted layout wins; otherwise use defaults
@@ -209,15 +221,6 @@ export default function GameDetailPage({
     if (saved == null) return 0;
     return Math.max(0, data.plays.length - saved);
   }, [data?.plays, savedPos?.playCount]);
-
-  // Read state - mark as read when user expands Wrap-Up section
-  // (matches iOS where expanding wrap-up marks as read)
-  const markRead = useReadState((s) => s.markRead);
-  const handleWrapUpExpand = useCallback(() => {
-    if (data && isFinal(data.game.status)) {
-      markRead(data.game.id, data.game.status);
-    }
-  }, [data, markRead]);
 
   // ─── Intersection Observer for active section tracking ─────
   useEffect(() => {
