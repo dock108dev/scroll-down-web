@@ -4,44 +4,118 @@ import { useMemo } from "react";
 import { useFlow } from "@/hooks/useFlow";
 import { FlowBlockCard } from "./FlowBlockCard";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import type { FlowBlock, FlowPlay, SocialPostEntry } from "@/lib/types";
+import type { FlowBlock, FlowPlay, FlowMoment, SocialPostEntry } from "@/lib/types";
 
 interface FlowContainerProps {
   gameId: number;
   socialPosts?: SocialPostEntry[];
 }
 
-/** Derive period display string for a block from its plays */
+/** Map a period number to a sport-appropriate label */
+function periodLabel(period: number, league?: string): string {
+  const lc = league?.toLowerCase() ?? "";
+
+  // NCAAB: 2 halves, then OT
+  if (lc === "ncaab") {
+    if (period <= 2) return `Half ${period}`;
+    return period === 3 ? "OT" : `${period - 2}OT`;
+  }
+
+  // NBA: 4 quarters, then OT
+  if (lc === "nba") {
+    if (period <= 4) return `Q${period}`;
+    return period === 5 ? "OT" : `${period - 4}OT`;
+  }
+
+  // NFL / NCAAF: 4 quarters, then OT
+  if (lc === "nfl" || lc === "ncaaf") {
+    if (period <= 4) return `Q${period}`;
+    return period === 5 ? "OT" : `${period - 4}OT`;
+  }
+
+  // NHL: 3 periods, then OT / SO
+  if (lc === "nhl") {
+    if (period <= 3) return `Period ${period}`;
+    if (period === 4) return "OT";
+    return "SO";
+  }
+
+  // MLB: innings
+  if (lc === "mlb") {
+    return `Inning ${period}`;
+  }
+
+  // Fallback
+  return `Period ${period}`;
+}
+
+/** Derive period display string for a block, falling back to plays/moments */
 function periodDisplay(
   block: FlowBlock,
   playsById: Map<number, FlowPlay>,
+  moments?: FlowMoment[],
+  leagueCode?: string,
 ): string {
-  // Get plays for this block, sorted by play_index
-  const blockPlays = (block.play_ids ?? [])
+  // Get plays for this block, sorted by playIndex
+  const blockPlays = (block.playIds ?? [])
     .map((id) => playsById.get(id))
     .filter((p): p is FlowPlay => p != null)
-    .sort((a, b) => a.play_index - b.play_index);
+    .sort((a, b) => a.playIndex - b.playIndex);
 
   const startClock = blockPlays[0]?.clock;
   const endClock = blockPlays[blockPlays.length - 1]?.clock;
 
-  const startPeriod = `Period ${block.period_start}`;
-  const endPeriod = `Period ${block.period_end}`;
+  // Resolve period: block fields → plays → moments
+  let periodStart = block.periodStart;
+  let periodEnd = block.periodEnd;
 
-  if (block.period_start === block.period_end) {
-    if (startClock && endClock) {
-      return `${startPeriod} · ${startClock}–${endClock}`;
-    }
-    return startPeriod;
+  if (periodStart == null && blockPlays.length > 0) {
+    periodStart = blockPlays[0].period;
+    periodEnd = blockPlays[blockPlays.length - 1].period;
   }
 
-  // Crosses periods
+  if (periodStart == null && moments && block.momentIndices?.length > 0) {
+    const firstMoment = moments[block.momentIndices[0]];
+    const lastMoment = moments[block.momentIndices[block.momentIndices.length - 1]];
+    if (firstMoment) periodStart = firstMoment.period;
+    if (lastMoment) periodEnd = lastMoment.period;
+  }
+
+  if (periodStart == null) return "";
+
+  periodEnd = periodEnd ?? periodStart;
+
+  const startLabel = periodLabel(periodStart, leagueCode);
+  const endLabel = periodLabel(periodEnd, leagueCode);
+
+  if (periodStart === periodEnd) {
+    if (startClock && endClock) return `${startLabel} · ${startClock}–${endClock}`;
+    return startLabel;
+  }
+
   const startTime = startClock ?? "";
   const endTime = endClock ?? "";
-  if (startTime && endTime) {
-    return `${startPeriod} ${startTime} – ${endPeriod} ${endTime}`;
+  if (startTime && endTime) return `${startLabel} ${startTime} – ${endLabel} ${endTime}`;
+  return `${startLabel}–${endLabel}`;
+}
+
+/** Get score_after for a block, falling back to moments data */
+function resolveScoreAfter(
+  block: FlowBlock,
+  moments?: FlowMoment[],
+): number[] | undefined {
+  if (Array.isArray(block.scoreAfter) && block.scoreAfter.length >= 2) {
+    return block.scoreAfter;
   }
-  return `${startPeriod}–${endPeriod}`;
+  // Fall back to last moment's score_after
+  if (moments && block.momentIndices?.length > 0) {
+    const lastIdx = block.momentIndices[block.momentIndices.length - 1];
+    const lastMoment = moments[lastIdx];
+    if (lastMoment && Array.isArray(lastMoment.scoreAfter) && lastMoment.scoreAfter.length >= 2) {
+      return lastMoment.scoreAfter;
+    }
+  }
+  return undefined;
 }
 
 export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
@@ -53,7 +127,7 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
     if (!plays) return new Map<number, FlowPlay>();
     const map = new Map<number, FlowPlay>();
     for (const p of plays) {
-      map.set(p.play_id, p);
+      map.set(p.playId, p);
     }
     return map;
   }, [plays]);
@@ -72,7 +146,11 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
     );
   }
 
-  if (error || !data) {
+  // Resolve blocks/moments from either nested `flow` or top-level fields
+  const blocks = data?.flow?.blocks ?? data?.blocks;
+  const moments = data?.flow?.moments ?? data?.moments;
+
+  if (error || !data || !blocks || blocks.length === 0) {
     return (
       <div className="px-4 py-4 text-sm text-neutral-500">
         {error ?? "No flow data available"}
@@ -82,23 +160,30 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
 
   return (
     <div className="px-4 space-y-0">
+      {/* Section intro — frames the content for the reader */}
+      <div className="mb-5 pl-10">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+          How It Happened
+        </h2>
+      </div>
+
       <div className="relative">
         <div className="absolute left-6 top-0 bottom-0 w-px bg-neutral-800" />
         <div className="space-y-4 relative">
-          {data.blocks.map((block, i) => (
+          {blocks.map((block, i) => (
             <FlowBlockCard
-              key={block.block_index ?? i}
+              key={block.blockIndex ?? i}
               block={block}
-              periodLabel={periodDisplay(block, playsById)}
-              scoreAfter={Array.isArray(block.score_after) ? block.score_after : undefined}
-              homeTeam={data.home_team_abbr ?? data.home_team}
-              awayTeam={data.away_team_abbr ?? data.away_team}
-              homeColor={data.home_team_color_dark}
-              awayColor={data.away_team_color_dark}
+              periodLabel={periodDisplay(block, playsById, moments, data.leagueCode)}
+              scoreAfter={resolveScoreAfter(block, moments)}
+              homeTeam={data.homeTeamAbbr ?? data.homeTeam}
+              awayTeam={data.awayTeamAbbr ?? data.awayTeam}
+              homeColor={data.homeTeamColorDark}
+              awayColor={data.awayTeamColorDark}
               isFirstBlock={i === 0}
               embeddedSocialPost={
-                block.embedded_social_post_id != null
-                  ? socialPostsById.get(block.embedded_social_post_id)
+                block.embeddedSocialPostId != null
+                  ? socialPostsById.get(block.embeddedSocialPostId)
                   : undefined
               }
             />

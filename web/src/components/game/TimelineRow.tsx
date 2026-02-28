@@ -86,14 +86,27 @@ function StyledDescription({
     <p
       className={cn(
         "leading-snug",
-        tier === 1 && "text-sm font-semibold text-white",
+        tier === 1 && "text-sm font-semibold text-neutral-100",
         tier === 2 && "text-sm text-neutral-300 font-medium",
-        tier === 3 && "text-xs text-neutral-500",
+        tier === 3 && "text-sm text-neutral-500",
       )}
     >
       {parts}
     </p>
   );
+}
+
+/**
+ * Returns black or white text depending on background luminance.
+ */
+function textColorForBg(hex: string): string {
+  const n = parseInt(hex.replace("#", "").slice(0, 6), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55
+    ? "#171717"
+    : "#ffffff";
 }
 
 /**
@@ -111,6 +124,22 @@ function getAccentColor(
   if (teamAbbr === homeTeamAbbr && homeColor) return homeColor;
   if (teamAbbr === awayTeamAbbr && awayColor) return awayColor;
   return "#525252";
+}
+
+/**
+ * Splits a play description into a primary action line and optional stats.
+ * E.g. "J. Brown 25' 3PT (5 PTS) (Pritchard 4 AST)" →
+ *   { primary: "J. Brown 25' 3PT", stats: "5 PTS · Pritchard 4 AST" }
+ */
+function splitDescription(text: string): { primary: string; stats: string | null } {
+  const i = text.indexOf("(");
+  if (i === -1) return { primary: text.trim(), stats: null };
+  const primary = text.slice(0, i).trim();
+  const groups: string[] = [];
+  for (const m of text.slice(i).matchAll(/\(([^)]*)\)/g)) {
+    if (m[1].trim()) groups.push(m[1].trim());
+  }
+  return { primary, stats: groups.length ? groups.join(" · ") : null };
 }
 
 // ─── Main component ─────────────────────────────────────────
@@ -140,23 +169,33 @@ export function TimelineRow({
         style={{ borderLeft: `4px solid ${accentColor}` }}
       >
         {/* Time label */}
-        <span className="shrink-0 w-12 text-right text-xs text-neutral-400 font-mono pt-0.5">
+        <span className="shrink-0 w-12 text-right text-xs text-neutral-400 tabular-nums pt-0.5">
           {play.timeLabel ?? play.gameClock ?? ""}
         </span>
 
         {/* Team abbreviation badge */}
         {play.teamAbbreviation && (
           <span
-            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white"
-            style={{ backgroundColor: accentColor }}
+            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide"
+            style={{ backgroundColor: accentColor, color: textColorForBg(accentColor) }}
           >
             {play.teamAbbreviation}
           </span>
         )}
 
-        {/* Description */}
+        {/* Description — two-line: action + stats */}
         <div className="flex-1 min-w-0">
-          <StyledDescription text={play.description ?? ""} tier={1} />
+          {(() => {
+            const { primary, stats } = splitDescription(play.description ?? "");
+            return (
+              <>
+                <p className="text-sm font-semibold text-neutral-100 leading-snug">{primary}</p>
+                {stats && (
+                  <p className="text-xs text-neutral-400 mt-0.5 leading-snug">{stats}</p>
+                )}
+              </>
+            );
+          })()}
         </div>
 
         {/* Score display */}
@@ -178,24 +217,13 @@ export function TimelineRow({
     );
   }
 
-  // ── Tier 2: Secondary / contextual ──
+  // ── Tier 2: Secondary / contextual — no border, no colored badge, no time ──
   if (tier === 2) {
     return (
-      <div
-        className="flex items-start gap-3 py-1.5 px-3 rounded ml-4"
-        style={{ borderLeft: `2px solid ${accentColor}40` }}
-      >
-        {/* Time label */}
-        <span className="shrink-0 w-12 text-right text-xs text-neutral-500 font-mono pt-0.5">
-          {play.timeLabel ?? play.gameClock ?? ""}
-        </span>
-
-        {/* Team abbreviation badge at 50% opacity */}
+      <div className="flex items-start gap-3 py-1.5 px-3 rounded">
+        {/* Plain team abbreviation (no colored badge) */}
         {play.teamAbbreviation && (
-          <span
-            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-white/70"
-            style={{ backgroundColor: `${accentColor}80` }}
-          >
+          <span className="shrink-0 text-xs font-medium uppercase text-neutral-500">
             {play.teamAbbreviation}
           </span>
         )}
@@ -207,7 +235,7 @@ export function TimelineRow({
 
         {/* Score (muted) */}
         {play.awayScore != null && play.homeScore != null && (
-          <span className="shrink-0 text-xs text-neutral-500 font-mono tabular-nums">
+          <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
             {play.awayScore}-{play.homeScore}
           </span>
         )}
@@ -215,16 +243,11 @@ export function TimelineRow({
     );
   }
 
-  // ── Tier 3: Tertiary / low-signal ──
+  // ── Tier 3: Tertiary / low-signal — no time label ──
   return (
     <div className="flex items-start gap-2 py-1 px-2 ml-8">
       {/* Dot indicator */}
       <span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-neutral-600" />
-
-      {/* Time label */}
-      <span className="shrink-0 w-10 text-right text-[10px] text-neutral-600 font-mono">
-        {play.timeLabel ?? play.gameClock ?? ""}
-      </span>
 
       {/* Description */}
       <div className="flex-1 min-w-0">

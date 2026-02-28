@@ -1,22 +1,11 @@
 # CI/CD
 
-GitHub Actions pipeline with path-based filtering, automated Docker builds, and Hetzner deployment.
+GitHub Actions pipeline with automated Docker builds and Hetzner deployment.
 
 ## Pipeline Overview
 
 ```
 PR / Push to main
-    │
-    ├─ Changes Detection (paths-filter)
-    │       ├─ ScrollDown/** → iOS job
-    │       └─ web/** → Web job
-    │
-    ├─ iOS Job (macos-15, 30min timeout)
-    │       ├─ Select Xcode 16+
-    │       ├─ Ensure iOS Simulator runtime
-    │       ├─ Build (xcodebuild build-for-testing)
-    │       ├─ Test (xcodebuild test-without-building)
-    │       └─ Coverage summary (xcrun xccov)
     │
     ├─ Web Job (ubuntu-latest, 10min timeout)
     │       ├─ npm ci
@@ -24,11 +13,11 @@ PR / Push to main
     │       ├─ TypeScript check (tsc --noEmit)
     │       └─ Build (npm run build)
     │
-    ├─ Docker Job (main branch + web changes only)
+    ├─ Docker Job (main branch pushes only, after Web Job passes)
     │       ├─ Build multi-stage image
     │       └─ Push to ghcr.io/{repo}/web:latest + :sha
     │
-    └─ Deploy Job (after Docker, main branch only)
+    └─ Deploy Job (after Docker Job)
             ├─ SSH into Hetzner
             ├─ docker pull latest image
             ├─ docker compose up -d --no-deps --wait
@@ -37,23 +26,12 @@ PR / Push to main
 
 ## Trigger Rules
 
-| Event | iOS Job | Web Job | Docker + Deploy |
-|-------|---------|---------|-----------------|
-| PR to main | Runs if `ScrollDown/**` changed | Runs if `web/**` changed | Never |
-| Push to main | Always runs | Always runs | Only if `web/**` changed |
+| Event | Web Job | Docker + Deploy |
+|---|---|---|
+| PR to main | Runs | Never |
+| Push to main | Runs | Runs (after Web Job passes) |
 
 Concurrency: Runs are grouped by workflow + branch. In-progress runs are cancelled when a new push arrives.
-
-## iOS Job
-
-Runs on `macos-15`. Selects the latest Xcode 16.x available on the runner. Dynamically picks an available iPhone simulator.
-
-Generates a placeholder `Info.plist` for CI (API key set to `CI_PLACEHOLDER`, local networking allowed).
-
-```bash
-xcodebuild build-for-testing -scheme ScrollDown -destination '...'
-xcodebuild test-without-building -scheme ScrollDown -destination '...' -enableCodeCoverage YES
-```
 
 ## Web Job
 
@@ -66,6 +44,8 @@ npx tsc --noEmit
 npm run build
 ```
 
+Build uses `NEXT_TELEMETRY_DISABLED=1`.
+
 ## Docker Build
 
 Multi-stage Dockerfile (`web/Dockerfile`):
@@ -76,9 +56,11 @@ Multi-stage Dockerfile (`web/Dockerfile`):
 
 Image pushed to `ghcr.io/{owner}/{repo}/web` with `latest` and commit SHA tags.
 
+Uses GitHub Actions build cache (`type=gha`) for faster builds.
+
 ## Hetzner Deployment
 
-Deployment runs after a successful Docker push. Uses SSH (`appleboy/ssh-action`) to connect to the Hetzner VPS.
+Deployment runs after a successful Docker push. Uses SSH (`appleboy/ssh-action@v1`) to connect to the Hetzner VPS.
 
 ```bash
 cd /opt/scrolldown-web
@@ -88,40 +70,28 @@ docker compose up -d --no-deps --wait scrolldown-web
 docker image prune -f
 ```
 
-The web container binds to `127.0.0.1:3000` (reverse-proxied to the public domain).
+The web container binds to `127.0.0.1:3000` and is reverse-proxied to `scrolldownsports.dock108.dev`.
 
 ## Secrets
 
 | Secret | Used By | Purpose |
-|--------|---------|---------|
+|---|---|---|
 | `HETZNER_HOST` | Deploy | Server IP/hostname |
 | `HETZNER_USER` | Deploy | SSH username |
 | `HETZNER_SSH_KEY` | Deploy | SSH private key |
 | `GHCR_TOKEN` | Deploy | Container registry auth on server |
-| `GITHUB_TOKEN` | Docker | Push to GHCR (auto-provided) |
+| `GITHUB_TOKEN` | Docker | Push to GHCR (auto-provided by GitHub) |
 
 ## Additional Workflows
 
-- **CodeQL** (`codeql.yml`) — Static analysis on pull requests. Scans for vulnerabilities.
+- **CodeQL** (`codeql.yml`) — Static analysis on pull requests. Scans for security vulnerabilities.
+- **Dependabot** (`dependabot.yml`) — Automated dependency update PRs for `web/` npm packages.
 
-## Environment Variables
-
-### iOS
-
-Set via Xcode environment or `Info.plist`:
+## Environment Variables (Production)
 
 | Variable | Purpose |
-|----------|---------|
-| `SPORTS_DATA_API_KEY` | Backend API authentication |
-| `IOS_BETA_ASSUME_NOW` | Snapshot mode time override (debug only) |
+|---|---|
+| `NEXT_PUBLIC_API_BASE_URL` | Backend API base URL (`https://sports-data-admin.dock108.ai`) |
+| `SPORTS_DATA_API_KEY` | Backend API authentication (server-side only) |
 
-### Web
-
-| Variable | Purpose | Example |
-|----------|---------|---------|
-| `NEXT_PUBLIC_API_BASE_URL` | Backend API base URL | `https://sports-data-admin.dock108.ai` |
-| `SPORTS_DATA_API_KEY` | Backend API authentication (server-side only) | — |
-| `NEXTAUTH_URL` | App domain (production) | `https://scrolldownsports.dock108.dev` |
-| `NEXTAUTH_SECRET` | Auth secret (production) | — |
-
-See `web/.env.local.example` and `web/.env.production.example` for templates.
+These are set on the Hetzner server via docker-compose environment or `.env` file. See `web/.env.production.example` for the template.

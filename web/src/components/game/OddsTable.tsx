@@ -11,11 +11,66 @@ interface OddsTableProps {
   groupSides?: boolean;
   /** Show player names prominently in the first column */
   showPlayerNames?: boolean;
+  /** Team names for context in labels */
+  homeTeam?: string;
+  awayTeam?: string;
 }
 
 /** Build a row key from an odds entry */
 function rowKey(o: OddsEntry): string {
   return `${o.marketType}|${o.side ?? ""}|${o.line ?? ""}|${o.playerName ?? ""}`;
+}
+
+/** Map player prop marketType to a short stat label */
+const PLAYER_STAT_LABELS: Record<string, string> = {
+  player_points: "Pts",
+  player_rebounds: "Reb",
+  player_assists: "Ast",
+  player_threes: "3PM",
+  player_blocks: "Blk",
+  player_steals: "Stl",
+  player_goals: "Goals",
+  player_shots_on_goal: "SOG",
+  player_total_saves: "Saves",
+  player_pra: "PRA",
+};
+
+/** Format a line value with +/- prefix */
+function formatLine(line: number): string {
+  return `${line > 0 ? "+" : ""}${line}`;
+}
+
+/** Build a display label from an OddsEntry */
+function buildLabel(entry: OddsEntry, showPlayerNames?: boolean): string {
+  if (showPlayerNames && entry.playerName) {
+    // Player prop: Name + stat category + line
+    const stat = PLAYER_STAT_LABELS[entry.marketType] ?? entry.marketType.replace(/^player_/, "").replace(/_/g, " ");
+    const line = entry.line != null ? ` ${formatLine(entry.line)}` : "";
+    return `${entry.playerName} ${stat}${line}`;
+  }
+
+  const side = entry.side ?? "";
+  const line = entry.line != null ? ` ${formatLine(entry.line)}` : "";
+
+  // Use API description when available — it typically has the best context
+  if (entry.description) {
+    return entry.description;
+  }
+
+  // For spread/moneyline/alternates: section header already says the market type,
+  // so just show side (team name) + line
+  if (["spread", "moneyline", "alternate_spread", "alternate_total"].includes(entry.marketType)) {
+    return `${side}${line}`.trim();
+  }
+
+  // For totals / team_total: "Over/Under + line"
+  if (entry.marketType === "total" || entry.marketType === "team_total") {
+    return `${side}${line}`.trim();
+  }
+
+  // Fallback
+  const mt = entry.marketType.replace(/_/g, " ");
+  return `${side} ${mt}${line}`.trim();
 }
 
 /** Find the best price in a set of entries using API isBest flag. */
@@ -56,7 +111,10 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
     rowMap[key].push(o);
   }
 
-  const allRows = Object.entries(rowMap);
+  // Drop rows that only have closing-line data and no actual book prices
+  const allRows = Object.entries(rowMap).filter(([, entries]) =>
+    entries.some((e) => !e.isClosingLine && e.price != null),
+  );
 
   // Optionally group into side pairs for mainline
   const pairs = groupSides ? groupIntoPairs(allRows) : allRows.map((r) => [r]);
@@ -90,7 +148,7 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
               );
             })}
             {hasClosingLines && (
-              <th className="text-center px-2 py-2 font-medium text-amber-500/70 whitespace-nowrap">
+              <th className="text-center px-2 py-2 font-medium text-amber-500/70 whitespace-nowrap bg-neutral-800/80">
                 CL
               </th>
             )}
@@ -139,22 +197,7 @@ function PairGroup({
         const bestPrice = findBestPrice(entries);
         const closingEntry = entries.find((e) => e.isClosingLine);
 
-        // Build label
-        let label: string;
-        if (showPlayerNames && first.playerName) {
-          label = first.playerName;
-          const desc = first.description ?? first.marketType.replace(/_/g, " ");
-          label += ` ${desc}`;
-          if (first.line != null) label += ` ${first.line > 0 ? "+" : ""}${first.line}`;
-        } else {
-          const side = first.side ?? "";
-          const mt = first.marketType.replace(/_/g, " ");
-          const line =
-            first.line != null
-              ? ` ${first.line > 0 ? "+" : ""}${first.line}`
-              : "";
-          label = `${side} ${mt}${line}`.trim();
-        }
+        const label = buildLabel(first, showPlayerNames);
 
         return (
           <tr
@@ -176,10 +219,10 @@ function PairGroup({
                 "px-3 py-1.5 sticky left-0 z-10 bg-neutral-900",
                 showPlayerNames && first.playerName
                   ? "font-medium text-neutral-100"
-                  : "truncate max-w-[200px]",
+                  : "truncate max-w-[260px]",
               )}
             >
-              <span className="truncate block max-w-[200px]">{label}</span>
+              <span className="truncate block max-w-[260px]">{label}</span>
             </td>
             {books.map((book) => {
               const entry = entries.find(
@@ -195,7 +238,7 @@ function PairGroup({
                 <td
                   key={book}
                   className={cn(
-                    "text-center px-2 py-1.5 font-mono whitespace-nowrap",
+                    "text-center px-2 py-1.5 tabular-nums whitespace-nowrap",
                     isBest && "text-green-400 bg-green-500/10",
                     isPreferred && !isBest && "bg-blue-500/5",
                   )}
@@ -207,7 +250,7 @@ function PairGroup({
               );
             })}
             {hasClosingLines && (
-              <td className="text-center px-2 py-1.5 font-mono whitespace-nowrap">
+              <td className="text-center px-2 py-1.5 tabular-nums whitespace-nowrap bg-neutral-800/30">
                 {closingEntry?.price != null ? (
                   <span className="text-amber-400/80">
                     {formatOdds(closingEntry.price, oddsFormat)}

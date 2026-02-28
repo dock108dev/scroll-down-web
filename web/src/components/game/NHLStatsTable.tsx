@@ -105,20 +105,20 @@ export function NHLSkatersTable({ title, skaters }: NHLSkatersTableProps) {
                   >
                     {abbreviateName(s.playerName)}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono whitespace-nowrap">
+                  <td className="text-right px-2 py-1.5 tabular-nums whitespace-nowrap">
                     {s.toi ?? "-"}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono">
+                  <td className="text-right px-2 py-1.5 tabular-nums">
                     {s.goals ?? "-"}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono">
+                  <td className="text-right px-2 py-1.5 tabular-nums">
                     {s.assists ?? "-"}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono">
+                  <td className="text-right px-2 py-1.5 tabular-nums">
                     {s.points ?? "-"}
                   </td>
                   <td
-                    className={`text-right px-2 py-1.5 font-mono ${
+                    className={`text-right px-2 py-1.5 tabular-nums ${
                       plusMinus != null && plusMinus > 0
                         ? "text-green-400"
                         : plusMinus != null && plusMinus < 0
@@ -128,16 +128,16 @@ export function NHLSkatersTable({ title, skaters }: NHLSkatersTableProps) {
                   >
                     {plusMinusStr}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono">
+                  <td className="text-right px-2 py-1.5 tabular-nums">
                     {s.shotsOnGoal ?? "-"}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono">
+                  <td className="text-right px-2 py-1.5 tabular-nums">
                     {s.hits ?? "-"}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono">
+                  <td className="text-right px-2 py-1.5 tabular-nums">
                     {s.blockedShots ?? "-"}
                   </td>
-                  <td className="text-right px-2 py-1.5 font-mono">
+                  <td className="text-right px-2 py-1.5 tabular-nums">
                     {s.penaltyMinutes ?? "-"}
                   </td>
                 </tr>
@@ -196,20 +196,20 @@ export function NHLGoaliesTable({ title, goalies }: NHLGoaliesTableProps) {
                 >
                   {abbreviateName(g.playerName)}
                 </td>
-                <td className="text-right px-2 py-1.5 font-mono whitespace-nowrap">
+                <td className="text-right px-2 py-1.5 tabular-nums whitespace-nowrap">
                   {g.toi ?? "-"}
                 </td>
-                <td className="text-right px-2 py-1.5 font-mono">
+                <td className="text-right px-2 py-1.5 tabular-nums">
                   {g.shotsAgainst ?? "-"}
                 </td>
-                <td className="text-right px-2 py-1.5 font-mono">
+                <td className="text-right px-2 py-1.5 tabular-nums">
                   {g.saves ?? "-"}
                 </td>
-                <td className="text-right px-2 py-1.5 font-mono">
+                <td className="text-right px-2 py-1.5 tabular-nums">
                   {g.goalsAgainst ?? "-"}
                 </td>
                 <td
-                  className={`text-right px-2 py-1.5 font-mono font-semibold ${svPctColor(g.savePercentage)}`}
+                  className={`text-right px-2 py-1.5 tabular-nums font-semibold ${svPctColor(g.savePercentage)}`}
                 >
                   {formatSvPct(g.savePercentage)}
                 </td>

@@ -4,8 +4,8 @@
    Tailwind @theme — design token integration
    Maps to iOS DesignSystem / GameTheme / FairBetTheme exactly.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-@theme inline {
-  /* ── Neutral palette ─────────────────────────────────── */
+@theme {
+  /* ── Neutral palette (defaults — overridden per-mode below) ── */
   --color-neutral-950: #0a0a0a;
   --color-neutral-900: #171717;
   --color-neutral-800: #262626;
@@ -41,7 +41,7 @@
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   CSS Custom Properties (design tokens)
+   Design tokens — shared (light/dark agnostic) + light mode defaults
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
   /* ── Radii ─────────────────────────────────────────── */
@@ -58,28 +58,107 @@
   --ds-spacing-text: 3px;
   --ds-spacing-tight: 2px;
 
-  /* ── Shadow ────────────────────────────────────────── */
-  --ds-shadow-color: rgba(0, 0, 0, 0.06);
-  --ds-shadow-radius: 4px;
-  --ds-shadow-y: 1px;
+  /* ── Border (shared) ─────────────────────────────── */
+  --ds-border-width: 0.5px;
+
+  /* ── Neutral palette (light mode) ────────────────── */
+  --color-neutral-950: #ffffff;
+  --color-neutral-900: #fafafa;
+  --color-neutral-800: #f0f0f0;
+  --color-neutral-700: #e0e0e0;
+  --color-neutral-600: #888888;
+  --color-neutral-500: #5c5c5c;
+  --color-neutral-400: #454545;
+  --color-neutral-300: #3a3a3a;
+  --color-neutral-200: #262626;
+  --color-neutral-100: #171717;
+  --color-neutral-50: #0a0a0a;
+
+  /* ── Shadow (light mode) ─────────────────────────── */
+  --ds-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ds-shadow-elevated: 0 4px 6px rgba(0, 0, 0, 0.07), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --ds-shadow-subtle: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  /* ── Text colours (light mode) ──────────────────── */
+  --ds-text-primary: rgba(0, 0, 0, 0.9);
+  --ds-text-secondary: rgba(0, 0, 0, 0.72);
+  --ds-text-tertiary: rgba(0, 0, 0, 0.5);
+  --ds-text-score-highlight: rgb(220, 38, 38);
+
+  /* ── GameTheme (light mode) ──────────────────────── */
+  --ds-accent: rgb(37, 99, 235);
+  --ds-accent-bg: rgba(37, 99, 235, 0.08);
+  --ds-card-bg: #ffffff;
+  --ds-card-border: rgba(0, 0, 0, 0.08);
+  --ds-background: #ffffff;
+
+  /* ── FairBetTheme (light mode) ───────────────────── */
+  --fb-positive: rgb(22, 163, 74);
+  --fb-positive-muted: rgb(34, 120, 77);
+  --fb-success-soft: rgba(22, 163, 74, 0.08);
+  --fb-success-soft-muted: rgba(34, 120, 77, 0.06);
+  --fb-negative: rgb(185, 28, 28);
+  --fb-neutral: rgb(107, 114, 128);
+  --fb-info: rgb(37, 99, 235);
+  --fb-info-soft: rgba(37, 99, 235, 0.06);
+  --fb-card-bg: #ffffff;
+  --fb-surface-tint: #fafafa;
+  --fb-surface-secondary: #f5f5f5;
+  --fb-card-border: rgba(0, 0, 0, 0.08);
+  --fb-border-subtle: rgba(0, 0, 0, 0.06);
+
+  /* ── Default team colours (light mode) ───────────── */
+  --ds-team-a: rgb(124, 58, 237);
+  --ds-team-a-bg: rgba(124, 58, 237, 0.08);
+  --ds-team-a-bar: rgba(124, 58, 237, 0.7);
+  --ds-team-b: rgb(20, 184, 166);
+  --ds-team-b-bg: rgba(20, 184, 166, 0.08);
+  --ds-team-b-bar: rgba(20, 184, 166, 0.7);
+
+  /* ── Border defaults (light mode) ────────────────── */
+  --ds-border-color: rgba(0, 0, 0, 0.08);
+
+  /* ── Skeleton shimmer (light mode) ───────────────── */
+  --ds-skeleton-base: rgba(0, 0, 0, 0.04);
+  --ds-skeleton-shine: rgba(0, 0, 0, 0.08);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Dark mode overrides
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.dark {
+  /* ── Neutral palette (dark mode) ─────────────────── */
+  --color-neutral-950: #0a0a0a;
+  --color-neutral-900: #171717;
+  --color-neutral-800: #262626;
+  --color-neutral-700: #404040;
+  --color-neutral-600: #525252;
+  --color-neutral-500: #737373;
+  --color-neutral-400: #a3a3a3;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-200: #e5e5e5;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-50: #fafafa;
+
+  /* ── Shadow (dark mode) ──────────────────────────── */
   --ds-shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25);
   --ds-shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.35);
   --ds-shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.06);
 
-  /* ── Text colours ──────────────────────────────────── */
+  /* ── Text colours (dark mode) ────────────────────── */
   --ds-text-primary: rgba(255, 255, 255, 1);
   --ds-text-secondary: rgba(255, 255, 255, 0.7);
   --ds-text-tertiary: rgba(255, 255, 255, 0.5);
   --ds-text-score-highlight: rgb(255, 85, 85);
 
-  /* ── GameTheme ─────────────────────────────────────── */
+  /* ── GameTheme (dark mode) ───────────────────────── */
   --ds-accent: rgb(80, 140, 220);
   --ds-accent-bg: rgba(0, 122, 255, 0.12);
   --ds-card-bg: rgb(28, 28, 30);
   --ds-card-border: rgba(255, 255, 255, 0.08);
   --ds-background: rgb(0, 0, 0);
 
-  /* ── FairBetTheme ──────────────────────────────────── */
+  /* ── FairBetTheme (dark mode) ────────────────────── */
   --fb-positive: rgb(46, 184, 115);
   --fb-positive-muted: rgb(89, 166, 128);
   --fb-success-soft: rgba(46, 184, 115, 0.12);
@@ -94,7 +173,7 @@
   --fb-card-border: rgba(255, 255, 255, 0.08);
   --fb-border-subtle: rgba(255, 255, 255, 0.12);
 
-  /* ── Default team colours ──────────────────────────── */
+  /* ── Default team colours (dark mode) ────────────── */
   --ds-team-a: rgb(160, 130, 255);
   --ds-team-a-bg: rgba(160, 130, 255, 0.15);
   --ds-team-a-bar: rgba(160, 130, 255, 0.8);
@@ -102,9 +181,12 @@
   --ds-team-b-bg: rgba(100, 200, 180, 0.15);
   --ds-team-b-bar: rgba(100, 200, 180, 0.8);
 
-  /* ── Border defaults ───────────────────────────────── */
+  /* ── Border defaults (dark mode) ─────────────────── */
   --ds-border-color: rgba(255, 255, 255, 0.08);
-  --ds-border-width: 0.5px;
+
+  /* ── Skeleton shimmer (dark mode) ────────────────── */
+  --ds-skeleton-base: rgba(255, 255, 255, 0.04);
+  --ds-skeleton-shine: rgba(255, 255, 255, 0.08);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -187,9 +269,9 @@ body {
 .skeleton-shimmer {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.08) 50%,
-    rgba(255, 255, 255, 0.04) 100%
+    var(--ds-skeleton-base) 0%,
+    var(--ds-skeleton-shine) 50%,
+    var(--ds-skeleton-base) 100%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;

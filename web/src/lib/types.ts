@@ -11,8 +11,6 @@ export type GameStatus =
   | "postponed"
   | "canceled";
 
-export type LeagueCode = "nba" | "ncaab" | "nfl" | "ncaaf" | "mlb" | "nhl";
-
 export type MarketType =
   | "spread"
   | "moneyline"
@@ -31,19 +29,7 @@ export type MarketType =
   | "player_pra"
   | "team_total";
 
-export type MarketCategory =
-  | "mainline"
-  | "player_prop"
-  | "team_prop"
-  | "alternate"
-  | "period"
-  | "game_prop";
-
 export type MediaType = "video" | "image" | "none";
-
-export type EventType = "pbp" | "tweet" | "odds" | "unknown";
-
-export type ScoreRevealMode = "always" | "onMarkRead";
 
 export type OddsFormat = "american" | "decimal" | "fractional";
 
@@ -174,10 +160,19 @@ export interface Game {
 
 // ─── Stats ──────────────────────────────────────────────
 
+export interface NormalizedStat {
+  key: string;
+  displayLabel: string;
+  group: string;
+  value: number | string | null;
+  formatType: string;
+}
+
 export interface TeamStat {
   team: string;
   isHome: boolean;
   stats: Record<string, unknown>;
+  normalizedStats?: NormalizedStat[] | null;
   source?: string;
   updatedAt?: string;
 }
@@ -300,66 +295,70 @@ export interface SocialPostEntry {
 // ─── Flow ───────────────────────────────────────────────
 
 export interface GameFlowResponse {
-  game_id: number;
+  gameId: number;
   sport?: string;
+  flow?: {
+    blocks: FlowBlock[];
+    moments: FlowMoment[];
+  };
+  blocks?: FlowBlock[];
+  moments?: FlowMoment[];
   plays: FlowPlay[];
-  blocks: FlowBlock[];
-  validation_passed: boolean;
-  validation_errors: string[];
-  home_team?: string;
-  away_team?: string;
-  home_team_abbr?: string;
-  away_team_abbr?: string;
-  league_code?: string;
-  home_team_color_light?: string;
-  home_team_color_dark?: string;
-  away_team_color_light?: string;
-  away_team_color_dark?: string;
-  moments: FlowMoment[];
+  validationPassed: boolean;
+  validationErrors: string[];
+  homeTeam?: string;
+  awayTeam?: string;
+  homeTeamAbbr?: string;
+  awayTeamAbbr?: string;
+  leagueCode?: string;
+  homeTeamColorLight?: string;
+  homeTeamColorDark?: string;
+  awayTeamColorLight?: string;
+  awayTeamColorDark?: string;
 }
 
 export interface FlowBlock {
-  block_index: number;
+  blockIndex: number;
   role: BlockRole;
-  moment_indices: number[];
-  period_start: number;
-  period_end: number;
-  score_before: number[];
-  score_after: number[];
-  play_ids: number[];
-  key_play_ids: number[];
+  momentIndices: number[];
+  periodStart: number;
+  periodEnd: number;
+  scoreBefore: number[];
+  scoreAfter: number[];
+  playIds: number[];
+  keyPlayIds: number[];
   narrative: string;
-  mini_box?: BlockMiniBox;
-  embedded_social_post_id?: number;
+  miniBox?: BlockMiniBox | null;
+  embeddedSocialPostId?: number | null;
 }
 
 export interface FlowPlay {
-  play_id: number;
-  play_index: number;
+  playId: number;
+  playIndex: number;
   period: number;
   clock?: string;
-  play_type?: string;
+  playType?: string;
   description?: string;
   team?: string;
-  player_name?: string;
-  home_score?: number;
-  away_score?: number;
+  playerName?: string;
+  homeScore?: number;
+  awayScore?: number;
 }
 
 export interface FlowMoment {
-  play_ids: number[];
-  explicitly_narrated_play_ids: number[];
+  playIds: number[];
+  explicitlyNarratedPlayIds: number[];
   period: number;
-  start_clock?: string;
-  end_clock?: string;
-  score_before: number[];
-  score_after: number[];
+  startClock?: string;
+  endClock?: string;
+  scoreBefore: number[];
+  scoreAfter: number[];
 }
 
 export interface BlockMiniBox {
   home: BlockTeamMiniBox;
   away: BlockTeamMiniBox;
-  block_stars: string[];
+  blockStars: string[];
 }
 
 export interface BlockTeamMiniBox {
@@ -372,62 +371,15 @@ export interface BlockPlayerStat {
   pts?: number;
   reb?: number;
   ast?: number;
-  three_pm?: number;
-  delta_pts?: number;
-  delta_reb?: number;
-  delta_ast?: number;
+  deltaPts?: number;
+  deltaReb?: number;
+  deltaAst?: number;
   goals?: number;
   assists?: number;
   sog?: number;
-  plus_minus?: number;
-  delta_goals?: number;
-  delta_assists?: number;
-}
-
-// ─── Timeline Artifact ──────────────────────────────────
-
-export interface TimelineArtifactResponse {
-  game_id?: number;
-  sport?: string;
-  timeline_version?: string;
-  generated_at?: string;
-  timeline_json?: unknown;
-  game_analysis_json?: unknown;
-  summary_json?: unknown;
-}
-
-// ─── PBP ────────────────────────────────────────────────
-
-export interface PbpEvent {
-  id: string | number;
-  gameId?: string | number;
-  period?: number;
-  gameClock?: string;
-  elapsedSeconds?: number;
-  eventType?: string;
-  description?: string;
-  team?: string;
-  teamId?: string;
-  playerName?: string;
-  playerId?: string | number;
-  homeScore?: number;
-  awayScore?: number;
-}
-
-export interface PbpResponse {
-  events: PbpEvent[];
-}
-
-// ─── Teams ──────────────────────────────────────────────
-
-export interface TeamListResponse {
-  teams: TeamSummary[];
-}
-
-export interface TeamSummary {
-  name: string;
-  colorLightHex?: string;
-  colorDarkHex?: string;
+  plusMinus?: number;
+  deltaGoals?: number;
+  deltaAssists?: number;
 }
 
 // ─── FairBet (snake_case from fairbet API) ──────────────
@@ -463,6 +415,23 @@ export interface APIBet {
   opposite_reference_price?: number;
   bet_description?: string;
   description?: string;
+  // API snake_case fields
+  fair_american_odds?: number;
+  selection_display?: string;
+  market_display_name?: string;
+  best_book?: string;
+  best_ev_percent?: number;
+  confidence_display_label?: string;
+  ev_method_display_name?: string;
+  ev_method_explanation?: string;
+  is_reliably_positive?: boolean;
+  estimated_sharp_price?: number | null;
+  extrapolation_ref_line?: number | null;
+  extrapolation_distance?: number | null;
+  confidence?: number;
+  confidence_flags?: string[];
+  explanation_steps?: ExplanationStep[] | null;
+  // Client-enriched camelCase aliases
   fairAmericanOdds?: number;
   selectionDisplay?: string;
   marketDisplayName?: string;
@@ -471,7 +440,6 @@ export interface APIBet {
   confidenceDisplayLabel?: string;
   evMethodDisplayName?: string;
   evMethodExplanation?: string;
-  explanation_steps?: ExplanationStep[] | null;
 }
 
 export interface ExplanationStep {
@@ -492,6 +460,10 @@ export interface BookPrice {
   is_sharp?: boolean;
   ev_method?: string;
   ev_confidence_tier?: string;
+  book_abbr?: string;
+  price_decimal?: number;
+  ev_tier?: string;
+  // Client aliases
   bookAbbr?: string;
   priceDecimal?: number;
   evTier?: string;
@@ -510,32 +482,6 @@ export interface EVDiagnostics {
   no_pair?: number;
   reference_missing?: number;
   extrapolated?: number;
-}
-
-// ─── Social Post List ───────────────────────────────────
-
-export interface SocialPostListResponse {
-  posts: SocialPostResponse[];
-  total: number;
-}
-
-export interface SocialPostResponse {
-  id: number;
-  game_id: number;
-  team_id: string;
-  post_url: string;
-  posted_at: string;
-  has_video: boolean;
-  video_url?: string;
-  image_url?: string;
-  tweet_text?: string;
-  source_handle?: string;
-  media_type?: MediaType;
-  reveal_level?: string;
-  game_phase?: string;
-  likes_count?: number;
-  retweets_count?: number;
-  replies_count?: number;
 }
 
 // ─── Helpers ────────────────────────────────────────────

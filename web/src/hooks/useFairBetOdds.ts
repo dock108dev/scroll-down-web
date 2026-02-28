@@ -8,6 +8,12 @@ import {
   enrichBet,
   isReliablyPositive,
   marketKeyToCategory,
+  legFairProb,
+  parlayProbIndependent,
+  probToDecimal,
+  decimalToAmerican,
+  hasCorrelatedLegs,
+  parlayConfidenceTier,
 } from "@/lib/fairbet-utils";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -74,25 +80,54 @@ export interface UseFairBetOddsReturn {
   parlayFairProbability: number;
   parlayFairAmericanOdds: number;
   parlayConfidence: string;
+  parlayCorrelated: boolean;
   toggleParlay: (id: string) => void;
   clearParlay: () => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────
 
-const PAGE_SIZE = 500;
+const PAGE_SIZE = 100;
 const MAX_CONCURRENT = 3;
+
+// ── In-memory cache (3-min TTL) ────────────────────────────────────
+const FAIRBET_CACHE_TTL_MS = 3 * 60 * 1000;
+const FAIRBET_CACHE_FRESH_MS = 90 * 1000;
+
+interface FairBetCacheEntry {
+  allBets: APIBet[];
+  booksAvailable: string[];
+  totalFromServer: number;
+  fetchedAt: number;
+}
+
+let fairbetCache: FairBetCacheEntry | null = null;
+
+function getFairbetCached(): FairBetCacheEntry | null {
+  if (!fairbetCache) return null;
+  if (Date.now() - fairbetCache.fetchedAt > FAIRBET_CACHE_TTL_MS) {
+    fairbetCache = null;
+    return null;
+  }
+  return fairbetCache;
+}
+
+function setFairbetCache(allBets: APIBet[], booksAvailable: string[], totalFromServer: number) {
+  fairbetCache = { allBets, booksAvailable, totalFromServer, fetchedAt: Date.now() };
+}
 
 // ── Hook ───────────────────────────────────────────────────────────
 
 export function useFairBetOdds(): UseFairBetOddsReturn {
+  const cached = getFairbetCached();
+
   // Raw data
-  const [allBets, setAllBets] = useState<APIBet[]>([]);
-  const [booksAvailable, setBooksAvailable] = useState<string[]>([]);
-  const [totalFromServer, setTotalFromServer] = useState(0);
+  const [allBets, setAllBets] = useState<APIBet[]>(cached?.allBets ?? []);
+  const [booksAvailable, setBooksAvailable] = useState<string[]>(cached?.booksAvailable ?? []);
+  const [totalFromServer, setTotalFromServer] = useState(cached?.totalFromServer ?? 0);
 
   // Loading
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cached);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -115,7 +150,71 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   // Abort controller for cancellation
   const abortRef = useRef<AbortController | null>(null);
 
-  // ── Fetch logic ──────────────────────────────────────────────────
+  // ── Core fetch logic ─────────────────────────────────────────────
+
+  const doFullFetch = useCallback(async (controller: AbortController) => {
+    // First page
+    const params = new URLSearchParams();
+    params.set("has_fair", "true");
+    params.set("limit", String(PAGE_SIZE));
+    params.set("offset", "0");
+
+    const firstPage = await api.fairbetOdds(params);
+    if (controller.signal.aborted) return;
+
+    const total = firstPage.total ?? firstPage.bets.length;
+    setTotalFromServer(total);
+    setBooksAvailable(firstPage.books_available ?? []);
+    setAllBets(firstPage.bets.map(enrichBet));
+    setLoadedCount(firstPage.bets.length);
+
+    // Done with initial load
+    setLoading(false);
+
+    // Remaining pages
+    let finalBets = firstPage.bets.map(enrichBet);
+
+    if (firstPage.bets.length < total) {
+      setIsLoadingMore(true);
+      const remainingOffsets: number[] = [];
+      for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) {
+        remainingOffsets.push(offset);
+      }
+
+      // Fetch remaining pages with concurrency limit
+      let loaded = firstPage.bets.length;
+
+      for (let i = 0; i < remainingOffsets.length; i += MAX_CONCURRENT) {
+        if (controller.signal.aborted) return;
+        const batch = remainingOffsets.slice(i, i + MAX_CONCURRENT);
+        const results = await Promise.all(
+          batch.map((offset) => {
+            const p = new URLSearchParams();
+            p.set("has_fair", "true");
+            p.set("limit", String(PAGE_SIZE));
+            p.set("offset", String(offset));
+            return api.fairbetOdds(p);
+          }),
+        );
+        if (controller.signal.aborted) return;
+        const batchBets = results.flatMap((r) => r.bets).map(enrichBet);
+        finalBets = [...finalBets, ...batchBets];
+        for (const result of results) {
+          loaded += result.bets.length;
+        }
+        setLoadedCount(loaded);
+        // Append incrementally
+        setAllBets((prev) => [...prev, ...batchBets]);
+      }
+
+      setIsLoadingMore(false);
+    }
+
+    // Write completed data to cache
+    setFairbetCache(finalBets, firstPage.books_available ?? [], total);
+  }, []);
+
+  // ── Public fetch (with cache check) ─────────────────────────────
 
   const fetchOdds = useCallback(async () => {
     // Cancel any in-flight fetches
@@ -130,75 +229,41 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     setAllBets([]);
 
     try {
-      // First page
-      const params = new URLSearchParams();
-      params.set("has_fair", "true");
-      params.set("limit", String(PAGE_SIZE));
-      params.set("offset", "0");
-
-      const firstPage = await api.fairbetOdds(params);
-      if (controller.signal.aborted) return;
-
-      const total = firstPage.total ?? firstPage.bets.length;
-      setTotalFromServer(total);
-      setBooksAvailable(firstPage.books_available ?? []);
-      setAllBets(firstPage.bets.map(enrichBet));
-      setLoadedCount(firstPage.bets.length);
-
-      // Done with initial load
-      setLoading(false);
-
-      // Remaining pages
-      if (firstPage.bets.length < total) {
-        setIsLoadingMore(true);
-        const remainingOffsets: number[] = [];
-        for (let offset = PAGE_SIZE; offset < total; offset += PAGE_SIZE) {
-          remainingOffsets.push(offset);
-        }
-
-        // Fetch remaining pages with concurrency limit
-        const allRemaining: APIBet[] = [];
-        let loaded = firstPage.bets.length;
-
-        for (let i = 0; i < remainingOffsets.length; i += MAX_CONCURRENT) {
-          if (controller.signal.aborted) return;
-          const batch = remainingOffsets.slice(i, i + MAX_CONCURRENT);
-          const results = await Promise.all(
-            batch.map((offset) => {
-              const p = new URLSearchParams();
-              p.set("has_fair", "true");
-              p.set("limit", String(PAGE_SIZE));
-              p.set("offset", String(offset));
-              return api.fairbetOdds(p);
-            }),
-          );
-          if (controller.signal.aborted) return;
-          for (const result of results) {
-            allRemaining.push(...result.bets);
-            loaded += result.bets.length;
-          }
-          setLoadedCount(loaded);
-          // Append incrementally
-          setAllBets((prev) => [...prev, ...results.flatMap((r) => r.bets).map(enrichBet)]);
-        }
-
-        setIsLoadingMore(false);
-      }
+      await doFullFetch(controller);
     } catch (err) {
       if (controller.signal.aborted) return;
       setError(err instanceof Error ? err.message : "Failed to fetch odds");
       setLoading(false);
       setIsLoadingMore(false);
     }
-  }, []);
+  }, [doFullFetch]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data-fetching-on-mount pattern requires setState for loading/error/data
+    const entry = getFairbetCached();
+    if (entry) {
+      const age = Date.now() - entry.fetchedAt;
+      if (age < FAIRBET_CACHE_FRESH_MS) {
+        // Fresh cache — skip network entirely
+        return;
+      }
+      // Stale cache — show cached data, do silent background refresh
+      const controller = new AbortController();
+      abortRef.current = controller;
+      doFullFetch(controller).catch(() => {
+        // Silent refresh failed — cached data still shown
+      });
+      return () => {
+        controller.abort();
+      };
+    }
+
+    // No cache — normal full fetch
     fetchOdds();
     return () => {
       abortRef.current?.abort();
     };
-  }, [fetchOdds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Loading progress ─────────────────────────────────────────────
 
@@ -245,6 +310,15 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
     // Filter: only bets with 3+ books
     result = result.filter((b) => b.books.length >= 3);
+
+    // Deduplicate by betId (API can return same market from different methods)
+    const seen = new Set<string>();
+    result = result.filter((b) => {
+      const id = betId(b);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
 
     // Filter: league
     if (filters.league) {
@@ -380,40 +454,52 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   const parlayCount = parlayBetIds.size;
   const canShowParlay = parlayCount >= 2;
 
-  // ── Parlay evaluation (API with client-side fallback) ──────────
+  // ── Client-side parlay evaluation ──────────────────────────────
 
-  const [parlayApiResult, setParlayApiResult] = useState<{
-    fair_probability: number;
-    fair_american_odds: number;
-    confidence: string;
-  } | null>(null);
+  const parlayCorrelated = useMemo(
+    () => parlayBets.length >= 2 && hasCorrelatedLegs(parlayBets),
+    [parlayBets],
+  );
 
-  // Call API when parlay legs change
-  useEffect(() => {
-    if (parlayBets.length < 2) return;
+  const parlayResult = useMemo(() => {
+    if (parlayBets.length < 2) {
+      return { probability: 0, americanOdds: 0, confidence: "none" };
+    }
 
-    const legs = parlayBets.map((b) => ({
-      game_id: b.game_id,
-      market_key: b.market_key,
-      selection_key: b.selection_key,
-      line_value: b.line_value,
-    }));
+    const legProbs: number[] = [];
+    let allValid = true;
+    for (const bet of parlayBets) {
+      const p = legFairProb(bet);
+      if (p == null) {
+        allValid = false;
+        break;
+      }
+      legProbs.push(p);
+    }
 
-    let cancelled = false;
-    api.parlayEvaluate(legs)
-      .then((result) => {
-        if (!cancelled) setParlayApiResult(result);
-      })
-      .catch(() => {
-        if (!cancelled) setParlayApiResult(null);
-      });
+    if (!allValid) {
+      return { probability: 0, americanOdds: 0, confidence: "none" };
+    }
 
-    return () => { cancelled = true; };
-  }, [parlayBets]);
+    const pFair = parlayProbIndependent(legProbs);
+    if (!Number.isFinite(pFair) || pFair <= 0) {
+      return { probability: 0, americanOdds: 0, confidence: "none" };
+    }
 
-  const parlayFairProbability = parlayBets.length >= 2 ? (parlayApiResult?.fair_probability ?? 0) : 0;
-  const parlayFairAmericanOdds = parlayBets.length >= 2 ? (parlayApiResult?.fair_american_odds ?? 0) : 0;
-  const parlayConfidence = parlayBets.length >= 2 ? (parlayApiResult?.confidence ?? "none") : "none";
+    const fairDecimal = probToDecimal(pFair);
+    const fairAmerican = decimalToAmerican(fairDecimal);
+    const confidence = parlayConfidenceTier(parlayBets, true, parlayCorrelated);
+
+    return {
+      probability: pFair,
+      americanOdds: Number.isFinite(fairAmerican) ? fairAmerican : 0,
+      confidence,
+    };
+  }, [parlayBets, parlayCorrelated]);
+
+  const parlayFairProbability = parlayResult.probability;
+  const parlayFairAmericanOdds = parlayResult.americanOdds;
+  const parlayConfidence = parlayResult.confidence;
 
   const toggleParlay = useCallback((id: string) => {
     setParlayBetIds((prev) => {
@@ -479,6 +565,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     parlayFairProbability,
     parlayFairAmericanOdds,
     parlayConfidence,
+    parlayCorrelated,
     toggleParlay,
     clearParlay,
   };

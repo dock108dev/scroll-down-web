@@ -10,6 +10,7 @@ interface ReadingPosition {
   savedAt: string;
   homeScore?: number;
   awayScore?: number;
+  playCount?: number;
 }
 
 interface ReadingPositionState {

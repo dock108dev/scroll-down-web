@@ -78,7 +78,19 @@ const FTA_ALIASES = ["fta", "ft_att", "ftAtt", "ftAttempted", "freeThrowsAttempt
 
 function resolveAlias(raw: Record<string, unknown>, aliases: string[]): unknown {
   for (const key of aliases) {
-    if (raw[key] != null) return raw[key];
+    const val = raw[key];
+    if (val == null) continue;
+    // If the value is an object (e.g. {offensive: 1, defensive: 3}), extract numeric total
+    if (typeof val === "object" && !Array.isArray(val)) {
+      const obj = val as Record<string, unknown>;
+      if (typeof obj.total === "number") return obj.total;
+      if (typeof obj.value === "number") return obj.value;
+      // Sum numeric children (e.g. offensive + defensive)
+      const nums = Object.values(obj).filter((v): v is number => typeof v === "number");
+      if (nums.length > 0) return nums.reduce((a, b) => a + b, 0);
+      continue; // skip this object value, try next alias
+    }
+    return val;
   }
   return undefined;
 }
@@ -198,11 +210,42 @@ interface PlayerStatsTableProps {
   leagueCode?: string;
 }
 
+/** Deduplicate players by name — merge rawStats, preferring scalar values over objects */
+function deduplicatePlayers(players: PlayerStat[]): PlayerStat[] {
+  const byName = new Map<string, PlayerStat>();
+  for (const p of players) {
+    const existing = byName.get(p.playerName);
+    if (!existing) {
+      byName.set(p.playerName, { ...p, rawStats: { ...p.rawStats } });
+      continue;
+    }
+    // Merge rawStats: for each key, prefer scalar values over objects
+    const merged = existing.rawStats ?? {};
+    for (const [k, v] of Object.entries(p.rawStats ?? {})) {
+      const current = merged[k];
+      if (current == null) {
+        merged[k] = v;
+      } else if (typeof current === "object" && typeof v !== "object" && v != null) {
+        // Replace object with scalar
+        merged[k] = v;
+      }
+    }
+    existing.rawStats = merged;
+    // Also prefer non-null top-level fields
+    if (p.minutes != null && existing.minutes == null) existing.minutes = p.minutes;
+    if (p.points != null && existing.points == null) existing.points = p.points;
+    if (p.rebounds != null && existing.rebounds == null) existing.rebounds = p.rebounds;
+    if (p.assists != null && existing.assists == null) existing.assists = p.assists;
+  }
+  return Array.from(byName.values());
+}
+
 export function PlayerStatsTable({
   title,
-  players,
+  players: rawPlayers,
   leagueCode = "nba",
 }: PlayerStatsTableProps) {
+  const players = deduplicatePlayers(rawPlayers);
   if (players.length === 0) return null;
 
   const sportColumns = getColumnsForSport(leagueCode);
@@ -211,20 +254,20 @@ export function PlayerStatsTable({
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
       {/* Table header with team name */}
-      <div className="px-3 py-2 text-xs font-semibold text-neutral-300 bg-neutral-800/50">
+      <div className="px-3 py-2 text-sm font-semibold text-neutral-300 bg-neutral-800/50">
         {title}
       </div>
 
       {/* Scrollable table wrapper */}
       <div className="relative overflow-x-auto hide-scrollbar">
-        <table className="w-full text-xs border-collapse">
+        <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b border-neutral-800 text-neutral-500">
               {/* Frozen player name column */}
               <th
                 className="text-left px-3 py-2 font-medium bg-neutral-900 sticky left-0 z-10 min-w-[120px] max-w-[140px]"
                 style={{
-                  boxShadow: "2px 0 4px rgba(0,0,0,0.3)",
+                  boxShadow: "2px 0 4px rgba(0,0,0,0.1)",
                 }}
               >
                 Player
@@ -241,16 +284,16 @@ export function PlayerStatsTable({
             </tr>
           </thead>
           <tbody>
-            {players.map((p) => (
+            {players.map((p, idx) => (
               <tr
-                key={p.playerName}
+                key={`${p.playerName}-${idx}`}
                 className="border-b border-neutral-800/50 text-neutral-300"
               >
                 {/* Frozen player name cell */}
                 <td
                   className="px-3 py-1.5 bg-neutral-900 sticky left-0 z-10 truncate min-w-[120px] max-w-[140px]"
                   style={{
-                    boxShadow: "2px 0 4px rgba(0,0,0,0.3)",
+                    boxShadow: "2px 0 4px rgba(0,0,0,0.1)",
                   }}
                   title={p.playerName}
                 >
@@ -260,7 +303,7 @@ export function PlayerStatsTable({
                 {activeColumns.map((col) => (
                   <td
                     key={col.label}
-                    className="text-right px-2 py-1.5 font-mono whitespace-nowrap"
+                    className="text-right px-2 py-1.5 tabular-nums whitespace-nowrap"
                   >
                     {getDisplayValue(p, col)}
                   </td>

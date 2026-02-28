@@ -1,56 +1,30 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useGames, SECTION_ORDER } from "@/hooks/useGames";
-import type { SectionKey } from "@/hooks/useGames";
+
 import { SearchBar } from "@/components/home/SearchBar";
 import { GameSection } from "@/components/home/GameSection";
+import { PinnedBar } from "@/components/home/PinnedBar";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { isLive, isFinal, isPregame } from "@/lib/types";
+import { isLive, isFinal } from "@/lib/types";
 import type { GameSummary } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
+import { useReadingPosition } from "@/stores/reading-position";
+import { useSettings } from "@/stores/settings";
+import { usePinnedGames } from "@/stores/pinned-games";
 import { cn } from "@/lib/utils";
 
 // ── Sorting helpers ────────────────────────────────────────
 
 /**
- * Today section: live/in_progress first (sorted by gameClock),
- * then scheduled/pregame (by gameDate ASC),
- * then final/completed (by gameDate DESC).
+ * Sort all games by tip time (gameDate ASC).
+ * Earlier tip-off → closer to finishing → appears first.
  */
-function sortTodayGames(games: GameSummary[]): GameSummary[] {
-  const live: GameSummary[] = [];
-  const pregame: GameSummary[] = [];
-  const final: GameSummary[] = [];
-
-  for (const g of games) {
-    if (isLive(g.status)) live.push(g);
-    else if (isPregame(g.status)) pregame.push(g);
-    else if (isFinal(g.status)) final.push(g);
-    else pregame.push(g);
-  }
-
-  live.sort((a, b) => (a.gameClock ?? "").localeCompare(b.gameClock ?? ""));
-  pregame.sort(
+function sortByTipTime(games: GameSummary[]): GameSummary[] {
+  return [...games].sort(
     (a, b) => new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime(),
   );
-  final.sort(
-    (a, b) => new Date(b.gameDate).getTime() - new Date(a.gameDate).getTime(),
-  );
-
-  return [...live, ...pregame, ...final];
-}
-
-/** Other sections: sorted by gameDate DESC. */
-function sortOtherGames(games: GameSummary[]): GameSummary[] {
-  return [...games].sort(
-    (a, b) => new Date(b.gameDate).getTime() - new Date(a.gameDate).getTime(),
-  );
-}
-
-function sortSection(key: SectionKey, games: GameSummary[]): GameSummary[] {
-  if (key === "Today") return sortTodayGames(games);
-  return sortOtherGames(games);
 }
 
 // ── Derive available leagues from all games ────────────────
@@ -74,6 +48,33 @@ export default function HomePage() {
   );
 
   const readState = useReadState();
+  const getPosition = useReadingPosition((s) => s.getPosition);
+  const savePosition = useReadingPosition((s) => s.savePosition);
+  const clearPosition = useReadingPosition((s) => s.clearPosition);
+  const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
+  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
+
+  const pinnedIds = usePinnedGames((s) => s.pinnedIds);
+  const pruneStale = usePinnedGames((s) => s.pruneStale);
+
+  // Auto-prune pins for games no longer in the fetched range
+  useEffect(() => {
+    if (allGames.length > 0) {
+      pruneStale(allGames.map((g) => g.id));
+    }
+  }, [allGames, pruneStale]);
+
+  // Derive pinned games, preserving insertion order from the store Set
+  const pinnedGames = useMemo(() => {
+    const lookup = new Map<number, GameSummary>();
+    for (const g of allGames) lookup.set(g.id, g);
+    const result: GameSummary[] = [];
+    for (const id of pinnedIds) {
+      const g = lookup.get(id);
+      if (g) result.push(g);
+    }
+    return result;
+  }, [allGames, pinnedIds]);
 
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
@@ -85,42 +86,88 @@ export default function HomePage() {
         const sec = sections.find((s) => s.key === key);
         return {
           key,
-          games: sec ? sortSection(key, sec.games) : [],
+          games: sec ? sortByTipTime(sec.games) : [],
         };
       }),
     [sections],
   );
 
-  // Count unread final games (for Catch Up badge)
+  // Which sections are currently expanded (visible)?
+  const visibleGames = useMemo(() => {
+    return sortedSections.flatMap((s) =>
+      homeExpandedSections.includes(s.key) ? s.games : [],
+    );
+  }, [sortedSections, homeExpandedSections]);
+
+  // Count unread final games in visible sections only
   const unreadFinalCount = useMemo(
     () =>
-      allGames.filter(
+      visibleGames.filter(
         (g) => isFinal(g.status) && !readState.isRead(g.id),
       ).length,
-    [allGames, readState],
+    [visibleGames, readState],
   );
 
-  // Count read games (for Reset badge)
+  // Live games needing attention: unread live games + revealed live games with new data
+  const liveNeedsAttention = useMemo(() => {
+    if (scoreRevealMode === "always") return [];
+    return visibleGames.filter((g) => {
+      if (!isLive(g.status)) return false;
+      if (g.homeScore == null || g.awayScore == null) return false;
+      const read = readState.isRead(g.id);
+      if (!read) return true; // unread live game — needs reveal
+      // Already revealed: check if data changed since snapshot
+      const pos = getPosition(g.id);
+      if (!pos || pos.homeScore == null || pos.awayScore == null) return false;
+      return (
+        g.homeScore !== pos.homeScore ||
+        g.awayScore !== pos.awayScore
+      );
+    });
+  }, [visibleGames, readState, getPosition, scoreRevealMode]);
+
+  const catchUpCount = unreadFinalCount + liveNeedsAttention.length;
+
+  // Count read games in visible sections only
   const readCount = useMemo(
-    () => allGames.filter((g) => readState.isRead(g.id)).length,
-    [allGames, readState],
+    () => visibleGames.filter((g) => readState.isRead(g.id)).length,
+    [visibleGames, readState],
   );
 
-  // Gather all final game IDs across all sections (for Catch Up)
-  const allFinalGameIds = useMemo(
-    () => allGames.filter((g) => isFinal(g.status)).map((g) => g.id),
-    [allGames],
+  // Final game IDs in visible sections only
+  const visibleFinalGameIds = useMemo(
+    () => visibleGames.filter((g) => isFinal(g.status)).map((g) => g.id),
+    [visibleGames],
   );
 
-  const allGameIds = useMemo(() => allGames.map((g) => g.id), [allGames]);
+  const visibleGameIds = useMemo(() => visibleGames.map((g) => g.id), [visibleGames]);
 
   const handleCatchUp = useCallback(() => {
-    readState.markAllRead(allFinalGameIds);
-  }, [allFinalGameIds, readState]);
+    // Mark unread finals as read
+    readState.markAllRead(visibleFinalGameIds);
+    // Reveal / re-reveal live games with fresh snapshots
+    for (const g of liveNeedsAttention) {
+      readState.markRead(g.id, g.status);
+      savePosition(g.id, {
+        playIndex: -1,
+        homeScore: g.homeScore ?? undefined,
+        awayScore: g.awayScore ?? undefined,
+        period: g.currentPeriod,
+        gameClock: g.gameClock,
+        periodLabel: g.currentPeriodLabel ?? undefined,
+        timeLabel: g.currentPeriodLabel
+          ? `${g.currentPeriodLabel}${g.gameClock ? ` ${g.gameClock}` : ""}`
+          : undefined,
+        playCount: g.playCount,
+        savedAt: new Date().toISOString(),
+      });
+    }
+  }, [visibleFinalGameIds, liveNeedsAttention, readState, savePosition]);
 
   const handleReset = useCallback(() => {
-    readState.markAllUnread(allGameIds);
-  }, [allGameIds, readState]);
+    readState.markAllUnread(visibleGameIds);
+    visibleGameIds.forEach((id) => clearPosition(id));
+  }, [visibleGameIds, readState, clearPosition]);
 
   const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 
@@ -137,8 +184,8 @@ export default function HomePage() {
             className={cn(
               "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition",
               league === ""
-                ? "bg-white text-black"
-                : "bg-neutral-800 text-neutral-400 hover:text-white",
+                ? "bg-neutral-50 text-neutral-950"
+                : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
             )}
           >
             All
@@ -150,8 +197,8 @@ export default function HomePage() {
               className={cn(
                 "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition uppercase",
                 league === code
-                  ? "bg-white text-black"
-                  : "bg-neutral-800 text-neutral-400 hover:text-white",
+                  ? "bg-neutral-50 text-neutral-950"
+                  : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
               )}
             >
               {code}
@@ -159,10 +206,13 @@ export default function HomePage() {
           ))}
         </div>
 
+        {/* Pinned games bar */}
+        <PinnedBar games={pinnedGames} />
+
         {/* Batch actions + refresh */}
         {hasAnyGames && (
           <div className="flex items-center gap-3">
-            {unreadFinalCount > 0 && (
+            {catchUpCount > 0 && (
               <button
                 onClick={handleCatchUp}
                 className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 transition"
@@ -173,20 +223,20 @@ export default function HomePage() {
                 </svg>
                 Mark All Read
                 <span className="ml-0.5 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px]">
-                  {unreadFinalCount}
+                  {catchUpCount}
                 </span>
               </button>
             )}
             {readCount > 0 && (
               <button
                 onClick={handleReset}
-                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-white transition"
+                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-50 transition"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
                   <line x1="1" y1="1" x2="23" y2="23" />
                 </svg>
-                Reset
+                Mark as Unread
                 <span className="ml-0.5 bg-neutral-700 rounded-full px-1.5 py-0.5 text-[10px]">
                   {readCount}
                 </span>
@@ -195,7 +245,7 @@ export default function HomePage() {
             <div className="flex-1" />
             <button
               onClick={() => refetch()}
-              className="p-1.5 rounded-full text-neutral-500 hover:text-white hover:bg-neutral-800 transition"
+              className="p-1.5 rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
               title="Refresh"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -234,9 +284,6 @@ export default function HomePage() {
           key={section.key}
           title={section.key}
           games={section.games}
-          defaultExpanded={
-            section.key === "Today" || section.key === "Yesterday"
-          }
         />
       ))}
     </div>

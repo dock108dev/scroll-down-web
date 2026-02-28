@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomTabs } from "@/components/layout/BottomTabs";
+import { SettingsDrawer } from "@/components/layout/SettingsDrawer";
+import { ThemeProvider } from "@/components/layout/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Scroll Down Sports",
@@ -14,13 +16,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="bg-neutral-950 text-white antialiased">
-        <div className="min-h-screen flex flex-col">
-          <TopNav />
-          <main className="flex-1 pb-16 md:pb-0">{children}</main>
-          <BottomTabs />
-        </div>
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <body className="bg-neutral-950 text-neutral-50 antialiased">
+        <ThemeProvider>
+          <div className="min-h-screen flex flex-col">
+            <TopNav />
+            <main className="flex-1 pb-16 md:pb-0">{children}</main>
+            <BottomTabs />
+            <SettingsDrawer />
+          </div>
+        </ThemeProvider>
       </body>
     </html>
   );

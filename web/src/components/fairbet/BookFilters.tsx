@@ -91,7 +91,7 @@ export function BookFilters({
         {availableLeagues.length > 0 && availableMarkets.length > 0 && (
           <div
             className="self-stretch w-px shrink-0 mx-1"
-            style={{ backgroundColor: FairBetTheme.borderSubtle }}
+            style={{ backgroundColor: "var(--fb-border-subtle)" }}
           />
         )}
 
@@ -117,16 +117,16 @@ export function BookFilters({
             placeholder="Search teams, players..."
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-lg px-3 py-1.5 text-xs text-white placeholder-neutral-500 outline-none"
+            className="w-full rounded-lg px-3 py-1.5 text-xs text-neutral-200 placeholder-neutral-500 outline-none"
             style={{
-              backgroundColor: FairBetTheme.surfaceSecondary,
-              border: `1px solid ${FairBetTheme.borderSubtle}`,
+              backgroundColor: "var(--fb-surface-secondary)",
+              border: "1px solid var(--fb-border-subtle)",
             }}
           />
           {searchText && (
             <button
               onClick={() => onSearchChange("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-white text-xs"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-200 text-xs"
             >
               x
             </button>
@@ -137,10 +137,10 @@ export function BookFilters({
         <select
           value={sort}
           onChange={(e) => onSortChange(e.target.value as SortMode)}
-          className="rounded-lg px-2 py-1.5 text-xs text-white outline-none cursor-pointer appearance-none"
+          className="rounded-lg px-2 py-1.5 text-xs text-neutral-200 outline-none cursor-pointer appearance-none"
           style={{
-            backgroundColor: FairBetTheme.surfaceSecondary,
-            border: `1px solid ${FairBetTheme.borderSubtle}`,
+            backgroundColor: "var(--fb-surface-secondary)",
+            border: "1px solid var(--fb-border-subtle)",
           }}
         >
           {SORT_OPTIONS.map((o) => (
@@ -155,9 +155,9 @@ export function BookFilters({
           onClick={onParlayClick}
           className="relative shrink-0 p-1.5 rounded-lg text-xs"
           style={{
-            backgroundColor: parlayCount >= 2 ? `${FairBetTheme.info}20` : FairBetTheme.surfaceSecondary,
-            border: `1px solid ${parlayCount >= 2 ? FairBetTheme.info + "40" : FairBetTheme.borderSubtle}`,
-            color: parlayCount >= 2 ? FairBetTheme.info : "rgba(255,255,255,0.5)",
+            backgroundColor: parlayCount >= 2 ? `${FairBetTheme.info}20` : "var(--fb-surface-secondary)",
+            border: `1px solid ${parlayCount >= 2 ? FairBetTheme.info + "40" : "var(--fb-border-subtle)"}`,
+            color: parlayCount >= 2 ? FairBetTheme.info : "var(--ds-text-tertiary)",
           }}
           title="Parlay builder"
         >
@@ -177,11 +177,10 @@ export function BookFilters({
         {/* Refresh */}
         <button
           onClick={onRefresh}
-          className="shrink-0 p-1.5 rounded-lg text-xs"
+          className="shrink-0 p-1.5 rounded-lg text-xs text-neutral-500"
           style={{
-            backgroundColor: FairBetTheme.surfaceSecondary,
-            border: `1px solid ${FairBetTheme.borderSubtle}`,
-            color: "rgba(255,255,255,0.5)",
+            backgroundColor: "var(--fb-surface-secondary)",
+            border: "1px solid var(--fb-border-subtle)",
           }}
           title="Refresh"
         >
@@ -225,8 +224,9 @@ function FilterPill({
               color: "#fff",
             }
           : {
-              backgroundColor: "rgb(38, 38, 38)",
-              color: "rgba(255,255,255,0.5)",
+              backgroundColor: "var(--fb-surface-secondary)",
+              color: "var(--ds-text-secondary)",
+              border: "1px solid var(--fb-border-subtle)",
             }
       }
     >
@@ -256,9 +256,9 @@ function TogglePill({
               border: `1px solid ${FairBetTheme.positive}40`,
             }
           : {
-              backgroundColor: "rgb(38, 38, 38)",
-              color: "rgba(255,255,255,0.4)",
-              border: "1px solid transparent",
+              backgroundColor: "var(--fb-surface-secondary)",
+              color: "var(--ds-text-secondary)",
+              border: "1px solid var(--fb-border-subtle)",
             }
       }
     >

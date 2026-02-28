@@ -11,7 +11,6 @@ import {
   formatEV,
   formatProbability,
   getEVColor,
-  getConfidenceColor,
   isConfidenceReliable,
   betId,
 } from "@/lib/fairbet-utils";
@@ -52,14 +51,14 @@ export function BetCard({
   const otherBooks = bet.books.filter((b) => b !== primaryBook);
   const otherBooksCount = otherBooks.length;
 
-  const ev = bestBook?.ev_percent ?? 0;
+  const ev = bestBook?.display_ev ?? bestBook?.ev_percent ?? 0;
   const hasHighEV = ev >= 5 && isConfidenceReliable(bet.ev_confidence_tier);
   const id = betId(bet);
 
   // Card border
   let borderStyle: React.CSSProperties = {
     borderWidth: 1,
-    borderColor: FairBetTheme.cardBorder,
+    borderColor: "var(--fb-card-border)",
   };
   if (isInParlay) {
     borderStyle = {
@@ -89,7 +88,7 @@ export function BetCard({
     <div
       className="rounded-[14px] px-3.5 py-2.5 space-y-2"
       style={{
-        backgroundColor: FairBetTheme.cardBackground,
+        backgroundColor: "var(--fb-card-bg)",
         ...borderStyle,
         borderStyle: "solid",
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -99,12 +98,12 @@ export function BetCard({
       <div className="space-y-1">
         {/* Row 1: Selection + League badge + Market */}
         <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-semibold text-white truncate">
+          <span className="text-sm font-semibold text-neutral-50 truncate">
             {bet.selectionDisplay ?? bet.selection_key}
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
             <LeagueBadge league={bet.league_code} />
-            <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <span className="text-[10px] font-medium text-neutral-500">
               {bet.marketDisplayName ?? bet.market_key}
             </span>
           </div>
@@ -112,17 +111,17 @@ export function BetCard({
 
         {/* Row 2: Context + Time */}
         <div className="flex items-center justify-between">
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <span className="text-xs text-neutral-500">
             {bet.away_team} @ {bet.home_team}
           </span>
-          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <span className="text-[10px] text-neutral-500">
             {dateStr} {timeStr}
           </span>
         </div>
       </div>
 
       {/* Divider */}
-      <div className="h-px w-full" style={{ backgroundColor: FairBetTheme.borderSubtle }} />
+      <div className="h-px w-full" style={{ backgroundColor: "var(--fb-border-subtle)" }} />
 
       {/* ── Section 2: Action ── */}
       <div className="space-y-2">
@@ -131,12 +130,11 @@ export function BetCard({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowFullBookName((p) => !p)}
-              className="text-xs font-medium px-1.5 py-0.5 rounded"
-              style={{ color: "rgba(255,255,255,0.6)" }}
+              className="text-xs font-medium px-1.5 py-0.5 rounded text-neutral-400"
             >
               {showFullBookName ? primaryBook.book : bookAbbreviation(primaryBook.book)}
             </button>
-            <span className="text-sm font-bold text-white">
+            <span className="text-sm font-bold text-neutral-50">
               {formatOdds(primaryBook.price, oddsFormat)}
             </span>
             {isPrimaryBest && (
@@ -150,24 +148,12 @@ export function BetCard({
                 Best
               </span>
             )}
-            {primaryBook.ev_percent != null && (
+            {(primaryBook.display_ev ?? primaryBook.ev_percent) != null && (
               <span
                 className="text-xs font-bold"
-                style={{ color: getEVColor(primaryBook.ev_percent) }}
+                style={{ color: getEVColor(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0) }}
               >
-                {formatEV(primaryBook.ev_percent)}
-              </span>
-            )}
-            {/* Confidence badge */}
-            {bet.ev_confidence_tier && bet.ev_confidence_tier !== "none" && (
-              <span
-                className="text-[9px] font-medium px-1.5 py-0.5 rounded-full"
-                style={{
-                  color: getConfidenceColor(bet.ev_confidence_tier),
-                  backgroundColor: `${getConfidenceColor(bet.ev_confidence_tier)}1A`,
-                }}
-              >
-                {bet.confidenceDisplayLabel ?? "N/A"}
+                {formatEV(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0)}
               </span>
             )}
           </div>
@@ -177,18 +163,18 @@ export function BetCard({
         {preferredBookPrice && bestBook && preferredBookPrice !== bestBook && (
           <div
             className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg"
-            style={{ backgroundColor: FairBetTheme.surfaceTint }}
+            style={{ backgroundColor: "var(--fb-surface-tint)" }}
           >
-            <span style={{ color: "rgba(255,255,255,0.5)" }}>Best:</span>
-            <span className="font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <span className="text-neutral-500">Best:</span>
+            <span className="font-medium text-neutral-400">
               {bookAbbreviation(bestBook.book)}
             </span>
-            <span className="font-bold text-white">
+            <span className="font-bold text-neutral-50">
               {formatOdds(bestBook.price, oddsFormat)}
             </span>
-            {bestBook.ev_percent != null && (
-              <span className="font-bold" style={{ color: getEVColor(bestBook.ev_percent) }}>
-                {formatEV(bestBook.ev_percent)}
+            {(bestBook.display_ev ?? bestBook.ev_percent) != null && (
+              <span className="font-bold" style={{ color: getEVColor(bestBook.display_ev ?? bestBook.ev_percent ?? 0) }}>
+                {formatEV(bestBook.display_ev ?? bestBook.ev_percent ?? 0)}
               </span>
             )}
           </div>
@@ -200,30 +186,28 @@ export function BetCard({
             onClick={() => onShowExplainer?.(bet)}
             className="flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg w-full text-left"
             style={{
-              backgroundColor: FairBetTheme.surfaceTint,
-              border: `1px solid ${FairBetTheme.borderSubtle}`,
+              backgroundColor: "var(--fb-surface-tint)",
+              border: "1px solid var(--fb-border-subtle)",
             }}
           >
-            <span style={{ color: "rgba(255,255,255,0.5)" }}>Est. fair</span>
-            <span className="font-semibold text-white">
+            <span className="text-neutral-500">Est. fair</span>
+            <span className="font-semibold text-neutral-50">
               {formatOdds(bet.fairAmericanOdds, oddsFormat)}
             </span>
             {bet.true_prob != null && (
-              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <span className="text-[10px] text-neutral-500">
                 ({formatProbability(bet.true_prob)})
               </span>
             )}
-            <svg
-              className="ml-auto w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-              style={{ color: FairBetTheme.info }}
+            <span
+              className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+              style={{
+                backgroundColor: `${FairBetTheme.info}20`,
+                color: FairBetTheme.info,
+              }}
             >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
+              i
+            </span>
           </button>
         )}
 
@@ -232,8 +216,7 @@ export function BetCard({
           <div>
             <button
               onClick={() => setShowOtherBooks((p) => !p)}
-              className="flex items-center gap-1 text-xs py-1"
-              style={{ color: "rgba(255,255,255,0.5)" }}
+              className="flex items-center gap-1 text-xs py-1 text-neutral-500"
             >
               <svg
                 className={cn("w-3 h-3 transition-transform", showOtherBooks && "rotate-90")}
@@ -253,7 +236,7 @@ export function BetCard({
                     key={bp.book}
                     book={bp.book}
                     price={formatOdds(bp.price, oddsFormat)}
-                    ev={bp.ev_percent}
+                    ev={bp.display_ev ?? bp.ev_percent}
                     isSharp={bp.is_sharp}
                   />
                 ))}
@@ -277,8 +260,8 @@ export function BetCard({
                     border: `1px solid ${FairBetTheme.info}40`,
                   }
                 : {
-                    backgroundColor: FairBetTheme.surfaceSecondary,
-                    color: "rgba(255,255,255,0.5)",
+                    backgroundColor: "var(--fb-surface-secondary)",
+                    color: "var(--ds-text-tertiary)",
                     border: `1px solid transparent`,
                   }
             }
