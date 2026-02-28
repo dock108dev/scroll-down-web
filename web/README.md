@@ -47,6 +47,6 @@ src/
 
 The web app is a **thin display layer**. All game data, EV calculations, and derived metrics come from the backend API. The Next.js API routes (`/api/*`) proxy requests to the backend, keeping the API key server-side.
 
-For full documentation, see the [main README](../README.md), [Architecture](../docs/architecture.md), and [AGENTS.md](../AGENTS.md).
+For full documentation, see the [main README](../README.md) and [Architecture](../docs/architecture.md).
 
 Client-side logic catalog: [APP_LOGIC.md](APP_LOGIC.md)
