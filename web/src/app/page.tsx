@@ -2,11 +2,11 @@
 
 import { useMemo, useState, useCallback } from "react";
 import { useGames, SECTION_ORDER } from "@/hooks/useGames";
-import type { SectionKey } from "@/hooks/useGames";
+
 import { SearchBar } from "@/components/home/SearchBar";
 import { GameSection } from "@/components/home/GameSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { isLive, isFinal, isPregame } from "@/lib/types";
+import { isLive, isFinal } from "@/lib/types";
 import type { GameSummary } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
 import { useReadingPosition } from "@/stores/reading-position";
@@ -16,43 +16,13 @@ import { cn } from "@/lib/utils";
 // ── Sorting helpers ────────────────────────────────────────
 
 /**
- * Today section: live/in_progress first (sorted by gameClock),
- * then scheduled/pregame (by gameDate ASC),
- * then final/completed (by gameDate DESC).
+ * Sort all games by tip time (gameDate ASC).
+ * Earlier tip-off → closer to finishing → appears first.
  */
-function sortTodayGames(games: GameSummary[]): GameSummary[] {
-  const live: GameSummary[] = [];
-  const pregame: GameSummary[] = [];
-  const final: GameSummary[] = [];
-
-  for (const g of games) {
-    if (isLive(g.status)) live.push(g);
-    else if (isPregame(g.status)) pregame.push(g);
-    else if (isFinal(g.status)) final.push(g);
-    else pregame.push(g);
-  }
-
-  live.sort((a, b) => (a.gameClock ?? "").localeCompare(b.gameClock ?? ""));
-  pregame.sort(
+function sortByTipTime(games: GameSummary[]): GameSummary[] {
+  return [...games].sort(
     (a, b) => new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime(),
   );
-  final.sort(
-    (a, b) => new Date(b.gameDate).getTime() - new Date(a.gameDate).getTime(),
-  );
-
-  return [...live, ...pregame, ...final];
-}
-
-/** Other sections: sorted by gameDate DESC. */
-function sortOtherGames(games: GameSummary[]): GameSummary[] {
-  return [...games].sort(
-    (a, b) => new Date(b.gameDate).getTime() - new Date(a.gameDate).getTime(),
-  );
-}
-
-function sortSection(key: SectionKey, games: GameSummary[]): GameSummary[] {
-  if (key === "Today") return sortTodayGames(games);
-  return sortOtherGames(games);
 }
 
 // ── Derive available leagues from all games ────────────────
@@ -76,8 +46,11 @@ export default function HomePage() {
   );
 
   const readState = useReadState();
+  const getPosition = useReadingPosition((s) => s.getPosition);
+  const savePosition = useReadingPosition((s) => s.savePosition);
   const clearPosition = useReadingPosition((s) => s.clearPosition);
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
+  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
@@ -89,7 +62,7 @@ export default function HomePage() {
         const sec = sections.find((s) => s.key === key);
         return {
           key,
-          games: sec ? sortSection(key, sec.games) : [],
+          games: sec ? sortByTipTime(sec.games) : [],
         };
       }),
     [sections],
@@ -116,6 +89,27 @@ export default function HomePage() {
     [visibleGames, readState],
   );
 
+  // Live games needing attention: unread live games + revealed live games with new data
+  const liveNeedsAttention = useMemo(() => {
+    if (scoreRevealMode === "always") return [];
+    return visibleGames.filter((g) => {
+      if (!isLive(g.status)) return false;
+      if (g.homeScore == null || g.awayScore == null) return false;
+      const read = readState.isRead(g.id);
+      if (!read) return true; // unread live game — needs reveal
+      // Already revealed: check if data changed since snapshot
+      const pos = getPosition(g.id);
+      if (!pos || pos.homeScore == null || pos.awayScore == null) return false;
+      return (
+        g.homeScore !== pos.homeScore ||
+        g.awayScore !== pos.awayScore ||
+        (g.playCount != null && pos.playCount != null && g.playCount > pos.playCount)
+      );
+    });
+  }, [visibleGames, readState, getPosition, scoreRevealMode]);
+
+  const catchUpCount = unreadFinalCount + liveNeedsAttention.length;
+
   // Count read games in visible sections only
   const readCount = useMemo(
     () => visibleGames.filter((g) => readState.isRead(g.id)).length,
@@ -131,8 +125,26 @@ export default function HomePage() {
   const visibleGameIds = useMemo(() => visibleGames.map((g) => g.id), [visibleGames]);
 
   const handleCatchUp = useCallback(() => {
+    // Mark unread finals as read
     readState.markAllRead(visibleFinalGameIds);
-  }, [visibleFinalGameIds, readState]);
+    // Reveal / re-reveal live games with fresh snapshots
+    for (const g of liveNeedsAttention) {
+      readState.markRead(g.id, g.status);
+      savePosition(g.id, {
+        playIndex: -1,
+        homeScore: g.homeScore ?? undefined,
+        awayScore: g.awayScore ?? undefined,
+        period: g.currentPeriod,
+        gameClock: g.gameClock,
+        periodLabel: g.currentPeriodLabel ?? undefined,
+        timeLabel: g.currentPeriodLabel
+          ? `${g.currentPeriodLabel}${g.gameClock ? ` ${g.gameClock}` : ""}`
+          : undefined,
+        playCount: g.playCount,
+        savedAt: new Date().toISOString(),
+      });
+    }
+  }, [visibleFinalGameIds, liveNeedsAttention, readState, savePosition]);
 
   const handleReset = useCallback(() => {
     readState.markAllUnread(visibleGameIds);
@@ -179,7 +191,7 @@ export default function HomePage() {
         {/* Batch actions + refresh */}
         {hasAnyGames && (
           <div className="flex items-center gap-3">
-            {unreadFinalCount > 0 && (
+            {catchUpCount > 0 && (
               <button
                 onClick={handleCatchUp}
                 className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 transition"
@@ -190,7 +202,7 @@ export default function HomePage() {
                 </svg>
                 Mark All Read
                 <span className="ml-0.5 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px]">
-                  {unreadFinalCount}
+                  {catchUpCount}
                 </span>
               </button>
             )}
