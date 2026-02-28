@@ -58,7 +58,7 @@ export function BetCard({
   // Card border
   let borderStyle: React.CSSProperties = {
     borderWidth: 1,
-    borderColor: FairBetTheme.cardBorder,
+    borderColor: "var(--fb-card-border)",
   };
   if (isInParlay) {
     borderStyle = {
@@ -88,7 +88,7 @@ export function BetCard({
     <div
       className="rounded-[14px] px-3.5 py-2.5 space-y-2"
       style={{
-        backgroundColor: FairBetTheme.cardBackground,
+        backgroundColor: "var(--fb-card-bg)",
         ...borderStyle,
         borderStyle: "solid",
         boxShadow: "0 2px 8px rgba(0,0,0,0.25)",
@@ -103,7 +103,7 @@ export function BetCard({
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
             <LeagueBadge league={bet.league_code} />
-            <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <span className="text-[10px] font-medium text-neutral-500">
               {bet.marketDisplayName ?? bet.market_key}
             </span>
           </div>
@@ -111,17 +111,17 @@ export function BetCard({
 
         {/* Row 2: Context + Time */}
         <div className="flex items-center justify-between">
-          <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <span className="text-xs text-neutral-500">
             {bet.away_team} @ {bet.home_team}
           </span>
-          <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <span className="text-[10px] text-neutral-500">
             {dateStr} {timeStr}
           </span>
         </div>
       </div>
 
       {/* Divider */}
-      <div className="h-px w-full" style={{ backgroundColor: FairBetTheme.borderSubtle }} />
+      <div className="h-px w-full" style={{ backgroundColor: "var(--fb-border-subtle)" }} />
 
       {/* ── Section 2: Action ── */}
       <div className="space-y-2">
@@ -130,8 +130,7 @@ export function BetCard({
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowFullBookName((p) => !p)}
-              className="text-xs font-medium px-1.5 py-0.5 rounded"
-              style={{ color: "rgba(255,255,255,0.6)" }}
+              className="text-xs font-medium px-1.5 py-0.5 rounded text-neutral-400"
             >
               {showFullBookName ? primaryBook.book : bookAbbreviation(primaryBook.book)}
             </button>
@@ -164,10 +163,10 @@ export function BetCard({
         {preferredBookPrice && bestBook && preferredBookPrice !== bestBook && (
           <div
             className="flex items-center gap-2 text-xs px-2 py-1.5 rounded-lg"
-            style={{ backgroundColor: FairBetTheme.surfaceTint }}
+            style={{ backgroundColor: "var(--fb-surface-tint)" }}
           >
-            <span style={{ color: "rgba(255,255,255,0.5)" }}>Best:</span>
-            <span className="font-medium" style={{ color: "rgba(255,255,255,0.7)" }}>
+            <span className="text-neutral-500">Best:</span>
+            <span className="font-medium text-neutral-400">
               {bookAbbreviation(bestBook.book)}
             </span>
             <span className="font-bold text-neutral-50">
@@ -187,16 +186,16 @@ export function BetCard({
             onClick={() => onShowExplainer?.(bet)}
             className="flex items-center gap-2 text-xs px-2.5 py-1.5 rounded-lg w-full text-left"
             style={{
-              backgroundColor: FairBetTheme.surfaceTint,
-              border: `1px solid ${FairBetTheme.borderSubtle}`,
+              backgroundColor: "var(--fb-surface-tint)",
+              border: "1px solid var(--fb-border-subtle)",
             }}
           >
-            <span style={{ color: "rgba(255,255,255,0.5)" }}>Est. fair</span>
+            <span className="text-neutral-500">Est. fair</span>
             <span className="font-semibold text-neutral-50">
               {formatOdds(bet.fairAmericanOdds, oddsFormat)}
             </span>
             {bet.true_prob != null && (
-              <span className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+              <span className="text-[10px] text-neutral-500">
                 ({formatProbability(bet.true_prob)})
               </span>
             )}
@@ -219,8 +218,7 @@ export function BetCard({
           <div>
             <button
               onClick={() => setShowOtherBooks((p) => !p)}
-              className="flex items-center gap-1 text-xs py-1"
-              style={{ color: "rgba(255,255,255,0.5)" }}
+              className="flex items-center gap-1 text-xs py-1 text-neutral-500"
             >
               <svg
                 className={cn("w-3 h-3 transition-transform", showOtherBooks && "rotate-90")}
@@ -264,8 +262,8 @@ export function BetCard({
                     border: `1px solid ${FairBetTheme.info}40`,
                   }
                 : {
-                    backgroundColor: FairBetTheme.surfaceSecondary,
-                    color: "rgba(255,255,255,0.5)",
+                    backgroundColor: "var(--fb-surface-secondary)",
+                    color: "var(--ds-text-tertiary)",
                     border: `1px solid transparent`,
                   }
             }

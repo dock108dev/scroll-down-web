@@ -4,7 +4,7 @@
    Tailwind @theme — design token integration
    Maps to iOS DesignSystem / GameTheme / FairBetTheme exactly.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-@theme inline {
+@theme {
   /* ── Neutral palette (defaults — overridden per-mode below) ── */
   --color-neutral-950: #0a0a0a;
   --color-neutral-900: #171717;

@@ -31,7 +31,7 @@ export function MiniBookChip({ book, price, ev, isSharp }: MiniBookChipProps) {
     };
   } else {
     bgStyle = {
-      backgroundColor: `${FairBetTheme.surfaceSecondary}80`,
+      backgroundColor: "color-mix(in srgb, var(--fb-surface-secondary) 50%, transparent)",
     };
   }
 
@@ -46,10 +46,10 @@ export function MiniBookChip({ book, price, ev, isSharp }: MiniBookChipProps) {
         ...(isSharp ? { boxShadow: `0 0 0 1px ${FairBetTheme.info}50` } : {}),
       }}
     >
-      <span className="text-[10px] font-medium" style={{ color: "rgba(255,255,255,0.5)" }}>
+      <span className="text-[10px] font-medium text-neutral-500">
         {abbr}
       </span>
-      <span className="font-bold text-white">{price}</span>
+      <span className="font-bold text-neutral-50">{price}</span>
       {ev != null && (
         <span
           className="text-[10px] font-medium"

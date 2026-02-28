@@ -37,8 +37,8 @@ export function FairExplainerSheet({
       <div
         className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-t-2xl md:rounded-2xl p-5 space-y-5"
         style={{
-          backgroundColor: FairBetTheme.cardBackground,
-          border: `1px solid ${FairBetTheme.borderSubtle}`,
+          backgroundColor: "var(--fb-card-bg)",
+          border: "1px solid var(--fb-border-subtle)",
         }}
       >
         {/* Header */}
@@ -56,12 +56,12 @@ export function FairExplainerSheet({
         <div
           className="rounded-xl p-3.5 space-y-2"
           style={{
-            backgroundColor: FairBetTheme.surfaceTint,
-            border: `1px solid ${FairBetTheme.borderSubtle}`,
+            backgroundColor: "var(--fb-surface-tint)",
+            border: "1px solid var(--fb-border-subtle)",
           }}
         >
           <div className="text-sm font-semibold text-neutral-50">{bet.selectionDisplay ?? bet.selection_key}</div>
-          <div className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <div className="text-xs text-neutral-500">
             {bet.away_team} @ {bet.home_team}
           </div>
 
@@ -78,20 +78,20 @@ export function FairExplainerSheet({
               />
             )}
           </div>
-          <div className="text-center text-xs pt-1" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <div className="text-center text-xs pt-1 text-neutral-500">
             Implied probability: {fairProb > 0 ? formatProbability(fairProb) : "N/A"}
           </div>
         </div>
 
         {/* Method */}
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
             How it was calculated
           </h3>
           <div
             className="rounded-lg px-3 py-2 text-xs font-medium"
             style={{
-              backgroundColor: FairBetTheme.surfaceSecondary,
+              backgroundColor: "var(--fb-surface-secondary)",
               color: FairBetTheme.info,
             }}
           >
@@ -107,8 +107,8 @@ export function FairExplainerSheet({
                 key={step.step_number}
                 className="rounded-lg p-3 space-y-1.5"
                 style={{
-                  backgroundColor: FairBetTheme.surfaceTint,
-                  border: `1px solid ${FairBetTheme.cardBorder}`,
+                  backgroundColor: "var(--fb-surface-tint)",
+                  border: "1px solid var(--fb-card-border)",
                 }}
               >
                 <div className="flex items-center gap-2">
@@ -121,16 +121,16 @@ export function FairExplainerSheet({
                   <span className="text-xs font-semibold text-neutral-50">{step.title}</span>
                 </div>
                 {step.description && (
-                  <p className="text-xs pl-7" style={{ color: "rgba(255,255,255,0.5)" }}>
+                  <p className="text-xs pl-7 text-neutral-500">
                     {step.description}
                   </p>
                 )}
                 {step.detail_rows?.map((row, i) => (
                   <div key={i} className="flex justify-between pl-7 text-xs font-mono">
-                    <span style={{ color: "rgba(255,255,255,0.5)" }}>{row.label}</span>
+                    <span className="text-neutral-500">{row.label}</span>
                     <span
                       className={row.is_highlight ? "font-bold" : "font-semibold"}
-                      style={{ color: row.is_highlight ? FairBetTheme.positive : "white" }}
+                      style={{ color: row.is_highlight ? FairBetTheme.positive : "var(--ds-text-primary)" }}
                     >
                       {row.value}
                     </span>
@@ -145,8 +145,7 @@ export function FairExplainerSheet({
         <div className="space-y-2">
           <button
             onClick={() => setShowImpliedProbs((p) => !p)}
-            className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider"
-            style={{ color: "rgba(255,255,255,0.4)" }}
+            className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-neutral-500"
           >
             <svg
               className={cn("w-3 h-3 transition-transform", showImpliedProbs && "rotate-90")}
@@ -167,7 +166,7 @@ export function FairExplainerSheet({
                   <div
                     key={bp.book}
                     className="flex items-center justify-between rounded px-3 py-1.5 text-xs"
-                    style={{ backgroundColor: FairBetTheme.surfaceTint }}
+                    style={{ backgroundColor: "var(--fb-surface-tint)" }}
                   >
                     <span className="flex items-center gap-2">
                       <span className="font-medium text-neutral-50">
@@ -181,7 +180,7 @@ export function FairExplainerSheet({
                     </span>
                     <span className="flex items-center gap-3">
                       <span className="text-neutral-50 font-mono">{formatOdds(bp.price, oddsFormat)}</span>
-                      <span style={{ color: "rgba(255,255,255,0.5)" }}>
+                      <span className="text-neutral-500">
                         {ip > 0 ? formatProbability(ip) : "—"}
                       </span>
                     </span>
@@ -194,24 +193,24 @@ export function FairExplainerSheet({
 
         {/* What is this? */}
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
             What is this?
           </h3>
-          <p className="text-xs leading-relaxed" style={{ color: "rgba(255,255,255,0.6)" }}>
+          <p className="text-xs leading-relaxed text-neutral-400">
             {bet.evMethodExplanation ?? "The method used to estimate the fair probability for this market."}
           </p>
         </div>
 
         {/* Estimate quality */}
         <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
             Estimate Quality
           </h3>
           <div
             className="flex items-center gap-2 rounded-lg px-3 py-2"
             style={{
-              backgroundColor: FairBetTheme.surfaceTint,
-              border: `1px solid ${FairBetTheme.cardBorder}`,
+              backgroundColor: "var(--fb-surface-tint)",
+              border: "1px solid var(--fb-card-border)",
             }}
           >
             <span
@@ -221,7 +220,7 @@ export function FairExplainerSheet({
             <span className="text-xs font-semibold text-neutral-50">
               {bet.confidenceDisplayLabel ?? "N/A"}
             </span>
-            <span className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <span className="text-xs text-neutral-500">
               {bet.ev_confidence_tier === "full" || bet.ev_confidence_tier === "sharp" || bet.ev_confidence_tier === "high"
                 ? "Broad book coverage — high confidence"
                 : bet.ev_confidence_tier === "decent" || bet.ev_confidence_tier === "market" || bet.ev_confidence_tier === "medium"
@@ -233,10 +232,10 @@ export function FairExplainerSheet({
 
         {/* Data sources */}
         <div className="space-y-1">
-          <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
             Data Sources
           </h3>
-          <p className="text-xs" style={{ color: "rgba(255,255,255,0.5)" }}>
+          <p className="text-xs text-neutral-500">
             {bet.books.length} sportsbooks compared
             {bet.books.some((b) => b.is_sharp) && (
               <span>
@@ -250,8 +249,7 @@ export function FairExplainerSheet({
 
         {/* Disclaimer */}
         <p
-          className="text-[10px] leading-relaxed"
-          style={{ color: "rgba(255,255,255,0.3)" }}
+          className="text-[10px] leading-relaxed text-neutral-600"
         >
           This analysis is for informational purposes only and does not constitute
           financial or gambling advice. Past performance does not guarantee future
@@ -277,12 +275,12 @@ function StatBlock({
 }) {
   return (
     <div className="text-center space-y-0.5">
-      <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+      <div className="text-[10px] text-neutral-500">
         {label}
       </div>
       <div
         className={cn("font-bold", large ? "text-2xl" : "text-sm")}
-        style={{ color: color ?? "white" }}
+        style={{ color: color ?? "var(--ds-text-primary)" }}
       >
         {value}
       </div>

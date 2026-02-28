@@ -302,10 +302,12 @@ export interface SocialPostEntry {
 export interface GameFlowResponse {
   gameId: number;
   sport?: string;
-  flow: {
+  flow?: {
     blocks: FlowBlock[];
     moments: FlowMoment[];
   };
+  blocks?: FlowBlock[];
+  moments?: FlowMoment[];
   plays: FlowPlay[];
   validationPassed: boolean;
   validationErrors: string[];

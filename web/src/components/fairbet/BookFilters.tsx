@@ -91,7 +91,7 @@ export function BookFilters({
         {availableLeagues.length > 0 && availableMarkets.length > 0 && (
           <div
             className="self-stretch w-px shrink-0 mx-1"
-            style={{ backgroundColor: FairBetTheme.borderSubtle }}
+            style={{ backgroundColor: "var(--fb-border-subtle)" }}
           />
         )}
 
@@ -119,8 +119,8 @@ export function BookFilters({
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full rounded-lg px-3 py-1.5 text-xs text-neutral-50 placeholder-neutral-500 outline-none"
             style={{
-              backgroundColor: FairBetTheme.surfaceSecondary,
-              border: `1px solid ${FairBetTheme.borderSubtle}`,
+              backgroundColor: "var(--fb-surface-secondary)",
+              border: "1px solid var(--fb-border-subtle)",
             }}
           />
           {searchText && (
@@ -139,8 +139,8 @@ export function BookFilters({
           onChange={(e) => onSortChange(e.target.value as SortMode)}
           className="rounded-lg px-2 py-1.5 text-xs text-neutral-50 outline-none cursor-pointer appearance-none"
           style={{
-            backgroundColor: FairBetTheme.surfaceSecondary,
-            border: `1px solid ${FairBetTheme.borderSubtle}`,
+            backgroundColor: "var(--fb-surface-secondary)",
+            border: "1px solid var(--fb-border-subtle)",
           }}
         >
           {SORT_OPTIONS.map((o) => (
@@ -155,9 +155,9 @@ export function BookFilters({
           onClick={onParlayClick}
           className="relative shrink-0 p-1.5 rounded-lg text-xs"
           style={{
-            backgroundColor: parlayCount >= 2 ? `${FairBetTheme.info}20` : FairBetTheme.surfaceSecondary,
-            border: `1px solid ${parlayCount >= 2 ? FairBetTheme.info + "40" : FairBetTheme.borderSubtle}`,
-            color: parlayCount >= 2 ? FairBetTheme.info : "rgba(255,255,255,0.5)",
+            backgroundColor: parlayCount >= 2 ? `${FairBetTheme.info}20` : "var(--fb-surface-secondary)",
+            border: `1px solid ${parlayCount >= 2 ? FairBetTheme.info + "40" : "var(--fb-border-subtle)"}`,
+            color: parlayCount >= 2 ? FairBetTheme.info : "var(--ds-text-tertiary)",
           }}
           title="Parlay builder"
         >
@@ -177,11 +177,10 @@ export function BookFilters({
         {/* Refresh */}
         <button
           onClick={onRefresh}
-          className="shrink-0 p-1.5 rounded-lg text-xs"
+          className="shrink-0 p-1.5 rounded-lg text-xs text-neutral-500"
           style={{
-            backgroundColor: FairBetTheme.surfaceSecondary,
-            border: `1px solid ${FairBetTheme.borderSubtle}`,
-            color: "rgba(255,255,255,0.5)",
+            backgroundColor: "var(--fb-surface-secondary)",
+            border: "1px solid var(--fb-border-subtle)",
           }}
           title="Refresh"
         >
@@ -226,7 +225,7 @@ function FilterPill({
             }
           : {
               backgroundColor: "rgb(38, 38, 38)",
-              color: "rgba(255,255,255,0.5)",
+              color: "var(--ds-text-tertiary)",
             }
       }
     >
@@ -257,7 +256,7 @@ function TogglePill({
             }
           : {
               backgroundColor: "rgb(38, 38, 38)",
-              color: "rgba(255,255,255,0.4)",
+              color: "var(--ds-text-tertiary)",
               border: "1px solid transparent",
             }
       }

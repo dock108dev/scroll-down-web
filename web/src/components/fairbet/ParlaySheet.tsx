@@ -44,8 +44,8 @@ export function ParlaySheet({
       <div
         className="relative z-10 w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-t-2xl md:rounded-2xl p-5 space-y-5"
         style={{
-          backgroundColor: FairBetTheme.cardBackground,
-          border: `1px solid ${FairBetTheme.borderSubtle}`,
+          backgroundColor: "var(--fb-card-bg)",
+          border: "1px solid var(--fb-border-subtle)",
         }}
       >
         {/* Header */}
@@ -64,7 +64,7 @@ export function ParlaySheet({
           <div
             className="rounded-xl p-4 space-y-3 text-center"
             style={{
-              backgroundColor: FairBetTheme.surfaceTint,
+              backgroundColor: "var(--fb-surface-tint)",
               border: `1px solid ${FairBetTheme.info}30`,
             }}
           >
@@ -78,7 +78,7 @@ export function ParlaySheet({
             </div>
             <div className="flex items-center justify-center gap-4">
               <div className="text-center">
-                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                <div className="text-[10px] text-neutral-500">
                   Fair Probability
                 </div>
                 <div className="text-sm font-semibold text-neutral-50">
@@ -86,7 +86,7 @@ export function ParlaySheet({
                 </div>
               </div>
               <div className="text-center">
-                <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+                <div className="text-[10px] text-neutral-500">
                   Confidence
                 </div>
                 <div className="flex items-center gap-1 justify-center">
@@ -108,7 +108,7 @@ export function ParlaySheet({
 
         {/* Empty state */}
         {legCount < 2 && (
-          <div className="py-8 text-center text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <div className="py-8 text-center text-sm text-neutral-500">
             {legCount === 0
               ? "Add bets from the list to build a parlay."
               : "Add at least one more leg to see parlay odds."}
@@ -118,7 +118,7 @@ export function ParlaySheet({
         {/* Leg list */}
         {legCount > 0 && (
           <div className="space-y-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wider" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
               Legs
             </h3>
             {parlayBets.map((bet) => {
@@ -128,8 +128,8 @@ export function ParlaySheet({
                   key={id}
                   className="flex items-start gap-3 rounded-lg px-3 py-2.5"
                   style={{
-                    backgroundColor: FairBetTheme.surfaceTint,
-                    border: `1px solid ${FairBetTheme.cardBorder}`,
+                    backgroundColor: "var(--fb-surface-tint)",
+                    border: "1px solid var(--fb-card-border)",
                   }}
                 >
                   <div className="flex-1 min-w-0 space-y-1">
@@ -139,17 +139,17 @@ export function ParlaySheet({
                         {bet.selectionDisplay ?? bet.selection_key}
                       </span>
                     </div>
-                    <div className="text-[10px]" style={{ color: "rgba(255,255,255,0.5)" }}>
+                    <div className="text-[10px] text-neutral-500">
                       {bet.away_team} @ {bet.home_team}
                     </div>
                     <div className="flex items-center gap-3 text-xs">
                       {bet.reference_price != null && (
-                        <span style={{ color: "rgba(255,255,255,0.6)" }}>
+                        <span className="text-neutral-400">
                           Fair: {formatOdds(bet.reference_price, oddsFormat)}
                         </span>
                       )}
                       {bet.true_prob != null && (
-                        <span style={{ color: "rgba(255,255,255,0.5)" }}>
+                        <span className="text-neutral-500">
                           {formatProbability(bet.true_prob)}
                         </span>
                       )}
@@ -180,8 +180,7 @@ export function ParlaySheet({
         {/* Disclaimer */}
         {legCount >= 2 && (
           <p
-            className="text-[10px] leading-relaxed"
-            style={{ color: "rgba(255,255,255,0.3)" }}
+            className="text-[10px] leading-relaxed text-neutral-600"
           >
             Parlay fair odds assume independent legs. Correlated selections (e.g.
             same game) may not be accurately priced. This is for informational

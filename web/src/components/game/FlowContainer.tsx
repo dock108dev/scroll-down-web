@@ -107,7 +107,11 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
     );
   }
 
-  if (error || !data) {
+  // Resolve blocks/moments from either nested `flow` or top-level fields
+  const blocks = data?.flow?.blocks ?? data?.blocks;
+  const moments = data?.flow?.moments ?? data?.moments;
+
+  if (error || !data || !blocks || blocks.length === 0) {
     return (
       <div className="px-4 py-4 text-sm text-neutral-500">
         {error ?? "No flow data available"}
@@ -120,12 +124,12 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
       <div className="relative">
         <div className="absolute left-6 top-0 bottom-0 w-px bg-neutral-800" />
         <div className="space-y-4 relative">
-          {data.flow.blocks.map((block, i) => (
+          {blocks.map((block, i) => (
             <FlowBlockCard
               key={block.blockIndex ?? i}
               block={block}
-              periodLabel={periodDisplay(block, playsById, data.flow.moments)}
-              scoreAfter={resolveScoreAfter(block, data.flow.moments)}
+              periodLabel={periodDisplay(block, playsById, moments)}
+              scoreAfter={resolveScoreAfter(block, moments)}
               homeTeam={data.homeTeamAbbr ?? data.homeTeam}
               awayTeam={data.awayTeamAbbr ?? data.awayTeam}
               homeColor={data.homeTeamColorDark}

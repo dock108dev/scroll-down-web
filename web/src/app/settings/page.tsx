@@ -297,7 +297,7 @@ function SegmentedControl({
           className={cn(
             "px-3 py-1 text-xs font-medium rounded-md transition-all",
             value === opt.value
-              ? "bg-neutral-600 text-white shadow-sm"
+              ? "bg-neutral-600 text-neutral-50 shadow-sm"
               : "text-neutral-400 hover:text-neutral-200",
           )}
         >

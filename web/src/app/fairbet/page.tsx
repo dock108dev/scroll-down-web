@@ -50,10 +50,9 @@ export default function FairBetPage() {
           </div>
           <button
             onClick={() => setShowHowItWorks(true)}
-            className="text-xs border rounded-full px-3 py-1 transition"
+            className="text-xs border rounded-full px-3 py-1 transition text-neutral-500"
             style={{
-              color: "rgba(255,255,255,0.5)",
-              borderColor: FairBetTheme.borderSubtle,
+              borderColor: "var(--fb-border-subtle)",
             }}
           >
             How it works
@@ -83,7 +82,7 @@ export default function FairBetPage() {
 
         {/* ── Stats row ── */}
         {!hook.loading && !hook.error && (
-          <div className="flex items-center gap-3 text-[10px]" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <div className="flex items-center gap-3 text-[10px] text-neutral-500">
             <span>{hook.filteredTotalCount} bets</span>
             <span>&middot;</span>
             <span>{hook.filteredPositiveEVCount} +EV</span>
@@ -102,11 +101,11 @@ export default function FairBetPage() {
         {/* Loading state */}
         {hook.loading && (
           <div className="py-12 space-y-4">
-            <div className="text-center text-sm" style={{ color: "rgba(255,255,255,0.5)" }}>
+            <div className="text-center text-sm text-neutral-500">
               {hook.loadingProgress || "Loading bets..."}
             </div>
             {/* Animated progress bar */}
-            <div className="mx-auto w-48 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: FairBetTheme.surfaceSecondary }}>
+            <div className="mx-auto w-48 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
               <div
                 className="h-full rounded-full transition-all duration-300"
                 style={{
@@ -121,7 +120,7 @@ export default function FairBetPage() {
                 <div
                   key={i}
                   className="rounded-[14px] h-28 skeleton-shimmer"
-                  style={{ backgroundColor: FairBetTheme.surfaceSecondary }}
+                  style={{ backgroundColor: "var(--fb-surface-secondary)" }}
                 />
               ))}
             </div>
@@ -136,11 +135,10 @@ export default function FairBetPage() {
             </div>
             <button
               onClick={hook.refetch}
-              className="text-xs font-medium px-4 py-1.5 rounded-lg"
+              className="text-xs font-medium px-4 py-1.5 rounded-lg text-neutral-400"
               style={{
-                backgroundColor: FairBetTheme.surfaceSecondary,
-                color: "rgba(255,255,255,0.7)",
-                border: `1px solid ${FairBetTheme.borderSubtle}`,
+                backgroundColor: "var(--fb-surface-secondary)",
+                border: "1px solid var(--fb-border-subtle)",
               }}
             >
               Retry
@@ -150,7 +148,7 @@ export default function FairBetPage() {
 
         {/* Empty state */}
         {!hook.loading && !hook.error && hook.filteredBets.length === 0 && (
-          <div className="py-12 text-center text-sm" style={{ color: "rgba(255,255,255,0.4)" }}>
+          <div className="py-12 text-center text-sm text-neutral-500">
             {hook.filters.evOnly
               ? "No +EV bets found with current filters. Try disabling the +EV filter."
               : "No bets available right now. Try refreshing or changing filters."}
@@ -175,10 +173,10 @@ export default function FairBetPage() {
         {/* Loading more indicator */}
         {hook.isLoadingMore && (
           <div className="py-4 text-center space-y-2">
-            <div className="text-xs" style={{ color: "rgba(255,255,255,0.4)" }}>
+            <div className="text-xs text-neutral-500">
               {hook.loadingProgress}
             </div>
-            <div className="mx-auto w-32 h-1 rounded-full overflow-hidden" style={{ backgroundColor: FairBetTheme.surfaceSecondary }}>
+            <div className="mx-auto w-32 h-1 rounded-full overflow-hidden" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
               <div
                 className="h-full rounded-full transition-all duration-300"
                 style={{
@@ -216,8 +214,8 @@ export default function FairBetPage() {
           <div
             className="relative z-10 w-full max-w-lg rounded-t-2xl md:rounded-2xl p-6 space-y-4"
             style={{
-              backgroundColor: FairBetTheme.cardBackground,
-              border: `1px solid ${FairBetTheme.borderSubtle}`,
+              backgroundColor: "var(--fb-card-bg)",
+              border: "1px solid var(--fb-border-subtle)",
             }}
           >
             <div className="flex items-center justify-between">
