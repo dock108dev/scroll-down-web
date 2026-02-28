@@ -396,52 +396,6 @@ export interface BlockPlayerStat {
   deltaAssists?: number;
 }
 
-// ─── Timeline Artifact ──────────────────────────────────
-
-export interface TimelineArtifactResponse {
-  game_id?: number;
-  sport?: string;
-  timeline_version?: string;
-  generated_at?: string;
-  timeline_json?: unknown;
-  game_analysis_json?: unknown;
-  summary_json?: unknown;
-}
-
-// ─── PBP ────────────────────────────────────────────────
-
-export interface PbpEvent {
-  id: string | number;
-  gameId?: string | number;
-  period?: number;
-  gameClock?: string;
-  elapsedSeconds?: number;
-  eventType?: string;
-  description?: string;
-  team?: string;
-  teamId?: string;
-  playerName?: string;
-  playerId?: string | number;
-  homeScore?: number;
-  awayScore?: number;
-}
-
-export interface PbpResponse {
-  events: PbpEvent[];
-}
-
-// ─── Teams ──────────────────────────────────────────────
-
-export interface TeamListResponse {
-  teams: TeamSummary[];
-}
-
-export interface TeamSummary {
-  name: string;
-  colorLightHex?: string;
-  colorDarkHex?: string;
-}
-
 // ─── FairBet (snake_case from fairbet API) ──────────────
 
 export interface BetsResponse {
@@ -542,32 +496,6 @@ export interface EVDiagnostics {
   no_pair?: number;
   reference_missing?: number;
   extrapolated?: number;
-}
-
-// ─── Social Post List ───────────────────────────────────
-
-export interface SocialPostListResponse {
-  posts: SocialPostResponse[];
-  total: number;
-}
-
-export interface SocialPostResponse {
-  id: number;
-  game_id: number;
-  team_id: string;
-  post_url: string;
-  posted_at: string;
-  has_video: boolean;
-  video_url?: string;
-  image_url?: string;
-  tweet_text?: string;
-  source_handle?: string;
-  media_type?: MediaType;
-  reveal_level?: string;
-  game_phase?: string;
-  likes_count?: number;
-  retweets_count?: number;
-  replies_count?: number;
 }
 
 // ─── Helpers ────────────────────────────────────────────

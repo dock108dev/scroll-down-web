@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-export type FairbetSortOption = "bestEV" | "gameTime" | "league";
-
 interface SettingsState {
   theme: "system" | "light" | "dark";
   scoreRevealMode: "always" | "onMarkRead";
@@ -12,8 +10,6 @@ interface SettingsState {
   homeExpandedSections: string[];
   gameExpandedSections: string[];
   hideLimitedData: boolean;
-  showOnlyPositiveEV: boolean;
-  fairbetSortOption: FairbetSortOption;
   timelineDefaultTiers: number[];
 
   setTheme: (t: "system" | "light" | "dark") => void;
@@ -24,8 +20,6 @@ interface SettingsState {
   setHomeExpandedSections: (s: string[]) => void;
   setGameExpandedSections: (s: string[]) => void;
   setHideLimitedData: (v: boolean) => void;
-  setShowOnlyPositiveEV: (v: boolean) => void;
-  setFairbetSortOption: (o: FairbetSortOption) => void;
   setTimelineDefaultTiers: (tiers: number[]) => void;
   toggleTimelineTier: (tier: number) => void;
   toggleHomeSection: (section: string) => void;
@@ -43,8 +37,6 @@ export const useSettings = create<SettingsState>()(
       homeExpandedSections: ["Today", "Yesterday"],
       gameExpandedSections: [],
       hideLimitedData: true,
-      showOnlyPositiveEV: false,
-      fairbetSortOption: "bestEV",
       timelineDefaultTiers: [1, 2, 3],
 
       setTheme: (theme) => set({ theme }),
@@ -59,9 +51,6 @@ export const useSettings = create<SettingsState>()(
       setGameExpandedSections: (gameExpandedSections) =>
         set({ gameExpandedSections }),
       setHideLimitedData: (hideLimitedData) => set({ hideLimitedData }),
-      setShowOnlyPositiveEV: (showOnlyPositiveEV) =>
-        set({ showOnlyPositiveEV }),
-      setFairbetSortOption: (fairbetSortOption) => set({ fairbetSortOption }),
       setTimelineDefaultTiers: (timelineDefaultTiers) =>
         set({ timelineDefaultTiers }),
       toggleTimelineTier: (tier) => {
