@@ -22,20 +22,14 @@ export function GameSection({
     (s) => s.setHomeExpandedSections,
   );
 
-  const DEFAULT_EXPANDED = ["Today", "Yesterday"];
-
-  // If user hasn't toggled any sections yet (empty list), fall back to defaults.
-  const usingDefaults = homeExpandedSections.length === 0;
-  const effective = usingDefaults ? DEFAULT_EXPANDED : homeExpandedSections;
-  const expanded = effective.includes(title);
+  const expanded = homeExpandedSections.includes(title);
 
   const handleToggle = useCallback(() => {
-    const base = usingDefaults ? DEFAULT_EXPANDED : homeExpandedSections;
     const next = expanded
-      ? base.filter((s) => s !== title)
-      : [...base, title];
+      ? homeExpandedSections.filter((s) => s !== title)
+      : [...homeExpandedSections, title];
     setHomeExpandedSections(next);
-  }, [expanded, usingDefaults, homeExpandedSections, setHomeExpandedSections, title]);
+  }, [expanded, homeExpandedSections, setHomeExpandedSections, title]);
 
   if (games.length === 0) return null;
 

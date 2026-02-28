@@ -159,14 +159,17 @@ export function GameCard({ game }: GameCardProps) {
             : "";
       if (hasNewData) {
         return (
-          <span className="inline-flex items-center gap-1 text-amber-400 font-semibold">
+          <button
+            onClick={(e) => { e.stopPropagation(); freshSnapshot(); }}
+            className="inline-flex items-center gap-1 text-amber-400 font-semibold cursor-pointer hover:text-amber-300 transition"
+          >
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPDATED
             {timeStr && <span className="text-neutral-500 font-normal text-[10px]">{timeStr}</span>}
-          </span>
+          </button>
         );
       }
       return (

@@ -246,6 +246,15 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     // Filter: only bets with 3+ books
     result = result.filter((b) => b.books.length >= 3);
 
+    // Deduplicate by betId (API can return same market from different methods)
+    const seen = new Set<string>();
+    result = result.filter((b) => {
+      const id = betId(b);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+
     // Filter: league
     if (filters.league) {
       result = result.filter(

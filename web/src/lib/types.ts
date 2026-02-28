@@ -300,66 +300,68 @@ export interface SocialPostEntry {
 // ─── Flow ───────────────────────────────────────────────
 
 export interface GameFlowResponse {
-  game_id: number;
+  gameId: number;
   sport?: string;
+  flow: {
+    blocks: FlowBlock[];
+    moments: FlowMoment[];
+  };
   plays: FlowPlay[];
-  blocks: FlowBlock[];
-  validation_passed: boolean;
-  validation_errors: string[];
-  home_team?: string;
-  away_team?: string;
-  home_team_abbr?: string;
-  away_team_abbr?: string;
-  league_code?: string;
-  home_team_color_light?: string;
-  home_team_color_dark?: string;
-  away_team_color_light?: string;
-  away_team_color_dark?: string;
-  moments: FlowMoment[];
+  validationPassed: boolean;
+  validationErrors: string[];
+  homeTeam?: string;
+  awayTeam?: string;
+  homeTeamAbbr?: string;
+  awayTeamAbbr?: string;
+  leagueCode?: string;
+  homeTeamColorLight?: string;
+  homeTeamColorDark?: string;
+  awayTeamColorLight?: string;
+  awayTeamColorDark?: string;
 }
 
 export interface FlowBlock {
-  block_index: number;
+  blockIndex: number;
   role: BlockRole;
-  moment_indices: number[];
-  period_start: number;
-  period_end: number;
-  score_before: number[];
-  score_after: number[];
-  play_ids: number[];
-  key_play_ids: number[];
+  momentIndices: number[];
+  periodStart: number;
+  periodEnd: number;
+  scoreBefore: number[];
+  scoreAfter: number[];
+  playIds: number[];
+  keyPlayIds: number[];
   narrative: string;
-  mini_box?: BlockMiniBox;
-  embedded_social_post_id?: number;
+  miniBox?: BlockMiniBox | null;
+  embeddedSocialPostId?: number | null;
 }
 
 export interface FlowPlay {
-  play_id: number;
-  play_index: number;
+  playId: number;
+  playIndex: number;
   period: number;
   clock?: string;
-  play_type?: string;
+  playType?: string;
   description?: string;
   team?: string;
-  player_name?: string;
-  home_score?: number;
-  away_score?: number;
+  playerName?: string;
+  homeScore?: number;
+  awayScore?: number;
 }
 
 export interface FlowMoment {
-  play_ids: number[];
-  explicitly_narrated_play_ids: number[];
+  playIds: number[];
+  explicitlyNarratedPlayIds: number[];
   period: number;
-  start_clock?: string;
-  end_clock?: string;
-  score_before: number[];
-  score_after: number[];
+  startClock?: string;
+  endClock?: string;
+  scoreBefore: number[];
+  scoreAfter: number[];
 }
 
 export interface BlockMiniBox {
   home: BlockTeamMiniBox;
   away: BlockTeamMiniBox;
-  block_stars: string[];
+  blockStars: string[];
 }
 
 export interface BlockTeamMiniBox {
@@ -372,16 +374,15 @@ export interface BlockPlayerStat {
   pts?: number;
   reb?: number;
   ast?: number;
-  three_pm?: number;
-  delta_pts?: number;
-  delta_reb?: number;
-  delta_ast?: number;
+  deltaPts?: number;
+  deltaReb?: number;
+  deltaAst?: number;
   goals?: number;
   assists?: number;
   sog?: number;
-  plus_minus?: number;
-  delta_goals?: number;
-  delta_assists?: number;
+  plusMinus?: number;
+  deltaGoals?: number;
+  deltaAssists?: number;
 }
 
 // ─── Timeline Artifact ──────────────────────────────────

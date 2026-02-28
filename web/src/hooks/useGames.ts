@@ -74,7 +74,7 @@ async function fetchSection(
   const params = new URLSearchParams();
   params.set("startDate", range.startDate);
   params.set("endDate", range.endDate);
-  params.set("limit", "100");
+  params.set("limit", "200");
   if (league) params.set("league", league);
   const data = await api.games(params);
   return data.games;

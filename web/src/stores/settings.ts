@@ -73,6 +73,21 @@ export const useSettings = create<SettingsState>()(
         set({ gameExpandedSections: next });
       },
     }),
-    { name: "sd-settings" },
+    {
+      name: "sd-settings",
+      version: 1,
+      migrate: (persisted: unknown) => {
+        const state = persisted as Record<string, unknown>;
+        // v0 → v1: empty homeExpandedSections → defaults
+        if (
+          !state.homeExpandedSections ||
+          (Array.isArray(state.homeExpandedSections) &&
+            state.homeExpandedSections.length === 0)
+        ) {
+          state.homeExpandedSections = ["Today", "Yesterday"];
+        }
+        return state as never;
+      },
+    },
   ),
 );

@@ -76,6 +76,9 @@ export function GameHeader({ game }: GameHeaderProps) {
           >
             {game.awayTeamAbbr ?? game.awayTeam}
           </div>
+          <div className="text-[11px] text-neutral-500 mt-0.5 truncate px-1">
+            {game.awayTeam}
+          </div>
           {showScore ? (
             <div className="text-3xl font-bold font-mono tabular-nums mt-1">
               {displayAwayScore}
@@ -137,6 +140,9 @@ export function GameHeader({ game }: GameHeaderProps) {
             style={{ color: homeColor }}
           >
             {game.homeTeamAbbr ?? game.homeTeam}
+          </div>
+          <div className="text-[11px] text-neutral-500 mt-0.5 truncate px-1">
+            {game.homeTeam}
           </div>
           {showScore ? (
             <div className="text-3xl font-bold font-mono tabular-nums mt-1">
