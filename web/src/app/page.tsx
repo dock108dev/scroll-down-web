@@ -1,16 +1,18 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useGames, SECTION_ORDER } from "@/hooks/useGames";
 
 import { SearchBar } from "@/components/home/SearchBar";
 import { GameSection } from "@/components/home/GameSection";
+import { PinnedBar } from "@/components/home/PinnedBar";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal } from "@/lib/types";
 import type { GameSummary } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useSettings } from "@/stores/settings";
+import { usePinnedGames } from "@/stores/pinned-games";
 import { cn } from "@/lib/utils";
 
 // ── Sorting helpers ────────────────────────────────────────
@@ -51,6 +53,28 @@ export default function HomePage() {
   const clearPosition = useReadingPosition((s) => s.clearPosition);
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
+
+  const pinnedIds = usePinnedGames((s) => s.pinnedIds);
+  const pruneStale = usePinnedGames((s) => s.pruneStale);
+
+  // Auto-prune pins for games no longer in the fetched range
+  useEffect(() => {
+    if (allGames.length > 0) {
+      pruneStale(allGames.map((g) => g.id));
+    }
+  }, [allGames, pruneStale]);
+
+  // Derive pinned games, preserving insertion order from the store Set
+  const pinnedGames = useMemo(() => {
+    const lookup = new Map<number, GameSummary>();
+    for (const g of allGames) lookup.set(g.id, g);
+    const result: GameSummary[] = [];
+    for (const id of pinnedIds) {
+      const g = lookup.get(id);
+      if (g) result.push(g);
+    }
+    return result;
+  }, [allGames, pinnedIds]);
 
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
@@ -181,6 +205,9 @@ export default function HomePage() {
             </button>
           ))}
         </div>
+
+        {/* Pinned games bar */}
+        <PinnedBar games={pinnedGames} />
 
         {/* Batch actions + refresh */}
         {hasAnyGames && (

@@ -6,6 +6,7 @@ import type { GameSummary } from "@/lib/types";
 import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
+import { usePinnedGames } from "@/stores/pinned-games";
 import { TeamColorDot } from "@/components/shared/TeamColorDot";
 import { cn, cardDisplayName } from "@/lib/utils";
 import { useReadingPosition } from "@/stores/reading-position";
@@ -43,6 +44,10 @@ export function GameCard({ game }: GameCardProps) {
   const savedPosition = useReadingPosition((s) => s.getPosition)(game.id);
   const savePosition = useReadingPosition((s) => s.savePosition);
   const clearPosition = useReadingPosition((s) => s.clearPosition);
+
+  const pinned = usePinnedGames((s) => s.isPinned)(game.id);
+  const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
+  const togglePin = usePinnedGames((s) => s.togglePin);
 
   const read = isRead(game.id);
   const final = isFinal(game.status);
@@ -207,8 +212,26 @@ export function GameCard({ game }: GameCardProps) {
     >
       {/* Top bar: league left, status right — spans full card width */}
       <div className="flex items-center justify-between text-xs mb-2">
-        <span className="uppercase font-medium text-neutral-500">
-          {game.leagueCode}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="uppercase font-medium text-neutral-500">
+            {game.leagueCode}
+          </span>
+          {(pinned || pinnedCount < 10) && (
+            <button
+              onClick={(e) => { e.stopPropagation(); togglePin(game.id); }}
+              className={cn(
+                "p-0.5 rounded transition",
+                pinned
+                  ? "text-blue-400 hover:text-blue-300"
+                  : "text-neutral-600 hover:text-neutral-400",
+              )}
+              title={pinned ? "Unpin game" : "Pin game"}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2l2.09 6.26L21 9.27l-5 4.87L17.18 22 12 18.56 6.82 22 8 14.14l-5-4.87 6.91-1.01L12 2z" />
+              </svg>
+            </button>
+          )}
         </span>
         <div className="text-right truncate ml-2">{statusLabel}</div>
       </div>
