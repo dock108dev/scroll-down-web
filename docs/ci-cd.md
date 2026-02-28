@@ -52,7 +52,7 @@ Multi-stage Dockerfile (`web/Dockerfile`):
 
 1. **deps** — `node:22-alpine`, `npm ci`
 2. **builder** — Copy deps + source, `npm run build` (standalone output)
-3. **runner** — Copy standalone output, run as non-root `nextjs` user, expose port 3000
+3. **runner** — Copy standalone output, run as non-root `nextjs` user, expose port 3001
 
 Image pushed to `ghcr.io/{owner}/{repo}/web` with `latest` and commit SHA tags.
 
@@ -70,7 +70,7 @@ docker compose up -d --no-deps --wait scrolldown-web
 docker image prune -f
 ```
 
-The web container binds to `127.0.0.1:3000` and is reverse-proxied to `scrolldownsports.dock108.dev`.
+The web container binds to `127.0.0.1:3001` and is reverse-proxied to `scrolldownsports.dev`.
 
 ## Secrets
 

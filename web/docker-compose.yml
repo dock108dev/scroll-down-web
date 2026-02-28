@@ -1,16 +1,17 @@
 services:
   scrolldown-web:
+    image: ghcr.io/dock108dev/scroll-down-web/web:latest
     build:
       context: .
       dockerfile: Dockerfile
     container_name: scrolldown-web
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:3001:3001"
     env_file:
       - .env.production
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000"]
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3001"]
       interval: 30s
       timeout: 5s
       retries: 3
