@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import type { GameDetailResponse, OddsEntry } from "@/lib/types";
+import { isFinal } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
 import { useReadState } from "@/stores/read-state";
 import { formatOdds } from "@/lib/utils";
@@ -136,7 +138,16 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
   const oddsFormat = useSettings((s) => s.oddsFormat);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const isRead = useReadState((s) => s.isRead);
+  const markRead = useReadState((s) => s.markRead);
   const outcomeRevealed = scoreRevealMode === "always" || isRead(data.game.id);
+
+  // Mark game as read when Wrap-Up renders (it only mounts when expanded).
+  // This ensures outcomeRevealed flips to true so postgame posts are visible.
+  useEffect(() => {
+    if (isFinal(data.game.status)) {
+      markRead(data.game.id, data.game.status);
+    }
+  }, [data.game.id, data.game.status, markRead]);
 
   const game = data.game;
   const awayLabel = game.awayTeamAbbr ?? game.awayTeam;

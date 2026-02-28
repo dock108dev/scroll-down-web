@@ -137,12 +137,12 @@ export function SocialPostCard({ post, mode = "standard" }: SocialPostCardProps)
 
       {/* Image with optional video play badge */}
       {hasImage && (
-        <div className="relative rounded-md overflow-hidden mb-2">
+        <div className="relative rounded-md overflow-hidden mb-2 flex justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={post.imageUrl!}
             alt=""
-            className="w-full h-auto max-h-72 object-cover"
+            className="max-w-full max-h-80 sm:max-h-96 lg:max-h-[28rem] rounded-md"
             loading="lazy"
           />
           {post.hasVideo && (
@@ -163,12 +163,12 @@ export function SocialPostCard({ post, mode = "standard" }: SocialPostCardProps)
 
       {/* Inline video (web advantage: native playback) */}
       {showVideoInline && (
-        <div className="rounded-md overflow-hidden mb-2">
+        <div className="rounded-md overflow-hidden mb-2 flex justify-center">
           <video
             src={post.videoUrl!}
             controls
             preload="metadata"
-            className="w-full max-h-72"
+            className="max-w-full max-h-80 sm:max-h-96 lg:max-h-[28rem]"
             onClick={(e) => e.preventDefault()}
           />
         </div>

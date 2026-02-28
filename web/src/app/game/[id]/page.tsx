@@ -21,9 +21,19 @@ import { useSectionLayout } from "@/stores/section-layout";
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
   const status = data.game.status;
-  const hasBuzz =
-    data.socialPosts?.some((p) => p.gamePhase === "pregame") ||
-    data.odds?.length > 0;
+  const hasPregamePosts = data.socialPosts?.some(
+    (p) =>
+      p.gamePhase === "pregame" &&
+      (p.tweetText || p.imageUrl || p.videoUrl) &&
+      p.revealLevel !== "post",
+  );
+  const hasMainlineOdds = data.odds?.some(
+    (o) =>
+      ["spread", "moneyline", "total"].includes(o.marketType) &&
+      !o.isClosingLine &&
+      o.price != null,
+  );
+  const hasBuzz = hasPregamePosts || hasMainlineOdds;
 
   if (isPregame(status)) {
     const s: string[] = [];
@@ -368,11 +378,15 @@ export default function GameDetailPage({
           </CollapsibleSection>
         )}
 
-        {/* ─── Flow (Final only, always expanded) ───────── */}
+        {/* ─── Flow (Final only) ────────────────────────── */}
         {sections.includes("Flow") && (
-          <div id="section-Flow" className="scroll-mt-24" style={{ scrollMarginTop: "calc(var(--header-h) + 40px)" }}>
+          <CollapsibleSection
+            title="Flow"
+            open={isSectionOpen("Flow")}
+            onToggle={() => handleToggle("Flow")}
+          >
             <FlowContainer gameId={gameId} socialPosts={data.socialPosts} />
-          </div>
+          </CollapsibleSection>
         )}
 
         {/* ─── Timeline ─────────────────────────────────── */}

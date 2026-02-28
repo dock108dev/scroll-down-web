@@ -42,6 +42,15 @@ export function PregameBuzzSection({ data }: PregameBuzzSectionProps) {
   const hasOdds =
     homeSpread || awaySpread || homeML || awayML || over || under;
 
+  const hasPregamePosts = data.socialPosts?.some(
+    (p) =>
+      p.gamePhase === "pregame" &&
+      (p.tweetText || p.imageUrl || p.videoUrl) &&
+      p.revealLevel !== "post",
+  );
+
+  if (!hasOdds && !hasPregamePosts) return null;
+
   return (
     <div className="px-4 space-y-4">
       {/* Lines */}
