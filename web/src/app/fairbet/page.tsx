@@ -8,7 +8,7 @@ import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
-import { betId, formatEV } from "@/lib/fairbet-utils";
+import { betId } from "@/lib/fairbet-utils";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
@@ -82,20 +82,6 @@ export default function FairBetPage() {
           onRefresh={hook.refetch}
         />
 
-        {/* ── Stats row ── */}
-        {!hook.loading && !hook.error && (
-          <div className="flex items-center gap-3 text-[10px] text-neutral-500">
-            <span>{hook.filteredTotalCount} bets</span>
-            <span>&middot;</span>
-            <span>{hook.filteredPositiveEVCount} +EV</span>
-            {hook.bestEVAvailable > 0 && (
-              <>
-                <span>&middot;</span>
-                <span>Best: <span style={{ color: FairBetTheme.positive }}>{formatEV(hook.bestEVAvailable)}</span></span>
-              </>
-            )}
-          </div>
-        )}
       </div>
 
       {/* ── Content ── */}

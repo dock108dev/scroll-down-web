@@ -15,35 +15,34 @@ export function MiniBookChip({ book, price, ev, isSharp }: MiniBookChipProps) {
   const evVal = ev ?? 0;
   const abbr = bookAbbreviation(book);
 
-  // Background colours by EV tier
+  // Background colours by EV tier — use real borders instead of box-shadow
+  // so they don't get clipped near container edges
   let bgStyle: React.CSSProperties;
   if (evVal >= 5) {
     bgStyle = {
       backgroundColor: FairBetTheme.successSoft,
       borderColor: `${FairBetTheme.positive}33`,
-      borderWidth: 1,
-      borderStyle: "solid",
     };
   } else if (evVal > 0) {
     bgStyle = {
       backgroundColor: FairBetTheme.successSoftMuted,
+      borderColor: "transparent",
     };
   } else {
     bgStyle = {
       backgroundColor: "color-mix(in srgb, var(--fb-surface-secondary) 50%, transparent)",
+      borderColor: "transparent",
     };
+  }
+
+  if (isSharp) {
+    bgStyle.borderColor = `${FairBetTheme.info}50`;
   }
 
   return (
     <span
-      className={cn(
-        "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs",
-        isSharp && "ring-1",
-      )}
-      style={{
-        ...bgStyle,
-        ...(isSharp ? { boxShadow: `0 0 0 1px ${FairBetTheme.info}50` } : {}),
-      }}
+      className="inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs max-w-full border"
+      style={bgStyle}
     >
       <span className="text-[10px] font-medium text-neutral-500">
         {abbr}

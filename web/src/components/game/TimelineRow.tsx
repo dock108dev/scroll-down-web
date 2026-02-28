@@ -11,6 +11,15 @@ interface TimelineRowProps {
   previousPlay?: PlayEntry;
 }
 
+// ─── Clean up common API description quirks ────────────────
+function cleanDescription(text: string): string {
+  // "Bucknell 's Spadone" → "Bucknell's Spadone"
+  let cleaned = text.replace(/ 's\b/g, "'s");
+  // "Turnover by Team [shot clock violation]" → "Turnover by Team (shot clock violation)"
+  cleaned = cleaned.replace(/\[([^\]]*)\]/g, "($1)");
+  return cleaned;
+}
+
 // ─── Action keywords that get bold/semibold styling ────────
 const BOLD_KEYWORDS = [
   "MISS",
@@ -186,7 +195,7 @@ export function TimelineRow({
         {/* Description — two-line: action + stats */}
         <div className="flex-1 min-w-0">
           {(() => {
-            const { primary, stats } = splitDescription(play.description ?? "");
+            const { primary, stats } = splitDescription(cleanDescription(play.description ?? ""));
             return (
               <>
                 <p className="text-sm font-semibold text-neutral-100 leading-snug">{primary}</p>
@@ -230,7 +239,7 @@ export function TimelineRow({
 
         {/* Description */}
         <div className="flex-1 min-w-0">
-          <StyledDescription text={play.description ?? ""} tier={2} />
+          <StyledDescription text={cleanDescription(play.description ?? "")} tier={2} />
         </div>
 
         {/* Score (muted) */}
@@ -251,7 +260,7 @@ export function TimelineRow({
 
       {/* Description */}
       <div className="flex-1 min-w-0">
-        <StyledDescription text={play.description ?? ""} tier={3} />
+        <StyledDescription text={cleanDescription(play.description ?? "")} tier={3} />
       </div>
     </div>
   );

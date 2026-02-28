@@ -86,7 +86,7 @@ export function BetCard({
 
   return (
     <div
-      className="rounded-[14px] px-3.5 py-2.5 space-y-2"
+      className="rounded-[14px] px-3.5 py-2.5 space-y-2 min-w-0"
       style={{
         backgroundColor: "var(--fb-card-bg)",
         ...borderStyle,
