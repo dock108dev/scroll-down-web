@@ -51,7 +51,7 @@ src/
 │   ├── settings/page.tsx     # User preferences
 │   └── api/                  # Server-side API proxy routes (4 routes)
 ├── components/
-│   ├── home/                 # GameSection, GameCard, SearchBar, LeagueFilter, PinnedBar
+│   ├── home/                 # GameSection, GameCard, SearchBar, PinnedBar
 │   ├── game/                 # GameHeader, FlowContainer, TimelineSection, PlayerStatsSection,
 │   │                         # TeamStatsSection, OddsSection, WrapUpSection, etc.
 │   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet
@@ -76,8 +76,8 @@ src/
     ├── api-server.ts         # Server-side fetch with X-API-Key header
     ├── utils.ts              # Date formatting, odds conversion, team name display
     ├── fairbet-utils.ts      # EV colors, confidence labels, market labels, bet enrichment
-    ├── theme.ts              # Design tokens, FairBet theme, team color utilities
-    └── constants.ts          # League options, breakpoints
+    ├── theme.ts              # FairBet theme constants, book abbreviation utility
+    └── team-stats-config.ts  # Sport-specific stat groupings and comparison logic
 ```
 
 ## How Data Flows

@@ -5,8 +5,7 @@ import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
 import { useReadingPosition } from "@/stores/reading-position";
-import { formatDate } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 interface GameHeaderProps {
   game: Game;

@@ -1,8 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { FairBetTheme } from "@/lib/theme";
-import { bookAbbreviation } from "@/lib/theme";
+import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
 import { formatEV } from "@/lib/fairbet-utils";
 
 interface MiniBookChipProps {

@@ -50,7 +50,7 @@ Components are organized by feature:
 
 ```
 components/
-├── home/       # Home page: GameSection, GameCard, SearchBar, LeagueFilter, PinnedBar
+├── home/       # Home page: GameSection, GameCard, SearchBar, PinnedBar
 ├── game/       # Game detail: GameHeader, FlowContainer, TimelineSection,
 │               # PlayerStatsSection, TeamStatsSection, OddsSection, WrapUpSection, etc.
 ├── fairbet/    # FairBet: BetCard, BookFilters, FairExplainerSheet, ParlaySheet
@@ -167,7 +167,7 @@ Team colors come from two sources:
 1. **Bulk fetch** — `GET /api/teams` returns all teams with `colorLightHex` / `colorDarkHex`, cached via ISR (1 hour)
 2. **Per-game injection** — Game detail and flow responses include `homeTeamColorLight`, `homeTeamColorDark`, `awayTeamColorLight`, `awayTeamColorDark`
 
-Color clash detection (`matchupColor()` in `theme.ts`) prevents two similar team colors in matchup views by comparing Euclidean color distance. Falls back to neutral when distance < 0.12.
+Team colors are applied via CSS custom properties (`--ds-team-a`, `--ds-team-b`) set from the API-provided hex values.
 
 ## FairBet Architecture
 
