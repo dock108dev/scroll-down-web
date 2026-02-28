@@ -16,6 +16,7 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useReadState } from "@/stores/read-state";
 import { useSettings } from "@/stores/settings";
+import { useSectionLayout } from "@/stores/section-layout";
 
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
@@ -69,34 +70,24 @@ function getDefaultExpanded(
   }
 }
 
-// ─── Collapsible Section Wrapper ───────────────────────────────
+// ─── Collapsible Section Wrapper (controlled) ────────────────────
 function CollapsibleSection({
   title,
-  defaultOpen,
-  onExpand,
+  open,
+  onToggle,
   badge,
   children,
 }: {
   title: string;
-  defaultOpen: boolean;
-  onExpand?: () => void;
+  open: boolean;
+  onToggle: () => void;
   badge?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  const handleToggle = () => {
-    const next = !open;
-    setOpen(next);
-    if (next && onExpand) {
-      onExpand();
-    }
-  };
-
   return (
     <div id={`section-${title}`} className="scroll-mt-24">
       <button
-        onClick={handleToggle}
+        onClick={onToggle}
         className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-200 hover:bg-neutral-800/30 transition-colors"
       >
         <span className="flex items-center gap-2">
@@ -104,7 +95,7 @@ function CollapsibleSection({
           {!open && badge}
         </span>
         <span
-          className={`text-xs text-neutral-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`text-xs text-neutral-500 transition-transform duration-200 ${open ? "" : "-rotate-90"}`}
         >
           &#9660;
         </span>
@@ -137,6 +128,31 @@ export default function GameDetailPage({
 
   // Has flow data (for expansion defaults)
   const hasFlow = data?.game.hasFlow ?? false;
+
+  // ─── Per-game section layout persistence ───────────────────
+  const sectionLayout = useSectionLayout();
+  const savedLayout = sectionLayout.getLayout(gameId);
+
+  // Compute default expanded list (used on first visit only)
+  const defaultExpanded = useMemo(
+    () => sections.filter((s) => getDefaultExpanded(s, hasFlow)),
+    [sections, hasFlow],
+  );
+
+  // Persisted layout wins; otherwise use defaults
+  const expandedSections = savedLayout ?? defaultExpanded;
+
+  const isSectionOpen = (section: string) =>
+    expandedSections.includes(section);
+
+  const handleToggle = useCallback(
+    (section: string, onExpand?: () => void) => {
+      const wasOpen = expandedSections.includes(section);
+      sectionLayout.toggleSection(gameId, section, expandedSections);
+      if (!wasOpen && onExpand) onExpand();
+    },
+    [expandedSections, gameId, sectionLayout],
+  );
 
   // New play count for badge on collapsed Timeline
   const savedPos = data ? getPosition(gameId) : undefined;
@@ -330,7 +346,8 @@ export default function GameDetailPage({
         {sections.includes("Overview") && (
           <CollapsibleSection
             title="Overview"
-            defaultOpen={getDefaultExpanded("Overview", hasFlow)}
+            open={isSectionOpen("Overview")}
+            onToggle={() => handleToggle("Overview")}
           >
             <OverviewSection data={data} />
           </CollapsibleSection>
@@ -347,7 +364,8 @@ export default function GameDetailPage({
         {sections.includes("Timeline") && (
           <CollapsibleSection
             title="Timeline"
-            defaultOpen={getDefaultExpanded("Timeline", hasFlow)}
+            open={isSectionOpen("Timeline")}
+            onToggle={() => handleToggle("Timeline")}
             badge={
               newPlayCount > 0 ? (
                 <span className="text-[11px] font-medium text-amber-400/80">
@@ -357,6 +375,7 @@ export default function GameDetailPage({
             }
           >
             <TimelineSection
+              gameId={gameId}
               plays={data.plays}
               homeTeamAbbr={game.homeTeamAbbr}
               awayTeamAbbr={game.awayTeamAbbr}
@@ -370,7 +389,8 @@ export default function GameDetailPage({
         {sections.includes("Stats") && (
           <CollapsibleSection
             title="Stats"
-            defaultOpen={getDefaultExpanded("Stats", hasFlow)}
+            open={isSectionOpen("Stats")}
+            onToggle={() => handleToggle("Stats")}
           >
             <StatsSection
               playerStats={data.playerStats}
@@ -390,7 +410,8 @@ export default function GameDetailPage({
         {sections.includes("Odds") && (
           <CollapsibleSection
             title="Odds"
-            defaultOpen={getDefaultExpanded("Odds", hasFlow)}
+            open={isSectionOpen("Odds")}
+            onToggle={() => handleToggle("Odds")}
           >
             <OddsSection odds={data.odds} homeTeam={game.homeTeam} awayTeam={game.awayTeam} />
           </CollapsibleSection>
@@ -400,8 +421,8 @@ export default function GameDetailPage({
         {sections.includes("Wrap-Up") && (
           <CollapsibleSection
             title="Wrap-Up"
-            defaultOpen={getDefaultExpanded("Wrap-Up", hasFlow)}
-            onExpand={handleWrapUpExpand}
+            open={isSectionOpen("Wrap-Up")}
+            onToggle={() => handleToggle("Wrap-Up", handleWrapUpExpand)}
           >
             <WrapUpSection data={data} />
           </CollapsibleSection>

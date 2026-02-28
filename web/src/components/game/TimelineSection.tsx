@@ -5,6 +5,7 @@ import type { PlayEntry } from "@/lib/types";
 import { TimelineRow } from "./TimelineRow";
 import { CollapsedPlayGroup } from "./CollapsedPlayGroup";
 import { useSettings } from "@/stores/settings";
+import { useSectionLayout } from "@/stores/section-layout";
 import { cn } from "@/lib/utils";
 
 // ─── Tier filter config ─────────────────────────────────────
@@ -18,6 +19,7 @@ const TIER_FILTERS = [
 // ─── Types ──────────────────────────────────────────────────
 
 interface TimelineSectionProps {
+  gameId: number;
   plays: PlayEntry[];
   homeTeamAbbr?: string;
   awayTeamAbbr?: string;
@@ -107,7 +109,8 @@ interface PeriodCardProps {
   period: string;
   items: PeriodItem[];
   visibleTiers: number[];
-  defaultOpen: boolean;
+  open: boolean;
+  onToggle: () => void;
   homeTeamAbbr?: string;
   awayTeamAbbr?: string;
   homeColor?: string;
@@ -118,20 +121,20 @@ function PeriodCard({
   period,
   items,
   visibleTiers,
-  defaultOpen,
+  open,
+  onToggle,
   homeTeamAbbr,
   awayTeamAbbr,
   homeColor,
   awayColor,
 }: PeriodCardProps) {
-  const [open, setOpen] = useState(defaultOpen);
   const filtered = useMemo(() => filterItems(items, visibleTiers), [items, visibleTiers]);
 
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
       {/* Sticky period header */}
       <button
-        onClick={() => setOpen(!open)}
+        onClick={onToggle}
         className={cn(
           "flex w-full items-center justify-between px-4 py-3",
           "text-sm font-semibold text-neutral-200",
@@ -143,7 +146,7 @@ function PeriodCard({
         <span
           className={cn(
             "text-xs text-neutral-500 transition-transform duration-200",
-            open && "rotate-180",
+            !open && "-rotate-90",
           )}
         >
           {"\u25BC"}
@@ -195,6 +198,7 @@ function PeriodCard({
 // ─── Main Component ─────────────────────────────────────────
 
 export function TimelineSection({
+  gameId,
   plays,
   homeTeamAbbr,
   awayTeamAbbr,
@@ -203,6 +207,10 @@ export function TimelineSection({
 }: TimelineSectionProps) {
   const defaultTiers = useSettings((s) => s.timelineDefaultTiers);
   const [visibleTiers, setVisibleTiers] = useState<number[]>(defaultTiers);
+
+  // Per-game period expand/collapse persistence
+  const { getPeriods, togglePeriod } = useSectionLayout();
+  const expandedPeriods = getPeriods(gameId) ?? [];
 
   const toggleTier = (tier: number) => {
     setVisibleTiers((prev) =>
@@ -259,7 +267,8 @@ export function TimelineSection({
           period={period}
           items={items}
           visibleTiers={visibleTiers}
-          defaultOpen={false}
+          open={expandedPeriods.includes(period)}
+          onToggle={() => togglePeriod(gameId, period)}
           homeTeamAbbr={homeTeamAbbr}
           awayTeamAbbr={awayTeamAbbr}
           homeColor={homeColor}

@@ -97,6 +97,19 @@ function StyledDescription({
 }
 
 /**
+ * Returns black or white text depending on background luminance.
+ */
+function textColorForBg(hex: string): string {
+  const n = parseInt(hex.replace("#", "").slice(0, 6), 16);
+  const r = (n >> 16) & 255;
+  const g = (n >> 8) & 255;
+  const b = n & 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.55
+    ? "#171717"
+    : "#ffffff";
+}
+
+/**
  * Returns the accent color for a play based on its team abbreviation.
  * Falls back to a default neutral accent.
  */
@@ -163,8 +176,8 @@ export function TimelineRow({
         {/* Team abbreviation badge */}
         {play.teamAbbreviation && (
           <span
-            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide text-white"
-            style={{ backgroundColor: accentColor }}
+            className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide"
+            style={{ backgroundColor: accentColor, color: textColorForBg(accentColor) }}
           >
             {play.teamAbbreviation}
           </span>

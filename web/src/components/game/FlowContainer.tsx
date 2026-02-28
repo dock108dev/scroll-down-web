@@ -160,6 +160,13 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
 
   return (
     <div className="px-4 space-y-0">
+      {/* Section intro — frames the content for the reader */}
+      <div className="mb-5 pl-10">
+        <h2 className="text-xs font-semibold uppercase tracking-widest text-neutral-500">
+          How It Happened
+        </h2>
+      </div>
+
       <div className="relative">
         <div className="absolute left-6 top-0 bottom-0 w-px bg-neutral-800" />
         <div className="space-y-4 relative">
