@@ -62,38 +62,30 @@ const PRO_MULTI_WORD: string[] = [
   "golden knights",
 ];
 
-/** Multi-word college mascots (lowercase). */
+/** Multi-word college mascots (lowercase) — explicit overrides. */
 const COLLEGE_MULTI_WORD: string[] = [
-  "blue devils",
-  "big red",
   "tar heels",
-  "fighting irish",
   "crimson tide",
   "yellow jackets",
-  "golden eagles",
-  "purple eagles",
-  "scarlet knights",
-  "nittany lions",
-  "golden gophers",
-  "red raiders",
   "horned frogs",
-  "blue hens",
-  "golden bears",
-  "sun devils",
-  "mean green",
-  "red storm",
-  "blue demons",
-  "green wave",
-  "river hawks",
-  "red hawks",
+  "nittany lions",
+  "fighting irish",
   "fighting illini",
   "orange men",
-  "golden flashes",
-  "screaming eagles",
-  "golden griffins",
-  "purple aces",
   "flying dutchmen",
 ];
+
+/**
+ * Common first-words of two-word college mascots (lowercase).
+ * When the second-to-last word of a full team name matches one of these,
+ * we assume the mascot is two words and drop both.
+ * e.g. "Oakland Golden Grizzlies" → "Golden" matches → school = "Oakland"
+ */
+const MASCOT_PREFIXES = new Set([
+  "golden", "blue", "red", "black", "fighting", "big", "great",
+  "purple", "scarlet", "crimson", "wolf", "rainbow", "flying",
+  "screaming", "mean", "sun", "green", "river", "orange",
+]);
 
 function extractNickname(fullName: string): string {
   const lower = fullName.toLowerCase();
@@ -108,12 +100,25 @@ function extractNickname(fullName: string): string {
 
 function extractSchoolName(fullName: string): string {
   const lower = fullName.toLowerCase();
+
+  // 1. Explicit multi-word mascot list (handles 3+ word and irregular mascots)
   for (const multi of COLLEGE_MULTI_WORD) {
     if (lower.endsWith(multi)) {
       return fullName.slice(0, fullName.length - multi.length).trim();
     }
   }
+
+  // 2. Mascot-prefix heuristic: if second-to-last word is a common mascot
+  //    prefix, the mascot is two words — drop both.
   const parts = fullName.split(" ");
+  if (parts.length >= 3) {
+    const secondToLast = parts[parts.length - 2].toLowerCase();
+    if (MASCOT_PREFIXES.has(secondToLast)) {
+      return parts.slice(0, -2).join(" ");
+    }
+  }
+
+  // 3. Default: drop last word (single-word mascot)
   if (parts.length <= 1) return fullName;
   return parts.slice(0, -1).join(" ");
 }
