@@ -178,7 +178,7 @@ export function OverviewSection({ data }: OverviewSectionProps) {
             {metricSpread && (
               <div>
                 <div className="text-xs text-neutral-500 mb-0.5">Spread</div>
-                <div className="text-neutral-200 font-mono">
+                <div className="text-neutral-200 tabular-nums">
                   {metricSpread}
                 </div>
               </div>
@@ -186,7 +186,7 @@ export function OverviewSection({ data }: OverviewSectionProps) {
             {metricTotal && (
               <div>
                 <div className="text-xs text-neutral-500 mb-0.5">Total</div>
-                <div className="text-neutral-200 font-mono">{metricTotal}</div>
+                <div className="text-neutral-200 tabular-nums">{metricTotal}</div>
               </div>
             )}
           </div>
@@ -250,7 +250,7 @@ function OddsRow({
             <span className="text-xs text-neutral-300 font-medium">
               {item.team}
             </span>
-            <span className="text-xs font-mono text-neutral-100">
+            <span className="text-xs tabular-nums text-neutral-100">
               {item.line != null && (
                 <span className="text-neutral-400 mr-1">
                   {item.line > 0 ? "+" : ""}

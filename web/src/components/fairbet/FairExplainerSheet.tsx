@@ -126,7 +126,7 @@ export function FairExplainerSheet({
                   </p>
                 )}
                 {step.detail_rows?.map((row, i) => (
-                  <div key={i} className="flex justify-between pl-7 text-xs font-mono">
+                  <div key={i} className="flex justify-between pl-7 text-xs tabular-nums">
                     <span className="text-neutral-500">{row.label}</span>
                     <span
                       className={row.is_highlight ? "font-bold" : "font-semibold"}
@@ -179,7 +179,7 @@ export function FairExplainerSheet({
                       )}
                     </span>
                     <span className="flex items-center gap-3">
-                      <span className="text-neutral-50 font-mono">{formatOdds(bp.price, oddsFormat)}</span>
+                      <span className="text-neutral-50 tabular-nums">{formatOdds(bp.price, oddsFormat)}</span>
                       <span className="text-neutral-500">
                         {ip > 0 ? formatProbability(ip) : "—"}
                       </span>

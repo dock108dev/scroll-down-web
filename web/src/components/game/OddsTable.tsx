@@ -195,7 +195,7 @@ function PairGroup({
                 <td
                   key={book}
                   className={cn(
-                    "text-center px-2 py-1.5 font-mono whitespace-nowrap",
+                    "text-center px-2 py-1.5 tabular-nums whitespace-nowrap",
                     isBest && "text-green-400 bg-green-500/10",
                     isPreferred && !isBest && "bg-blue-500/5",
                   )}
@@ -207,7 +207,7 @@ function PairGroup({
               );
             })}
             {hasClosingLines && (
-              <td className="text-center px-2 py-1.5 font-mono whitespace-nowrap">
+              <td className="text-center px-2 py-1.5 tabular-nums whitespace-nowrap">
                 {closingEntry?.price != null ? (
                   <span className="text-amber-400/80">
                     {formatOdds(closingEntry.price, oddsFormat)}

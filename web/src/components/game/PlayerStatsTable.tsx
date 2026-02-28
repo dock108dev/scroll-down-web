@@ -303,7 +303,7 @@ export function PlayerStatsTable({
                 {activeColumns.map((col) => (
                   <td
                     key={col.label}
-                    className="text-right px-2 py-1.5 font-mono whitespace-nowrap"
+                    className="text-right px-2 py-1.5 tabular-nums whitespace-nowrap"
                   >
                     {getDisplayValue(p, col)}
                   </td>

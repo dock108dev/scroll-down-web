@@ -181,12 +181,12 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
                     </span>
                   )}
                 </span>
-                <span className="w-20 text-center font-mono text-sm text-neutral-400">
+                <span className="w-20 text-center tabular-nums text-sm text-neutral-400">
                   {comp.openPrice != null
                     ? formatOdds(comp.openPrice, oddsFormat)
                     : "—"}
                 </span>
-                <span className="w-20 text-center font-mono text-sm text-neutral-200">
+                <span className="w-20 text-center tabular-nums text-sm text-neutral-200">
                   {comp.closePrice != null
                     ? formatOdds(comp.closePrice, oddsFormat)
                     : "—"}

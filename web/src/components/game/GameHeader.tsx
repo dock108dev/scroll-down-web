@@ -80,11 +80,11 @@ export function GameHeader({ game }: GameHeaderProps) {
             {game.awayTeam}
           </div>
           {showScore ? (
-            <div className="text-3xl font-bold font-mono tabular-nums mt-1">
+            <div className="text-3xl font-bold tabular-nums mt-1">
               {displayAwayScore}
             </div>
           ) : (
-            <div className="text-3xl font-bold font-mono tabular-nums mt-1 text-neutral-800">
+            <div className="text-3xl font-bold tabular-nums mt-1 text-neutral-800">
               &nbsp;
             </div>
           )}
@@ -145,11 +145,11 @@ export function GameHeader({ game }: GameHeaderProps) {
             {game.homeTeam}
           </div>
           {showScore ? (
-            <div className="text-3xl font-bold font-mono tabular-nums mt-1">
+            <div className="text-3xl font-bold tabular-nums mt-1">
               {displayHomeScore}
             </div>
           ) : (
-            <div className="text-3xl font-bold font-mono tabular-nums mt-1 text-neutral-800">
+            <div className="text-3xl font-bold tabular-nums mt-1 text-neutral-800">
               &nbsp;
             </div>
           )}

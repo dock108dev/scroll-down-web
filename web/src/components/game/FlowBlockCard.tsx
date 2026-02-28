@@ -42,7 +42,7 @@ export function FlowBlockCard({
       {/* Period label + role badge row */}
       <div className="flex items-center gap-2 mb-2">
         {periodLabel && (
-          <span className="text-xs font-mono text-neutral-500">
+          <span className="text-xs text-neutral-500">
             {periodLabel}
           </span>
         )}
@@ -63,11 +63,7 @@ export function FlowBlockCard({
             {roleLabel}
           </span>
         )}
-        {scoreAfter && (
-          <span className="text-sm text-neutral-400 ml-auto font-mono tabular-nums">
-            {scoreAfter[0]}–{scoreAfter[1]}
-          </span>
-        )}
+        {/* Score intentionally not shown here — displayed in MiniBoxScore instead */}
       </div>
 
       <p className="text-base text-neutral-200 leading-relaxed">

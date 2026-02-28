@@ -36,7 +36,7 @@ export function ScoreReveal({
     <span
       onClick={handleClick}
       className={cn(
-        "font-mono tabular-nums",
+        "tabular-nums",
         !showScore && "blur-md cursor-pointer select-none",
         className,
       )}

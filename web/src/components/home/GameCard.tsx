@@ -253,7 +253,7 @@ export function GameCard({ game }: GameCardProps) {
           >
             <span
               className={cn(
-                "text-sm font-mono tabular-nums h-5 flex items-center",
+                "text-sm tabular-nums h-5 flex items-center",
                 !scoresVisible && "blur-sm select-none",
               )}
             >
@@ -261,7 +261,7 @@ export function GameCard({ game }: GameCardProps) {
             </span>
             <span
               className={cn(
-                "text-sm font-mono tabular-nums h-5 flex items-center",
+                "text-sm tabular-nums h-5 flex items-center",
                 !scoresVisible && "blur-sm select-none",
               )}
             >

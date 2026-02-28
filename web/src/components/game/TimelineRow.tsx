@@ -140,7 +140,7 @@ export function TimelineRow({
         style={{ borderLeft: `4px solid ${accentColor}` }}
       >
         {/* Time label */}
-        <span className="shrink-0 w-12 text-right text-xs text-neutral-400 font-mono pt-0.5">
+        <span className="shrink-0 w-12 text-right text-xs text-neutral-400 tabular-nums pt-0.5">
           {play.timeLabel ?? play.gameClock ?? ""}
         </span>
 
@@ -186,7 +186,7 @@ export function TimelineRow({
         style={{ borderLeft: `2px solid ${accentColor}40` }}
       >
         {/* Time label */}
-        <span className="shrink-0 w-12 text-right text-xs text-neutral-500 font-mono pt-0.5">
+        <span className="shrink-0 w-12 text-right text-xs text-neutral-500 tabular-nums pt-0.5">
           {play.timeLabel ?? play.gameClock ?? ""}
         </span>
 
@@ -207,7 +207,7 @@ export function TimelineRow({
 
         {/* Score (muted) */}
         {play.awayScore != null && play.homeScore != null && (
-          <span className="shrink-0 text-xs text-neutral-500 font-mono tabular-nums">
+          <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
             {play.awayScore}-{play.homeScore}
           </span>
         )}
@@ -222,7 +222,7 @@ export function TimelineRow({
       <span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-neutral-600" />
 
       {/* Time label */}
-      <span className="shrink-0 w-10 text-right text-xs text-neutral-600 font-mono">
+      <span className="shrink-0 w-10 text-right text-xs text-neutral-600 tabular-nums">
         {play.timeLabel ?? play.gameClock ?? ""}
       </span>
 

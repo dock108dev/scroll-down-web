@@ -261,7 +261,7 @@ function ComparisonRow({
       {/* Labels + values row */}
       <div className="flex items-center justify-between text-xs mb-1.5">
         <span
-          className={`font-mono min-w-[40px] ${
+          className={`tabular-nums min-w-[40px] ${
             awayWins || tied ? "font-bold" : "opacity-50"
           }`}
           style={{ color: awayWins || tied ? undefined : undefined }}
@@ -272,7 +272,7 @@ function ComparisonRow({
           {label}
         </span>
         <span
-          className={`font-mono min-w-[40px] text-right ${
+          className={`tabular-nums min-w-[40px] text-right ${
             homeWins || tied ? "font-bold" : "opacity-50"
           }`}
         >

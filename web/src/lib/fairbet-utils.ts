@@ -177,6 +177,31 @@ export function betId(bet: APIBet): string {
 
 // ── Selection display ──────────────────────────────────────────────
 
+function matchTeamName(key: string, bet: APIBet): string | null {
+  const keyLower = key.toLowerCase();
+  const homeNorm = bet.home_team?.toLowerCase().trim();
+  const awayNorm = bet.away_team?.toLowerCase().trim();
+
+  // Direct substring match (either direction)
+  if (homeNorm && (homeNorm.includes(keyLower) || keyLower.includes(homeNorm))) return bet.home_team;
+  if (awayNorm && (awayNorm.includes(keyLower) || keyLower.includes(awayNorm))) return bet.away_team;
+
+  // Key matches the start of a team name (e.g. "WAKE" → "Wake Forest")
+  if (homeNorm?.startsWith(keyLower)) return bet.home_team;
+  if (awayNorm?.startsWith(keyLower)) return bet.away_team;
+
+  // Key is an acronym of the team name words (e.g. "USI" → "UT Southern Indiana")
+  if (keyLower.length >= 2) {
+    for (const [name, full] of [[homeNorm, bet.home_team], [awayNorm, bet.away_team]] as const) {
+      if (!name) continue;
+      const initials = name.split(/\s+/).map((w) => w[0]).join("");
+      if (initials === keyLower) return full;
+    }
+  }
+
+  return null;
+}
+
 function humaniseSelectionKey(key: string, bet: APIBet): string {
   if (key.startsWith("team:") || key.startsWith("player:")) {
     const slug = key.split(":")[1];
@@ -184,13 +209,8 @@ function humaniseSelectionKey(key: string, bet: APIBet): string {
       .replace(/_/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase());
 
-    const homeNorm = bet.home_team?.toLowerCase().trim();
-    const awayNorm = bet.away_team?.toLowerCase().trim();
-    const humanNorm = humanised.toLowerCase();
-    if (homeNorm && humanNorm.includes(homeNorm)) return bet.home_team;
-    if (awayNorm && humanNorm.includes(awayNorm)) return bet.away_team;
-    if (homeNorm && homeNorm.includes(humanNorm)) return bet.home_team;
-    if (awayNorm && awayNorm.includes(humanNorm)) return bet.away_team;
+    const match = matchTeamName(humanised, bet);
+    if (match) return match;
 
     return humanised;
   }
@@ -200,6 +220,10 @@ function humaniseSelectionKey(key: string, bet: APIBet): string {
       .replace(/_/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase());
   }
+
+  // Bare key (likely a team abbreviation) — try to resolve to full team name
+  const match = matchTeamName(key, bet);
+  if (match) return match;
 
   return key;
 }
@@ -247,6 +271,37 @@ export function selectionDisplay(bet: APIBet): string {
   return selection;
 }
 
+// ── Title-case normalizer for ALL-CAPS API strings ─────────────────
+
+/** Title-case a string only if it's predominantly uppercase.
+ *  When team names are provided, uses their casing for matched words
+ *  (e.g. "UCF" stays "UCF", "Air" stays "Air").
+ *  For non-team words: preserves ≤2-char abbreviations (ML, OU), otherwise title-cases. */
+function titleCaseIfShoutyCaps(str: string, homeTeam?: string, awayTeam?: string): string {
+  const alpha = str.replace(/[^a-zA-Z]/g, "");
+  if (alpha.length < 2) return str;
+  const upperCount = (alpha.match(/[A-Z]/g) || []).length;
+  if (upperCount / alpha.length < 0.8) return str; // not all-caps
+
+  // Build a word-casing map from team names: lowercase → original casing
+  const wordCasing = new Map<string, string>();
+  for (const team of [homeTeam, awayTeam]) {
+    if (!team) continue;
+    for (const word of team.split(/\s+/)) {
+      wordCasing.set(word.toLowerCase(), word);
+    }
+  }
+
+  return str.replace(/[a-zA-Z]+/g, (word) => {
+    // Look up team-name casing first
+    const teamCasing = wordCasing.get(word.toLowerCase());
+    if (teamCasing) return teamCasing;
+    // Preserve short uppercase abbreviations (ML, OU, etc.)
+    if (word.length <= 2 && word === word.toUpperCase()) return word;
+    return word[0].toUpperCase() + word.slice(1).toLowerCase();
+  });
+}
+
 // ── Probability / odds helpers (for display only) ──────────────────
 
 /** Convert American odds to implied probability (0-1). */
@@ -286,6 +341,10 @@ export function enrichBet(bet: APIBet): APIBet {
   // Display label fallbacks (only if API didn't provide them)
   if (!enriched.selectionDisplay) {
     enriched.selectionDisplay = selectionDisplay(bet);
+  }
+  // Normalize ALL-CAPS display strings from the API
+  if (enriched.selectionDisplay) {
+    enriched.selectionDisplay = titleCaseIfShoutyCaps(enriched.selectionDisplay, bet.home_team, bet.away_team);
   }
   if (!enriched.marketDisplayName) {
     enriched.marketDisplayName = marketKeyToLabel(bet.market_key);
