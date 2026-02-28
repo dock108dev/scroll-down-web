@@ -11,8 +11,6 @@ export type GameStatus =
   | "postponed"
   | "canceled";
 
-export type LeagueCode = "nba" | "ncaab" | "nfl" | "ncaaf" | "mlb" | "nhl";
-
 export type MarketType =
   | "spread"
   | "moneyline"
@@ -31,19 +29,7 @@ export type MarketType =
   | "player_pra"
   | "team_total";
 
-export type MarketCategory =
-  | "mainline"
-  | "player_prop"
-  | "team_prop"
-  | "alternate"
-  | "period"
-  | "game_prop";
-
 export type MediaType = "video" | "image" | "none";
-
-export type EventType = "pbp" | "tweet" | "odds" | "unknown";
-
-export type ScoreRevealMode = "always" | "onMarkRead";
 
 export type OddsFormat = "american" | "decimal" | "fractional";
 
