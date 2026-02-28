@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomTabs } from "@/components/layout/BottomTabs";
+import { SettingsDrawer } from "@/components/layout/SettingsDrawer";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function RootLayout({
             <TopNav />
             <main className="flex-1 pb-16 md:pb-0">{children}</main>
             <BottomTabs />
+            <SettingsDrawer />
           </div>
         </ThemeProvider>
       </body>

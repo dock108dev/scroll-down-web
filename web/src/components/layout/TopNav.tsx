@@ -3,16 +3,17 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useUI } from "@/stores/ui";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Games" },
   { href: "/fairbet", label: "FairBet" },
-  { href: "/settings", label: "Settings" },
 ];
 
 export function TopNav() {
   const pathname = usePathname();
+  const openSettings = useUI((s) => s.openSettings);
 
   return (
     <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
@@ -42,6 +43,12 @@ export function TopNav() {
               {link.label}
             </Link>
           ))}
+          <button
+            onClick={openSettings}
+            className="hover:text-neutral-50 transition"
+          >
+            Settings
+          </button>
         </div>
       </nav>
     </header>
