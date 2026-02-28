@@ -11,11 +11,50 @@ interface FlowContainerProps {
   socialPosts?: SocialPostEntry[];
 }
 
+/** Map a period number to a sport-appropriate label */
+function periodLabel(period: number, league?: string): string {
+  const lc = league?.toLowerCase() ?? "";
+
+  // NCAAB: 2 halves, then OT
+  if (lc === "ncaab") {
+    if (period <= 2) return `Half ${period}`;
+    return period === 3 ? "OT" : `${period - 2}OT`;
+  }
+
+  // NBA: 4 quarters, then OT
+  if (lc === "nba") {
+    if (period <= 4) return `Q${period}`;
+    return period === 5 ? "OT" : `${period - 4}OT`;
+  }
+
+  // NFL / NCAAF: 4 quarters, then OT
+  if (lc === "nfl" || lc === "ncaaf") {
+    if (period <= 4) return `Q${period}`;
+    return period === 5 ? "OT" : `${period - 4}OT`;
+  }
+
+  // NHL: 3 periods, then OT / SO
+  if (lc === "nhl") {
+    if (period <= 3) return `Period ${period}`;
+    if (period === 4) return "OT";
+    return "SO";
+  }
+
+  // MLB: innings
+  if (lc === "mlb") {
+    return `Inning ${period}`;
+  }
+
+  // Fallback
+  return `Period ${period}`;
+}
+
 /** Derive period display string for a block, falling back to plays/moments */
 function periodDisplay(
   block: FlowBlock,
   playsById: Map<number, FlowPlay>,
   moments?: FlowMoment[],
+  leagueCode?: string,
 ): string {
   // Get plays for this block, sorted by playIndex
   const blockPlays = (block.playIds ?? [])
@@ -46,8 +85,8 @@ function periodDisplay(
 
   periodEnd = periodEnd ?? periodStart;
 
-  const startLabel = `Period ${periodStart}`;
-  const endLabel = `Period ${periodEnd}`;
+  const startLabel = periodLabel(periodStart, leagueCode);
+  const endLabel = periodLabel(periodEnd, leagueCode);
 
   if (periodStart === periodEnd) {
     if (startClock && endClock) return `${startLabel} · ${startClock}–${endClock}`;
@@ -128,7 +167,7 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
             <FlowBlockCard
               key={block.blockIndex ?? i}
               block={block}
-              periodLabel={periodDisplay(block, playsById, moments)}
+              periodLabel={periodDisplay(block, playsById, moments, data.leagueCode)}
               scoreAfter={resolveScoreAfter(block, moments)}
               homeTeam={data.homeTeamAbbr ?? data.homeTeam}
               awayTeam={data.awayTeamAbbr ?? data.awayTeam}
