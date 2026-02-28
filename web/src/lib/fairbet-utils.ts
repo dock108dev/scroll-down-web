@@ -1,9 +1,10 @@
 /**
- * FairBet utility functions matching iOS FairBet system.
+ * FairBet utility functions.
  *
- * Covers formatting, probability math, EV classification,
- * confidence labelling, market-key-to-label mapping,
- * selection display, and client-side bet enrichment.
+ * Covers formatting, EV classification, confidence labelling,
+ * market-key-to-label mapping, selection display, and
+ * light client-side enrichment (display labels only — all math
+ * comes from the data API).
  */
 
 import { FairBetTheme } from "./theme";
@@ -84,6 +85,7 @@ export function getEVColor(ev: number): string {
 
 const METHOD_DISPLAY_NAMES: Record<string, string> = {
   pinnacle_shin: "Pinnacle Devig (Shin's)",
+  pinnacle_devig: "Pinnacle Devig",
   pinnacle_extrapolated: "Pinnacle Extrapolated (Shin's)",
   paired_vig_removal: "Paired vig removal",
   median_consensus: "Median consensus",
@@ -98,6 +100,8 @@ export function getMethodDisplayName(method?: string): string {
 const METHOD_EXPLANATIONS: Record<string, string> = {
   pinnacle_shin:
     "Uses Pinnacle's sharp line as a reference. Vig is removed using Shin's model, which accounts for the favourite-longshot bias inherent in sports betting markets.",
+  pinnacle_devig:
+    "Fair odds derived by removing vig from Pinnacle's line using Shin's devig model.",
   pinnacle_extrapolated:
     "Pinnacle doesn't list this exact market, so we extrapolated from the closest available line using Shin's devig model to estimate the fair probability.",
   paired_vig_removal:
@@ -151,6 +155,19 @@ export function marketKeyToLabel(key: string): string {
   return MARKET_KEY_LABELS[key.toLowerCase()] ?? key.replace(/_/g, " ");
 }
 
+// ── Market category mapping ────────────────────────────────────────
+
+/** Map a market_key to a high-level market category for filtering. */
+export function marketKeyToCategory(key: string): string {
+  const lower = key.toLowerCase();
+  if (lower === "h2h" || lower === "moneyline") return "moneyline";
+  if (lower === "spreads" || lower === "spread" || lower === "alternate_spread" || lower === "alternate_spreads") return "spread";
+  if (lower === "totals" || lower === "total" || lower === "alternate_total" || lower === "alternate_totals") return "total";
+  if (lower.startsWith("player_")) return "player_props";
+  if (lower === "team_total") return "team_props";
+  return "other";
+}
+
 // ── Bet identity ───────────────────────────────────────────────────
 
 /** Produce a unique ID string for a bet row. */
@@ -160,14 +177,6 @@ export function betId(bet: APIBet): string {
 
 // ── Selection display ──────────────────────────────────────────────
 
-/**
- * Convert a raw selection_key slug into a human-readable team/player name.
- *
- * Examples:
- *   "team:louisville_cardinals" → "Louisville Cardinals"
- *   "player:luka_doncic" → "Luka Doncic"
- *   "Over" → "Over"
- */
 function humaniseSelectionKey(key: string, bet: APIBet): string {
   if (key.startsWith("team:") || key.startsWith("player:")) {
     const slug = key.split(":")[1];
@@ -175,7 +184,6 @@ function humaniseSelectionKey(key: string, bet: APIBet): string {
       .replace(/_/g, " ")
       .replace(/\b\w/g, (c) => c.toUpperCase());
 
-    // Try to match against the bet's home/away team for canonical casing
     const homeNorm = bet.home_team?.toLowerCase().trim();
     const awayNorm = bet.away_team?.toLowerCase().trim();
     const humanNorm = humanised.toLowerCase();
@@ -196,9 +204,6 @@ function humaniseSelectionKey(key: string, bet: APIBet): string {
   return key;
 }
 
-/**
- * Format the selection display matching iOS APIBet.selectionDisplay logic.
- */
 export function selectionDisplay(bet: APIBet): string {
   if (bet.bet_description && !bet.bet_description.includes(":")) {
     return bet.bet_description;
@@ -208,7 +213,6 @@ export function selectionDisplay(bet: APIBet): string {
   const marketLabel = marketKeyToLabel(bet.market_key);
   const marketLower = bet.market_key.toLowerCase();
 
-  // Player props: "Luka Doncic Points Over 28.5"
   if (marketLower.startsWith("player_")) {
     const playerName = bet.player_name ?? selection;
     const side = bet.selection_key.startsWith("player:") ? "" : selection;
@@ -220,7 +224,6 @@ export function selectionDisplay(bet: APIBet): string {
     return `${playerName} ${marketLabel}`;
   }
 
-  // Alternate markets: "Louisville Cardinals Alt Spread -7.5"
   if (marketLower.startsWith("alternate_")) {
     if (bet.line_value != null && bet.line_value !== 0) {
       const sign = bet.line_value > 0 ? "+" : "";
@@ -229,7 +232,6 @@ export function selectionDisplay(bet: APIBet): string {
     return `${selection} ${marketLabel}`;
   }
 
-  // Team props: "Celtics Team Total Over 108.5"
   if (marketLower === "team_total") {
     if (bet.line_value != null) {
       return `${selection} ${marketLabel} ${bet.line_value}`;
@@ -237,23 +239,15 @@ export function selectionDisplay(bet: APIBet): string {
     return `${selection} ${marketLabel}`;
   }
 
-  // Mainline with line: "Boston Celtics -3.5"
   if (bet.line_value != null && bet.line_value !== 0) {
     const sign = bet.line_value > 0 ? "+" : "";
     return `${selection} ${sign}${bet.line_value}`;
   }
 
-  // Moneyline: just the team name
   return selection;
 }
 
-// ── Probability / odds math ────────────────────────────────────────
-
-/** Profit per $1 wagered for American odds. */
-export function profitPerDollar(americanOdds: number): number {
-  if (americanOdds > 0) return americanOdds / 100;
-  return 100 / Math.abs(americanOdds);
-}
+// ── Probability / odds helpers (for display only) ──────────────────
 
 /** Convert American odds to implied probability (0-1). */
 export function americanToImpliedProb(odds: number): number {
@@ -270,39 +264,26 @@ export function impliedProbToAmerican(prob: number): number {
   return Math.round((1 - prob) / prob * 100);
 }
 
-/**
- * Compute the fair American odds from a bet's true_prob.
- */
-export function fairAmericanOdds(bet: APIBet): number | null {
-  if (bet.true_prob == null || bet.true_prob <= 0 || bet.true_prob >= 1) return null;
-  return impliedProbToAmerican(bet.true_prob);
-}
-
-// ── Market category mapping ────────────────────────────────────────
-
-/** Map a market_key to a high-level market category for filtering. */
-export function marketKeyToCategory(key: string): string {
-  const lower = key.toLowerCase();
-  if (lower === "h2h" || lower === "moneyline") return "moneyline";
-  if (lower === "spreads" || lower === "spread" || lower === "alternate_spread") return "spread";
-  if (lower === "totals" || lower === "total" || lower === "alternate_total") return "total";
-  if (lower.startsWith("player_")) return "player_props";
-  if (lower === "team_total") return "team_props";
-  return "other";
-}
-
 // ── Client-side bet enrichment ─────────────────────────────────────
 
-const SHARP_BOOKS = new Set(["pinnacle", "circa", "bookmaker", "betcris"]);
-
 /**
- * Enrich a raw API bet with computed display fields.
- * Only populates fields that the API didn't already provide.
+ * Enrich a raw API bet with display label fallbacks only.
+ * All math (EV, fair odds, implied probs) comes from the API.
  */
 export function enrichBet(bet: APIBet): APIBet {
   const enriched = { ...bet, books: bet.books.map((b) => ({ ...b })) };
 
-  // Display fields
+  // Map API snake_case → camelCase aliases (prefer API values)
+  enriched.fairAmericanOdds = bet.fair_american_odds ?? enriched.fairAmericanOdds;
+  enriched.bestBook = bet.best_book ?? enriched.bestBook;
+  enriched.bestEvPercent = bet.best_ev_percent ?? enriched.bestEvPercent;
+  enriched.selectionDisplay = bet.selection_display ?? enriched.selectionDisplay;
+  enriched.marketDisplayName = bet.market_display_name ?? enriched.marketDisplayName;
+  enriched.confidenceDisplayLabel = bet.confidence_display_label ?? enriched.confidenceDisplayLabel;
+  enriched.evMethodDisplayName = bet.ev_method_display_name ?? enriched.evMethodDisplayName;
+  enriched.evMethodExplanation = bet.ev_method_explanation ?? enriched.evMethodExplanation;
+
+  // Display label fallbacks (only if API didn't provide them)
   if (!enriched.selectionDisplay) {
     enriched.selectionDisplay = selectionDisplay(bet);
   }
@@ -319,44 +300,14 @@ export function enrichBet(bet: APIBet): APIBet {
     enriched.evMethodExplanation = getMethodExplanation(bet.ev_method);
   }
 
-  // Fair odds from true probability
-  if (enriched.fairAmericanOdds == null) {
-    enriched.fairAmericanOdds = fairAmericanOdds(bet) ?? undefined;
+  // Fair odds fallback from true_prob
+  if (enriched.fairAmericanOdds == null && bet.true_prob != null && bet.true_prob > 0 && bet.true_prob < 1) {
+    enriched.fairAmericanOdds = impliedProbToAmerican(bet.true_prob);
   }
 
-  // has_fair
+  // has_fair fallback
   if (enriched.has_fair == null) {
     enriched.has_fair = bet.true_prob != null && bet.true_prob > 0;
-  }
-
-  // Per-book enrichment: implied probs, EV, sharp flag
-  for (const bp of enriched.books) {
-    if (bp.implied_prob == null) {
-      bp.implied_prob = americanToImpliedProb(bp.price);
-    }
-    if (bp.is_sharp == null) {
-      bp.is_sharp = SHARP_BOOKS.has(bp.book.toLowerCase());
-    }
-    if (bp.ev_percent == null && bet.true_prob != null && bet.true_prob > 0) {
-      const profit = profitPerDollar(bp.price);
-      bp.ev_percent = (bet.true_prob * (1 + profit) - 1) * 100;
-    }
-  }
-
-  // Best book + best EV
-  if (!enriched.bestBook || enriched.bestEvPercent == null) {
-    let bestEv = -Infinity;
-    let bestBookName = "";
-    for (const bp of enriched.books) {
-      if ((bp.ev_percent ?? -Infinity) > bestEv) {
-        bestEv = bp.ev_percent ?? -Infinity;
-        bestBookName = bp.book;
-      }
-    }
-    if (bestEv > -Infinity) {
-      enriched.bestBook = bestBookName;
-      enriched.bestEvPercent = bestEv;
-    }
   }
 
   return enriched;

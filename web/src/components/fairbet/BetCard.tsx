@@ -52,7 +52,7 @@ export function BetCard({
   const otherBooks = bet.books.filter((b) => b !== primaryBook);
   const otherBooksCount = otherBooks.length;
 
-  const ev = bestBook?.ev_percent ?? 0;
+  const ev = bestBook?.display_ev ?? bestBook?.ev_percent ?? 0;
   const hasHighEV = ev >= 5 && isConfidenceReliable(bet.ev_confidence_tier);
   const id = betId(bet);
 
@@ -150,12 +150,12 @@ export function BetCard({
                 Best
               </span>
             )}
-            {primaryBook.ev_percent != null && (
+            {(primaryBook.display_ev ?? primaryBook.ev_percent) != null && (
               <span
                 className="text-xs font-bold"
-                style={{ color: getEVColor(primaryBook.ev_percent) }}
+                style={{ color: getEVColor(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0) }}
               >
-                {formatEV(primaryBook.ev_percent)}
+                {formatEV(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0)}
               </span>
             )}
             {/* Confidence badge */}
@@ -186,9 +186,9 @@ export function BetCard({
             <span className="font-bold text-white">
               {formatOdds(bestBook.price, oddsFormat)}
             </span>
-            {bestBook.ev_percent != null && (
-              <span className="font-bold" style={{ color: getEVColor(bestBook.ev_percent) }}>
-                {formatEV(bestBook.ev_percent)}
+            {(bestBook.display_ev ?? bestBook.ev_percent) != null && (
+              <span className="font-bold" style={{ color: getEVColor(bestBook.display_ev ?? bestBook.ev_percent ?? 0) }}>
+                {formatEV(bestBook.display_ev ?? bestBook.ev_percent ?? 0)}
               </span>
             )}
           </div>
@@ -253,7 +253,7 @@ export function BetCard({
                     key={bp.book}
                     book={bp.book}
                     price={formatOdds(bp.price, oddsFormat)}
-                    ev={bp.ev_percent}
+                    ev={bp.display_ev ?? bp.ev_percent}
                     isSharp={bp.is_sharp}
                   />
                 ))}

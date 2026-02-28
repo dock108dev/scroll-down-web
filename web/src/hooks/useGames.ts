@@ -109,7 +109,7 @@ interface UseGamesReturn {
 }
 
 // ── Auto-refresh interval ──────────────────────────────────
-const REFRESH_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes
+const REFRESH_INTERVAL_MS = 60 * 1000; // 60 seconds
 
 // ── Hook ───────────────────────────────────────────────────
 
@@ -175,13 +175,33 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAll]);
 
-  // Auto-refresh every 15 minutes
+  // Auto-refresh every 60s, pause when tab is hidden
   useEffect(() => {
-    intervalRef.current = setInterval(() => {
-      fetchAll();
-    }, REFRESH_INTERVAL_MS);
+    const start = () => {
+      if (!intervalRef.current) {
+        intervalRef.current = setInterval(() => fetchAll(), REFRESH_INTERVAL_MS);
+      }
+    };
+    const stop = () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+    const onVisibility = () => {
+      if (document.hidden) {
+        stop();
+      } else {
+        fetchAll(); // refresh immediately when tab regains focus
+        start();
+      }
+    };
+
+    start();
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      stop();
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, [fetchAll]);
 

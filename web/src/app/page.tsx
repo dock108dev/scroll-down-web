@@ -9,6 +9,8 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal, isPregame } from "@/lib/types";
 import type { GameSummary } from "@/lib/types";
 import { useReadState } from "@/stores/read-state";
+import { useReadingPosition } from "@/stores/reading-position";
+import { useSettings } from "@/stores/settings";
 import { cn } from "@/lib/utils";
 
 // ── Sorting helpers ────────────────────────────────────────
@@ -74,6 +76,8 @@ export default function HomePage() {
   );
 
   const readState = useReadState();
+  const clearPosition = useReadingPosition((s) => s.clearPosition);
+  const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
 
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
@@ -91,36 +95,49 @@ export default function HomePage() {
     [sections],
   );
 
-  // Count unread final games (for Catch Up badge)
+  // Which sections are currently expanded (visible)?
+  const defaultExpanded = new Set(["Today", "Yesterday"]);
+  const visibleGames = useMemo(() => {
+    return sortedSections.flatMap((s) => {
+      const expanded =
+        homeExpandedSections.length > 0
+          ? homeExpandedSections.includes(s.key)
+          : defaultExpanded.has(s.key);
+      return expanded ? s.games : [];
+    });
+  }, [sortedSections, homeExpandedSections]);
+
+  // Count unread final games in visible sections only
   const unreadFinalCount = useMemo(
     () =>
-      allGames.filter(
+      visibleGames.filter(
         (g) => isFinal(g.status) && !readState.isRead(g.id),
       ).length,
-    [allGames, readState],
+    [visibleGames, readState],
   );
 
-  // Count read games (for Reset badge)
+  // Count read games in visible sections only
   const readCount = useMemo(
-    () => allGames.filter((g) => readState.isRead(g.id)).length,
-    [allGames, readState],
+    () => visibleGames.filter((g) => readState.isRead(g.id)).length,
+    [visibleGames, readState],
   );
 
-  // Gather all final game IDs across all sections (for Catch Up)
-  const allFinalGameIds = useMemo(
-    () => allGames.filter((g) => isFinal(g.status)).map((g) => g.id),
-    [allGames],
+  // Final game IDs in visible sections only
+  const visibleFinalGameIds = useMemo(
+    () => visibleGames.filter((g) => isFinal(g.status)).map((g) => g.id),
+    [visibleGames],
   );
 
-  const allGameIds = useMemo(() => allGames.map((g) => g.id), [allGames]);
+  const visibleGameIds = useMemo(() => visibleGames.map((g) => g.id), [visibleGames]);
 
   const handleCatchUp = useCallback(() => {
-    readState.markAllRead(allFinalGameIds);
-  }, [allFinalGameIds, readState]);
+    readState.markAllRead(visibleFinalGameIds);
+  }, [visibleFinalGameIds, readState]);
 
   const handleReset = useCallback(() => {
-    readState.markAllUnread(allGameIds);
-  }, [allGameIds, readState]);
+    readState.markAllUnread(visibleGameIds);
+    visibleGameIds.forEach((id) => clearPosition(id));
+  }, [visibleGameIds, readState, clearPosition]);
 
   const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 

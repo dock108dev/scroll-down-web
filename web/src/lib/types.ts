@@ -463,6 +463,23 @@ export interface APIBet {
   opposite_reference_price?: number;
   bet_description?: string;
   description?: string;
+  // API snake_case fields
+  fair_american_odds?: number;
+  selection_display?: string;
+  market_display_name?: string;
+  best_book?: string;
+  best_ev_percent?: number;
+  confidence_display_label?: string;
+  ev_method_display_name?: string;
+  ev_method_explanation?: string;
+  is_reliably_positive?: boolean;
+  estimated_sharp_price?: number | null;
+  extrapolation_ref_line?: number | null;
+  extrapolation_distance?: number | null;
+  confidence?: number;
+  confidence_flags?: string[];
+  explanation_steps?: ExplanationStep[] | null;
+  // Client-enriched camelCase aliases
   fairAmericanOdds?: number;
   selectionDisplay?: string;
   marketDisplayName?: string;
@@ -471,7 +488,6 @@ export interface APIBet {
   confidenceDisplayLabel?: string;
   evMethodDisplayName?: string;
   evMethodExplanation?: string;
-  explanation_steps?: ExplanationStep[] | null;
 }
 
 export interface ExplanationStep {
@@ -492,6 +508,10 @@ export interface BookPrice {
   is_sharp?: boolean;
   ev_method?: string;
   ev_confidence_tier?: string;
+  book_abbr?: string;
+  price_decimal?: number;
+  ev_tier?: string;
+  // Client aliases
   bookAbbr?: string;
   priceDecimal?: number;
   evTier?: string;
