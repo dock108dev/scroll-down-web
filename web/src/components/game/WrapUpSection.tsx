@@ -10,37 +10,74 @@ interface WrapUpSectionProps {
   data: GameDetailResponse;
 }
 
-/** Outcome keys shown in the top section */
-const OUTCOME_KEYS = new Set([
-  "winner",
-  "spread_outcome_label",
-  "total_outcome_label",
-  "ml_outcome_label",
-  "opening_spread_outcome_label",
-  "opening_total_outcome_label",
-  "opening_ml_outcome_label",
-  "moneyline_upset",
-]);
+// ─── Bet outcome builder ────────────────────────────────
 
-/** Human-readable label from a snake_case key */
-function humanLabel(key: string): string {
-  return key
-    .replace(/_/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase());
+interface BetOutcome {
+  market: string;
+  line?: string;
+  openPrice?: number;
+  closePrice?: number;
+  result: string;
 }
 
-/** Format a metric value for display */
-function formatValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
-  if (typeof value === "boolean") return value ? "true" : "false";
-  if (typeof value === "number") {
-    if (Number.isInteger(value)) return String(value);
-    return value.toFixed(value > 1 || value < -1 ? 1 : 4);
+function buildBetOutcomes(
+  metrics: Record<string, unknown> | undefined,
+  awayLabel: string,
+  homeLabel: string,
+): BetOutcome[] {
+  if (!metrics) return [];
+  const m = (k: string) => metrics[k];
+  const num = (v: unknown) => (v != null ? Number(v) : undefined);
+  const fmtLine = (v: unknown) => {
+    if (v == null) return undefined;
+    const n = Number(v);
+    return `${n > 0 ? "+" : ""}${n}`;
+  };
+
+  const outcomes: BetOutcome[] = [];
+
+  // Spread — show away team's perspective with team name
+  if (m("spread_outcome_label") != null) {
+    outcomes.push({
+      market: "Spread",
+      line: `${awayLabel} ${fmtLine(m("closing_spread_away")) ?? ""}`.trim(),
+      openPrice: num(m("opening_spread_away_price")),
+      closePrice: num(m("closing_spread_away_price")),
+      result: String(m("spread_outcome_label")),
+    });
   }
-  return String(value);
+
+  // Total
+  if (m("total_outcome_label") != null) {
+    const closingTotal = m("closing_total");
+    outcomes.push({
+      market: "Total",
+      line: closingTotal != null ? String(closingTotal) : undefined,
+      openPrice: num(m("opening_total_price")),
+      closePrice: num(m("closing_total_price")),
+      result: String(m("total_outcome_label")),
+    });
+  }
+
+  // Moneyline — show winner's line with team name + opening price
+  if (m("ml_outcome_label") != null) {
+    const winner = String(m("winner") ?? "");
+    const isAway = winner === "away";
+    const winnerLabel = isAway ? awayLabel : homeLabel;
+    outcomes.push({
+      market: "Moneyline",
+      line: winnerLabel,
+      openPrice: num(m(isAway ? "opening_ml_away" : "opening_ml_home")),
+      closePrice: num(m(isAway ? "closing_ml_away" : "closing_ml_home")),
+      result: String(m("ml_outcome_label")),
+    });
+  }
+
+  return outcomes;
 }
 
-/** Get the best price for a market+side from a set of odds entries */
+// ─── Fallback: odds-based line comparisons ──────────────
+
 function getBestForMarket(
   entries: OddsEntry[],
   marketType: string,
@@ -55,7 +92,6 @@ function getBestForMarket(
     .sort((a, b) => (b.price ?? -Infinity) - (a.price ?? -Infinity))[0];
 }
 
-/** Build opening vs closing line comparisons from odds data */
 function buildLineComparisons(odds: OddsEntry[]): {
   label: string;
   openPrice?: number;
@@ -64,7 +100,12 @@ function buildLineComparisons(odds: OddsEntry[]): {
 }[] {
   const opening = odds.filter((o) => !o.isClosingLine);
   const closing = odds.filter((o) => o.isClosingLine);
-  const results: { label: string; openPrice?: number; closePrice?: number; line?: number }[] = [];
+  const results: {
+    label: string;
+    openPrice?: number;
+    closePrice?: number;
+    line?: number;
+  }[] = [];
 
   for (const mt of ["spread", "moneyline", "total"] as const) {
     for (const side of ["home", "away", "over", "under"]) {
@@ -87,6 +128,8 @@ function buildLineComparisons(odds: OddsEntry[]): {
   return results;
 }
 
+// ─── Component ──────────────────────────────────────────
+
 export function WrapUpSection({ data }: WrapUpSectionProps) {
   const metrics = data.derivedMetrics;
   const odds = data.odds;
@@ -95,10 +138,23 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
   const isRead = useReadState((s) => s.isRead);
   const outcomeRevealed = scoreRevealMode === "always" || isRead(data.game.id);
 
-  const hasMetrics = metrics && Object.keys(metrics).length > 0;
-  const hasOdds = odds && odds.length > 0;
+  const game = data.game;
+  const awayLabel = game.awayTeamAbbr ?? game.awayTeam;
+  const homeLabel = game.homeTeamAbbr ?? game.homeTeam;
+  const betOutcomes = buildBetOutcomes(metrics, awayLabel, homeLabel);
 
-  if (!hasMetrics && !hasOdds) {
+  // Fallback when derivedMetrics has no outcome labels
+  const lineComparisons =
+    betOutcomes.length === 0 && odds?.length
+      ? buildLineComparisons(odds)
+      : [];
+
+  const hasContent =
+    betOutcomes.length > 0 ||
+    lineComparisons.length > 0 ||
+    data.socialPosts?.length > 0;
+
+  if (!hasContent) {
     return (
       <div className="px-4 py-4 text-sm text-neutral-500">
         No wrap-up data available
@@ -106,61 +162,78 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
     );
   }
 
-  // derivedMetrics sections
-  const entries = hasMetrics ? Object.entries(metrics) : [];
-  const outcomes = entries.filter(([k]) => OUTCOME_KEYS.has(k));
-  const keyMetrics = entries.filter(([k]) => !OUTCOME_KEYS.has(k));
-
-  // Odds-based line comparisons (always show if odds exist)
-  const lineComparisons = hasOdds ? buildLineComparisons(odds) : [];
-
   return (
     <div className="px-4 space-y-4">
-      {/* Outcomes */}
-      {outcomes.length > 0 && (
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
-            Outcomes
-          </h3>
-          <div className="space-y-2">
-            {outcomes.map(([key, value]) => (
-              <div key={key} className="flex items-center justify-between">
-                <span className="text-sm text-neutral-500">{humanLabel(key)}</span>
-                <span className="text-base font-medium text-neutral-100">
-                  {formatValue(value)}
-                </span>
+      {/* Primary: structured bet outcomes from derivedMetrics */}
+      {betOutcomes.length > 0 && (
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                Bet Outcomes
+              </h3>
+              <div className="relative group">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="w-4 h-4 text-neutral-500 cursor-help"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div className="absolute right-0 top-full mt-1.5 w-56 rounded-lg bg-neutral-800 border border-neutral-700 p-3 text-xs text-neutral-300 leading-relaxed opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto transition-opacity z-20 shadow-lg">
+                  Prices show opening &rarr; closing line movement. Base lines
+                  sourced from Pinnacle when available.
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="divide-y divide-neutral-800/50">
+            {betOutcomes.map((o) => (
+              <div key={o.market} className="px-4 py-3">
+                <div className="flex items-baseline justify-between mb-1">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-xs font-semibold text-neutral-400 uppercase">
+                      {o.market}
+                    </span>
+                    {o.line && (
+                      <span className="text-sm text-neutral-300 tabular-nums">
+                        {o.line}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-baseline gap-2 text-xs tabular-nums">
+                    {o.openPrice != null && (
+                      <span className="text-neutral-500">
+                        {formatOdds(o.openPrice, oddsFormat)}
+                      </span>
+                    )}
+                    {o.openPrice != null && o.closePrice != null && (
+                      <span className="text-neutral-600">&rarr;</span>
+                    )}
+                    {o.closePrice != null && (
+                      <span className="text-neutral-300">
+                        {formatOdds(o.closePrice, oddsFormat)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="text-sm text-neutral-200">{o.result}</div>
               </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Key Metrics — two-column grid matching iOS */}
-      {keyMetrics.length > 0 && (
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-          <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
-            Key Metrics
-          </h3>
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-            {keyMetrics.map(([key, value]) => (
-              <div key={key}>
-                <div className="text-xs text-neutral-500 leading-tight">
-                  {humanLabel(key)}
-                </div>
-                <div className="text-base font-medium text-neutral-100 mt-0.5">
-                  {formatValue(value)}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Opening vs Closing Lines (from odds data) */}
+      {/* Fallback: line movement table when no outcome data */}
       {lineComparisons.length > 0 && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
           <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">
-            Opening vs Closing Lines
+            Line Movement
           </h3>
           <div className="space-y-1">
             <div className="flex items-center text-xs text-neutral-500 font-medium mb-2">
@@ -177,7 +250,8 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
                   {comp.label}
                   {comp.line != null && (
                     <span className="text-neutral-500 ml-1">
-                      {comp.line > 0 ? "+" : ""}{comp.line}
+                      {comp.line > 0 ? "+" : ""}
+                      {comp.line}
                     </span>
                   )}
                 </span>
@@ -198,7 +272,11 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
       )}
 
       {/* Postgame Reactions */}
-      <SocialSection posts={data.socialPosts} phase="postgame" outcomeRevealed={outcomeRevealed} />
+      <SocialSection
+        posts={data.socialPosts}
+        phase="postgame"
+        outcomeRevealed={outcomeRevealed}
+      />
     </div>
   );
 }

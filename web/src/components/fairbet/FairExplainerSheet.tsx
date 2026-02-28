@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import type { APIBet } from "@/lib/types";
 import { cn, formatOdds } from "@/lib/utils";
 import { useSettings } from "@/stores/settings";
@@ -9,6 +8,22 @@ import {
   formatProbability,
   getConfidenceColor,
 } from "@/lib/fairbet-utils";
+
+const SHIN_PAPER_URL =
+  "https://www.sciencedirect.com/science/article/abs/pii/S0169207014000533?via%3Dihub";
+
+/** Check if the bet's method or explanation steps reference the Shin model */
+function hasShinReference(bet: APIBet): boolean {
+  const method = (bet.evMethodDisplayName ?? bet.ev_method ?? "").toLowerCase();
+  if (method.includes("shin")) return true;
+  return (
+    bet.explanation_steps?.some(
+      (s) =>
+        s.title?.toLowerCase().includes("shin") ||
+        s.detail_rows?.some((r) => r.label.toLowerCase().includes("shin")),
+    ) ?? false
+  );
+}
 
 interface FairExplainerSheetProps {
   open: boolean;
@@ -22,7 +37,6 @@ export function FairExplainerSheet({
   bet,
 }: FairExplainerSheetProps) {
   const oddsFormat = useSettings((s) => s.oddsFormat);
-  const [showImpliedProbs, setShowImpliedProbs] = useState(false);
 
   if (!open || !bet) return null;
 
@@ -97,6 +111,20 @@ export function FairExplainerSheet({
           >
             {bet.evMethodDisplayName ?? method ?? "Unknown"}
           </div>
+          {hasShinReference(bet) && (
+            <a
+              href={SHIN_PAPER_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-neutral-300 no-underline px-2 py-1 rounded-md transition"
+              style={{ backgroundColor: "var(--fb-surface-secondary)" }}
+            >
+              Devig method research
+              <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14 21 3" />
+              </svg>
+            </a>
+          )}
         </div>
 
         {/* Step-by-step math walkthrough */}
@@ -141,66 +169,6 @@ export function FairExplainerSheet({
           </div>
         )}
 
-        {/* Per-book implied probabilities */}
-        <div className="space-y-2">
-          <button
-            onClick={() => setShowImpliedProbs((p) => !p)}
-            className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-neutral-500"
-          >
-            <svg
-              className={cn("w-3 h-3 transition-transform", showImpliedProbs && "rotate-90")}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path d="M9 5l7 7-7 7" />
-            </svg>
-            Per-book implied probabilities
-          </button>
-          {showImpliedProbs && (
-            <div className="space-y-1">
-              {bet.books.map((bp) => {
-                const ip = bp.implied_prob ?? 0;
-                return (
-                  <div
-                    key={bp.book}
-                    className="flex items-center justify-between rounded px-3 py-1.5 text-xs"
-                    style={{ backgroundColor: "var(--fb-surface-tint)" }}
-                  >
-                    <span className="flex items-center gap-2">
-                      <span className="font-medium text-neutral-50">
-                        {bookAbbreviation(bp.book)}
-                      </span>
-                      {bp.is_sharp && (
-                        <span style={{ color: FairBetTheme.info }} className="text-[10px]">
-                          ★
-                        </span>
-                      )}
-                    </span>
-                    <span className="flex items-center gap-3">
-                      <span className="text-neutral-50 tabular-nums">{formatOdds(bp.price, oddsFormat)}</span>
-                      <span className="text-neutral-500">
-                        {ip > 0 ? formatProbability(ip) : "—"}
-                      </span>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* What is this? */}
-        <div className="space-y-2">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
-            What is this?
-          </h3>
-          <p className="text-xs leading-relaxed text-neutral-400">
-            {bet.evMethodExplanation ?? "The method used to estimate the fair probability for this market."}
-          </p>
-        </div>
-
         {/* Estimate quality */}
         <div className="space-y-2">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
@@ -237,14 +205,36 @@ export function FairExplainerSheet({
           </h3>
           <p className="text-xs text-neutral-500">
             {bet.books.length} sportsbooks compared
-            {bet.books.some((b) => b.is_sharp) && (
-              <span>
-                {" "}
-                &middot; Sharp books marked with{" "}
-                <span style={{ color: FairBetTheme.info }}>★</span>
-              </span>
-            )}
           </p>
+        </div>
+
+        {/* Per-book implied probabilities */}
+        <div className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-500">
+            Per-Book Implied Probabilities
+          </h3>
+          <div className="space-y-1">
+            {bet.books.map((bp) => {
+              const ip = bp.implied_prob ?? 0;
+              return (
+                <div
+                  key={bp.book}
+                  className="flex items-center justify-between rounded px-3 py-1.5 text-xs"
+                  style={{ backgroundColor: "var(--fb-surface-tint)" }}
+                >
+                  <span className="font-medium text-neutral-50">
+                    {bookAbbreviation(bp.book)}
+                  </span>
+                  <span className="flex items-center gap-3">
+                    <span className="text-neutral-50 tabular-nums">{formatOdds(bp.price, oddsFormat)}</span>
+                    <span className="text-neutral-500">
+                      {ip > 0 ? formatProbability(ip) : "—"}
+                    </span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* Disclaimer */}

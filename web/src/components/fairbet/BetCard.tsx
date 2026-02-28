@@ -199,17 +199,15 @@ export function BetCard({
                 ({formatProbability(bet.true_prob)})
               </span>
             )}
-            <svg
-              className="ml-auto w-3.5 h-3.5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-              style={{ color: FairBetTheme.info }}
+            <span
+              className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+              style={{
+                backgroundColor: `${FairBetTheme.info}20`,
+                color: FairBetTheme.info,
+              }}
             >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M12 16v-4M12 8h.01" />
-            </svg>
+              i
+            </span>
           </button>
         )}
 
