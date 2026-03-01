@@ -74,6 +74,7 @@ src/
     ├── types.ts              # All TypeScript interfaces (GameSummary, APIBet, FlowBlock, etc.)
     ├── api.ts                # Client-side fetch wrapper (browser → /api/* proxy routes)
     ├── api-server.ts         # Server-side fetch with X-API-Key header
+    ├── config.ts             # Centralized app constants (cache TTLs, polling, API, storage keys)
     ├── utils.ts              # Date formatting, odds conversion, team name display
     ├── fairbet-utils.ts      # EV colors, confidence labels, market labels, bet enrichment
     ├── theme.ts              # FairBet theme constants, book abbreviation utility
@@ -118,7 +119,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 ## QA Checklist
 
 ### Home Page
-- [ ] Date sections render (Earlier, Yesterday, Today, Tomorrow)
+- [ ] Date sections render (Yesterday, Today)
 - [ ] League filter works (All, NBA, NCAAB, NFL, NCAAF, MLB, NHL)
 - [ ] Search filters by team name
 - [ ] Game cards navigate to game detail
@@ -127,7 +128,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Scores respect reveal mode setting
 
 ### Game Detail
-- [ ] Sections render based on status (Overview, Flow, Timeline, Player Stats, Team Stats, Odds, Wrap-Up)
+- [ ] Sections render based on status (Pregame Buzz, Flow, Timeline, Player Stats, Team Stats, Odds, Wrap-Up)
 - [ ] Flow blocks display for completed games
 - [ ] Timeline shows tiered plays for live games
 - [ ] Odds table shows cross-book comparison with category tabs

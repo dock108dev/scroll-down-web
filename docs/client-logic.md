@@ -14,7 +14,7 @@ Local `Set<gameId>` persisted to localStorage via `read-state` Zustand store (`s
 Per-game scroll position with score snapshot saved to localStorage (`sd-reading-position`). Stores `playIndex`, period, clock, scores, and `playCount`. Used for auto-resume on return to a game detail page and for detecting new data on live games (score freeze with amber dot).
 
 ## 4. Section Expansion State
-Which home sections (Earlier, Yesterday, Today, Tomorrow) and game detail sections are collapsed/expanded. Defaults: Today and Yesterday expanded. Persisted in `sd-settings` and `sd-section-layout` stores.
+Which home sections (Yesterday, Today) and game detail sections are collapsed/expanded. Defaults: Today and Yesterday expanded. Persisted in `sd-settings` and `sd-section-layout` stores.
 
 ## 5. Client-side Search Filtering
 Instant team name / abbreviation filtering on the home page for responsiveness (no round-trip to API).
@@ -33,13 +33,13 @@ System/light/dark preference managed via Zustand store and CSS custom properties
 American/decimal/fractional display toggle. `formatOdds()` in `utils.ts` handles conversion.
 
 ## 10. Date/Time Formatting
-`formatDate()` and `formatTime()` — locale-aware display formatting. Stays client-side because it depends on user timezone/locale.
+`formatDate()` — locale-aware display formatting. Stays client-side because it depends on user timezone/locale.
 
 ## 11. Bold Keywords in Timeline
 `BOLD_KEYWORDS` array in `TimelineRow.tsx` for play description styling (e.g., "GOAL", "TOUCHDOWN", "DUNK", "makes", "MISS"). Combined with a regex that also de-emphasizes parenthetical content.
 
 ## 12. Game Sorting Within Sections
-Games are fetched by date-range sections (Earlier, Yesterday, Today, Tomorrow). Within each section, games are rendered in the order returned by the API. The home feed fetches in two phases: Yesterday + Today first (fast render), then Earlier + Tomorrow (background).
+Games are fetched by date-range sections (Yesterday, Today). Within each section, games are rendered in the order returned by the API.
 
 ## 13. FairBet Client-side Filtering
 League, market category, book, team/player search, +EV only, hide thin confidence, hide started games. All applied client-side to the full bet list for instant feedback. Minimum 3 books required per bet for display. Deduplication by `game_id::market_key::selection_key::line_value`.

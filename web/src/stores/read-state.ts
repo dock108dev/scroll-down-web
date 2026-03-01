@@ -44,6 +44,7 @@ export const useReadState = create<ReadState>()(
     }),
     {
       name: STORAGE_KEYS.READ_STATE,
+      // Custom storage: serialize Set<number> as array for JSON compatibility.
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);

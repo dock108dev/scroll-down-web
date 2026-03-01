@@ -26,7 +26,7 @@ npm run dev                         # http://localhost:3001
 
 | Feature | Status |
 |---------|--------|
-| Home feed (Earlier / Yesterday / Today / Tomorrow) | Yes |
+| Home feed (Yesterday / Today) | Yes |
 | Game search by team name | Yes |
 | Game detail with collapsible sections | Yes |
 | Flow-based narrative timeline | Yes |
@@ -71,6 +71,7 @@ Browser → React hook → Component re-render
 | [Development](docs/development.md) | Local dev, testing, debugging |
 | [CI/CD](docs/ci-cd.md) | GitHub Actions, Docker, deployment |
 | [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
+| [Deployment](docs/deployment.md) | Production deployment procedures |
 
 ## Repository Layout
 

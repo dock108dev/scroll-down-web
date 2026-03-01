@@ -9,14 +9,6 @@ export function formatDate(dateStr: string): string {
   });
 }
 
-export function formatTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleTimeString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-}
-
 export function formatOdds(price: number, format: OddsFormat): string {
   switch (format) {
     case "american":

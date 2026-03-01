@@ -63,9 +63,9 @@ components/
 
 ### useGames
 
-Fetches the home feed, organized by date sections (Earlier, Yesterday, Today, Tomorrow).
+Fetches the home feed, organized by date sections (Yesterday, Today).
 
-- **Two-phase loading:** Yesterday + Today first (fast render), Earlier + Tomorrow in background
+- **In-memory cache:** 90-second TTL, 45-second freshness window, max 5 entries per league
 - **Auto-refresh:** 60-second interval, pauses when tab is hidden, resumes on focus
 - **Client-side search:** Filters by team name/abbreviation without API round-trip
 - **Timezone:** Uses US/Eastern for section boundaries
@@ -80,7 +80,7 @@ Fetches a single game detail with caching and live polling.
 
 ### useFlow
 
-Fetches game flow data (narrative blocks and moments). Simple fetch-on-mount, no caching or polling.
+Fetches game flow data (narrative blocks and moments). In-memory LRU cache (5-minute TTL, max 8 entries), no polling.
 
 ### useFairBetOdds
 
@@ -94,7 +94,7 @@ Complex hook for FairBet odds with pagination, filtering, sorting, and parlay ma
 
 ## State Management
 
-Six Zustand stores persist to localStorage:
+Five Zustand stores persist to localStorage. A sixth (`ui`) is in-memory only.
 
 | Store | Key | Purpose |
 |---|---|---|
@@ -103,7 +103,9 @@ Six Zustand stores persist to localStorage:
 | `reading-position` | `sd-reading-position` | Per-game scroll position and score snapshot |
 | `section-layout` | `sd-section-layout` | Game detail section collapse/expand state |
 | `pinned-games` | `sd-pinned-games` | User-pinned games for quick access |
-| `ui` | `sd-ui` | Transient UI state (drawers, sheets, modals) |
+| `ui` | — | Transient UI state (settings drawer open/close). Not persisted. |
+
+Storage keys are centralized in `lib/config.ts` under `STORAGE_KEYS`.
 
 ### Settings Store Fields
 
@@ -126,7 +128,7 @@ scheduled → pregame → in_progress / live → completed / final → archived
 Helper functions: `isLive()`, `isFinal()`, `isPregame()` (in `lib/types.ts`).
 
 Content changes based on status:
-- **Pregame:** Overview + Odds sections
+- **Pregame:** Pregame Buzz + Odds sections
 - **Live:** Timeline + Stats + Odds, with 45-second polling
 - **Final:** Flow + Timeline + Stats + Odds + Wrap-Up
 
@@ -211,7 +213,7 @@ Docker-based, deployed to Hetzner VPS:
 GitHub Push (main) → CI (lint + typecheck + build) → Docker Build → GHCR Push → SSH Deploy to Hetzner
 ```
 
-The container runs on port 3000, bound to `127.0.0.1`, reverse-proxied to `scrolldownsports.dock108.dev`.
+The container runs on port 3001, bound to `127.0.0.1`, reverse-proxied to `scrolldownsports.dev`.
 
 See [ci-cd.md](ci-cd.md) for the full pipeline.
 

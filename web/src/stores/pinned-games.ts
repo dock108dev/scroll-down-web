@@ -97,6 +97,8 @@ export const usePinnedGames = create<PinnedGamesState>()(
     }),
     {
       name: STORAGE_KEYS.PINNED_GAMES,
+      // Custom storage: JSON can't serialize Set/Map, so we convert
+      // to arrays on write and back to Set/Map on read.
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);

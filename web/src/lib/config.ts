@@ -1,6 +1,12 @@
+/**
+ * Centralized app constants. All tunables (cache TTLs, polling intervals,
+ * pagination sizes, storage keys, UI defaults) live here so they can be
+ * adjusted from a single file.
+ */
+
 export const CACHE = {
   GAMES_TTL_MS: 90_000,
-  GAMES_FRESH_MS: 45_000,
+  GAMES_FRESH_MS: 45_000, // skip network if cache is younger than this
   GAMES_MAX_ENTRIES: 5,
   GAME_DETAIL_TTL_MS: 5 * 60_000,
   GAME_DETAIL_MAX_ENTRIES: 8,
@@ -13,24 +19,24 @@ export const CACHE = {
 export const POLLING = {
   GAMES_REFRESH_MS: 60_000,
   LIVE_GAME_POLL_MS: 45_000,
-  READING_RESUME_DELAY_MS: 300,
+  READING_RESUME_DELAY_MS: 300, // wait for DOM render before scrolling to saved position
 };
 
 export const API = {
   GAMES_LIMIT: 200,
   FAIRBET_PAGE_SIZE: 100,
   FAIRBET_MAX_CONCURRENT: 3,
-  ISR_REVALIDATE_S: 60,
+  ISR_REVALIDATE_S: 60, // Next.js ISR revalidation for API proxy routes
 };
 
 export const FAIRBET = {
-  MIN_BOOKS: 3,
-  EV_HIGHLIGHT_THRESHOLD: 5,
+  MIN_BOOKS: 3, // hide bets with fewer books posting a price
+  EV_HIGHLIGHT_THRESHOLD: 5, // EV% at which a bet gets the strong-positive color
 };
 
 export const LAYOUT = {
-  HEADER_HEIGHT_WITH_PINS: "88px",
-  HEADER_HEIGHT_DEFAULT: "56px",
+  HEADER_HEIGHT_WITH_PINS: "88px", // nav + pinned bar
+  HEADER_HEIGHT_DEFAULT: "56px", // nav only
   MAX_PINNED_GAMES: 10,
 };
 
