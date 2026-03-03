@@ -62,7 +62,7 @@ export const RENDER = {
 };
 
 export const DEFAULTS = {
-  HOME_EXPANDED: ["Today", "Yesterday"],
+  HOME_EXPANDED: [] as string[],
   TIMELINE_TIERS: [1, 2, 3] as number[],
   ODDS_FORMAT: "american",
   THEME: "system",

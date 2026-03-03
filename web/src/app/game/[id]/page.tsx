@@ -6,6 +6,7 @@ import { isFinal, isLive, isPregame } from "@/lib/types";
 import type { GameDetailResponse, GameStatus } from "@/lib/types";
 import { GameHeader } from "@/components/game/GameHeader";
 import { SectionNav } from "@/components/game/SectionNav";
+import { MiniScorebar } from "@/components/game/MiniScorebar";
 import { FlowContainer } from "@/components/game/FlowContainer";
 import { TimelineSection } from "@/components/game/TimelineSection";
 import { PlayerStatsSection, TeamStatsSection } from "@/components/game/StatsSection";
@@ -312,6 +313,8 @@ export default function GameDetailPage({
         active={activeSection || getDefaultSection(sections)}
         onSelect={setActiveSection}
       />
+
+      <MiniScorebar game={game} />
 
       <div ref={contentRef} className="py-4 space-y-2">
         {/* ─── Pregame Buzz ──────────────────────────────── */}

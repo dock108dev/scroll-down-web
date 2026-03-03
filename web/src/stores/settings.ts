@@ -8,7 +8,6 @@ interface SettingsState {
   preferredSportsbook: string;
   oddsFormat: "american" | "decimal" | "fractional";
   autoResumePosition: boolean;
-  /** @deprecated No longer used after timeline refactor */
   homeExpandedSections: string[];
   gameExpandedSections: string[];
   hideLimitedData: boolean;

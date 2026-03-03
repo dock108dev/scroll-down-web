@@ -1,6 +1,9 @@
 "use client";
 
+import { useCallback } from "react";
 import type { GameCore } from "@/stores/game-data";
+import { useSettings } from "@/stores/settings";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { GameRow } from "./GameRow";
 
 interface TimelineSectionProps {
@@ -9,19 +12,32 @@ interface TimelineSectionProps {
 }
 
 export function TimelineSection({ title, games }: TimelineSectionProps) {
+  const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
+  const setHomeExpandedSections = useSettings((s) => s.setHomeExpandedSections);
+
+  const expanded = homeExpandedSections.includes(title);
+
+  const handleToggle = useCallback(() => {
+    const next = expanded
+      ? homeExpandedSections.filter((s) => s !== title)
+      : [...homeExpandedSections, title];
+    setHomeExpandedSections(next);
+  }, [expanded, homeExpandedSections, setHomeExpandedSections, title]);
+
   if (games.length === 0) return null;
 
   return (
     <div>
-      <div
-        className="sticky z-20 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-neutral-500 bg-neutral-950 border-b border-neutral-800"
-        style={{ top: "var(--header-h)" }}
-      >
-        {title} ({games.length})
-      </div>
-      {games.map((game) => (
-        <GameRow key={game.id} game={game} />
-      ))}
+      <SectionHeader
+        title={title}
+        expanded={expanded}
+        onToggle={handleToggle}
+        count={games.length}
+      />
+      {expanded &&
+        games.map((game) => (
+          <GameRow key={game.id} game={game} />
+        ))}
     </div>
   );
 }

@@ -46,6 +46,7 @@ export default function HomePage() {
 
   const reveal = useReveal();
   const clearAllPositions = useReadingPosition((s) => s.clearAll);
+  const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
   const pruneStale = usePinnedGames((s) => s.pruneStale);
@@ -102,10 +103,12 @@ export default function HomePage() {
     [sections],
   );
 
-  // All games across all sections (sections are always expanded)
+  // Games in currently expanded sections only (for batch actions)
   const allVisibleGames = useMemo(() => {
-    return sortedSections.flatMap((s) => s.games);
-  }, [sortedSections]);
+    return sortedSections.flatMap((s) =>
+      homeExpandedSections.includes(s.key) ? s.games : [],
+    );
+  }, [sortedSections, homeExpandedSections]);
 
   // Count unread final games in visible sections only
   const unreadFinalCount = useMemo(
@@ -212,7 +215,7 @@ export default function HomePage() {
         {/* Batch actions + refresh */}
         {hasAnyGames && (
           <div className="flex items-center gap-3">
-            {catchUpCount > 0 && (
+            {scoreRevealMode !== "always" && catchUpCount > 0 && (
               <button
                 onClick={handleCatchUp}
                 className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 transition"
@@ -227,7 +230,7 @@ export default function HomePage() {
                 </span>
               </button>
             )}
-            {readCount > 0 && (
+            {scoreRevealMode !== "always" && readCount > 0 && (
               <button
                 onClick={handleReset}
                 className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-50 transition"
