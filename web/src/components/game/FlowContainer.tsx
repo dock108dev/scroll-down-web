@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { useFlow } from "@/hooks/useFlow";
+import { useGameFlow } from "@/hooks/useGameFlow";
 import { FlowBlockCard } from "./FlowBlockCard";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import type { FlowBlock, FlowPlay, FlowMoment, SocialPostEntry } from "@/lib/types";
@@ -119,7 +119,7 @@ function resolveScoreAfter(
 }
 
 export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
-  const { data, loading, error } = useFlow(gameId);
+  const { data, loading, error } = useGameFlow(gameId);
 
   // Index plays by play_id for O(1) lookup
   const plays = data?.plays;

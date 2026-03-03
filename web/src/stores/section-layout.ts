@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { STORAGE_KEYS } from "@/lib/config";
+import { STORAGE_KEYS, STORAGE } from "@/lib/config";
 
 interface SectionLayoutState {
   /** gameId → list of expanded section names */
@@ -60,6 +60,42 @@ export const useSectionLayout = create<SectionLayoutState>()(
       },
       clearAll: () => set({ layouts: {}, periods: {} }),
     }),
-    { name: STORAGE_KEYS.SECTION_LAYOUT },
+    {
+      name: STORAGE_KEYS.SECTION_LAYOUT,
+      storage: {
+        getItem: (name) => {
+          const str = localStorage.getItem(name);
+          if (!str) return null;
+          return JSON.parse(str);
+        },
+        setItem: (name, value) => {
+          // Cap stored layouts/periods to MAX_SECTION_LAYOUTS entries (newest first by key)
+          const max = STORAGE.MAX_SECTION_LAYOUTS;
+          const state = value.state as unknown as Record<string, unknown>;
+          let layouts = state.layouts as Record<string, string[]>;
+          let periods = state.periods as Record<string, string[]>;
+          const layoutKeys = Object.keys(layouts);
+          if (layoutKeys.length > max) {
+            const keep = layoutKeys.slice(-max);
+            const pruned: Record<string, string[]> = {};
+            for (const k of keep) pruned[k] = layouts[k];
+            layouts = pruned;
+          }
+          const periodKeys = Object.keys(periods);
+          if (periodKeys.length > max) {
+            const keep = periodKeys.slice(-max);
+            const pruned: Record<string, string[]> = {};
+            for (const k of keep) pruned[k] = periods[k];
+            periods = pruned;
+          }
+          const serialized = {
+            ...value,
+            state: { ...state, layouts, periods },
+          };
+          localStorage.setItem(name, JSON.stringify(serialized));
+        },
+        removeItem: (name) => localStorage.removeItem(name),
+      },
+    },
   ),
 );

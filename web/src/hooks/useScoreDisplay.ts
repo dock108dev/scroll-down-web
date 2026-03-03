@@ -1,0 +1,20 @@
+"use client";
+
+import { useGameData } from "@/stores/game-data";
+import { useReveal } from "@/stores/reveal";
+import { useSettings } from "@/stores/settings";
+import { computeScoreDisplay } from "@/lib/score-display";
+import type { ScoreDisplayResult } from "@/lib/score-display";
+
+export function useScoreDisplay(gameId: number): ScoreDisplayResult | null {
+  const core = useGameData((s) => s.getCore(gameId));
+  const activeGameId = useGameData((s) => s.activeGameId);
+  const revealed = useReveal((s) => s.isRevealed(gameId));
+  const snapshot = useReveal((s) => s.getSnapshot(gameId));
+  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
+
+  if (!core) return null;
+
+  const isActiveView = activeGameId === gameId;
+  return computeScoreDisplay(core, revealed, snapshot, scoreRevealMode, isActiveView);
+}

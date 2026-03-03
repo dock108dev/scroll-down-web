@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { GameSummary } from "@/lib/types";
+import type { GameCore } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
-import { useReadState } from "@/stores/read-state";
-import { useSettings } from "@/stores/settings";
+import { useReveal } from "@/stores/reveal";
+import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
-import type { PinnedGameDisplay } from "@/stores/pinned-games";
 import { TeamColorDot } from "@/components/shared/TeamColorDot";
 import { cn, cardDisplayName } from "@/lib/utils";
-import { useReadingPosition } from "@/stores/reading-position";
+import { pickSnapshot } from "@/lib/score-display";
 
 interface GameCardProps {
-  game: GameSummary;
+  game: GameCore;
 }
 
-function hasNoData(game: GameSummary): boolean {
+function hasNoData(game: GameCore): boolean {
   return !game.hasOdds && !game.hasPbp && !game.hasSocial && !game.hasFlow;
 }
 
@@ -40,72 +38,23 @@ function formatGameDateTime(dateStr: string): string {
 
 export function GameCard({ game }: GameCardProps) {
   const router = useRouter();
-  const { isRead, markRead, markUnread } = useReadState();
-  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
-  const savedPosition = useReadingPosition((s) => s.getPosition)(game.id);
-  const savePosition = useReadingPosition((s) => s.savePosition);
-  const clearPosition = useReadingPosition((s) => s.clearPosition);
+  const { reveal, hide, acceptUpdate, isRevealed } = useReveal();
+  const display = useScoreDisplay(game.id);
 
   const pinned = usePinnedGames((s) => s.isPinned)(game.id);
   const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
   const togglePin = usePinnedGames((s) => s.togglePin);
 
-  const read = isRead(game.id);
+  const read = isRevealed(game.id);
   const final = isFinal(game.status);
   const live = isLive(game.status);
   const pregame = isPregame(game.status);
   const noData = hasNoData(game);
 
-  // Track previous live status for live→final auto-hide
-  const wasLiveRef = useRef(live);
-  useEffect(() => {
-    // Game just went final while user had it revealed as live
-    if (final && wasLiveRef.current && read && savedPosition) {
-      markUnread(game.id);
-      clearPosition(game.id);
-    }
-    wasLiveRef.current = live;
-  }, [final, live, read, savedPosition, game.id, markUnread, clearPosition]);
-
   const hasScoreData = game.homeScore != null && game.awayScore != null;
-
-  const showScore =
-    !pregame &&
-    hasScoreData &&
-    (scoreRevealMode === "always" || read);
-
-  // Score freeze: when a live game is revealed (not "always" mode),
-  // display the snapshot scores instead of live-updating ones.
-  const scoreFrozen =
-    live &&
-    read &&
-    scoreRevealMode !== "always" &&
-    savedPosition?.homeScore != null &&
-    savedPosition?.awayScore != null;
-
-  const hasNewData =
-    scoreFrozen &&
-    (game.homeScore !== savedPosition!.homeScore ||
-      game.awayScore !== savedPosition!.awayScore);
-
-  const displayAwayScore = scoreFrozen
-    ? savedPosition!.awayScore
-    : showScore
-      ? game.awayScore
-      : savedPosition?.awayScore != null && !pregame
-        ? savedPosition.awayScore
-        : null;
-  const displayHomeScore = scoreFrozen
-    ? savedPosition!.homeScore
-    : showScore
-      ? game.homeScore
-      : savedPosition?.homeScore != null && !pregame
-        ? savedPosition.homeScore
-        : null;
-  const hasSavedScores = displayAwayScore != null && displayHomeScore != null;
-
-  const canToggle = (final || live) && hasScoreData && scoreRevealMode !== "always";
-  const scoresVisible = showScore || hasSavedScores;
+  const canToggle = display?.canToggle ?? false;
+  const scoresVisible = display?.visible ?? false;
+  const hasNewData = display?.hasUpdate ?? false;
 
   const handleCardClick = () => {
     if (!noData) {
@@ -113,58 +62,35 @@ export function GameCard({ game }: GameCardProps) {
     }
   };
 
-  const freshSnapshot = () => {
-    savePosition(game.id, {
-      playIndex: -1,
-      homeScore: game.homeScore ?? undefined,
-      awayScore: game.awayScore ?? undefined,
-      period: game.currentPeriod,
-      gameClock: game.gameClock,
-      periodLabel: game.currentPeriodLabel ?? undefined,
-      timeLabel: game.currentPeriodLabel
-        ? `${game.currentPeriodLabel}${game.gameClock ? ` ${game.gameClock}` : ""}`
-        : undefined,
-      playCount: game.playCount,
-      savedAt: new Date().toISOString(),
-    });
-  };
-
   const handleScoreToggle = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (!canToggle) return;
 
-    // When showing UPDATED, click refreshes to latest scores
     if (hasNewData) {
-      freshSnapshot();
-      markRead(game.id, game.status);
+      acceptUpdate(game.id, pickSnapshot(game));
       return;
     }
 
     if (scoresVisible) {
-      markUnread(game.id);
-      clearPosition(game.id);
+      hide(game.id);
     } else {
-      markRead(game.id, game.status);
-      if (hasScoreData) {
-        freshSnapshot();
-      }
+      reveal(game.id, pickSnapshot(game));
     }
   };
 
   // Status label
   const statusLabel = (() => {
     if (live) {
-      const timeStr = scoreFrozen && savedPosition?.timeLabel
-        ? savedPosition.timeLabel
-        : showScore && (game.currentPeriodLabel || game.gameClock)
+      const snapshot = useReveal.getState().getSnapshot(game.id);
+      const timeStr = display?.frozen && snapshot?.periodLabel
+        ? `${snapshot.periodLabel}${snapshot.clock ? ` ${snapshot.clock}` : ""}`
+        : scoresVisible && (game.currentPeriodLabel || game.gameClock)
           ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
-          : !showScore && hasSavedScores && savedPosition?.timeLabel
-            ? savedPosition.timeLabel
-            : "";
+          : "";
       if (hasNewData) {
         return (
           <button
-            onClick={(e) => { e.stopPropagation(); freshSnapshot(); }}
+            onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
             className="inline-flex items-center gap-1 text-amber-400 font-semibold cursor-pointer hover:text-amber-300 transition"
           >
             <span className="relative flex h-1.5 w-1.5">
@@ -188,6 +114,20 @@ export function GameCard({ game }: GameCardProps) {
       );
     }
     if (final) {
+      if (hasNewData) {
+        return (
+          <button
+            onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
+            className="inline-flex items-center gap-1 text-amber-400 font-semibold cursor-pointer hover:text-amber-300 transition"
+          >
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
+            </span>
+            UPDATED
+          </button>
+        );
+      }
       return <span className="text-neutral-600">Final</span>;
     }
     if (pregame) {
@@ -222,15 +162,7 @@ export function GameCard({ game }: GameCardProps) {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                const display: PinnedGameDisplay = {
-                  id: game.id,
-                  awayTeamAbbr: game.awayTeamAbbr ?? "AWY",
-                  homeTeamAbbr: game.homeTeamAbbr ?? "HME",
-                  awayScore: game.awayScore ?? null,
-                  homeScore: game.homeScore ?? null,
-                  status: game.status,
-                };
-                togglePin(game.id, display);
+                togglePin(game.id);
               }}
               className={cn(
                 "p-0.5 rounded transition",
@@ -290,7 +222,7 @@ export function GameCard({ game }: GameCardProps) {
                 !scoresVisible && "blur-sm select-none",
               )}
             >
-              {scoresVisible ? displayAwayScore : game.awayScore}
+              {scoresVisible ? display?.awayScore : game.awayScore}
             </span>
             <span
               className={cn(
@@ -298,7 +230,7 @@ export function GameCard({ game }: GameCardProps) {
                 !scoresVisible && "blur-sm select-none",
               )}
             >
-              {scoresVisible ? displayHomeScore : game.homeScore}
+              {scoresVisible ? display?.homeScore : game.homeScore}
             </span>
           </div>
         )}

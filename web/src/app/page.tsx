@@ -1,26 +1,24 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback } from "react";
-import { useGames, SECTION_ORDER } from "@/hooks/useGames";
+import { useGamesList, SECTION_ORDER } from "@/hooks/useGamesList";
+import type { GameCore } from "@/stores/game-data";
 
 import { SearchBar } from "@/components/home/SearchBar";
 import { GameSection } from "@/components/home/GameSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal } from "@/lib/types";
-import type { GameSummary } from "@/lib/types";
-import { useReadState } from "@/stores/read-state";
+import { useReveal } from "@/stores/reveal";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
+import { useHomeScroll } from "@/stores/home-scroll";
+import { pickSnapshot } from "@/lib/score-display";
 import { cn } from "@/lib/utils";
 
 // ── Sorting helpers ────────────────────────────────────────
 
-/**
- * Sort all games by tip time (gameDate ASC).
- * Earlier tip-off → closer to finishing → appears first.
- */
-function sortByTipTime(games: GameSummary[]): GameSummary[] {
+function sortByTipTime(games: GameCore[]): GameCore[] {
   return [...games].sort(
     (a, b) => new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime(),
   );
@@ -28,7 +26,7 @@ function sortByTipTime(games: GameSummary[]): GameSummary[] {
 
 // ── Derive available leagues from all games ────────────────
 
-function deriveLeagues(games: GameSummary[]): string[] {
+function deriveLeagues(games: GameCore[]): string[] {
   const set = new Set<string>();
   for (const g of games) {
     if (g.leagueCode) set.add(g.leagueCode.toLowerCase());
@@ -41,28 +39,54 @@ function deriveLeagues(games: GameSummary[]): string[] {
 export default function HomePage() {
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
-  const { sections, allGames, loading, error, refetch } = useGames(
+  const { sections, allGames, loading, error, refetch } = useGamesList(
     league || undefined,
     search || undefined,
   );
 
-  const readState = useReadState();
-  const getPosition = useReadingPosition((s) => s.getPosition);
-  const savePosition = useReadingPosition((s) => s.savePosition);
+  const reveal = useReveal();
   const clearPosition = useReadingPosition((s) => s.clearPosition);
+  const clearAllPositions = useReadingPosition((s) => s.clearAll);
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
   const pruneStale = usePinnedGames((s) => s.pruneStale);
-  const syncDisplayData = usePinnedGames((s) => s.syncDisplayData);
 
-  // Auto-prune pins for games no longer in the fetched range & sync display data
+  // Home scroll restoration
+  const savedScrollY = useHomeScroll((s) => s.scrollY);
+  const setScrollY = useHomeScroll((s) => s.setScrollY);
+
+  // Save scroll position on throttled scroll
+  useEffect(() => {
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          setScrollY(window.scrollY);
+          ticking = false;
+        });
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [setScrollY]);
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    if (savedScrollY > 0 && !loading) {
+      window.scrollTo(0, savedScrollY);
+    }
+    // Only run once after initial load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  // Auto-prune pins for games no longer in the fetched range
   useEffect(() => {
     if (allGames.length > 0) {
       pruneStale(allGames.map((g) => g.id));
-      syncDisplayData(allGames);
     }
-  }, [allGames, pruneStale, syncDisplayData]);
+  }, [allGames, pruneStale]);
 
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
@@ -91,9 +115,9 @@ export default function HomePage() {
   const unreadFinalCount = useMemo(
     () =>
       visibleGames.filter(
-        (g) => isFinal(g.status) && !readState.isRead(g.id),
+        (g) => isFinal(g.status) && !reveal.isRevealed(g.id),
       ).length,
-    [visibleGames, readState],
+    [visibleGames, reveal],
   );
 
   // Live games needing attention: unread live games + revealed live games with new data
@@ -102,24 +126,24 @@ export default function HomePage() {
     return visibleGames.filter((g) => {
       if (!isLive(g.status)) return false;
       if (g.homeScore == null || g.awayScore == null) return false;
-      const read = readState.isRead(g.id);
-      if (!read) return true; // unread live game — needs reveal
+      const revealed = reveal.isRevealed(g.id);
+      if (!revealed) return true;
       // Already revealed: check if data changed since snapshot
-      const pos = getPosition(g.id);
-      if (!pos || pos.homeScore == null || pos.awayScore == null) return false;
+      const snap = reveal.getSnapshot(g.id);
+      if (!snap) return false;
       return (
-        g.homeScore !== pos.homeScore ||
-        g.awayScore !== pos.awayScore
+        g.homeScore !== snap.homeScore ||
+        g.awayScore !== snap.awayScore
       );
     });
-  }, [visibleGames, readState, getPosition, scoreRevealMode]);
+  }, [visibleGames, reveal, scoreRevealMode]);
 
   const catchUpCount = unreadFinalCount + liveNeedsAttention.length;
 
-  // Count read games in visible sections only
+  // Count revealed games in visible sections only
   const readCount = useMemo(
-    () => visibleGames.filter((g) => readState.isRead(g.id)).length,
-    [visibleGames, readState],
+    () => visibleGames.filter((g) => reveal.isRevealed(g.id)).length,
+    [visibleGames, reveal],
   );
 
   // Final game IDs in visible sections only
@@ -131,31 +155,26 @@ export default function HomePage() {
   const visibleGameIds = useMemo(() => visibleGames.map((g) => g.id), [visibleGames]);
 
   const handleCatchUp = useCallback(() => {
-    // Mark unread finals as read
-    readState.markAllRead(visibleFinalGameIds);
-    // Reveal / re-reveal live games with fresh snapshots
-    for (const g of liveNeedsAttention) {
-      readState.markRead(g.id, g.status);
-      savePosition(g.id, {
-        playIndex: -1,
-        homeScore: g.homeScore ?? undefined,
-        awayScore: g.awayScore ?? undefined,
-        period: g.currentPeriod,
-        gameClock: g.gameClock,
-        periodLabel: g.currentPeriodLabel ?? undefined,
-        timeLabel: g.currentPeriodLabel
-          ? `${g.currentPeriodLabel}${g.gameClock ? ` ${g.gameClock}` : ""}`
-          : undefined,
-        playCount: g.playCount,
-        savedAt: new Date().toISOString(),
-      });
+    // Build batch entries: all unread finals + live games needing attention
+    const entries: { gameId: number; snapshot: ReturnType<typeof pickSnapshot> }[] = [];
+
+    for (const id of visibleFinalGameIds) {
+      if (!reveal.isRevealed(id)) {
+        const game = visibleGames.find((g) => g.id === id);
+        if (game) entries.push({ gameId: id, snapshot: pickSnapshot(game) });
+      }
     }
-  }, [visibleFinalGameIds, liveNeedsAttention, readState, savePosition]);
+    for (const g of liveNeedsAttention) {
+      entries.push({ gameId: g.id, snapshot: pickSnapshot(g) });
+    }
+
+    reveal.revealBatch(entries);
+  }, [visibleFinalGameIds, liveNeedsAttention, reveal, visibleGames]);
 
   const handleReset = useCallback(() => {
-    readState.markAllUnread(visibleGameIds);
-    visibleGameIds.forEach((id) => clearPosition(id));
-  }, [visibleGameIds, readState, clearPosition]);
+    reveal.hideBatch(visibleGameIds);
+    clearAllPositions();
+  }, [visibleGameIds, reveal, clearAllPositions]);
 
   const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 

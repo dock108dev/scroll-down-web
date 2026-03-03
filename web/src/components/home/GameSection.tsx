@@ -1,6 +1,6 @@
 "use client";
 
-import type { GameSummary } from "@/lib/types";
+import type { GameCore } from "@/stores/game-data";
 import { useSettings } from "@/stores/settings";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { GameCard } from "./GameCard";
@@ -8,7 +8,7 @@ import { useCallback } from "react";
 
 interface GameSectionProps {
   title: string;
-  games: GameSummary[];
+  games: GameCore[];
   actions?: React.ReactNode;
 }
 

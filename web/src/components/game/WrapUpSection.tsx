@@ -2,7 +2,7 @@
 
 import type { GameDetailResponse, OddsEntry } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
-import { useReadState } from "@/stores/read-state";
+import { useReveal } from "@/stores/reveal";
 import { formatOdds } from "@/lib/utils";
 import { SocialSection } from "./SocialSection";
 
@@ -135,8 +135,8 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
   const odds = data.odds;
   const oddsFormat = useSettings((s) => s.oddsFormat);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
-  const isRead = useReadState((s) => s.isRead);
-  const outcomeRevealed = scoreRevealMode === "always" || isRead(data.game.id);
+  const isRevealed = useReveal((s) => s.isRevealed);
+  const outcomeRevealed = scoreRevealMode === "always" || isRevealed(data.game.id);
 
   const game = data.game;
   const awayLabel = game.awayTeamAbbr ?? game.awayTeam;

@@ -1,7 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useGame } from "@/hooks/useGame";
+import { useGameDetail } from "@/hooks/useGameDetail";
 import { isFinal, isLive, isPregame } from "@/lib/types";
 import type { GameDetailResponse, GameStatus } from "@/lib/types";
 import { GameHeader } from "@/components/game/GameHeader";
@@ -15,11 +15,10 @@ import { PregameBuzzSection } from "@/components/game/PregameBuzzSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { useReadingPosition } from "@/stores/reading-position";
-import { useReadState } from "@/stores/read-state";
+import { useReveal } from "@/stores/reveal";
 import { useSettings } from "@/stores/settings";
 import { POLLING } from "@/lib/config";
 import { useSectionLayout } from "@/stores/section-layout";
-import { usePinnedGames } from "@/stores/pinned-games";
 
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
@@ -69,11 +68,6 @@ function getDefaultSection(sections: string[]): string {
 }
 
 // ─── Section expansion defaults ────────────────────────────────
-// Flow: always expanded (primary content)
-// Timeline: collapsed if flow exists, expanded otherwise
-// Stats: collapsed by default
-// Odds: collapsed by default
-// Wrap-Up: expanded only when game is already read (expanding it marks read)
 function getDefaultExpanded(
   section: string,
   hasFlow: boolean,
@@ -108,7 +102,7 @@ export default function GameDetailPage({
 }) {
   const { id } = use(params);
   const gameId = Number(id);
-  const { data, loading, error } = useGame(gameId);
+  const { data, core, loading, error } = useGameDetail(gameId);
 
   const sections = useMemo(() => (data ? getSections(data) : []), [data]);
   const [activeSection, setActiveSection] = useState<string>("");
@@ -123,33 +117,13 @@ export default function GameDetailPage({
   // Has flow data (for expansion defaults)
   const hasFlow = data?.game.hasFlow ?? false;
 
-  // ─── Sync pinned chip scores with latest game data ────────
-  const syncPinned = usePinnedGames((s) => s.syncDisplayData);
-  useEffect(() => {
-    if (!data) return;
-    const g = data.game;
-    const lastPlay = data.plays?.length
-      ? data.plays[data.plays.length - 1]
-      : null;
-    syncPinned([
-      {
-        id: g.id,
-        awayTeamAbbr: g.awayTeamAbbr,
-        homeTeamAbbr: g.homeTeamAbbr,
-        awayScore: lastPlay?.awayScore ?? g.awayScore,
-        homeScore: lastPlay?.homeScore ?? g.homeScore,
-        status: g.status,
-      },
-    ]);
-  }, [data, syncPinned]);
-
   // ─── Read state ────────────────────────────────────────────
-  const isRead = useReadState((s) => s.isRead);
-  const markRead = useReadState((s) => s.markRead);
-  const gameIsRead = isRead(gameId);
+  const isRevealed = useReveal((s) => s.isRevealed);
+  const markRead = useReveal((s) => s.markRead);
+  const gameIsRead = isRevealed(gameId);
   const handleWrapUpExpand = useCallback(() => {
     if (data && isFinal(data.game.status)) {
-      markRead(data.game.id, data.game.status);
+      markRead(data.game.id);
     }
   }, [data, markRead]);
 
@@ -192,14 +166,12 @@ export default function GameDetailPage({
   useEffect(() => {
     if (!contentRef.current || sections.length === 0) return;
 
-    // Clean up previous observer
     if (observerRef.current) {
       observerRef.current.disconnect();
     }
 
     observerRef.current = new IntersectionObserver(
       (entries) => {
-        // Find the topmost visible section
         let topSection: string | null = null;
         let topY = Infinity;
 
@@ -208,7 +180,6 @@ export default function GameDetailPage({
             const rect = entry.boundingClientRect;
             if (rect.top < topY) {
               topY = rect.top;
-              // Extract section name from id="section-SectionName"
               const sectionName = entry.target.id.replace("section-", "");
               topSection = sectionName;
             }
@@ -220,12 +191,11 @@ export default function GameDetailPage({
         }
       },
       {
-        rootMargin: "-96px 0px -50% 0px", // Account for sticky nav
+        rootMargin: "-96px 0px -50% 0px",
         threshold: 0,
       },
     );
 
-    // Observe all section elements
     for (const section of sections) {
       const el = document.getElementById(`section-${section}`);
       if (el) {
@@ -240,19 +210,18 @@ export default function GameDetailPage({
     };
   }, [sections]);
 
-  // ─── Reading position: save on scroll ──────────────────────
+  // ─── Reading position: save on scroll (no scores) ──────────
   useEffect(() => {
     if (!data || !data.plays || data.plays.length === 0) return;
 
     const handleScroll = () => {
-      // Find which play is currently in view
       const playElements = document.querySelectorAll("[data-play-index]");
       let closestIndex = 0;
       let closestDistance = Infinity;
 
       for (const el of playElements) {
         const rect = el.getBoundingClientRect();
-        const distance = Math.abs(rect.top - 100); // 100px from top
+        const distance = Math.abs(rect.top - 100);
         if (distance < closestDistance) {
           closestDistance = distance;
           const idx = Number(el.getAttribute("data-play-index"));
@@ -268,14 +237,12 @@ export default function GameDetailPage({
           gameClock: play?.gameClock,
           periodLabel: play?.periodLabel,
           timeLabel: play?.timeLabel,
+          playCount: data.plays.length,
           savedAt: new Date().toISOString(),
-          homeScore: play?.homeScore,
-          awayScore: play?.awayScore,
         });
       }
     };
 
-    // Throttle scroll handler
     let ticking = false;
     const throttledScroll = () => {
       if (!ticking) {
@@ -302,7 +269,6 @@ export default function GameDetailPage({
 
     hasResumed.current = true;
 
-    // Small delay to let the DOM render
     const timeout = setTimeout(() => {
       const playEl = document.querySelector(
         `[data-play-index="${saved.playIndex}"]`,
@@ -334,19 +300,9 @@ export default function GameDetailPage({
     );
   }
 
-  // Enrich game with clock + scores from latest PBP entry
-  const lastPlay = data.plays?.length
-    ? data.plays[data.plays.length - 1]
-    : null;
-  const game = lastPlay
-    ? {
-        ...data.game,
-        currentPeriod: lastPlay.quarter ?? data.game.currentPeriod,
-        gameClock: lastPlay.gameClock ?? data.game.gameClock,
-        homeScore: lastPlay.homeScore ?? data.game.homeScore,
-        awayScore: lastPlay.awayScore ?? data.game.awayScore,
-      }
-    : data.game;
+  // Use enriched core from canonical store (already has last-play enrichment)
+  const game = core ?? data.game;
+
   return (
     <div className="mx-auto max-w-5xl">
       <GameHeader game={game} />

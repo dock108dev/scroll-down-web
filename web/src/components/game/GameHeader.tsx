@@ -1,87 +1,42 @@
 "use client";
 
 import type { Game } from "@/lib/types";
+import type { GameCore } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
-import { useReadState } from "@/stores/read-state";
-import { useSettings } from "@/stores/settings";
-import { useReadingPosition } from "@/stores/reading-position";
+import { useReveal } from "@/stores/reveal";
+import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
-import type { PinnedGameDisplay } from "@/stores/pinned-games";
+import { pickSnapshot } from "@/lib/score-display";
 import { cn, formatDate } from "@/lib/utils";
 
 interface GameHeaderProps {
-  game: Game;
+  game: Game | GameCore;
 }
 
 export function GameHeader({ game }: GameHeaderProps) {
-  const { isRead, markRead, markUnread } = useReadState();
-  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
-  const savedPosition = useReadingPosition((s) => s.getPosition)(game.id);
-  const savePosition = useReadingPosition((s) => s.savePosition);
+  const { reveal, hide, isRevealed } = useReveal();
+  const display = useScoreDisplay(game.id);
 
   const pinned = usePinnedGames((s) => s.isPinned)(game.id);
   const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
   const togglePin = usePinnedGames((s) => s.togglePin);
 
-  const read = isRead(game.id);
+  const read = isRevealed(game.id);
   const live = isLive(game.status);
   const final = isFinal(game.status);
   const pregame = isPregame(game.status);
 
   const hasScoreData = game.homeScore != null && game.awayScore != null;
+  const showScore = display?.visible ?? false;
 
-  const showScore =
-    !pregame &&
-    hasScoreData &&
-    (scoreRevealMode === "always" || read);
-
-  // Score freeze: when a live game is revealed (not "always" mode),
-  // display the snapshot scores instead of live-updating ones.
-  const scoreFrozen =
-    live &&
-    read &&
-    scoreRevealMode !== "always" &&
-    savedPosition?.homeScore != null &&
-    savedPosition?.awayScore != null;
-
-  const hasScoreUpdate =
-    scoreFrozen &&
-    (game.homeScore !== savedPosition!.homeScore ||
-      game.awayScore !== savedPosition!.awayScore);
-
-  // Use saved scores from card reveal if available, otherwise use API scores
-  const displayAwayScore = scoreFrozen
-    ? savedPosition!.awayScore
-    : savedPosition?.awayScore ?? game.awayScore;
-  const displayHomeScore = scoreFrozen
-    ? savedPosition!.homeScore
-    : savedPosition?.homeScore ?? game.homeScore;
-
-  const freshSnapshot = () => {
-    savePosition(game.id, {
-      playIndex: -1,
-      homeScore: game.homeScore ?? undefined,
-      awayScore: game.awayScore ?? undefined,
-      period: game.currentPeriod,
-      gameClock: game.gameClock,
-      periodLabel: game.currentPeriodLabel ?? undefined,
-      timeLabel: game.currentPeriodLabel
-        ? `${game.currentPeriodLabel}${game.gameClock ? ` ${game.gameClock}` : ""}`
-        : undefined,
-      playCount: game.playCount,
-      savedAt: new Date().toISOString(),
-    });
-  };
+  // On detail page, isActiveView=true so scores always render from live (auto-accept)
+  // hasUpdate is always false here since active view
+  const hasScoreUpdate = display?.hasUpdate ?? false;
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
-    // When showing UPDATED, click refreshes to latest scores
-    if (hasScoreUpdate) {
-      freshSnapshot();
-      return;
-    }
-    if (read) markUnread(game.id);
-    else markRead(game.id, game.status);
+    if (read) hide(game.id);
+    else reveal(game.id, pickSnapshot(game as GameCore));
   };
 
   const awayColor = game.awayTeamColorDark || "#888";
@@ -100,15 +55,7 @@ export function GameHeader({ game }: GameHeaderProps) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  const display: PinnedGameDisplay = {
-                    id: game.id,
-                    awayTeamAbbr: game.awayTeamAbbr ?? "AWY",
-                    homeTeamAbbr: game.homeTeamAbbr ?? "HME",
-                    awayScore: game.awayScore ?? null,
-                    homeScore: game.homeScore ?? null,
-                    status: game.status,
-                  };
-                  togglePin(game.id, display);
+                  togglePin(game.id);
                 }}
                 className={cn(
                   "p-0.5 rounded transition",
@@ -125,16 +72,13 @@ export function GameHeader({ game }: GameHeaderProps) {
             )}
           </span>
           {live && hasScoreUpdate && (
-            <button
-              onClick={(e) => { e.stopPropagation(); freshSnapshot(); }}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400 cursor-pointer hover:text-amber-300 transition"
-            >
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
               </span>
               UPDATED
-            </button>
+            </span>
           )}
           {live && !hasScoreUpdate && (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-400">
@@ -168,7 +112,7 @@ export function GameHeader({ game }: GameHeaderProps) {
             </div>
             {showScore ? (
               <div className="text-4xl font-extrabold tabular-nums mt-2">
-                {displayAwayScore}
+                {display?.awayScore}
               </div>
             ) : (
               <div className="text-4xl font-extrabold tabular-nums mt-2 text-neutral-800">
@@ -188,14 +132,12 @@ export function GameHeader({ game }: GameHeaderProps) {
             {showScore ? (
               <>
                 <span className="text-neutral-600 text-sm font-medium">@</span>
-                {live && (game.currentPeriodLabel || game.gameClock || savedPosition?.timeLabel) && (
+                {live && (game.currentPeriodLabel || game.gameClock) && (
                   <p className="text-xs text-neutral-500 mt-0.5">
-                    {game.currentPeriodLabel || game.gameClock
-                      ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
-                      : savedPosition?.timeLabel}
+                    {game.currentPeriodLabel ?? ""}{game.gameClock ? ` ${game.gameClock}` : ""}
                   </p>
                 )}
-                {scoreRevealMode !== "always" && (
+                {display?.canToggle && (
                   <p className="text-xs text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
                     Hide score
                   </p>
@@ -233,7 +175,7 @@ export function GameHeader({ game }: GameHeaderProps) {
             </div>
             {showScore ? (
               <div className="text-4xl font-extrabold tabular-nums mt-2">
-                {displayHomeScore}
+                {display?.homeScore}
               </div>
             ) : (
               <div className="text-4xl font-extrabold tabular-nums mt-2 text-neutral-800">

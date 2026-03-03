@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import type { GameSummary } from "@/lib/types";
+import { useGameData } from "@/stores/game-data";
+import type { GameCore } from "@/stores/game-data";
 import { CACHE, POLLING, API } from "@/lib/config";
 
 // ── Date helpers (US/Eastern) ──────────────────────────────
@@ -73,14 +75,14 @@ async function fetchSection(
 
 // ── Client-side search filter ──────────────────────────────
 
-function matchesSearch(game: GameSummary, query: string): boolean {
+function matchesSearch(core: GameCore, query: string): boolean {
   if (!query) return true;
   const q = query.toLowerCase();
   return (
-    game.homeTeam.toLowerCase().includes(q) ||
-    game.awayTeam.toLowerCase().includes(q) ||
-    (game.homeTeamAbbr?.toLowerCase().includes(q) ?? false) ||
-    (game.awayTeamAbbr?.toLowerCase().includes(q) ?? false)
+    core.homeTeam.toLowerCase().includes(q) ||
+    core.awayTeam.toLowerCase().includes(q) ||
+    (core.homeTeamAbbr?.toLowerCase().includes(q) ?? false) ||
+    (core.awayTeamAbbr?.toLowerCase().includes(q) ?? false)
   );
 }
 
@@ -88,80 +90,47 @@ function matchesSearch(game: GameSummary, query: string): boolean {
 
 export interface SectionData {
   key: SectionKey;
-  games: GameSummary[];
+  games: GameCore[];
 }
 
-interface UseGamesReturn {
+interface UseGamesListReturn {
   sections: SectionData[];
-  allGames: GameSummary[];
+  allGames: GameCore[];
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
 }
 
-// ── In-memory cache ─────────────────────────────────────────
+// ── Track list fetch freshness per league ───────────────────
 
-interface GamesCacheEntry {
-  sectionMap: Record<SectionKey, GameSummary[]>;
-  fetchedAt: number;
-}
-
-const gamesCache = new Map<string, GamesCacheEntry>();
-
-function getGamesCached(league: string): GamesCacheEntry | null {
-  const entry = gamesCache.get(league);
-  if (!entry) return null;
-  if (Date.now() - entry.fetchedAt > CACHE.GAMES_TTL_MS) {
-    gamesCache.delete(league);
-    return null;
-  }
-  return entry;
-}
-
-function setGamesCache(league: string, sectionMap: Record<SectionKey, GameSummary[]>) {
-  if (gamesCache.size >= CACHE.GAMES_MAX_ENTRIES && !gamesCache.has(league)) {
-    let oldestKey: string | null = null;
-    let oldestTime = Infinity;
-    for (const [key, entry] of gamesCache) {
-      if (entry.fetchedAt < oldestTime) {
-        oldestTime = entry.fetchedAt;
-        oldestKey = key;
-      }
-    }
-    if (oldestKey !== null) gamesCache.delete(oldestKey);
-  }
-  gamesCache.set(league, { sectionMap, fetchedAt: Date.now() });
-}
+const listFetchTimestamps = new Map<string, number>();
 
 // ── Hook ───────────────────────────────────────────────────
 
-export function useGames(league?: string, search?: string): UseGamesReturn {
+export function useGamesList(league?: string, search?: string): UseGamesListReturn {
   const cacheKey = league ?? "";
-  const cached = getGamesCached(cacheKey);
+  const upsertFromList = useGameData((s) => s.upsertFromList);
+  const games = useGameData((s) => s.games);
+  const listFetches = useGameData((s) => s.listFetches);
 
-  const [sectionMap, setSectionMap] = useState<
-    Record<SectionKey, GameSummary[]>
-  >(
-    cached?.sectionMap ?? {
-      Yesterday: [],
-      Today: [],
-    },
-  );
-  const [loading, setLoading] = useState(!cached);
+  // Track section keys per league (Yesterday/Today game IDs)
+  const [sectionIds, setSectionIds] = useState<Record<SectionKey, number[]>>({
+    Yesterday: [],
+    Today: [],
+  });
+
+  const hasCached = listFetches.has(cacheKey);
+  const [loading, setLoading] = useState(!hasCached);
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevLeagueRef = useRef(league);
 
   const fetchAll = useCallback(async (showLoading?: boolean) => {
-    // Check cache freshness — skip network if fresh enough
-    const entry = getGamesCached(cacheKey);
-    if (entry && !showLoading) {
-      const age = Date.now() - entry.fetchedAt;
-      if (age < CACHE.GAMES_FRESH_MS) {
-        // Fresh cache — skip network entirely
-        return;
-      }
-      // Stale cache — use cached data, silent background refresh (no loading state)
+    // Check freshness — skip if recently fetched
+    const lastFetch = listFetchTimestamps.get(cacheKey);
+    if (lastFetch && !showLoading) {
+      const age = Date.now() - lastFetch;
+      if (age < CACHE.GAMES_FRESH_MS) return;
     }
 
     if (showLoading) setLoading(true);
@@ -174,20 +143,24 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
         fetchSection(ranges.Today, league),
       ]);
 
-      const fullMap = {
-        Yesterday: yesterday,
-        Today: today,
-      };
-      setSectionMap(fullMap);
+      // Upsert into canonical game data store
+      upsertFromList(cacheKey, [...yesterday, ...today]);
+      listFetchTimestamps.set(cacheKey, Date.now());
+
+      // Track which IDs belong to each section
+      setSectionIds({
+        Yesterday: yesterday.map((g) => g.id),
+        Today: today.map((g) => g.id),
+      });
+
       setLoading(false);
-      setGamesCache(cacheKey, fullMap);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch games",
       );
       setLoading(false);
     }
-  }, [league, cacheKey]);
+  }, [league, cacheKey, upsertFromList]);
 
   // Initial fetch + refetch on league change
   useEffect(() => {
@@ -214,7 +187,7 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
       if (document.hidden) {
         stop();
       } else {
-        fetchAll(); // refresh immediately when tab regains focus
+        fetchAll();
         start();
       }
     };
@@ -227,13 +200,28 @@ export function useGames(league?: string, search?: string): UseGamesReturn {
     };
   }, [fetchAll]);
 
-  // Apply client-side search filter & build sections array
-  const sections: SectionData[] = SECTION_ORDER.map((key) => ({
-    key,
-    games: (sectionMap[key] ?? []).filter((g) => matchesSearch(g, search ?? "")),
-  }));
+  // Derive sections from store using tracked section IDs
+  const sections: SectionData[] = useMemo(() => {
+    return SECTION_ORDER.map((key) => {
+      const ids = sectionIds[key] ?? [];
+      const cores: GameCore[] = [];
+      for (const id of ids) {
+        const entry = games.get(id);
+        if (entry) {
+          const core = entry.core;
+          if (matchesSearch(core, search ?? "")) {
+            cores.push(core);
+          }
+        }
+      }
+      return { key, games: cores };
+    });
+  }, [sectionIds, games, search]);
 
-  const allGames = sections.flatMap((s) => s.games);
+  const allGames = useMemo(
+    () => sections.flatMap((s) => s.games),
+    [sections],
+  );
 
   return { sections, allGames, loading, error, refetch: fetchAll };
 }

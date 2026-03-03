@@ -48,6 +48,15 @@ export const STORAGE_KEYS = {
   READING_POSITION: "sd-reading-position",
 };
 
+export const STORAGE = {
+  MAX_READING_POSITIONS: 50,
+  MAX_SECTION_LAYOUTS: 50,
+  MAX_REVEALED_IDS: 500,
+  MAX_SNAPSHOTS: 20,
+  POSITION_MAX_AGE_DAYS: 30,
+  LAYOUT_MAX_AGE_DAYS: 30,
+};
+
 export const DEFAULTS = {
   HOME_EXPANDED: ["Today", "Yesterday"],
   TIMELINE_TIERS: [1, 2, 3] as number[],

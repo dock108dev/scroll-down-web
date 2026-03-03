@@ -4,32 +4,16 @@ import { useRouter } from "next/navigation";
 import type { GameStatus } from "@/lib/types";
 import { isLive, isFinal } from "@/lib/types";
 import { usePinnedGames } from "@/stores/pinned-games";
-import type { PinnedGameDisplay } from "@/stores/pinned-games";
-import { useReadState } from "@/stores/read-state";
-import { useSettings } from "@/stores/settings";
-import { useReadingPosition } from "@/stores/reading-position";
+import { useGameData } from "@/stores/game-data";
+import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 
-function ChipScore({ game }: { game: PinnedGameDisplay }) {
-  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
-  const isRead = useReadState((s) => s.isRead);
-  const getPosition = useReadingPosition((s) => s.getPosition);
-
-  const read = isRead(game.id);
-  const showScore =
-    (game.homeScore != null && game.awayScore != null) &&
-    (scoreRevealMode === "always" || read);
-
-  const pos = getPosition(game.id);
-  const hasSavedScores = pos?.homeScore != null && pos?.awayScore != null;
-
-  if (!showScore && !hasSavedScores) return null;
-
-  const away = showScore ? game.awayScore : pos!.awayScore;
-  const home = showScore ? game.homeScore : pos!.homeScore;
+function ChipScore({ gameId }: { gameId: number }) {
+  const display = useScoreDisplay(gameId);
+  if (!display?.visible) return null;
 
   return (
     <span className="ml-1 text-[10px] tabular-nums text-neutral-400">
-      {away}–{home}
+      {display.awayScore}–{display.homeScore}
     </span>
   );
 }
@@ -52,38 +36,45 @@ function StatusDot({ status }: { status: GameStatus }) {
 export function PinnedBar() {
   const router = useRouter();
   const pinnedIds = usePinnedGames((s) => s.pinnedIds);
-  const displayData = usePinnedGames((s) => s.displayData);
   const togglePin = usePinnedGames((s) => s.togglePin);
+  const games = useGameData((s) => s.games);
 
   if (pinnedIds.size === 0) return null;
 
   // Build ordered list from Set iteration order
-  const games: PinnedGameDisplay[] = [];
+  const chips: { id: number; awayTeamAbbr: string; homeTeamAbbr: string; status: GameStatus }[] = [];
   for (const id of pinnedIds) {
-    const d = displayData.get(id);
-    if (d) games.push(d);
+    const entry = games.get(id);
+    if (entry) {
+      chips.push({
+        id,
+        awayTeamAbbr: entry.core.awayTeamAbbr ?? "AWY",
+        homeTeamAbbr: entry.core.homeTeamAbbr ?? "HME",
+        status: entry.core.status,
+      });
+    }
   }
 
-  if (games.length === 0) return null;
+  if (chips.length === 0) return null;
 
   return (
     <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 px-4">
-      {games.map((game) => (
+      {chips.map((chip) => (
         <button
-          key={game.id}
-          onClick={() => router.push(`/game/${game.id}`)}
+          key={chip.id}
+          onClick={() => router.push(`/game/${chip.id}`)}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-neutral-800 pl-2.5 pr-1.5 py-1 text-xs text-neutral-300 hover:bg-neutral-700 transition group"
         >
-          <StatusDot status={game.status} />
+          <StatusDot status={chip.status} />
           <span className="whitespace-nowrap">
-            {game.awayTeamAbbr} – {game.homeTeamAbbr}
+            {chip.awayTeamAbbr} – {chip.homeTeamAbbr}
           </span>
-          <ChipScore game={game} />
+          <ChipScore gameId={chip.id} />
           <span
             role="button"
             onClick={(e) => {
               e.stopPropagation();
-              togglePin(game.id);
+              togglePin(chip.id);
             }}
             className="ml-0.5 rounded-full p-0.5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600 transition"
           >
