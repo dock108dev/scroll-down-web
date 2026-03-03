@@ -23,14 +23,11 @@ export default function FairBetPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const filtersRef = useRef(hook.filters);
 
-  // Reset visible count when filters change
-  useEffect(() => {
-    const prev = filtersRef.current;
-    if (prev !== hook.filters) {
-      filtersRef.current = hook.filters;
-      setVisibleCount(RENDER.FAIRBET_BATCH);
-    }
-  }, [hook.filters]);
+  // Reset visible count when filters change (sync check in render, not in effect)
+  if (filtersRef.current !== hook.filters) {
+    filtersRef.current = hook.filters;
+    setVisibleCount(RENDER.FAIRBET_BATCH);
+  }
 
   // IntersectionObserver to load more cards on scroll
   useEffect(() => {
