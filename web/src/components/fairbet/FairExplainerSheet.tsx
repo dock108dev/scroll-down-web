@@ -43,7 +43,6 @@ export function FairExplainerSheet({
   const method = bet.ev_method;
   const fairProb = bet.true_prob ?? 0;
   const fairOdds = bet.fairAmericanOdds;
-  const sharpRefPrice = bet.reference_price;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
@@ -79,18 +78,12 @@ export function FairExplainerSheet({
             {bet.away_team} @ {bet.home_team}
           </div>
 
-          <div className="grid grid-cols-2 gap-3 pt-2">
+          <div className="pt-2">
             <StatBlock
               label="Estimated Fair Price"
               value={fairOdds != null ? formatOdds(fairOdds, oddsFormat) : "N/A"}
               large
             />
-            {sharpRefPrice != null && (
-              <StatBlock
-                label="Sharp Reference"
-                value={formatOdds(sharpRefPrice, oddsFormat)}
-              />
-            )}
           </div>
           <div className="text-center text-xs pt-1 text-neutral-500">
             Implied probability: {fairProb > 0 ? formatProbability(fairProb) : "N/A"}

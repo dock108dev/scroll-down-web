@@ -16,7 +16,6 @@ const KNOWN_BOOKS = [
   "BetRivers",
 ] as const;
 
-const HOME_SECTIONS = ["Yesterday", "Today"] as const;
 const GAME_SECTIONS = [
   "Flow",
   "Timeline",
@@ -37,8 +36,6 @@ export function SettingsContent() {
     setPreferredSportsbook,
     hideLimitedData,
     setHideLimitedData,
-    homeExpandedSections,
-    toggleHomeSection,
     gameExpandedSections,
     toggleGameSection,
     timelineDefaultTiers,
@@ -60,18 +57,6 @@ export function SettingsContent() {
             onChange={(v) => setTheme(v as "system" | "light" | "dark")}
           />
         </SettingsRow>
-      </SettingsSection>
-
-      {/* ─── Recaps — Default Expanded ──────────────────── */}
-      <SettingsSection title="Recaps — Default Expanded">
-        {HOME_SECTIONS.map((section) => (
-          <SettingsCheckRow
-            key={section}
-            label={section}
-            checked={homeExpandedSections.includes(section)}
-            onToggle={() => toggleHomeSection(section)}
-          />
-        ))}
       </SettingsSection>
 
       {/* ─── Game — Default Expanded ────────────────────── */}

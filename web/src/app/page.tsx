@@ -5,7 +5,7 @@ import { useGamesList, SECTION_ORDER } from "@/hooks/useGamesList";
 import type { GameCore } from "@/stores/game-data";
 
 import { SearchBar } from "@/components/home/SearchBar";
-import { GameSection } from "@/components/home/GameSection";
+import { TimelineSection } from "@/components/home/TimelineSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
@@ -45,9 +45,7 @@ export default function HomePage() {
   );
 
   const reveal = useReveal();
-  const clearPosition = useReadingPosition((s) => s.clearPosition);
   const clearAllPositions = useReadingPosition((s) => s.clearAll);
-  const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
   const pruneStale = usePinnedGames((s) => s.pruneStale);
@@ -104,26 +102,24 @@ export default function HomePage() {
     [sections],
   );
 
-  // Which sections are currently expanded (visible)?
-  const visibleGames = useMemo(() => {
-    return sortedSections.flatMap((s) =>
-      homeExpandedSections.includes(s.key) ? s.games : [],
-    );
-  }, [sortedSections, homeExpandedSections]);
+  // All games across all sections (sections are always expanded)
+  const allVisibleGames = useMemo(() => {
+    return sortedSections.flatMap((s) => s.games);
+  }, [sortedSections]);
 
   // Count unread final games in visible sections only
   const unreadFinalCount = useMemo(
     () =>
-      visibleGames.filter(
+      allVisibleGames.filter(
         (g) => isFinal(g.status) && !reveal.isRevealed(g.id),
       ).length,
-    [visibleGames, reveal],
+    [allVisibleGames, reveal],
   );
 
   // Live games needing attention: unread live games + revealed live games with new data
   const liveNeedsAttention = useMemo(() => {
     if (scoreRevealMode === "always") return [];
-    return visibleGames.filter((g) => {
+    return allVisibleGames.filter((g) => {
       if (!isLive(g.status)) return false;
       if (g.homeScore == null || g.awayScore == null) return false;
       const revealed = reveal.isRevealed(g.id);
@@ -136,23 +132,23 @@ export default function HomePage() {
         g.awayScore !== snap.awayScore
       );
     });
-  }, [visibleGames, reveal, scoreRevealMode]);
+  }, [allVisibleGames, reveal, scoreRevealMode]);
 
   const catchUpCount = unreadFinalCount + liveNeedsAttention.length;
 
   // Count revealed games in visible sections only
   const readCount = useMemo(
-    () => visibleGames.filter((g) => reveal.isRevealed(g.id)).length,
-    [visibleGames, reveal],
+    () => allVisibleGames.filter((g) => reveal.isRevealed(g.id)).length,
+    [allVisibleGames, reveal],
   );
 
   // Final game IDs in visible sections only
   const visibleFinalGameIds = useMemo(
-    () => visibleGames.filter((g) => isFinal(g.status)).map((g) => g.id),
-    [visibleGames],
+    () => allVisibleGames.filter((g) => isFinal(g.status)).map((g) => g.id),
+    [allVisibleGames],
   );
 
-  const visibleGameIds = useMemo(() => visibleGames.map((g) => g.id), [visibleGames]);
+  const visibleGameIds = useMemo(() => allVisibleGames.map((g) => g.id), [allVisibleGames]);
 
   const handleCatchUp = useCallback(() => {
     // Build batch entries: all unread finals + live games needing attention
@@ -160,7 +156,7 @@ export default function HomePage() {
 
     for (const id of visibleFinalGameIds) {
       if (!reveal.isRevealed(id)) {
-        const game = visibleGames.find((g) => g.id === id);
+        const game = allVisibleGames.find((g) => g.id === id);
         if (game) entries.push({ gameId: id, snapshot: pickSnapshot(game) });
       }
     }
@@ -169,7 +165,7 @@ export default function HomePage() {
     }
 
     reveal.revealBatch(entries);
-  }, [visibleFinalGameIds, liveNeedsAttention, reveal, visibleGames]);
+  }, [visibleFinalGameIds, liveNeedsAttention, reveal, allVisibleGames]);
 
   const handleReset = useCallback(() => {
     reveal.hideBatch(visibleGameIds);
@@ -179,7 +175,7 @@ export default function HomePage() {
   const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 
   return (
-    <div className="mx-auto max-w-7xl">
+    <div className="mx-auto max-w-2xl">
       {/* Sticky toolbar */}
       <div className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
         <SearchBar value={search} onChange={setSearch} />
@@ -264,7 +260,7 @@ export default function HomePage() {
       {/* Loading state */}
       {loading && (
         <div className="px-4 py-4 space-y-3">
-          <LoadingSkeleton count={8} className="h-24" />
+          <LoadingSkeleton count={10} variant="timelineRow" />
         </div>
       )}
 
@@ -284,7 +280,7 @@ export default function HomePage() {
 
       {/* Sections */}
       {sortedSections.map((section) => (
-        <GameSection
+        <TimelineSection
           key={section.key}
           title={section.key}
           games={section.games}
