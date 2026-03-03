@@ -305,12 +305,6 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     // Filter: only bets with enough books
     result = result.filter((b) => b.books.length >= FAIRBET.MIN_BOOKS);
 
-    // Filter: main lines only (exclude player props and team props)
-    result = result.filter((b) => {
-      const cat = marketKeyToCategory(b.market_key);
-      return cat !== "player_props" && cat !== "team_props";
-    });
-
     // Deduplicate by betId (API can return same market from different methods)
     const seen = new Set<string>();
     result = result.filter((b) => {
