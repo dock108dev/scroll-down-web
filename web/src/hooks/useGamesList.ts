@@ -113,11 +113,30 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const games = useGameData((s) => s.games);
   const listFetches = useGameData((s) => s.listFetches);
 
-  // Track section keys per league (Yesterday/Today game IDs)
-  const [sectionIds, setSectionIds] = useState<Record<SectionKey, number[]>>({
-    Yesterday: [],
-    Today: [],
-  });
+  // Track section keys per league (Yesterday/Today game IDs).
+  // Lazy initializer reconstructs from the Zustand store on remount so
+  // back-navigation doesn't show an empty list while the cache-check
+  // skips the network fetch.
+  const [sectionIds, setSectionIds] = useState<Record<SectionKey, number[]>>(
+    () => {
+      const meta = listFetches.get(cacheKey);
+      if (!meta) return { Yesterday: [], Today: [] };
+      const ranges = getSectionDateRanges();
+      const result: Record<SectionKey, number[]> = { Yesterday: [], Today: [] };
+      for (const id of meta.gameIds) {
+        const entry = games.get(id);
+        if (!entry) continue;
+        const d = entry.core.gameDate.slice(0, 10);
+        for (const key of SECTION_ORDER) {
+          if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
+            result[key].push(id);
+            break;
+          }
+        }
+      }
+      return result;
+    },
+  );
 
   const hasCached = listFetches.has(cacheKey);
   const [loading, setLoading] = useState(!hasCached);
