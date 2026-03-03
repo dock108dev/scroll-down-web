@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useFairBetOdds } from "@/hooks/useFairBetOdds";
 import { BetCard } from "@/components/fairbet/BetCard";
 import { BookFilters } from "@/components/fairbet/BookFilters";
@@ -9,6 +9,7 @@ import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
+import { RENDER } from "@/lib/config";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
@@ -16,6 +17,36 @@ export default function FairBetPage() {
   const [showExplainer, setShowExplainer] = useState(false);
   const [showParlay, setShowParlay] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
+
+  // Progressive rendering
+  const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const filtersRef = useRef(hook.filters);
+
+  // Reset visible count when filters change
+  useEffect(() => {
+    const prev = filtersRef.current;
+    if (prev !== hook.filters) {
+      filtersRef.current = hook.filters;
+      setVisibleCount(RENDER.FAIRBET_BATCH);
+    }
+  }, [hook.filters]);
+
+  // IntersectionObserver to load more cards on scroll
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((c) => c + RENDER.FAIRBET_BATCH);
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [hook.filteredBets.length]);
 
   const openExplainer = useCallback((bet: APIBet) => {
     setExplainerBet(bet);
@@ -137,7 +168,7 @@ export default function FairBetPage() {
 
         {/* Bet cards */}
         {!hook.loading &&
-          hook.filteredBets.map((bet) => {
+          hook.filteredBets.slice(0, visibleCount).map((bet) => {
             const id = betId(bet);
             return (
               <BetCard
@@ -149,6 +180,17 @@ export default function FairBetPage() {
               />
             );
           })}
+
+        {/* Sentinel for loading more + count indicator */}
+        {!hook.loading && visibleCount < hook.filteredBets.length && (
+          <>
+            <div ref={sentinelRef} className="h-px" />
+            <div className="text-center text-xs text-neutral-500 py-2">
+              Showing {Math.min(visibleCount, hook.filteredBets.length)} of{" "}
+              {hook.filteredBets.length}
+            </div>
+          </>
+        )}
 
         {/* Loading more indicator */}
         {hook.isLoadingMore && (

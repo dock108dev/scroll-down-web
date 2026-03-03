@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useRouter } from "next/navigation";
 import type { GameCore } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
@@ -36,7 +37,7 @@ function formatGameDateTime(dateStr: string): string {
   return `${month} ${day} • ${time}`;
 }
 
-export function GameCard({ game }: GameCardProps) {
+export const GameCard = memo(function GameCard({ game }: GameCardProps) {
   const router = useRouter();
   const { reveal, hide, acceptUpdate, isRevealed } = useReveal();
   const display = useScoreDisplay(game.id);
@@ -237,4 +238,4 @@ export function GameCard({ game }: GameCardProps) {
       </div>
     </div>
   );
-}
+});

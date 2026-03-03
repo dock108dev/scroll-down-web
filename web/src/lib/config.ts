@@ -57,6 +57,10 @@ export const STORAGE = {
   LAYOUT_MAX_AGE_DAYS: 30,
 };
 
+export const RENDER = {
+  FAIRBET_BATCH: 25,
+};
+
 export const DEFAULTS = {
   HOME_EXPANDED: ["Today", "Yesterday"],
   TIMELINE_TIERS: [1, 2, 3] as number[],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { memo, useState } from "react";
 import type { APIBet } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
 import { formatOdds, cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ interface BetCardProps {
   onShowExplainer?: (bet: APIBet) => void;
 }
 
-export function BetCard({
+export const BetCard = memo(function BetCard({
   bet,
   onToggleParlay,
   isInParlay,
@@ -273,4 +273,4 @@ export function BetCard({
       </div>
     </div>
   );
-}
+});
