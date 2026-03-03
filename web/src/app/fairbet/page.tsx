@@ -18,14 +18,13 @@ export default function FairBetPage() {
   const [showParlay, setShowParlay] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
 
-  // Progressive rendering
+  // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
+  const [prevFilters, setPrevFilters] = useState(hook.filters);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const filtersRef = useRef(hook.filters);
 
-  // Reset visible count when filters change (sync check in render, not in effect)
-  if (filtersRef.current !== hook.filters) {
-    filtersRef.current = hook.filters;
+  if (prevFilters !== hook.filters) {
+    setPrevFilters(hook.filters);
     setVisibleCount(RENDER.FAIRBET_BATCH);
   }
 
