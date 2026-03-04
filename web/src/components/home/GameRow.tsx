@@ -179,7 +179,7 @@ export const GameRow = memo(function GameRow({ game }: GameRowProps) {
         "flex items-center min-h-[52px] px-4 py-2.5 border-b border-neutral-800 transition select-none",
         noData && "opacity-40 pointer-events-none",
         read && final && "opacity-70",
-        !noData && "cursor-pointer active:bg-neutral-800/50",
+        !noData && "cursor-pointer hover:bg-neutral-800/40 active:bg-neutral-800/50",
       )}
     >
       {/* Left: league + status */}

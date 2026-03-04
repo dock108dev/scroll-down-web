@@ -30,6 +30,14 @@ function fmt(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+/** Convert a gameDate (ISO datetime or YYYY-MM-DD) to an Eastern-time date string */
+function toEasternDateStr(gameDate: string): string {
+  if (gameDate.length === 10) return gameDate;
+  return new Date(gameDate).toLocaleDateString("en-CA", {
+    timeZone: "America/New_York",
+  });
+}
+
 // ── Section date ranges ────────────────────────────────────
 
 export type SectionKey = "Yesterday" | "Today";
@@ -126,7 +134,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
       for (const id of meta.gameIds) {
         const entry = games.get(id);
         if (!entry) continue;
-        const d = entry.core.gameDate.slice(0, 10);
+        const d = toEasternDateStr(entry.core.gameDate);
         for (const key of SECTION_ORDER) {
           if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
             result[key].push(id);
@@ -162,15 +170,24 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         fetchSection(ranges.Today, league),
       ]);
 
-      // Upsert into canonical game data store
-      upsertFromList(cacheKey, [...yesterday, ...today]);
+      // Deduplicate and upsert into canonical game data store
+      const allFetched = new Map<number, GameSummary>();
+      for (const g of [...yesterday, ...today]) allFetched.set(g.id, g);
+      upsertFromList(cacheKey, Array.from(allFetched.values()));
       listFetchTimestamps.set(cacheKey, Date.now());
 
-      // Track which IDs belong to each section
-      setSectionIds({
-        Yesterday: yesterday.map((g) => g.id),
-        Today: today.map((g) => g.id),
-      });
+      // Bucket by Eastern-time date (backend may use UTC boundaries)
+      const buckets: Record<SectionKey, number[]> = { Yesterday: [], Today: [] };
+      for (const g of allFetched.values()) {
+        const d = toEasternDateStr(g.gameDate);
+        for (const key of SECTION_ORDER) {
+          if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
+            buckets[key].push(g.id);
+            break;
+          }
+        }
+      }
+      setSectionIds(buckets);
 
       setLoading(false);
     } catch (err) {
