@@ -13,6 +13,7 @@ import { pickSnapshot } from "@/lib/score-display";
 interface GameRowProps {
   game: GameCore;
   showPin?: boolean;
+  variant?: "home" | "history";
 }
 
 function hasNoData(game: GameCore): boolean {
@@ -29,7 +30,23 @@ function formatGameDateTime(dateStr: string): string {
   return `${time} ET`;
 }
 
-export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowProps) {
+function formatHistoryDateTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const monthDay = date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: "America/New_York",
+  });
+  const time = date.toLocaleString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  });
+  return `${monthDay} · ${time} ET`;
+}
+
+export const GameRow = memo(function GameRow({ game, showPin = true, variant = "home" }: GameRowProps) {
+  const isHistory = variant === "history";
   const router = useRouter();
   const { reveal, acceptUpdate, isRevealed } = useReveal();
   const display = useScoreDisplay(game.id);
@@ -235,7 +252,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
       className={cn(
         "flex items-center min-h-[52px] px-4 py-3 border-b border-neutral-800/40 transition select-none",
         noData && "opacity-40 pointer-events-none",
-        read && final && "opacity-70",
+        !isHistory && read && final && "opacity-70",
         !noData && "cursor-pointer hover:bg-neutral-800/40 active:bg-neutral-800/50",
       )}
     >
@@ -275,8 +292,12 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
         {cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}
       </div>
 
-      {/* Right: score zone */}
-      {scoreZone}
+      {/* Right: score zone or history date/time */}
+      {isHistory ? (
+        <span className="shrink-0 text-xs text-neutral-500 pl-3 text-right min-w-[96px]">
+          {formatHistoryDateTime(game.gameDate)}
+        </span>
+      ) : scoreZone}
     </div>
   );
 });

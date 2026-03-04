@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect, useRef, Suspense } from "react";
+import { useMemo, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useHistoricalGames } from "@/hooks/useHistoricalGames";
 import type { GameCore } from "@/stores/game-data";
@@ -71,9 +71,28 @@ function HistoryPageInner() {
   const defaultDate = yesterdayStr();
   const startDate = searchParams.get("start") || defaultDate;
   const endDate = searchParams.get("end") || startDate;
-  const [league, setLeague] = useState("");
-  const [search, setSearch] = useState("");
-  const [sortMode, setSortMode] = useState<SortMode>("away");
+  const league = searchParams.get("league") || "";
+  const search = searchParams.get("search") || "";
+  const sortMode = (searchParams.get("sort") as SortMode) || "away";
+
+  const setParams = useCallback(
+    (updates: Record<string, string>) => {
+      const params = new URLSearchParams(searchParams.toString());
+      for (const [key, value] of Object.entries(updates)) {
+        if (value) {
+          params.set(key, value);
+        } else {
+          params.delete(key);
+        }
+      }
+      router.replace(`/history?${params.toString()}`, { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const setLeague = useCallback((v: string) => setParams({ league: v }), [setParams]);
+  const setSearch = useCallback((v: string) => setParams({ search: v }), [setParams]);
+  const setSortMode = useCallback((v: SortMode) => setParams({ sort: v }), [setParams]);
 
   const { games, loading, loadingMore, error, total, hasMore, loadMore } =
     useHistoricalGames(
@@ -85,12 +104,9 @@ function HistoryPageInner() {
 
   const handleDateChange = useCallback(
     (newStart: string, newEnd: string) => {
-      const params = new URLSearchParams();
-      params.set("start", newStart);
-      params.set("end", newEnd);
-      router.replace(`/history?${params.toString()}`, { scroll: false });
+      setParams({ start: newStart, end: newEnd });
     },
-    [router],
+    [setParams],
   );
 
   const sortedGames = useMemo(() => sortGames(games, sortMode), [games, sortMode]);
@@ -204,7 +220,7 @@ function HistoryPageInner() {
 
       {/* Game list */}
       {sortedGames.map((game) => (
-        <GameRow key={game.id} game={game} showPin={false} />
+        <GameRow key={game.id} game={game} showPin={false} variant="history" />
       ))}
 
       {/* Load more sentinel + indicator */}
