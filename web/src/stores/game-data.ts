@@ -209,10 +209,15 @@ export const useGameData = create<GameDataState>()((set, get) => ({
         const existing = next.get(g.id);
         const core = coreFromSummary(g);
         if (existing) {
+          // Don't overwrite core with list data when the detail page
+          // recently polled fresher scores for this game.
+          const detailIsFresh =
+            existing.detail != null &&
+            now - existing.detail.fetchedAt < CACHE.GAME_DETAIL_TTL_MS;
           next.set(g.id, {
             ...existing,
-            core,
-            coreUpdatedAt: now,
+            core: detailIsFresh ? existing.core : core,
+            coreUpdatedAt: detailIsFresh ? existing.coreUpdatedAt : now,
           });
         } else {
           next.set(g.id, {

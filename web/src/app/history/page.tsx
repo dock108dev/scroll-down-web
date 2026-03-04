@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, Suspense } from "react";
+import { useMemo, useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useHistoricalGames } from "@/hooks/useHistoricalGames";
 import type { GameCore } from "@/stores/game-data";
@@ -50,8 +50,8 @@ function deriveLeagues(games: GameCore[]): string[] {
 type SortMode = "away" | "home" | "time";
 
 const SORT_OPTIONS: { value: SortMode; label: string }[] = [
-  { value: "away", label: "Away Team" },
-  { value: "home", label: "Home Team" },
+  { value: "away", label: "Away" },
+  { value: "home", label: "Home" },
   { value: "time", label: "Time" },
 ];
 
@@ -81,12 +81,13 @@ function HistoryPageInner() {
   const [search, setSearch] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("away");
 
-  const { games, loading, error } = useHistoricalGames(
-    startDate,
-    endDate,
-    league || undefined,
-    search || undefined,
-  );
+  const { games, loading, loadingMore, error, total, hasMore, loadMore } =
+    useHistoricalGames(
+      startDate,
+      endDate,
+      league || undefined,
+      search || undefined,
+    );
 
   const handleDateChange = useCallback(
     (newStart: string, newEnd: string) => {
@@ -114,15 +115,32 @@ function HistoryPageInner() {
     return `${s} – ${e}`;
   }, [startDate, endDate]);
 
+  // Infinite scroll: load more when sentinel enters viewport
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loadingMore && !loading) {
+          loadMore();
+        }
+      },
+      { rootMargin: "200px" },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [hasMore, loadingMore, loading, loadMore]);
+
   return (
     <div className="mx-auto max-w-2xl">
       {/* Sticky toolbar */}
       <div className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
-        <DateNavigator startDate={startDate} endDate={endDate} onChange={handleDateChange} loading={loading} />
+        <DateNavigator startDate={startDate} endDate={endDate} onChange={handleDateChange} />
         <SearchBar value={search} onChange={setSearch} />
 
-        {/* League filter pills + sort pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {/* League pills + sort pills on one row */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setLeague("")}
             className={cn(
@@ -148,19 +166,19 @@ function HistoryPageInner() {
               {code}
             </button>
           ))}
-        </div>
 
-        {/* Sort controls */}
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-500">Sort</span>
+          {/* Divider */}
+          <div className="shrink-0 w-px h-4 bg-neutral-700" />
+
+          {/* Sort pills */}
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               onClick={() => setSortMode(opt.value)}
               className={cn(
-                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition",
+                "shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium transition",
                 sortMode === opt.value
-                  ? "bg-neutral-50 text-neutral-950"
+                  ? "bg-blue-600 text-white"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
               )}
             >
@@ -195,6 +213,24 @@ function HistoryPageInner() {
       {sortedGames.map((game) => (
         <GameRow key={game.id} game={game} showPin={false} />
       ))}
+
+      {/* Load more sentinel + indicator */}
+      {hasMore && (
+        <div ref={sentinelRef} className="px-4 py-4">
+          {loadingMore && (
+            <div className="space-y-3">
+              <LoadingSkeleton count={3} variant="timelineRow" />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Result count */}
+      {!loading && games.length > 0 && (
+        <div className="px-4 py-3 text-center text-xs text-neutral-600">
+          {games.length} of {total} games
+        </div>
+      )}
     </div>
   );
 }

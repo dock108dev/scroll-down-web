@@ -5,32 +5,19 @@ import { api } from "@/lib/api";
 import type { GameSummary } from "@/lib/types";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
-import { isLive, isFinal, type GameStatus } from "@/lib/types";
 
-// ── Sorting helpers ────────────────────────────────────────
-
-function statusPriority(status: GameStatus): number {
-  if (isLive(status)) return 0;
-  if (isFinal(status)) return 2;
-  return 1;
-}
-
-function sortByStatusThenTime(games: GameCore[]): GameCore[] {
-  return [...games].sort((a, b) => {
-    const sp = statusPriority(a.status) - statusPriority(b.status);
-    if (sp !== 0) return sp;
-    return new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime();
-  });
-}
+const PAGE_SIZE = 25;
 
 // ── Hook return type ───────────────────────────────────────
 
 interface UseHistoricalGamesReturn {
   games: GameCore[];
   loading: boolean;
+  loadingMore: boolean;
   error: string | null;
   total: number;
-  refetch: () => Promise<void>;
+  hasMore: boolean;
+  loadMore: () => void;
 }
 
 // ── Hook ───────────────────────────────────────────────────
@@ -41,14 +28,15 @@ export function useHistoricalGames(
   league?: string,
   team?: string,
 ): UseHistoricalGamesReturn {
-  const cacheKey = `history:${startDate}:${endDate}:${league ?? ""}`;
   const upsertFromList = useGameData((s) => s.upsertFromList);
   const games = useGameData((s) => s.games);
 
   const [gameIds, setGameIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
+  const [, setOffset] = useState(0);
 
   // Debounce team search
   const [debouncedTeam, setDebouncedTeam] = useState(team);
@@ -64,47 +52,85 @@ export function useHistoricalGames(
     };
   }, [team]);
 
-  const fetchGames = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  // Track params to detect changes and reset
+  const paramsKey = `${startDate}:${endDate}:${league ?? ""}:${debouncedTeam ?? ""}`;
+  const prevParamsKey = useRef(paramsKey);
 
-    const params = new URLSearchParams();
-    params.set("startDate", startDate);
-    params.set("endDate", endDate);
-    params.set("limit", "200");
-    if (league) params.set("league", league);
-    if (debouncedTeam) params.set("team", debouncedTeam);
-
-    try {
-      const data = await api.games(params);
-      const summaries = data.games;
-      setTotal(data.total ?? summaries.length);
-
-      // Upsert into game data store with history-specific cache key
-      upsertFromList(cacheKey, summaries);
-      setGameIds(summaries.map((g: GameSummary) => g.id));
-      setLoading(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch games");
-      setLoading(false);
-    }
-  }, [startDate, endDate, league, debouncedTeam, cacheKey, upsertFromList]);
-
-  // Re-fetch when dates/league/team change
+  // Reset when params change
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch on dep change, same pattern as useGamesList
-    fetchGames();
-  }, [fetchGames]);
+    if (prevParamsKey.current !== paramsKey) {
+      prevParamsKey.current = paramsKey;
+      setGameIds([]);
+      setOffset(0);
+      setTotal(0);
+    }
+  }, [paramsKey]);
 
-  // Derive sorted game list from store
-  const sortedGames = useMemo(() => {
+  const fetchPage = useCallback(
+    async (pageOffset: number, append: boolean) => {
+      if (append) {
+        setLoadingMore(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null);
+
+      const params = new URLSearchParams();
+      params.set("startDate", startDate);
+      params.set("endDate", endDate);
+      params.set("limit", String(PAGE_SIZE));
+      params.set("offset", String(pageOffset));
+      if (league) params.set("league", league);
+      if (debouncedTeam) params.set("team", debouncedTeam);
+
+      const cacheKey = `history:${startDate}:${endDate}:${league ?? ""}:${pageOffset}`;
+
+      try {
+        const data = await api.games(params);
+        const summaries = data.games;
+        setTotal(data.total ?? summaries.length);
+
+        upsertFromList(cacheKey, summaries);
+        const newIds = summaries.map((g: GameSummary) => g.id);
+
+        if (append) {
+          setGameIds((prev) => [...prev, ...newIds]);
+        } else {
+          setGameIds(newIds);
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to fetch games");
+      } finally {
+        setLoading(false);
+        setLoadingMore(false);
+      }
+    },
+    [startDate, endDate, league, debouncedTeam, upsertFromList],
+  );
+
+  // Initial fetch (and re-fetch on param change)
+  useEffect(() => {
+    fetchPage(0, false);
+  }, [fetchPage]);
+
+  const hasMore = gameIds.length < total;
+
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    const nextOffset = gameIds.length;
+    setOffset(nextOffset);
+    fetchPage(nextOffset, true);
+  }, [loadingMore, hasMore, gameIds.length, fetchPage]);
+
+  // Derive game list from store (no sorting here — page handles it)
+  const gameList = useMemo(() => {
     const cores: GameCore[] = [];
     for (const id of gameIds) {
       const entry = games.get(id);
       if (entry) cores.push(entry.core);
     }
-    return sortByStatusThenTime(cores);
+    return cores;
   }, [gameIds, games]);
 
-  return { games: sortedGames, loading, error, total, refetch: fetchGames };
+  return { games: gameList, loading, loadingMore, error, total, hasMore, loadMore };
 }
