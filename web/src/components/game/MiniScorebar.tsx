@@ -11,9 +11,10 @@ import { cn } from "@/lib/utils";
 
 interface MiniScorebarProps {
   game: Game | GameCore;
+  visible: boolean;
 }
 
-export function MiniScorebar({ game }: MiniScorebarProps) {
+export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const display = useScoreDisplay(game.id);
   const { reveal, hide, isRevealed } = useReveal();
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
@@ -31,72 +32,84 @@ export function MiniScorebar({ game }: MiniScorebarProps) {
   const handleReveal = () => reveal(game.id, pickSnapshot(game as GameCore));
   const handleHide = () => hide(game.id);
 
-  // Center label
-  let centerLabel: string;
+  // Status label
+  let statusLabel: string;
   if (pregame) {
-    centerLabel = "Upcoming";
+    statusLabel = "Upcoming";
   } else if (!showScore) {
-    centerLabel = "vs";
+    statusLabel = "vs";
   } else if (live && (game.currentPeriodLabel || game.gameClock)) {
     const parts = [game.currentPeriodLabel, game.gameClock].filter(Boolean);
-    centerLabel = parts.join(" ");
+    statusLabel = parts.join(" ");
   } else if (final) {
-    centerLabel = "Final";
+    statusLabel = "Final";
   } else {
-    centerLabel = "";
+    statusLabel = "";
   }
+
+  const showToggle = canToggle && scoreRevealMode !== "always" && !pregame;
 
   return (
     <div
-      className="sticky z-25 border-b border-neutral-800 bg-neutral-950/95 backdrop-blur px-4 py-1.5"
-      style={{ top: "calc(var(--header-h) + 41px)" }}
+      className={cn(
+        "overflow-hidden transition-all duration-300 ease-in-out",
+        visible ? "max-h-16 opacity-100" : "max-h-0 opacity-0",
+      )}
     >
-      <div className="flex items-center justify-between">
-        {/* Left: away team */}
-        <div className="flex items-center gap-2 min-w-0">
-          <span
-            className="text-sm font-bold tracking-tight"
-            style={{ color: awayColor }}
-          >
-            {game.awayTeamAbbr ?? game.awayTeam}
-          </span>
-          {showScore && (
-            <span className="text-sm font-bold tabular-nums text-neutral-100">
-              {display?.awayScore}
+      <div className="border-b border-neutral-800 px-4 py-1.5">
+        <div className="flex items-center gap-4">
+          {/* Left: two team rows */}
+          <div className="flex flex-col gap-0.5 min-w-0">
+            {/* Away row */}
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs font-bold w-10 tracking-tight"
+                style={{ color: awayColor }}
+              >
+                {game.awayTeamAbbr ?? game.awayTeam}
+              </span>
+              {showScore && (
+                <span className="text-xs font-bold tabular-nums text-neutral-100">
+                  {display?.awayScore}
+                </span>
+              )}
+            </div>
+            {/* Home row */}
+            <div className="flex items-center gap-2">
+              <span
+                className="text-xs font-bold w-10 tracking-tight"
+                style={{ color: homeColor }}
+              >
+                {game.homeTeamAbbr ?? game.homeTeam}
+              </span>
+              {showScore && (
+                <span className="text-xs font-bold tabular-nums text-neutral-100">
+                  {display?.homeScore}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Center: status */}
+          <div className="flex-1 text-center">
+            <span
+              className={cn(
+                "text-xs font-medium",
+                !showScore && !pregame
+                  ? "text-neutral-600"
+                  : "text-neutral-500",
+              )}
+            >
+              {statusLabel}
             </span>
-          )}
-        </div>
+          </div>
 
-        {/* Center: status */}
-        <span
-          className={cn(
-            "text-xs font-medium",
-            !showScore && !pregame ? "text-neutral-600" : "text-neutral-500",
-          )}
-        >
-          {centerLabel}
-        </span>
-
-        {/* Right: home team + toggle */}
-        <div className="flex items-center gap-2 min-w-0">
-          {showScore && (
-            <span className="text-sm font-bold tabular-nums text-neutral-100">
-              {display?.homeScore}
-            </span>
-          )}
-          <span
-            className="text-sm font-bold tracking-tight"
-            style={{ color: homeColor }}
-          >
-            {game.homeTeamAbbr ?? game.homeTeam}
-          </span>
-
-          {/* Toggle button (hide mode only, not pregame) */}
-          {canToggle && scoreRevealMode !== "always" && !pregame && (
+          {/* Right: toggle */}
+          {showToggle && (
             <button
               onClick={revealed ? handleHide : handleReveal}
               className={cn(
-                "ml-2 text-xs font-medium transition-colors",
+                "shrink-0 text-xs font-medium transition-colors",
                 revealed
                   ? "text-neutral-500 hover:text-neutral-400"
                   : "text-blue-400 hover:text-blue-300",

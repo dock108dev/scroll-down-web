@@ -107,6 +107,8 @@ export default function GameDetailPage({
 
   const sections = useMemo(() => (data ? getSections(data) : []), [data]);
   const [activeSection, setActiveSection] = useState<string>("");
+  const [showMiniBar, setShowMiniBar] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
@@ -282,6 +284,18 @@ export default function GameDetailPage({
     return () => clearTimeout(timeout);
   }, [data, autoResumePosition, gameId, getPosition]);
 
+  // ─── Mini scorebar: show when GameHeader scrolls out ───────
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setShowMiniBar(!entry.isIntersecting),
+      { rootMargin: "-56px 0px 0px 0px", threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   // ─── Loading state ─────────────────────────────────────────
   if (loading) {
     return (
@@ -306,15 +320,21 @@ export default function GameDetailPage({
 
   return (
     <div className="mx-auto max-w-5xl">
-      <GameHeader game={game} />
+      <div ref={headerRef}>
+        <GameHeader game={game} />
+      </div>
 
-      <SectionNav
-        sections={sections}
-        active={activeSection || getDefaultSection(sections)}
-        onSelect={setActiveSection}
-      />
-
-      <MiniScorebar game={game} />
+      <div
+        className="sticky z-30 bg-neutral-950/95 backdrop-blur"
+        style={{ top: "var(--header-h)" }}
+      >
+        <MiniScorebar game={game} visible={showMiniBar} />
+        <SectionNav
+          sections={sections}
+          active={activeSection || getDefaultSection(sections)}
+          onSelect={setActiveSection}
+        />
+      </div>
 
       <div ref={contentRef} className="py-4 space-y-2">
         {/* ─── Pregame Buzz ──────────────────────────────── */}
