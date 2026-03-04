@@ -51,32 +51,37 @@ src/
 │   ├── settings/page.tsx     # User preferences
 │   └── api/                  # Server-side API proxy routes (4 routes)
 ├── components/
-│   ├── home/                 # GameSection, GameCard, SearchBar, PinnedBar
-│   ├── game/                 # GameHeader, FlowContainer, TimelineSection, PlayerStatsSection,
-│   │                         # TeamStatsSection, OddsSection, WrapUpSection, etc.
+│   ├── home/                 # GameRow, GameCard, GameSection, TimelineSection, SearchBar, PinnedBar
+│   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
+│   │                         # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, etc.
 │   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet
 │   ├── settings/             # SettingsContent
 │   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
 │   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader, TeamColorDot
 ├── hooks/
-│   ├── useGames.ts           # Home feed: date sections, 60s auto-refresh, client search
-│   ├── useGame.ts            # Game detail: 5-min LRU cache, 45s live polling
-│   ├── useFlow.ts            # Game flow: fetch-once
-│   └── useFairBetOdds.ts     # FairBet: pagination, filtering, sorting, parlay
+│   ├── useGamesList.ts       # Home feed: date sections, 60s auto-refresh, client search
+│   ├── useGameDetail.ts      # Game detail: 5-min LRU cache, 45s live polling
+│   ├── useGameFlow.ts        # Game flow: narrative blocks, background refresh
+│   ├── useFairBetOdds.ts     # FairBet: pagination, filtering, sorting, parlay
+│   └── useScoreDisplay.ts    # Score reveal/hide display logic
 ├── stores/
 │   ├── settings.ts           # Theme, odds format, score reveal, section expansion
-│   ├── read-state.ts         # Which games user has read (Set<gameId>)
+│   ├── reveal.ts             # Score reveal state with frozen snapshots (persisted as sd-read-state)
 │   ├── reading-position.ts   # Per-game scroll position with score snapshot
 │   ├── section-layout.ts     # Game detail section collapse/expand state
 │   ├── pinned-games.ts       # User-pinned games for quick access
-│   └── ui.ts                 # Transient UI state (drawers, sheets, modals)
+│   ├── game-data.ts          # Normalized game data cache (in-memory)
+│   ├── home-scroll.ts        # Home page scroll position (in-memory)
+│   └── ui.ts                 # Transient UI state (drawers, sheets)
 └── lib/
     ├── types.ts              # All TypeScript interfaces (GameSummary, APIBet, FlowBlock, etc.)
     ├── api.ts                # Client-side fetch wrapper (browser → /api/* proxy routes)
-    ├── api-server.ts         # Server-side fetch with X-API-Key header
+    ├── api-server.ts         # Server-side fetch with X-API-Key header, UTF-8 mojibake repair
     ├── config.ts             # Centralized app constants (cache TTLs, polling, API, storage keys)
     ├── utils.ts              # Date formatting, odds conversion, team name display
     ├── fairbet-utils.ts      # EV colors, confidence labels, market labels, bet enrichment
+    ├── score-display.ts      # Score visibility logic (reveal/freeze/update)
+    ├── storage-bounds.ts     # Storage pruning utilities (max entries, max age)
     ├── theme.ts              # FairBet theme constants, book abbreviation utility
     └── team-stats-config.ts  # Sport-specific stat groupings and comparison logic
 ```
@@ -87,7 +92,7 @@ src/
 2. Request goes to a **Next.js API route** (e.g., `/api/games`)
 3. The API route calls the **backend** with `apiFetch()`, which adds the `X-API-Key` header
 4. Response flows back through the same chain
-5. A **React hook** (`useGames`, `useGame`, etc.) stores the data in state
+5. A **React hook** (`useGamesList`, `useGameDetail`, etc.) stores the data in state
 6. **Components** render from hook state and Zustand stores
 
 The API key never leaves the server. Client-side code only talks to local `/api/*` routes.
@@ -101,8 +106,8 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - When a live game goes final while frozen, scores auto-hide
 
 ### Live Polling
-- `useGame`: 45s polling when game is `in_progress` or `live`. Silent refresh (no loading spinner).
-- `useGames`: 60s auto-refresh. Pauses when tab is hidden, resumes immediately on focus.
+- `useGameDetail`: 45s polling when game is `in_progress` or `live`. Silent refresh (no loading spinner).
+- `useGamesList`: 60s auto-refresh. Pauses when tab is hidden, resumes immediately on focus.
 
 ### FairBet Loading
 - First 100 bets render immediately
@@ -122,7 +127,9 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Date sections render (Yesterday, Today)
 - [ ] League filter works (All, NBA, NCAAB, NFL, NCAAF, MLB, NHL)
 - [ ] Search filters by team name
-- [ ] Game cards navigate to game detail
+- [ ] Game rows navigate to game detail
+- [ ] Pin/unpin games from rows (star icon)
+- [ ] Pinned games appear in header bar with mini scores
 - [ ] Section expand/collapse persists
 - [ ] "Mark All Read" bulk action works
 - [ ] Scores respect reveal mode setting
@@ -135,6 +142,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] NHL games show skater/goalie stats instead of generic player stats
 - [ ] Reading position saves on scroll and restores on return
 - [ ] Score freeze works for revealed live games (frozen scores, amber dot on new data)
+- [ ] Mini scorebar appears when scrolling past header
 
 ### FairBet
 - [ ] Odds load with progressive pagination

@@ -9,6 +9,15 @@ import { usePinnedGames } from "@/stores/pinned-games";
 import { pickSnapshot } from "@/lib/score-display";
 import { cn, formatDate } from "@/lib/utils";
 
+function formatGameTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  }) + " ET";
+}
+
 interface GameHeaderProps {
   game: Game | GameCore;
 }
@@ -35,6 +44,8 @@ export function GameHeader({ game }: GameHeaderProps) {
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
+    // Live games: no toggle — scores auto-update (same rules as home page)
+    if (live) return;
     if (read) hide(game.id);
     else reveal(game.id, pickSnapshot(game as GameCore));
   };
@@ -49,7 +60,7 @@ export function GameHeader({ game }: GameHeaderProps) {
         <div className="flex items-center justify-between mb-5">
           <span className="inline-flex items-center gap-2">
             <span className="text-xs uppercase font-medium text-neutral-500 tracking-wide">
-              {game.leagueCode.toUpperCase()} &middot; {formatDate(game.gameDate)}
+              {game.leagueCode.toUpperCase()} &middot; {formatDate(game.gameDate)} &middot; {formatGameTime(game.gameDate)}
             </span>
             {(pinned || pinnedCount < 10) && (
               <button
@@ -71,22 +82,20 @@ export function GameHeader({ game }: GameHeaderProps) {
               </button>
             )}
           </span>
-          {live && hasScoreUpdate && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-400">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+          {live && (
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
+              <span className={cn("relative flex h-2 w-2", hasScoreUpdate ? "text-amber-400" : "text-green-400")}>
+                <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", hasScoreUpdate ? "bg-amber-400" : "bg-green-400")} />
+                <span className={cn("relative inline-flex rounded-full h-2 w-2", hasScoreUpdate ? "bg-amber-400" : "bg-green-400")} />
               </span>
-              UPDATED
-            </span>
-          )}
-          {live && !hasScoreUpdate && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-400">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+              <span className={hasScoreUpdate ? "text-amber-400" : "text-green-400"}>
+                {hasScoreUpdate ? "UPDATED" : "LIVE"}
               </span>
-              LIVE
+              {(game.currentPeriodLabel || game.gameClock) && (
+                <span className="text-neutral-500 font-normal">
+                  {game.currentPeriodLabel ?? ""}{game.gameClock ? ` ${game.gameClock}` : ""}
+                </span>
+              )}
             </span>
           )}
           {final && (
@@ -121,23 +130,18 @@ export function GameHeader({ game }: GameHeaderProps) {
             )}
           </div>
 
-          {/* Center: toggle reveal */}
+          {/* Center: toggle reveal (disabled for live — scores auto-update) */}
           <div
             onClick={handleScoreToggle}
             className={cn(
               "text-center shrink-0",
-              !pregame && hasScoreData && "cursor-pointer",
+              !pregame && !live && hasScoreData && "cursor-pointer",
             )}
           >
             {showScore ? (
               <>
                 <span className="text-neutral-600 text-sm font-medium">@</span>
-                {live && (game.currentPeriodLabel || game.gameClock) && (
-                  <p className="text-xs text-neutral-500 mt-0.5">
-                    {game.currentPeriodLabel ?? ""}{game.gameClock ? ` ${game.gameClock}` : ""}
-                  </p>
-                )}
-                {display?.canToggle && (
+                {display?.canToggle && !live && (
                   <p className="text-xs text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
                     Hide score
                   </p>
@@ -148,14 +152,14 @@ export function GameHeader({ game }: GameHeaderProps) {
                 <span
                   className={cn(
                     "text-2xl font-bold text-neutral-600",
-                    !pregame && hasScoreData && "hover:text-neutral-400 transition-colors",
+                    !pregame && !live && hasScoreData && "hover:text-neutral-400 transition-colors",
                   )}
                 >
                   vs
                 </span>
-                {!pregame && hasScoreData && (
+                {!pregame && !live && hasScoreData && (
                   <p className="text-xs text-neutral-700 mt-1">
-                    {live ? "Click to update" : "Click to reveal"}
+                    Click to reveal
                   </p>
                 )}
               </>

@@ -47,7 +47,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
     statusLabel = "";
   }
 
-  const showToggle = canToggle && scoreRevealMode !== "always" && !pregame;
+  const showToggle = canToggle && scoreRevealMode !== "always" && !pregame && !live;
 
   return (
     <div

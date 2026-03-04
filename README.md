@@ -39,6 +39,7 @@ npm run dev                         # http://localhost:3001
 | Live game auto-polling | Yes |
 | NHL skater / goalie stats | Yes |
 | Parlay builder with client-side evaluation | Yes |
+| Pinned games (up to 10, mini scores in header) | Yes |
 
 ## Architecture
 

@@ -7,24 +7,24 @@ This document lists all logic that intentionally remains in the web app (rather 
 ## 1. Score Reveal / Hide
 User preference stored in localStorage. Toggle read/unread state per game. Controlled by `scoreRevealMode` setting (`"always"` | `"onMarkRead"`). When set to `"onMarkRead"`, scores are hidden until the user explicitly reveals them.
 
-## 2. Read State Management
-Local `Set<gameId>` persisted to localStorage via `read-state` Zustand store (`sd-read-state`). Tracks which games the user has "read" (revealed scores for). Supports bulk operations (`markAllRead`, `markAllUnread`) for the "Mark All Read" feature.
+## 2. Score Reveal State Management
+Managed by the `reveal` Zustand store (persisted under `sd-read-state` key). Tracks `revealedIds` (Set of game IDs) and `snapshots` (Map of frozen score data at reveal time). Supports batch operations (`revealBatch`, `hideBatch`) for the "Mark All Read" / "Mark as Unread" features.
 
 ## 3. Reading Position Tracking
-Per-game scroll position with score snapshot saved to localStorage (`sd-reading-position`). Stores `playIndex`, period, clock, scores, and `playCount`. Used for auto-resume on return to a game detail page and for detecting new data on live games (score freeze with amber dot).
+Per-game scroll position with score snapshot saved to localStorage (`sd-reading-position`). Stores `playIndex`, period, clock, and `playCount`. Used for auto-resume on return to a game detail page. Auto-prunes entries older than 30 days (max 50 entries).
 
 ## 4. Section Expansion State
-Which home sections (Yesterday, Today) and game detail sections are collapsed/expanded. Defaults: Today and Yesterday expanded. Persisted in `sd-settings` and `sd-section-layout` stores.
+Which home sections (Yesterday, Today) and game detail sections are collapsed/expanded. Defaults: all sections collapsed. Persisted in `sd-settings` and `sd-section-layout` stores.
 
 ## 5. Client-side Search Filtering
 Instant team name / abbreviation filtering on the home page for responsiveness (no round-trip to API).
 
 ## 6. Live Polling
-- **Game detail:** 45-second polling interval when game is live (`useGame`)
-- **Home page:** 60-second auto-refresh interval, pauses when tab is hidden, resumes immediately on focus (`useGames`)
+- **Game detail:** 45-second polling interval when game is live (`useGameDetail`)
+- **Home page:** 60-second auto-refresh interval, pauses when tab is hidden, resumes immediately on focus (`useGamesList`)
 
 ## 7. Client-side Cache
-5-minute TTL, 8-entry LRU for game detail responses (`useGame`). Prevents redundant fetches on back-navigation. Cache is in-memory only, cleared on page reload.
+5-minute TTL, 8-entry LRU for game detail responses (`useGameDetail`). Prevents redundant fetches on back-navigation. Cache is in-memory only, cleared on page reload.
 
 ## 8. Theme Management
 System/light/dark preference managed via Zustand store and CSS custom properties. Light mode inverts the neutral palette via `:root` / `.dark` class toggling. FairBet uses dedicated `--fb-*` CSS variables for theme adaptation.
@@ -39,7 +39,7 @@ American/decimal/fractional display toggle. `formatOdds()` in `utils.ts` handles
 `BOLD_KEYWORDS` array in `TimelineRow.tsx` for play description styling (e.g., "GOAL", "TOUCHDOWN", "DUNK", "makes", "MISS"). Combined with a regex that also de-emphasizes parenthetical content.
 
 ## 12. Game Sorting Within Sections
-Games are fetched by date-range sections (Yesterday, Today). Within each section, games are rendered in the order returned by the API.
+Games are fetched by date-range sections (Yesterday, Today). Within each section, games are sorted by tip time (ascending) via `sortByTipTime()` on the home page.
 
 ## 13. FairBet Client-side Filtering
 League, market category, book, team/player search, +EV only, hide thin confidence, hide started games. All applied client-side to the full bet list for instant feedback. Minimum 3 books required per bet for display. Deduplication by `game_id::market_key::selection_key::line_value`.
@@ -75,13 +75,19 @@ When a user reveals a live game's score, the displayed score freezes at the mome
 `cardDisplayName()` in `utils.ts` extracts display-appropriate names: school names for college sports (NCAAB, NCAAF) and nicknames/mascots for pro leagues (NBA, NFL, NHL, MLB). Falls back to abbreviation when names exceed 15 characters.
 
 ## 24. Pinned Games
-Users can pin games from the home feed for quick access. Pinned game IDs are persisted in `sd-pinned-games` Zustand store. The `PinnedBar` component renders pinned games at the top of the home page.
+Users can pin up to 10 games from the home feed (star icon on game rows). Pinned game IDs are persisted in the `pinned-games` Zustand store (`sd-pinned-games`). The `PinnedBar` component renders pinned games as scrollable chips in the `TopNav` header, showing team abbreviations, status dots, and mini scores.
 
 ## 25. Section Layout Persistence
-Game detail section collapse/expand state is persisted in `sd-section-layout` Zustand store, so users returning to a game see their preferred layout.
+Game detail section collapse/expand state is persisted in `sd-section-layout` Zustand store, so users returning to a game see their preferred layout. Auto-caps to 50 game layouts (newest first).
 
 ## 26. UTF-8 Mojibake Repair
-`fixMojibake()` in `utils.ts` detects and repairs common UTF-8 double-encoding artifacts in text from the API (e.g., `â€™` → `'`).
+`fixMojibake()` in `api-server.ts` detects and repairs common UTF-8 double-encoding artifacts in text from the API (e.g., `â€™` → `'`). Applied server-side to all API responses before they reach the browser.
 
 ## 27. Timeline Deduplication
 Timeline entries are deduplicated client-side to handle cases where the API returns overlapping play-by-play data from multiple sources.
+
+## 28. Eastern Timezone Date Bucketing
+`toEasternDateStr()` in `useGamesList.ts` converts game dates to US/Eastern time before bucketing into Yesterday/Today sections. This prevents late-night ET games (whose UTC date is the next day) from appearing in the wrong section.
+
+## 29. Home Scroll Restoration
+Scroll position on the home page is tracked via the `home-scroll` store (in-memory). On back-navigation, the scroll position is restored so users return to where they left off.

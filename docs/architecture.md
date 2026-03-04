@@ -19,7 +19,7 @@ Backend API (sports-data-admin.dock108.ai)
     ↓ JSON response
 Next.js API Route
     ↓ NextResponse.json()
-Browser → React hook (useGames / useGame / useFairBetOdds) → Component re-render
+Browser → React hook (useGamesList / useGameDetail / useFairBetOdds) → Component re-render
 ```
 
 All backend calls go through Next.js API routes (`/api/*`), which add the `X-API-Key` header server-side. The API key is never exposed to the browser.
@@ -30,7 +30,7 @@ All backend calls go through Next.js API routes (`/api/*`), which add the `X-API
 |---|---|---|---|
 | `GET /api/games` | `/api/admin/sports/games` | 60s | Game list by date range |
 | `GET /api/games/{id}` | `/api/admin/sports/games/{id}` | 30s | Game detail (stats, odds, plays, social) |
-| `GET /api/games/{id}/flow` | `/api/games/{id}/flow` | 60s | Game flow narrative (blocks + moments) |
+| `GET /api/games/{id}/flow` | `/api/admin/sports/games/{id}/flow` | 60s | Game flow narrative (blocks + moments) |
 | `GET /api/fairbet/odds` | `/api/fairbet/odds` | 60s | FairBet odds with EV |
 
 Revalidation uses Next.js ISR (`next: { revalidate }` on server-side fetch).
@@ -41,18 +41,18 @@ Pages are thin orchestrators. Hooks fetch data, stores provide persisted state, 
 
 ```
 page.tsx (route)
-    ├─ useGames() / useGame() / useFairBetOdds()    # Data fetching
-    ├─ useSettings() / useReadState()                # Zustand state
-    └─ <GameSection> / <GameHeader> / <BetCard>      # Components
+    ├─ useGamesList() / useGameDetail() / useFairBetOdds()   # Data fetching
+    ├─ useSettings() / useReveal()                           # Zustand state
+    └─ <TimelineSection> / <GameHeader> / <BetCard>          # Components
 ```
 
 Components are organized by feature:
 
 ```
 components/
-├── home/       # Home page: GameSection, GameCard, SearchBar, PinnedBar
-├── game/       # Game detail: GameHeader, FlowContainer, TimelineSection,
-│               # PlayerStatsSection, TeamStatsSection, OddsSection, WrapUpSection, etc.
+├── home/       # Home page: GameRow, GameCard, GameSection, TimelineSection, SearchBar, PinnedBar
+├── game/       # Game detail: GameHeader, FlowContainer, TimelineSection, StatsSection,
+│               # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, SocialSection, etc.
 ├── fairbet/    # FairBet: BetCard, BookFilters, FairExplainerSheet, ParlaySheet
 ├── settings/   # SettingsContent
 ├── layout/     # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
@@ -61,16 +61,17 @@ components/
 
 ## Data Fetching Hooks
 
-### useGames
+### useGamesList
 
 Fetches the home feed, organized by date sections (Yesterday, Today).
 
 - **In-memory cache:** 90-second TTL, 45-second freshness window, max 5 entries per league
 - **Auto-refresh:** 60-second interval, pauses when tab is hidden, resumes on focus
 - **Client-side search:** Filters by team name/abbreviation without API round-trip
-- **Timezone:** Uses US/Eastern for section boundaries
+- **Timezone:** Uses US/Eastern for section boundaries. Games are re-bucketed by Eastern-time date on the client to handle UTC/ET boundary mismatches from the backend.
+- **Sorting:** Games within each section are sorted by tip time (ascending).
 
-### useGame
+### useGameDetail
 
 Fetches a single game detail with caching and live polling.
 
@@ -78,9 +79,9 @@ Fetches a single game detail with caching and live polling.
 - **Live polling:** 45-second interval when game status is live, stops on final
 - **Silent updates:** Polling doesn't reset loading state
 
-### useFlow
+### useGameFlow
 
-Fetches game flow data (narrative blocks and moments). In-memory LRU cache (5-minute TTL, max 8 entries), no polling.
+Fetches game flow data (narrative blocks and moments). In-memory LRU cache (5-minute TTL, max 8 entries), no polling. Shows cached data immediately while refreshing in the background if stale.
 
 ### useFairBetOdds
 
@@ -92,17 +93,23 @@ Complex hook for FairBet odds with pagination, filtering, sorting, and parlay ma
 - **Parlay:** Toggle bets, client-side `parlayProbIndependent()` computes combined fair odds
 - **Enrichment:** `enrichBet()` adds camelCase aliases and display labels to snake_case API responses
 
+### useScoreDisplay
+
+Computes visible score state for a game by combining core data, reveal state, and settings. Returns visibility, frozen state, and update status.
+
 ## State Management
 
-Five Zustand stores persist to localStorage. A sixth (`ui`) is in-memory only.
+Five Zustand stores persist to localStorage. Three more are in-memory only.
 
 | Store | Key | Purpose |
 |---|---|---|
 | `settings` | `sd-settings` | Theme, odds format, score reveal mode, preferred book, section expansion |
-| `read-state` | `sd-read-state` | Which games the user has marked as read (score revealed) |
+| `reveal` | `sd-read-state` | Score reveal state with frozen snapshots for live games |
 | `reading-position` | `sd-reading-position` | Per-game scroll position and score snapshot |
 | `section-layout` | `sd-section-layout` | Game detail section collapse/expand state |
-| `pinned-games` | `sd-pinned-games` | User-pinned games for quick access |
+| `pinned-games` | `sd-pinned-games` | User-pinned games for quick access (max 10) |
+| `game-data` | — | Normalized game data cache. Not persisted. |
+| `home-scroll` | — | Home page scroll position for restoration. Not persisted. |
 | `ui` | — | Transient UI state (settings drawer open/close). Not persisted. |
 
 Storage keys are centralized in `lib/config.ts` under `STORAGE_KEYS`.
@@ -116,8 +123,9 @@ Storage keys are centralized in `lib/config.ts` under `STORAGE_KEYS`.
 | `oddsFormat` | `"american" \| "decimal" \| "fractional"` | `"american"` | Odds display format |
 | `preferredSportsbook` | `string` | `""` | Preferred book highlight |
 | `autoResumePosition` | `boolean` | `true` | Resume scroll on game return |
-| `homeExpandedSections` | `string[]` | `["Today", "Yesterday"]` | Expanded home sections |
+| `homeExpandedSections` | `string[]` | `[]` | Expanded home sections (empty = all collapsed) |
 | `hideLimitedData` | `boolean` | `true` | Hide thin-market odds |
+| `timelineDefaultTiers` | `number[]` | `[1, 2, 3]` | Default play tier visibility |
 
 ## Game Status Lifecycle
 
@@ -156,20 +164,22 @@ Two modes controlled by `scoreRevealMode`:
 | Mode | Behavior |
 |---|---|
 | `onMarkRead` | Scores hidden until user taps to reveal (default, spoiler-free) |
-| `always` | Scores always visible on cards and headers |
+| `always` | Scores always visible on rows and headers |
 
 Additional behaviors:
 - **Score freeze:** Revealed live game scores freeze at the moment of reveal. An amber dot appears when new data arrives via polling.
 - **Auto-hide on final:** When a live game transitions to final while scores are frozen, the game auto-hides to prevent spoiling the final score.
 - **Mark All Read:** Bulk action to reveal all eligible games.
 
+State is managed by the `reveal` store (persisted under `sd-read-state` key). It tracks `revealedIds` (Set) and `snapshots` (Map) with frozen score data.
+
 ## Team Color System
 
-Team colors come from two sources:
-1. **Bulk fetch** — `GET /api/teams` returns all teams with `colorLightHex` / `colorDarkHex`, cached via ISR (1 hour)
-2. **Per-game injection** — Game detail and flow responses include `homeTeamColorLight`, `homeTeamColorDark`, `awayTeamColorLight`, `awayTeamColorDark`
+Team colors come from per-game data. Game detail and flow responses include `homeTeamColorLight`, `homeTeamColorDark`, `awayTeamColorLight`, `awayTeamColorDark`. These are applied via CSS custom properties (`--ds-team-a`, `--ds-team-b`).
 
-Team colors are applied via CSS custom properties (`--ds-team-a`, `--ds-team-b`) set from the API-provided hex values.
+## Pinned Games
+
+Users can pin up to 10 games from the home feed. Pinned game IDs are persisted in the `pinned-games` store. The `PinnedBar` component renders pinned games as scrollable chips in the `TopNav` header, showing team abbreviations, status dots, and mini scores. The header height adjusts dynamically (`56px` without pins, `88px` with pins) via the `--header-h` CSS variable.
 
 ## FairBet Architecture
 

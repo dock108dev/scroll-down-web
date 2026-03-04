@@ -288,9 +288,12 @@ export default function GameDetailPage({
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
+    const headerH = getComputedStyle(document.documentElement)
+      .getPropertyValue("--header-h")
+      .trim() || "56px";
     const obs = new IntersectionObserver(
       ([entry]) => setShowMiniBar(!entry.isIntersecting),
-      { rootMargin: "-56px 0px 0px 0px", threshold: 0 },
+      { rootMargin: `-${parseInt(headerH, 10)}px 0px 0px 0px`, threshold: 0 },
     );
     obs.observe(el);
     return () => obs.disconnect();

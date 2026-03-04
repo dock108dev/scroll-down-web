@@ -85,7 +85,7 @@ The web container binds to `127.0.0.1:3001` and is reverse-proxied to `scrolldow
 ## Additional Workflows
 
 - **CodeQL** (`codeql.yml`) — Static analysis on pull requests. Scans for security vulnerabilities.
-- **Dependabot** (`dependabot.yml`) — Automated dependency update PRs for `web/` npm packages.
+- **Dependabot** (`dependabot.yml`) — Automated dependency update PRs for `web/` npm packages and GitHub Actions workflows.
 
 ## Environment Variables (Production)
 

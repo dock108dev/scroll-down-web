@@ -31,16 +31,46 @@ npm run dev                         # http://localhost:3001
 
 ```
 src/
-├── app/              # Pages + API proxy routes
-│   ├── page.tsx      # Home (game feed)
-│   ├── game/[id]/    # Game detail
-│   ├── fairbet/      # FairBet odds comparison
-│   ├── settings/     # User preferences
-│   └── api/          # Server-side API proxies
-├── components/       # React components (home, game, fairbet, layout, shared)
-├── hooks/            # Data fetching hooks (useGames, useGame, useFlow, useFairBetOdds)
-├── stores/           # Zustand stores (settings, read-state, reading-position, section-layout, pinned-games, ui)
-└── lib/              # Types, API clients, utilities, constants
+├── app/
+│   ├── page.tsx              # Home page (game feed)
+│   ├── game/[id]/page.tsx    # Game detail
+│   ├── fairbet/page.tsx      # FairBet odds comparison
+│   ├── settings/page.tsx     # User preferences
+│   └── api/                  # Server-side API proxy routes (4 routes)
+├── components/
+│   ├── home/                 # GameRow, GameCard, GameSection, TimelineSection, SearchBar, PinnedBar
+│   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
+│   │                         # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, etc.
+│   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet
+│   ├── settings/             # SettingsContent
+│   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
+│   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader, TeamColorDot
+├── hooks/
+│   ├── useGamesList.ts       # Home feed: date sections, 60s auto-refresh, client search
+│   ├── useGameDetail.ts      # Game detail: 5-min LRU cache, 45s live polling
+│   ├── useGameFlow.ts        # Game flow: narrative blocks, background refresh
+│   ├── useFairBetOdds.ts     # FairBet: pagination, filtering, sorting, parlay
+│   └── useScoreDisplay.ts    # Score reveal/hide display logic
+├── stores/
+│   ├── settings.ts           # Theme, odds format, score reveal, section expansion
+│   ├── reveal.ts             # Score reveal state with frozen snapshots (persisted)
+│   ├── reading-position.ts   # Per-game scroll position with score snapshot
+│   ├── section-layout.ts     # Game detail section collapse/expand state
+│   ├── pinned-games.ts       # User-pinned games for quick access
+│   ├── game-data.ts          # Normalized game data cache (in-memory)
+│   ├── home-scroll.ts        # Home page scroll position (in-memory)
+│   └── ui.ts                 # Transient UI state (drawers, sheets)
+└── lib/
+    ├── types.ts              # All TypeScript interfaces (GameSummary, APIBet, FlowBlock, etc.)
+    ├── api.ts                # Client-side fetch wrapper (browser → /api/* proxy routes)
+    ├── api-server.ts         # Server-side fetch with X-API-Key header, UTF-8 mojibake repair
+    ├── config.ts             # Centralized app constants (cache TTLs, polling, API, storage keys)
+    ├── utils.ts              # Date formatting, odds conversion, team name display
+    ├── fairbet-utils.ts      # EV colors, confidence labels, market labels, bet enrichment
+    ├── score-display.ts      # Score visibility logic (reveal/freeze/update)
+    ├── storage-bounds.ts     # Storage pruning utilities (max entries, max age)
+    ├── theme.ts              # FairBet theme constants, book abbreviation utility
+    └── team-stats-config.ts  # Sport-specific stat groupings and comparison logic
 ```
 
 ## Architecture

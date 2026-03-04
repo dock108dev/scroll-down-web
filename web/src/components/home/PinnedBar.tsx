@@ -5,14 +5,28 @@ import type { GameStatus } from "@/lib/types";
 import { isLive, isFinal } from "@/lib/types";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useGameData } from "@/stores/game-data";
+import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
+import { pickSnapshot } from "@/lib/score-display";
 
 function ChipScore({ gameId }: { gameId: number }) {
   const display = useScoreDisplay(gameId);
+  const core = useGameData((s) => s.getCore(gameId));
+  const { acceptUpdate } = useReveal();
+
   if (!display?.visible) return null;
 
   return (
-    <span className="ml-1 text-[10px] tabular-nums text-neutral-400">
+    <span
+      role="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        if (display.hasUpdate && core) {
+          acceptUpdate(gameId, pickSnapshot(core));
+        }
+      }}
+      className={`ml-1 text-[10px] tabular-nums ${display.hasUpdate ? "text-amber-400" : "text-neutral-400"}`}
+    >
       {display.awayScore}–{display.homeScore}
     </span>
   );
