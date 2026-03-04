@@ -50,13 +50,13 @@ Components are organized by feature:
 
 ```
 components/
-├── home/       # Home page: GameRow, GameCard, GameSection, TimelineSection, SearchBar, PinnedBar
+├── home/       # Home page: GameRow, TimelineSection, SearchBar, PinnedBar
 ├── game/       # Game detail: GameHeader, FlowContainer, TimelineSection, StatsSection,
 │               # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, SocialSection, etc.
 ├── fairbet/    # FairBet: BetCard, BookFilters, FairExplainerSheet, ParlaySheet
 ├── settings/   # SettingsContent
 ├── layout/     # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
-└── shared/     # LoadingSkeleton, CollapsibleCard, SectionHeader, TeamColorDot
+└── shared/     # LoadingSkeleton, CollapsibleCard, SectionHeader
 ```
 
 ## Data Fetching Hooks

@@ -9,7 +9,6 @@ interface SettingsState {
   oddsFormat: "american" | "decimal" | "fractional";
   autoResumePosition: boolean;
   homeExpandedSections: string[];
-  gameExpandedSections: string[];
   hideLimitedData: boolean;
   timelineDefaultTiers: number[];
 
@@ -19,12 +18,10 @@ interface SettingsState {
   setOddsFormat: (f: "american" | "decimal" | "fractional") => void;
   setAutoResumePosition: (v: boolean) => void;
   setHomeExpandedSections: (s: string[]) => void;
-  setGameExpandedSections: (s: string[]) => void;
   setHideLimitedData: (v: boolean) => void;
   setTimelineDefaultTiers: (tiers: number[]) => void;
   toggleTimelineTier: (tier: number) => void;
   toggleHomeSection: (section: string) => void;
-  toggleGameSection: (section: string) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -36,7 +33,6 @@ export const useSettings = create<SettingsState>()(
       oddsFormat: DEFAULTS.ODDS_FORMAT as "american" | "decimal" | "fractional",
       autoResumePosition: true,
       homeExpandedSections: DEFAULTS.HOME_EXPANDED,
-      gameExpandedSections: [],
       hideLimitedData: true,
       timelineDefaultTiers: DEFAULTS.TIMELINE_TIERS,
 
@@ -49,8 +45,6 @@ export const useSettings = create<SettingsState>()(
         set({ autoResumePosition }),
       setHomeExpandedSections: (homeExpandedSections) =>
         set({ homeExpandedSections }),
-      setGameExpandedSections: (gameExpandedSections) =>
-        set({ gameExpandedSections }),
       setHideLimitedData: (hideLimitedData) => set({ hideLimitedData }),
       setTimelineDefaultTiers: (timelineDefaultTiers) =>
         set({ timelineDefaultTiers }),
@@ -67,13 +61,6 @@ export const useSettings = create<SettingsState>()(
           ? current.filter((s) => s !== section)
           : [...current, section];
         set({ homeExpandedSections: next });
-      },
-      toggleGameSection: (section) => {
-        const current = get().gameExpandedSections;
-        const next = current.includes(section)
-          ? current.filter((s) => s !== section)
-          : [...current, section];
-        set({ gameExpandedSections: next });
       },
     }),
     {

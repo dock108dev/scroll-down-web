@@ -29,7 +29,7 @@ interface TimelineSectionProps {
 
 /** A renderable item inside a period. */
 type PeriodItem =
-  | { kind: "play"; play: PlayEntry; previousPlay?: PlayEntry }
+  | { kind: "play"; play: PlayEntry }
   | { kind: "tier3-group"; plays: PlayEntry[] };
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -93,7 +93,6 @@ function isTier3(play: PlayEntry): boolean {
  */
 function buildPeriodItems(
   periodPlays: PlayEntry[],
-  allPlays: PlayEntry[],
 ): PeriodItem[] {
   const items: PeriodItem[] = [];
   let i = 0;
@@ -112,9 +111,7 @@ function buildPeriodItems(
       items.push({ kind: "tier3-group", plays: group });
       i = j;
     } else {
-      const prevIdx = play.playIndex - 1;
-      const prevPlay = allPlays.find((p) => p.playIndex === prevIdx);
-      items.push({ kind: "play", play, previousPlay: prevPlay });
+      items.push({ kind: "play", play });
       i++;
     }
   }
@@ -208,7 +205,6 @@ function PeriodCard({
                   <TimelineRow
                     key={item.play.playIndex}
                     play={item.play}
-                    previousPlay={item.previousPlay}
                     homeTeamAbbr={homeTeamAbbr}
                     awayTeamAbbr={awayTeamAbbr}
                     homeColor={homeColor}
@@ -263,7 +259,7 @@ export function TimelineSection({
   const periods = Array.from(periodMap.entries()).map(
     ([period, periodPlays]) => ({
       period,
-      items: buildPeriodItems(periodPlays, plays),
+      items: buildPeriodItems(periodPlays),
     }),
   );
 

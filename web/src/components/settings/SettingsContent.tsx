@@ -17,14 +17,6 @@ const KNOWN_BOOKS = [
 ] as const;
 
 const HOME_SECTIONS = ["Yesterday", "Today"] as const;
-const GAME_SECTIONS = [
-  "Flow",
-  "Timeline",
-  "Stats",
-  "Odds",
-  "Wrap-Up",
-] as const;
-
 export function SettingsContent() {
   const {
     theme,
@@ -39,8 +31,6 @@ export function SettingsContent() {
     setHideLimitedData,
     homeExpandedSections,
     toggleHomeSection,
-    gameExpandedSections,
-    toggleGameSection,
     timelineDefaultTiers,
     toggleTimelineTier,
   } = useSettings();
@@ -70,18 +60,6 @@ export function SettingsContent() {
             label={section}
             checked={homeExpandedSections.includes(section)}
             onToggle={() => toggleHomeSection(section)}
-          />
-        ))}
-      </SettingsSection>
-
-      {/* ─── Game — Default Expanded ────────────────────── */}
-      <SettingsSection title="Game — Default Expanded">
-        {GAME_SECTIONS.map((section) => (
-          <SettingsCheckRow
-            key={section}
-            label={section}
-            checked={gameExpandedSections.includes(section)}
-            onToggle={() => toggleGameSection(section)}
           />
         ))}
       </SettingsSection>

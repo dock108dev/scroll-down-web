@@ -7,8 +7,6 @@ interface TimelineRowProps {
   awayTeamAbbr?: string;
   homeColor?: string;
   awayColor?: string;
-  /** @deprecated No longer needed — use play.scoreChanged instead */
-  previousPlay?: PlayEntry;
 }
 
 // ─── Clean up common API description quirks ────────────────

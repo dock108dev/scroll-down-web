@@ -2,7 +2,6 @@ import { cn } from "@/lib/utils";
 
 type SkeletonVariant =
   | "default"
-  | "gameCard"
   | "timelineRow"
   | "socialPost"
   | "textBlock"
@@ -23,35 +22,6 @@ function Bar({ className }: { className?: string }) {
         className ?? "h-3 w-full",
       )}
     />
-  );
-}
-
-/** Single game-card skeleton matching iOS card layout */
-function GameCardSkeleton() {
-  return (
-    <div className="card space-y-3">
-      {/* League + status row */}
-      <div className="flex items-center justify-between">
-        <Bar className="h-2.5 w-12" />
-        <Bar className="h-2.5 w-8" />
-      </div>
-      {/* Away team row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full skeleton-shimmer" />
-          <Bar className="h-3 w-20" />
-        </div>
-        <Bar className="h-3 w-6" />
-      </div>
-      {/* Home team row */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="h-3 w-3 rounded-full skeleton-shimmer" />
-          <Bar className="h-3 w-24" />
-        </div>
-        <Bar className="h-3 w-6" />
-      </div>
-    </div>
   );
 }
 
@@ -131,7 +101,6 @@ function ListSkeleton({ count }: { count: number }) {
  *
  * Variants:
  * - `default`      – simple rounded rectangle(s)
- * - `gameCard`     – game card with team rows and score placeholders
  * - `timelineRow`  – timeline event row with time, description, score
  * - `socialPost`   – social media post with avatar, text, media
  * - `textBlock`    – paragraph-style text lines
@@ -142,16 +111,6 @@ export function LoadingSkeleton({
   count = 1,
   variant = "default",
 }: LoadingSkeletonProps) {
-  if (variant === "gameCard") {
-    return (
-      <>
-        {Array.from({ length: count }, (_, i) => (
-          <GameCardSkeleton key={i} />
-        ))}
-      </>
-    );
-  }
-
   if (variant === "timelineRow") {
     return (
       <>
