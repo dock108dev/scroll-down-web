@@ -6,6 +6,8 @@ import type { GameCore } from "@/stores/game-data";
 
 import { SearchBar } from "@/components/home/SearchBar";
 import { TimelineSection } from "@/components/home/TimelineSection";
+import { GameRow } from "@/components/home/GameRow";
+import { SectionHeader } from "@/components/shared/SectionHeader";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal, type GameStatus } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
@@ -43,6 +45,24 @@ function deriveLeagues(games: GameCore[]): string[] {
   return Array.from(set).sort();
 }
 
+// ── Pinned section (expanded by default, local state) ──────
+
+function PinnedSection({ games, stickyTop }: { games: GameCore[]; stickyTop: string }) {
+  const [expanded, setExpanded] = useState(true);
+  return (
+    <div>
+      <SectionHeader
+        title="Pinned"
+        expanded={expanded}
+        onToggle={() => setExpanded((v) => !v)}
+        count={games.length}
+        stickyTop={stickyTop}
+      />
+      {expanded && games.map((game) => <GameRow key={game.id} game={game} />)}
+    </div>
+  );
+}
+
 // ── Page component ─────────────────────────────────────────
 
 export default function HomePage() {
@@ -58,6 +78,7 @@ export default function HomePage() {
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
+  const pinnedIds = usePinnedGames((s) => s.pinnedIds);
   const pruneStale = usePinnedGames((s) => s.pruneStale);
 
   // Home scroll restoration
@@ -98,6 +119,13 @@ export default function HomePage() {
 
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
+
+  // Pinned games section (collects pinned games across all sections)
+  const pinnedGames = useMemo(() => {
+    if (pinnedIds.size === 0) return [];
+    const pinned = allGames.filter((g) => pinnedIds.has(g.id));
+    return sortByStatusThenTime(pinned);
+  }, [allGames, pinnedIds]);
 
   // Sorted sections
   const sortedSections = useMemo(
@@ -184,7 +212,7 @@ export default function HomePage() {
     clearAllPositions();
   }, [visibleGameIds, reveal, clearAllPositions]);
 
-  const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
+  const hasAnyGames = pinnedGames.length > 0 || sortedSections.some((s) => s.games.length > 0);
 
   // Track toolbar height for section header sticky offset
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -304,6 +332,11 @@ export default function HomePage() {
         <div className="px-4 py-8 text-center text-neutral-500 text-sm">
           No games found
         </div>
+      )}
+
+      {/* Pinned section (expanded by default) */}
+      {pinnedGames.length > 0 && (
+        <PinnedSection games={pinnedGames} stickyTop={stickyTop} />
       )}
 
       {/* Sections */}

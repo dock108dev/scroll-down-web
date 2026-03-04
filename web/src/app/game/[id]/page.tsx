@@ -401,6 +401,8 @@ export default function GameDetailPage({
               leagueCode={game.leagueCode}
               nhlSkaters={data.nhlSkaters}
               nhlGoalies={data.nhlGoalies}
+              mlbBatters={data.mlbBatters}
+              mlbPitchers={data.mlbPitchers}
             />
           </CollapsibleSection>
         )}

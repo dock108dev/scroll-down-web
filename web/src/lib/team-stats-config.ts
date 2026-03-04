@@ -57,6 +57,33 @@ const BASKETBALL_GROUPS: StatGroup[] = [
   },
 ];
 
+const BASEBALL_GROUPS: StatGroup[] = [
+  {
+    title: "Batting",
+    stats: [
+      { key: "runs", label: "Runs", aliases: ["runs", "r"] },
+      { key: "hits", label: "Hits", aliases: ["hits", "h"] },
+      { key: "hr", label: "HR", aliases: ["homeRuns", "hr", "home_runs"] },
+      { key: "rbi", label: "RBI", aliases: ["rbi", "runs_batted_in"] },
+      { key: "bb", label: "BB", aliases: ["baseOnBalls", "bb", "walks"] },
+      { key: "so", label: "SO", aliases: ["strikeOuts", "so", "strikeouts"], lowerIsBetter: true },
+      { key: "sb", label: "SB", aliases: ["stolenBases", "sb", "stolen_bases"] },
+      { key: "avg", label: "AVG", aliases: ["avg", "battingAverage", "batting_average"] },
+    ],
+  },
+  {
+    title: "Pitching",
+    stats: [
+      { key: "era", label: "ERA", aliases: ["era", "earned_run_average"], lowerIsBetter: true },
+      { key: "ip", label: "IP", aliases: ["inningsPitched", "ip", "innings_pitched"] },
+      { key: "pHits", label: "Hits", aliases: ["hitsAllowed", "pitching_hits", "p_hits"], lowerIsBetter: true },
+      { key: "er", label: "ER", aliases: ["earnedRuns", "er", "earned_runs"], lowerIsBetter: true },
+      { key: "pBB", label: "BB", aliases: ["pitching_walks", "p_bb", "pitchingBaseOnBalls"], lowerIsBetter: true },
+      { key: "pSO", label: "K", aliases: ["pitching_strikeouts", "p_so", "pitchingStrikeOuts"] },
+    ],
+  },
+];
+
 const HOCKEY_GROUPS: StatGroup[] = [
   {
     title: "Offense",
@@ -112,6 +139,8 @@ export function getGroupsForSport(leagueCode: string): StatGroup[] {
   switch (leagueCode.toLowerCase()) {
     case "nhl":
       return HOCKEY_GROUPS;
+    case "mlb":
+      return BASEBALL_GROUPS;
     case "nba":
     case "ncaab":
     default:

@@ -16,6 +16,15 @@ function GamesIcon({ className }: { className?: string }) {
   );
 }
 
+function HistoryIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <polyline points="12 6 12 12 16 14" />
+    </svg>
+  );
+}
+
 function FairBetIcon({ className }: { className?: string }) {
   return (
     <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
@@ -37,6 +46,7 @@ function SettingsIcon({ className }: { className?: string }) {
 
 const TABS = [
   { href: "/", label: "Games", Icon: GamesIcon },
+  { href: "/history", label: "History", Icon: HistoryIcon },
   { href: "/fairbet", label: "FairBet", Icon: FairBetIcon },
 ];
 

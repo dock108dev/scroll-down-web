@@ -52,6 +52,7 @@ export interface GameListResponse {
   total?: number;
   nextOffset?: number;
   lastUpdatedAt?: string;
+  withAdvancedStatsCount?: number;
 }
 
 export interface GameSummary {
@@ -71,6 +72,7 @@ export interface GameSummary {
   hasSocial?: boolean;
   hasPbp?: boolean;
   hasFlow?: boolean;
+  hasAdvancedStats?: boolean;
   playCount?: number;
   socialPostCount?: number;
   hasRequiredData?: boolean;
@@ -79,6 +81,7 @@ export interface GameSummary {
   lastIngestedAt?: string;
   lastPbpAt?: string;
   lastSocialAt?: string;
+  lastAdvancedStatsAt?: string;
   homeTeamColorLight?: string;
   homeTeamColorDark?: string;
   awayTeamColorLight?: string;
@@ -110,6 +113,10 @@ export interface GameDetailResponse {
   groupedPlays?: ServerTieredPlayGroup[];
   nhlSkaters?: NHLSkaterStat[];
   nhlGoalies?: NHLGoalieStat[];
+  mlbBatters?: MLBBatterStat[];
+  mlbPitchers?: MLBPitcherStat[];
+  mlbAdvancedStats?: MLBAdvancedTeamStats[];
+  mlbAdvancedPlayerStats?: MLBAdvancedPlayerStats[];
   dataHealth?: NHLDataHealth;
 }
 
@@ -134,6 +141,7 @@ export interface Game {
   hasSocial?: boolean;
   hasPbp?: boolean;
   hasFlow?: boolean;
+  hasAdvancedStats?: boolean;
   playCount?: number;
   socialPostCount?: number;
   homeTeamXHandle?: string;
@@ -148,6 +156,7 @@ export interface Game {
   lastPbpAt?: string;
   lastSocialAt?: string;
   lastOddsAt?: string;
+  lastAdvancedStatsAt?: string;
   isLive?: boolean;
   isFinal?: boolean;
   isPregame?: boolean;
@@ -226,6 +235,72 @@ export interface NHLDataHealth {
   goalieCount?: number;
   isHealthy?: boolean;
   issues?: string[];
+}
+
+// ─── MLB Stats ───────────────────────────────────────────
+
+export interface MLBBatterStat {
+  team: string;
+  playerName: string;
+  position?: string | null;
+  atBats?: number | null;
+  hits?: number | null;
+  runs?: number | null;
+  rbi?: number | null;
+  homeRuns?: number | null;
+  baseOnBalls?: number | null;
+  strikeOuts?: number | null;
+  stolenBases?: number | null;
+  avg?: string | null;
+  obp?: string | null;
+  slg?: string | null;
+  ops?: string | null;
+  rawStats?: Record<string, unknown>;
+}
+
+export interface MLBPitcherStat {
+  team: string;
+  playerName: string;
+  inningsPitched?: string | null;
+  hits?: number | null;
+  runs?: number | null;
+  earnedRuns?: number | null;
+  baseOnBalls?: number | null;
+  strikeOuts?: number | null;
+  homeRuns?: number | null;
+  era?: string | null;
+  pitchCount?: number | null;
+  strikes?: number | null;
+  rawStats?: Record<string, unknown>;
+}
+
+export interface MLBAdvancedTeamStats {
+  team: string;
+  isHome: boolean;
+  totalPitches: number;
+  ballsInPlay: number;
+  zSwingPct?: number | null;
+  oSwingPct?: number | null;
+  zContactPct?: number | null;
+  oContactPct?: number | null;
+  avgExitVelo?: number | null;
+  hardHitPct?: number | null;
+  barrelPct?: number | null;
+}
+
+export interface MLBAdvancedPlayerStats {
+  team: string;
+  playerName: string;
+  isHome: boolean;
+  totalPitches: number;
+  ballsInPlay: number;
+  zSwingPct?: number | null;
+  oSwingPct?: number | null;
+  zContactPct?: number | null;
+  oContactPct?: number | null;
+  avgExitVelo?: number | null;
+  hardHitPct?: number | null;
+  barrelPct?: number | null;
 }
 
 // ─── Plays / Timeline ───────────────────────────────────

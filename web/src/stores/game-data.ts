@@ -34,6 +34,7 @@ export interface GameCore {
   hasSocial?: boolean;
   hasPbp?: boolean;
   hasFlow?: boolean;
+  hasAdvancedStats?: boolean;
   playCount?: number;
   socialPostCount?: number;
   hasRequiredData?: boolean;
@@ -126,6 +127,7 @@ function coreFromSummary(g: GameSummary): GameCore {
     hasSocial: g.hasSocial,
     hasPbp: g.hasPbp,
     hasFlow: g.hasFlow,
+    hasAdvancedStats: g.hasAdvancedStats,
     playCount: g.playCount,
     socialPostCount: g.socialPostCount,
     hasRequiredData: g.hasRequiredData,
@@ -166,6 +168,7 @@ function coreFromGame(g: Game, plays?: { homeScore?: number; awayScore?: number 
     hasSocial: g.hasSocial,
     hasPbp: g.hasPbp,
     hasFlow: g.hasFlow,
+    hasAdvancedStats: g.hasAdvancedStats,
     playCount: g.playCount,
     socialPostCount: g.socialPostCount,
     isLive: g.isLive,

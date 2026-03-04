@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Games" },
+  { href: "/history", label: "History" },
   { href: "/fairbet", label: "FairBet" },
 ];
 
