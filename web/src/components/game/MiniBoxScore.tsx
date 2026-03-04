@@ -34,6 +34,7 @@ interface StatEntry {
 function statEntries(p: BlockPlayerStat, showDeltas: boolean): StatEntry[] {
   const entries: StatEntry[] = [];
 
+  // Basketball
   if (p.pts != null) {
     const d = showDeltas && p.deltaPts != null && p.deltaPts !== 0 ? `+${p.deltaPts}` : undefined;
     entries.push({ cum: `${p.pts}p`, delta: d });
@@ -46,6 +47,8 @@ function statEntries(p: BlockPlayerStat, showDeltas: boolean): StatEntry[] {
     const d = showDeltas && p.deltaAst != null && p.deltaAst !== 0 ? `+${p.deltaAst}` : undefined;
     entries.push({ cum: `${p.ast}a`, delta: d });
   }
+
+  // Hockey
   if (p.goals != null) {
     const d = showDeltas && p.deltaGoals != null && p.deltaGoals !== 0 ? `+${p.deltaGoals}` : undefined;
     entries.push({ cum: `${p.goals}g`, delta: d });
@@ -56,6 +59,33 @@ function statEntries(p: BlockPlayerStat, showDeltas: boolean): StatEntry[] {
   }
   if (p.sog != null) {
     entries.push({ cum: `${p.sog}sog` });
+  }
+
+  // Baseball
+  if (p.hits != null) {
+    const d = showDeltas && p.deltaHits != null && p.deltaHits !== 0 ? `+${p.deltaHits}` : undefined;
+    entries.push({ cum: `${p.hits}h`, delta: d });
+  }
+  if (p.rbi != null) {
+    const d = showDeltas && p.deltaRbi != null && p.deltaRbi !== 0 ? `+${p.deltaRbi}` : undefined;
+    entries.push({ cum: `${p.rbi}rbi`, delta: d });
+  }
+  if (p.hr != null) {
+    const d = showDeltas && p.deltaHr != null && p.deltaHr !== 0 ? `+${p.deltaHr}` : undefined;
+    entries.push({ cum: `${p.hr}hr`, delta: d });
+  }
+  if (p.k != null) {
+    const d = showDeltas && p.deltaK != null && p.deltaK !== 0 ? `+${p.deltaK}` : undefined;
+    entries.push({ cum: `${p.k}k`, delta: d });
+  }
+  if (p.ip != null) {
+    entries.push({ cum: `${p.ip}ip` });
+  }
+  if (p.er != null) {
+    entries.push({ cum: `${p.er}er` });
+  }
+  if (p.sb != null && p.sb > 0) {
+    entries.push({ cum: `${p.sb}sb` });
   }
 
   return entries;

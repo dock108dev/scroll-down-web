@@ -20,21 +20,20 @@ function cleanDescription(text: string): string {
 
 // ─── Action keywords that get bold/semibold styling ────────
 const BOLD_KEYWORDS = [
-  "MISS",
-  "makes",
-  "GOAL",
-  "TOUCHDOWN",
-  "FIELD GOAL",
-  "HOME RUN",
-  "STRIKEOUT",
-  "PENALTY",
-  "FOUL",
-  "TURNOVER",
-  "STEAL",
-  "BLOCK",
-  "DUNK",
-  "THREE",
-  "FREE THROW",
+  // Basketball
+  "MISS", "makes", "DUNK", "THREE", "FREE THROW", "BLOCK", "STEAL", "TURNOVER", "FOUL",
+  // Hockey
+  "GOAL", "PENALTY",
+  // Football
+  "TOUCHDOWN", "FIELD GOAL",
+  // Baseball
+  "HOME RUN", "TRIPLE", "DOUBLE", "SINGLE",
+  "STRIKEOUT", "WALK", "HIT BY PITCH",
+  "GROUND OUT", "FLY OUT", "LINE OUT", "POP OUT",
+  "DOUBLE PLAY", "TRIPLE PLAY",
+  "STOLEN BASE", "CAUGHT STEALING",
+  "WILD PITCH", "PASSED BALL", "BALK", "ERROR",
+  "SACRIFICE",
 ];
 
 // Build a regex that matches any of the bold keywords (case-insensitive for

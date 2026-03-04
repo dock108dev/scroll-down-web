@@ -25,6 +25,7 @@ function generateSummary(plays: PlayEntry[]): string {
     const desc = (play.description ?? "").toLowerCase();
     const type = play.playType?.toLowerCase() ?? "";
 
+    // Basketball
     if (desc.includes("miss") || type.includes("miss")) {
       counts["missed shot"] = (counts["missed shot"] ?? 0) + 1;
     } else if (desc.includes("rebound") || type.includes("rebound")) {
@@ -39,6 +40,27 @@ function generateSummary(plays: PlayEntry[]): string {
       counts["timeout"] = (counts["timeout"] ?? 0) + 1;
     } else if (desc.includes("violation") || type.includes("violation")) {
       counts["violation"] = (counts["violation"] ?? 0) + 1;
+    // Baseball
+    } else if (desc.includes("strikeout") || desc.includes("struck out") || type.includes("strikeout")) {
+      counts["strikeout"] = (counts["strikeout"] ?? 0) + 1;
+    } else if (desc.includes("ground out") || desc.includes("grounds out") || type.includes("groundout")) {
+      counts["ground out"] = (counts["ground out"] ?? 0) + 1;
+    } else if (desc.includes("fly out") || desc.includes("flies out") || desc.includes("flied out") || type.includes("flyout")) {
+      counts["fly out"] = (counts["fly out"] ?? 0) + 1;
+    } else if (desc.includes("line out") || desc.includes("lines out") || type.includes("lineout")) {
+      counts["line out"] = (counts["line out"] ?? 0) + 1;
+    } else if (desc.includes("pop out") || desc.includes("pops out") || type.includes("popout")) {
+      counts["pop out"] = (counts["pop out"] ?? 0) + 1;
+    } else if (desc.includes("walk") || type.includes("walk")) {
+      counts["walk"] = (counts["walk"] ?? 0) + 1;
+    } else if (desc.includes("single") || type.includes("single")) {
+      counts["single"] = (counts["single"] ?? 0) + 1;
+    } else if (desc.includes("double play") || type.includes("double_play")) {
+      counts["double play"] = (counts["double play"] ?? 0) + 1;
+    } else if (desc.includes("stolen base") || type.includes("stolen_base")) {
+      counts["stolen base"] = (counts["stolen base"] ?? 0) + 1;
+    } else if (desc.includes("pitching change") || desc.includes("pitcher change") || type.includes("pitching_change")) {
+      counts["pitching change"] = (counts["pitching change"] ?? 0) + 1;
     } else {
       counts["other"] = (counts["other"] ?? 0) + 1;
     }

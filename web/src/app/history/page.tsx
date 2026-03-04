@@ -170,7 +170,8 @@ function HistoryPageInner() {
           {/* Divider */}
           <div className="shrink-0 w-px h-4 bg-neutral-700" />
 
-          {/* Sort pills */}
+          {/* Sort label + pills */}
+          <span className="shrink-0 text-[10px] font-medium uppercase tracking-wider text-neutral-500">Sort</span>
           {SORT_OPTIONS.map((opt) => (
             <button
               key={opt.value}

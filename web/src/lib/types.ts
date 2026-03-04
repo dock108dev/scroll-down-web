@@ -443,18 +443,32 @@ export interface BlockTeamMiniBox {
 
 export interface BlockPlayerStat {
   name: string;
+  // Basketball
   pts?: number;
   reb?: number;
   ast?: number;
   deltaPts?: number;
   deltaReb?: number;
   deltaAst?: number;
+  // Hockey
   goals?: number;
   assists?: number;
   sog?: number;
   plusMinus?: number;
   deltaGoals?: number;
   deltaAssists?: number;
+  // Baseball
+  hits?: number;
+  rbi?: number;
+  hr?: number;
+  sb?: number;
+  ip?: number;
+  k?: number;
+  er?: number;
+  deltaHits?: number;
+  deltaRbi?: number;
+  deltaHr?: number;
+  deltaK?: number;
 }
 
 // ─── FairBet (snake_case from fairbet API) ──────────────
