@@ -104,20 +104,22 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
     }
   };
 
+  // ── Live clock string (used in score zone) ──────────────────
+  const liveTimeStr = (() => {
+    if (!live) return "";
+    const showClock = scoresVisible;
+    const snapshot = useReveal.getState().getSnapshot(game.id);
+    return display?.frozen && snapshot?.periodLabel
+      ? `${snapshot.periodLabel}${snapshot.clock ? ` ${snapshot.clock}` : ""}`
+      : showClock && (game.currentPeriodLabel || game.gameClock)
+        ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
+        : "";
+  })();
+
   // ── Status indicator ──────────────────────────────────────────
 
   const statusContent = (() => {
     if (live) {
-      // In hide mode (unrevealed): show "LIVE" only, no clock/period
-      // Once revealed or in normal mode: show full clock/period
-      const showClock = scoresVisible;
-      const snapshot = useReveal.getState().getSnapshot(game.id);
-      const timeStr = display?.frozen && snapshot?.periodLabel
-        ? `${snapshot.periodLabel}${snapshot.clock ? ` ${snapshot.clock}` : ""}`
-        : showClock && (game.currentPeriodLabel || game.gameClock)
-          ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
-          : "";
-
       if (hasNewData) {
         return (
           <button
@@ -129,7 +131,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPD
-            {timeStr && <span className="text-neutral-500 font-normal text-[10px]">{timeStr}</span>}
           </button>
         );
       }
@@ -141,7 +142,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
           </span>
           LIVE
-          {timeStr && <span className="text-neutral-500 font-normal text-[10px] ml-0.5">{timeStr}</span>}
         </span>
       );
     }
@@ -209,11 +209,12 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
             }
           }}
           className={cn(
-            "shrink-0 text-base font-semibold tabular-nums text-neutral-200 pl-3 min-w-[96px] min-h-[44px] flex items-center justify-end text-right",
+            "shrink-0 pl-3 min-w-[96px] min-h-[44px] flex items-center justify-end text-right gap-2",
             scoreFlash && "score-flash",
           )}
         >
-          {display?.awayScore ?? game.awayScore} {"\u2013"} {display?.homeScore ?? game.homeScore}
+          {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
+          <span className="text-base font-semibold tabular-nums text-neutral-200">{display?.awayScore ?? game.awayScore} {"\u2013"} {display?.homeScore ?? game.homeScore}</span>
         </button>
       );
     }
