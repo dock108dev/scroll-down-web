@@ -8,6 +8,7 @@ interface SectionHeaderProps {
   onToggle: () => void;
   count?: number;
   sticky?: boolean;
+  stickyTop?: string;
 }
 
 export function SectionHeader({
@@ -16,15 +17,16 @@ export function SectionHeader({
   onToggle,
   count,
   sticky = true,
+  stickyTop = "var(--header-h)",
 }: SectionHeaderProps) {
   return (
     <button
       onClick={onToggle}
       className={cn(
-        "flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-neutral-300 bg-neutral-950",
-        sticky && "sticky z-20",
+        "flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-neutral-300 bg-neutral-900",
+        sticky && "sticky z-20 border-y border-neutral-800",
       )}
-      style={sticky ? { top: "var(--header-h)" } : undefined}
+      style={sticky ? { top: stickyTop } : undefined}
     >
       <span
         className={cn(

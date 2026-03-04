@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import { useGamesList, SECTION_ORDER } from "@/hooks/useGamesList";
 import type { GameCore } from "@/stores/game-data";
 
@@ -177,10 +177,26 @@ export default function HomePage() {
 
   const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 
+  // Track toolbar height for section header sticky offset
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarHeight, setToolbarHeight] = useState(0);
+
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      setToolbarHeight(el.offsetHeight);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const stickyTop = `calc(var(--header-h) + ${toolbarHeight}px)`;
+
   return (
     <div className="mx-auto max-w-2xl">
       {/* Sticky toolbar */}
-      <div className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
+      <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
         <SearchBar value={search} onChange={setSearch} />
 
         {/* League filter pills */}
@@ -287,6 +303,7 @@ export default function HomePage() {
           key={section.key}
           title={section.key}
           games={section.games}
+          stickyTop={stickyTop}
         />
       ))}
     </div>

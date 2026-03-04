@@ -148,6 +148,23 @@ export const GameRow = memo(function GameRow({ game }: GameRowProps) {
     }
 
     // Scores visible (normal mode or revealed)
+    // Live games: clicking score refreshes it (or no-op if unchanged), not navigate
+    if (live) {
+      return (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (hasNewData) {
+              acceptUpdate(game.id, pickSnapshot(game));
+            }
+          }}
+          className="shrink-0 text-sm tabular-nums text-neutral-200 pl-3 min-w-[88px] min-h-[44px] flex items-center justify-center"
+        >
+          {display?.awayScore ?? game.awayScore} - {display?.homeScore ?? game.homeScore}
+        </button>
+      );
+    }
+
     return (
       <span className="shrink-0 text-sm tabular-nums text-neutral-200 pl-3">
         {display?.awayScore ?? game.awayScore} - {display?.homeScore ?? game.homeScore}

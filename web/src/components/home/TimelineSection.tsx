@@ -9,9 +9,10 @@ import { GameRow } from "./GameRow";
 interface TimelineSectionProps {
   title: string;
   games: GameCore[];
+  stickyTop?: string;
 }
 
-export function TimelineSection({ title, games }: TimelineSectionProps) {
+export function TimelineSection({ title, games, stickyTop }: TimelineSectionProps) {
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const setHomeExpandedSections = useSettings((s) => s.setHomeExpandedSections);
 
@@ -33,6 +34,7 @@ export function TimelineSection({ title, games }: TimelineSectionProps) {
         expanded={expanded}
         onToggle={handleToggle}
         count={games.length}
+        stickyTop={stickyTop}
       />
       {expanded &&
         games.map((game) => (
