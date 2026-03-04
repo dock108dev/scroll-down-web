@@ -25,6 +25,7 @@ import { useSectionLayout } from "@/stores/section-layout";
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
   const status = data.game.status;
+  const game = data.game;
 
   // ── Data availability checks ──
   const hasPregamePosts = data.socialPosts?.some(
@@ -62,14 +63,14 @@ function getSections(data: GameDetailResponse): string[] {
     hasPostgamePosts;
 
   // ── Build section list based on status + data ──
-  if (isPregame(status)) {
+  if (isPregame(status, game)) {
     const s: string[] = [];
     if (hasBuzz) s.push("Pregame Buzz");
     if (hasOdds) s.push("Odds");
     return s;
   }
 
-  if (isLive(status)) {
+  if (isLive(status, game)) {
     const s: string[] = [];
     if (hasTimeline) s.push("Timeline");
     if (hasPlayerStats) s.push("Player Stats");
@@ -79,7 +80,7 @@ function getSections(data: GameDetailResponse): string[] {
     return s;
   }
 
-  if (isFinal(status)) {
+  if (isFinal(status, game)) {
     const s: string[] = [];
     if (hasBuzz) s.push("Pregame Buzz");
     if (hasFlow) s.push("Flow");
@@ -162,7 +163,7 @@ export default function GameDetailPage({
   const markRead = useReveal((s) => s.markRead);
   const gameIsRead = isRevealed(gameId);
   const handleWrapUpExpand = useCallback(() => {
-    if (data && isFinal(data.game.status)) {
+    if (data && isFinal(data.game.status, data.game)) {
       markRead(data.game.id);
     }
   }, [data, markRead]);

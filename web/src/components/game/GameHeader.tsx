@@ -33,9 +33,9 @@ export function GameHeader({ game }: GameHeaderProps) {
   const togglePin = usePinnedGames((s) => s.togglePin);
 
   const read = isRevealed(game.id);
-  const live = isLive(game.status);
-  const final = isFinal(game.status);
-  const pregame = isPregame(game.status);
+  const live = isLive(game.status, game);
+  const final = isFinal(game.status, game);
+  const pregame = isPregame(game.status, game);
 
   const hasScoreData = game.homeScore != null && game.awayScore != null;
   const showScore = display?.visible ?? false;

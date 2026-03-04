@@ -19,18 +19,18 @@ import { cn } from "@/lib/utils";
 // ── Sorting helpers ────────────────────────────────────────
 
 /** Status priority: live first, then upcoming, then final */
-function statusPriority(status: GameStatus): number {
-  if (isLive(status)) return 0;
-  if (isFinal(status)) return 2;
+function statusPriority(game: GameCore): number {
+  if (isLive(game.status, game)) return 0;
+  if (isFinal(game.status, game)) return 2;
   return 1; // pregame / scheduled
 }
 
 function sortByStatusThenTime(games: GameCore[], finalsAlpha = false): GameCore[] {
   return [...games].sort((a, b) => {
-    const sp = statusPriority(a.status) - statusPriority(b.status);
+    const sp = statusPriority(a) - statusPriority(b);
     if (sp !== 0) return sp;
     // For prior days, sort final games alphabetically by away team
-    if (finalsAlpha && isFinal(a.status) && isFinal(b.status)) {
+    if (finalsAlpha && isFinal(a.status, a) && isFinal(b.status, b)) {
       return a.awayTeam.localeCompare(b.awayTeam);
     }
     return new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime();
@@ -130,7 +130,7 @@ export default function HomePage() {
   const unreadFinalCount = useMemo(
     () =>
       allVisibleGames.filter(
-        (g) => isFinal(g.status) && !reveal.isRevealed(g.id),
+        (g) => isFinal(g.status, g) && !reveal.isRevealed(g.id),
       ).length,
     [allVisibleGames, reveal],
   );
@@ -139,7 +139,7 @@ export default function HomePage() {
   const liveNeedsAttention = useMemo(() => {
     if (scoreRevealMode === "always") return [];
     return allVisibleGames.filter((g) => {
-      if (!isLive(g.status)) return false;
+      if (!isLive(g.status, g)) return false;
       if (g.homeScore == null || g.awayScore == null) return false;
       const revealed = reveal.isRevealed(g.id);
       if (!revealed) return true;
@@ -163,7 +163,7 @@ export default function HomePage() {
 
   // Final game IDs in visible sections only
   const visibleFinalGameIds = useMemo(
-    () => allVisibleGames.filter((g) => isFinal(g.status)).map((g) => g.id),
+    () => allVisibleGames.filter((g) => isFinal(g.status, g)).map((g) => g.id),
     [allVisibleGames],
   );
 

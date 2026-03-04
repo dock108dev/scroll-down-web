@@ -62,11 +62,12 @@ export function useGameDetail(id: number) {
 
   // Live polling — pauses when tab is hidden, immediate refetch on wake.
   // On wake: freeze snapshot + clear activeGame so scores don't silently jump.
-  // User must accept the update to see new scores.
+  // The isActiveView && live branch in computeScoreDisplay handles auto-accept
+  // during continuous viewing — polling just needs to fetch fresh data.
   useEffect(() => {
     if (!data) return;
     const gameStatus = data.game.status;
-    if (!isLive(gameStatus)) {
+    if (!isLive(gameStatus, data.game)) {
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
@@ -76,13 +77,8 @@ export function useGameDetail(id: number) {
 
     const startPolling = () => {
       if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = setInterval(async () => {
-        await fetchGame({ silent: true });
-        // Auto-accept during continuous viewing (keeps snapshot in sync)
-        const c = getCore(id);
-        if (c && isRevealed(id)) {
-          acceptUpdate(id, pickSnapshot(c));
-        }
+      pollRef.current = setInterval(() => {
+        fetchGame({ silent: true });
       }, POLLING.LIVE_GAME_POLL_MS);
     };
 
@@ -100,8 +96,7 @@ export function useGameDetail(id: number) {
         if (c && isRevealed(id)) {
           acceptUpdate(id, pickSnapshot(c));
         }
-        // Disable auto-accept by clearing active game
-        // (user must click to accept the update)
+        // Disable isActiveView auto-accept — user must tap to see new scores
         setActiveGame(null);
         fetchGame({ silent: true });
         startPolling();

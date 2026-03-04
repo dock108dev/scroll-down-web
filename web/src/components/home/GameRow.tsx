@@ -39,9 +39,9 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
   const togglePin = usePinnedGames((s) => s.togglePin);
 
   const read = isRevealed(game.id);
-  const final = isFinal(game.status);
-  const live = isLive(game.status);
-  const pregame = isPregame(game.status);
+  const final = isFinal(game.status, game);
+  const live = isLive(game.status, game);
+  const pregame = isPregame(game.status, game);
   const noData = hasNoData(game);
 
   const hasScoreData = game.homeScore != null && game.awayScore != null;

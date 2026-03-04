@@ -32,8 +32,8 @@ function ChipScore({ gameId }: { gameId: number }) {
   );
 }
 
-function StatusDot({ status }: { status: GameStatus }) {
-  if (isLive(status)) {
+function StatusDot({ status, game }: { status: GameStatus; game?: { isLive?: boolean; isFinal?: boolean } }) {
+  if (isLive(status, game)) {
     return (
       <span className="relative flex h-1.5 w-1.5 shrink-0">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -41,7 +41,7 @@ function StatusDot({ status }: { status: GameStatus }) {
       </span>
     );
   }
-  if (isFinal(status)) {
+  if (isFinal(status, game)) {
     return <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-neutral-600" />;
   }
   return null;
@@ -56,7 +56,7 @@ export function PinnedBar() {
   if (pinnedIds.size === 0) return null;
 
   // Build ordered list from Set iteration order
-  const chips: { id: number; awayTeamAbbr: string; homeTeamAbbr: string; status: GameStatus }[] = [];
+  const chips: { id: number; awayTeamAbbr: string; homeTeamAbbr: string; status: GameStatus; isLive?: boolean; isFinal?: boolean }[] = [];
   for (const id of pinnedIds) {
     const entry = games.get(id);
     if (entry) {
@@ -65,6 +65,8 @@ export function PinnedBar() {
         awayTeamAbbr: entry.core.awayTeamAbbr ?? "AWY",
         homeTeamAbbr: entry.core.homeTeamAbbr ?? "HME",
         status: entry.core.status,
+        isLive: entry.core.isLive,
+        isFinal: entry.core.isFinal,
       });
     }
   }
@@ -79,7 +81,7 @@ export function PinnedBar() {
           onClick={() => router.push(`/game/${chip.id}`)}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-neutral-800 pl-2.5 pr-1.5 py-1 text-xs text-neutral-300 hover:bg-neutral-700 transition group"
         >
-          <StatusDot status={chip.status} />
+          <StatusDot status={chip.status} game={chip} />
           <span className="whitespace-nowrap">
             {chip.awayTeamAbbr} – {chip.homeTeamAbbr}
           </span>

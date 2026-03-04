@@ -30,9 +30,9 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
   const revealed = isRevealed(game.id);
-  const live = isLive(game.status);
-  const final = isFinal(game.status);
-  const pregame = isPregame(game.status);
+  const live = isLive(game.status, game);
+  const final = isFinal(game.status, game);
+  const pregame = isPregame(game.status, game);
   const showScore = display?.visible ?? false;
   const canToggle = display?.canToggle ?? false;
   const hasUpdate = display?.hasUpdate ?? false;
