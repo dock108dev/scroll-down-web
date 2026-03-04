@@ -415,3 +415,51 @@ body {
 .score-blur.revealed {
   filter: blur(0);
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Score change flash — 400ms amber highlight on score update
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@keyframes score-flash {
+  0%   { background-color: transparent; }
+  20%  { background-color: rgba(251, 191, 36, 0.10); }
+  100% { background-color: transparent; }
+}
+.score-flash { animation: score-flash 400ms ease-out; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Hide mode update pulse — 500ms pulse on reveal area
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@keyframes update-pulse {
+  0%   { background-color: rgba(251, 191, 36, 0); }
+  30%  { background-color: rgba(251, 191, 36, 0.08); }
+  100% { background-color: rgba(251, 191, 36, 0); }
+}
+.update-pulse { animation: update-pulse 500ms ease-out; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Slower live dot pulse — 2s cycle
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@keyframes live-dot-pulse {
+  0%   { transform: scale(1); opacity: 0.75; }
+  50%  { transform: scale(2); opacity: 0; }
+  100% { transform: scale(2); opacity: 0; }
+}
+.animate-live-dot { animation: live-dot-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Scroll depth gradients
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.scroll-fade-top, .scroll-fade-bottom {
+  position: fixed; left: 0; right: 0; height: 40px;
+  pointer-events: none; z-index: 10;
+}
+.scroll-fade-top {
+  top: 0;
+  background: linear-gradient(to bottom, rgb(10 10 10), transparent);
+  opacity: 0.06;
+}
+.scroll-fade-bottom {
+  bottom: 0;
+  background: linear-gradient(to top, rgb(10 10 10), transparent);
+  opacity: 0.06;
+}

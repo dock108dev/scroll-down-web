@@ -28,7 +28,11 @@ export default function RootLayout({
         <ThemeProvider>
           <div className="min-h-screen flex flex-col">
             <TopNav />
-            <main className="flex-1 pb-16 md:pb-0">{children}</main>
+            <main className="flex-1 pb-16 md:pb-0">
+              <div className="scroll-fade-top" />
+              <div className="scroll-fade-bottom" />
+              {children}
+            </main>
             <BottomTabs />
             <SettingsDrawer />
           </div>

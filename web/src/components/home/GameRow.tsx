@@ -1,6 +1,6 @@
 "use client";
 
-import { memo } from "react";
+import { memo, useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GameCore } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
@@ -49,6 +49,46 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
   const scoresVisible = display?.visible ?? false;
   const hasNewData = display?.hasUpdate ?? false;
 
+  // ── Score flash animation ─────────────────────────────────────
+  const prevAwayRef = useRef(display?.awayScore);
+  const prevHomeRef = useRef(display?.homeScore);
+  const [scoreFlash, setScoreFlash] = useState(false);
+
+  useEffect(() => {
+    const pA = prevAwayRef.current, pH = prevHomeRef.current;
+    prevAwayRef.current = display?.awayScore;
+    prevHomeRef.current = display?.homeScore;
+    if (scoresVisible && pA != null && pH != null &&
+        display?.awayScore != null && display?.homeScore != null &&
+        (pA !== display.awayScore || pH !== display.homeScore)) {
+      setScoreFlash(true);
+    }
+  }, [display?.awayScore, display?.homeScore, scoresVisible]);
+
+  useEffect(() => {
+    if (scoreFlash) {
+      const t = setTimeout(() => setScoreFlash(false), 400);
+      return () => clearTimeout(t);
+    }
+  }, [scoreFlash]);
+
+  // ── Hide mode update pulse ──────────────────────────────────
+  const prevHasNewRef = useRef(hasNewData);
+  const [updatePulse, setUpdatePulse] = useState(false);
+
+  useEffect(() => {
+    const prev = prevHasNewRef.current;
+    prevHasNewRef.current = hasNewData;
+    if (!prev && hasNewData && canToggle && !scoresVisible) setUpdatePulse(true);
+  }, [hasNewData, canToggle, scoresVisible]);
+
+  useEffect(() => {
+    if (updatePulse) {
+      const t = setTimeout(() => setUpdatePulse(false), 500);
+      return () => clearTimeout(t);
+    }
+  }, [updatePulse]);
+
   const handleNavigate = () => {
     if (!noData) {
       router.push(`/game/${game.id}`);
@@ -85,7 +125,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
             className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="animate-live-dot absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPD
@@ -97,7 +137,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
       return (
         <span className="inline-flex items-center gap-1 text-green-400 font-semibold text-xs">
           <span className="relative flex h-1.5 w-1.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="animate-live-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
           </span>
           LIVE
@@ -114,7 +154,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
             className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
             <span className="relative flex h-1.5 w-1.5">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+              <span className="animate-live-dot absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPD
@@ -143,7 +183,10 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
       return (
         <button
           onClick={handleReveal}
-          className="shrink-0 flex items-center gap-1.5 pl-3 border-l border-neutral-800 text-blue-400 hover:text-blue-300 transition min-w-[88px] min-h-[44px] justify-center"
+          className={cn(
+            "shrink-0 flex items-center gap-1.5 rounded-lg bg-neutral-800/40 border border-neutral-700/30 ml-3 text-blue-400 hover:text-blue-300 transition min-w-[96px] min-h-[44px] justify-center",
+            updatePulse && "update-pulse",
+          )}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -165,16 +208,22 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
               acceptUpdate(game.id, pickSnapshot(game));
             }
           }}
-          className="shrink-0 text-sm tabular-nums text-neutral-200 pl-3 min-w-[88px] min-h-[44px] flex items-center justify-center"
+          className={cn(
+            "shrink-0 text-base font-semibold tabular-nums text-neutral-200 pl-3 min-w-[96px] min-h-[44px] flex items-center justify-end text-right",
+            scoreFlash && "score-flash",
+          )}
         >
-          {display?.awayScore ?? game.awayScore} - {display?.homeScore ?? game.homeScore}
+          {display?.awayScore ?? game.awayScore} {"\u2013"} {display?.homeScore ?? game.homeScore}
         </button>
       );
     }
 
     return (
-      <span className="shrink-0 text-sm tabular-nums text-neutral-200 pl-3">
-        {display?.awayScore ?? game.awayScore} - {display?.homeScore ?? game.homeScore}
+      <span className={cn(
+        "shrink-0 text-base font-semibold tabular-nums text-neutral-200 pl-3 text-right min-w-[96px]",
+        scoreFlash && "score-flash",
+      )}>
+        {display?.awayScore ?? game.awayScore} {"\u2013"} {display?.homeScore ?? game.homeScore}
       </span>
     );
   })();
@@ -183,7 +232,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
     <div
       onClick={handleNavigate}
       className={cn(
-        "flex items-center min-h-[52px] px-4 py-2.5 border-b border-neutral-800 transition select-none",
+        "flex items-center min-h-[52px] px-4 py-3 border-b border-neutral-800/40 transition select-none",
         noData && "opacity-40 pointer-events-none",
         read && final && "opacity-70",
         !noData && "cursor-pointer hover:bg-neutral-800/40 active:bg-neutral-800/50",
@@ -205,11 +254,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
                 "p-0.5 rounded transition",
                 pinned
                   ? "text-blue-400 hover:text-blue-300"
-                  : "text-neutral-600 hover:text-neutral-400",
+                  : "text-neutral-600 opacity-40 hover:text-neutral-400",
               )}
               title={pinned ? "Unpin game" : "Pin game"}
             >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill={pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill={pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 2l2.09 6.26L21 9.27l-5 4.87L17.18 22 12 18.56 6.82 22 8 14.14l-5-4.87 6.91-1.01L12 2z" />
               </svg>
             </button>
@@ -219,7 +268,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
       </div>
 
       {/* Center: matchup */}
-      <div className="flex-1 min-w-0 text-sm text-neutral-200 truncate">
+      <div className="flex-1 min-w-0 text-[15px] font-medium text-neutral-200 truncate leading-snug">
         {cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}
         {" @ "}
         {cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}

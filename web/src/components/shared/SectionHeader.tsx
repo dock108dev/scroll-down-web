@@ -23,7 +23,7 @@ export function SectionHeader({
     <button
       onClick={onToggle}
       className={cn(
-        "flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-neutral-300 bg-neutral-900",
+        "flex w-full items-center gap-2 px-4 py-3 text-[15px] font-bold text-neutral-200 bg-neutral-900/80 backdrop-blur-sm",
         sticky && "sticky z-20 border-y border-neutral-800",
       )}
       style={sticky ? { top: stickyTop } : undefined}
