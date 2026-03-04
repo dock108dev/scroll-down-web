@@ -7,7 +7,7 @@ import type { GameCore } from "@/stores/game-data";
 import { SearchBar } from "@/components/home/SearchBar";
 import { TimelineSection } from "@/components/home/TimelineSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { isLive, isFinal } from "@/lib/types";
+import { isLive, isFinal, type GameStatus } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useSettings } from "@/stores/settings";
@@ -18,10 +18,19 @@ import { cn } from "@/lib/utils";
 
 // ── Sorting helpers ────────────────────────────────────────
 
-function sortByTipTime(games: GameCore[]): GameCore[] {
-  return [...games].sort(
-    (a, b) => new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime(),
-  );
+/** Status priority: live first, then upcoming, then final */
+function statusPriority(status: GameStatus): number {
+  if (isLive(status)) return 0;
+  if (isFinal(status)) return 2;
+  return 1; // pregame / scheduled
+}
+
+function sortByStatusThenTime(games: GameCore[]): GameCore[] {
+  return [...games].sort((a, b) => {
+    const sp = statusPriority(a.status) - statusPriority(b.status);
+    if (sp !== 0) return sp;
+    return new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime();
+  });
 }
 
 // ── Derive available leagues from all games ────────────────
@@ -97,7 +106,7 @@ export default function HomePage() {
         const sec = sections.find((s) => s.key === key);
         return {
           key,
-          games: sec ? sortByTipTime(sec.games) : [],
+          games: sec ? sortByStatusThenTime(sec.games) : [],
         };
       }),
     [sections],
