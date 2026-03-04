@@ -85,8 +85,9 @@ export function computeScoreDisplay(
     };
   }
 
-  // mode=onMarkRead, revealed, active view → render from core (auto-accept)
-  if (isActiveView) {
+  // mode=onMarkRead, revealed, active view + LIVE only → auto-accept from core
+  // Final games always use snapshot so users can hide/reveal freely on detail page
+  if (isActiveView && live) {
     return {
       visible: !pregame && hasScoreData,
       homeScore: core.homeScore,
@@ -94,7 +95,7 @@ export function computeScoreDisplay(
       frozen: false,
       hasUpdate: false,
       canToggle,
-      statusCategory: live ? "live" : final ? "final" : pregame ? "pregame" : "other",
+      statusCategory: "live",
     };
   }
 

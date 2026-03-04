@@ -44,8 +44,6 @@ export function GameHeader({ game }: GameHeaderProps) {
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
-    // Live games: no toggle — scores auto-update (same rules as home page)
-    if (live) return;
     if (read) hide(game.id);
     else reveal(game.id, pickSnapshot(game as GameCore));
   };
@@ -130,18 +128,18 @@ export function GameHeader({ game }: GameHeaderProps) {
             )}
           </div>
 
-          {/* Center: toggle reveal (disabled for live — scores auto-update) */}
+          {/* Center: toggle reveal */}
           <div
             onClick={handleScoreToggle}
             className={cn(
               "text-center shrink-0",
-              !pregame && !live && hasScoreData && "cursor-pointer",
+              !pregame && hasScoreData && "cursor-pointer",
             )}
           >
             {showScore ? (
               <>
                 <span className="text-neutral-600 text-sm font-medium">@</span>
-                {display?.canToggle && !live && (
+                {display?.canToggle && (
                   <p className="text-xs text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
                     Hide score
                   </p>
@@ -152,12 +150,12 @@ export function GameHeader({ game }: GameHeaderProps) {
                 <span
                   className={cn(
                     "text-2xl font-bold text-neutral-600",
-                    !pregame && !live && hasScoreData && "hover:text-neutral-400 transition-colors",
+                    !pregame && hasScoreData && "hover:text-neutral-400 transition-colors",
                   )}
                 >
                   vs
                 </span>
-                {!pregame && !live && hasScoreData && (
+                {!pregame && hasScoreData && (
                   <p className="text-xs text-neutral-700 mt-1">
                     Click to reveal
                   </p>
