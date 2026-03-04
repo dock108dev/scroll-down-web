@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo, useRef, useState, useEffect } from "react";
 import type { GameCore } from "@/stores/game-data";
 import { useSettings } from "@/stores/settings";
 import { SectionHeader } from "@/components/shared/SectionHeader";
@@ -10,9 +10,10 @@ interface TimelineSectionProps {
   title: string;
   games: GameCore[];
   stickyTop?: string;
+  pinnedIds?: Set<number>;
 }
 
-export function TimelineSection({ title, games, stickyTop }: TimelineSectionProps) {
+export function TimelineSection({ title, games, stickyTop, pinnedIds }: TimelineSectionProps) {
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const setHomeExpandedSections = useSettings((s) => s.setHomeExpandedSections);
 
@@ -25,21 +26,72 @@ export function TimelineSection({ title, games, stickyTop }: TimelineSectionProp
     setHomeExpandedSections(next);
   }, [expanded, homeExpandedSections, setHomeExpandedSections, title]);
 
+  // Split pinned vs non-pinned
+  const { pinned, rest } = useMemo(() => {
+    if (!pinnedIds || pinnedIds.size === 0) return { pinned: [] as GameCore[], rest: games };
+    const p: GameCore[] = [];
+    const r: GameCore[] = [];
+    for (const g of games) {
+      if (pinnedIds.has(g.id)) p.push(g);
+      else r.push(g);
+    }
+    return { pinned: p, rest: r };
+  }, [games, pinnedIds]);
+
+  // Measure section header height for pinned subsection offset
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerH, setHeaderH] = useState(0);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setHeaderH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   if (games.length === 0) return null;
+
+  const pinnedStickyTop = stickyTop
+    ? `calc(${stickyTop} + ${headerH}px)`
+    : `${headerH}px`;
 
   return (
     <div>
-      <SectionHeader
-        title={title}
-        expanded={expanded}
-        onToggle={handleToggle}
-        count={games.length}
-        stickyTop={stickyTop}
-      />
-      {expanded &&
-        games.map((game) => (
-          <GameRow key={game.id} game={game} />
-        ))}
+      <div ref={headerRef}>
+        <SectionHeader
+          title={title}
+          expanded={expanded}
+          onToggle={handleToggle}
+          count={games.length}
+          stickyTop={stickyTop}
+        />
+      </div>
+      {expanded && (
+        <>
+          {/* Pinned subsection — sticks below the section header */}
+          {pinned.length > 0 && (
+            <div
+              className="sticky z-[15] bg-neutral-950 border-b border-neutral-800"
+              style={{ top: pinnedStickyTop }}
+            >
+              <div className="flex items-center gap-1.5 px-4 py-1 text-[10px] font-medium uppercase tracking-wider text-blue-400">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2l2.09 6.26L21 9.27l-5 4.87L17.18 22 12 18.56 6.82 22 8 14.14l-5-4.87 6.91-1.01L12 2z" />
+                </svg>
+                Pinned
+              </div>
+              {pinned.map((game) => (
+                <GameRow key={game.id} game={game} />
+              ))}
+            </div>
+          )}
+          {/* Remaining games */}
+          {rest.map((game) => (
+            <GameRow key={game.id} game={game} />
+          ))}
+        </>
+      )}
     </div>
   );
 }

@@ -6,8 +6,6 @@ import type { GameCore } from "@/stores/game-data";
 
 import { SearchBar } from "@/components/home/SearchBar";
 import { TimelineSection } from "@/components/home/TimelineSection";
-import { GameRow } from "@/components/home/GameRow";
-import { SectionHeader } from "@/components/shared/SectionHeader";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal, type GameStatus } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
@@ -27,10 +25,14 @@ function statusPriority(status: GameStatus): number {
   return 1; // pregame / scheduled
 }
 
-function sortByStatusThenTime(games: GameCore[]): GameCore[] {
+function sortByStatusThenTime(games: GameCore[], finalsAlpha = false): GameCore[] {
   return [...games].sort((a, b) => {
     const sp = statusPriority(a.status) - statusPriority(b.status);
     if (sp !== 0) return sp;
+    // For prior days, sort final games alphabetically by away team
+    if (finalsAlpha && isFinal(a.status) && isFinal(b.status)) {
+      return a.awayTeam.localeCompare(b.awayTeam);
+    }
     return new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime();
   });
 }
@@ -43,24 +45,6 @@ function deriveLeagues(games: GameCore[]): string[] {
     if (g.leagueCode) set.add(g.leagueCode.toLowerCase());
   }
   return Array.from(set).sort();
-}
-
-// ── Pinned section (expanded by default, local state) ──────
-
-function PinnedSection({ games, stickyTop }: { games: GameCore[]; stickyTop: string }) {
-  const [expanded, setExpanded] = useState(true);
-  return (
-    <div>
-      <SectionHeader
-        title="Pinned"
-        expanded={expanded}
-        onToggle={() => setExpanded((v) => !v)}
-        count={games.length}
-        stickyTop={stickyTop}
-      />
-      {expanded && games.map((game) => <GameRow key={game.id} game={game} />)}
-    </div>
-  );
 }
 
 // ── Page component ─────────────────────────────────────────
@@ -120,21 +104,16 @@ export default function HomePage() {
   // Derive league pills from all fetched games
   const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
 
-  // Pinned games section (collects pinned games across all sections)
-  const pinnedGames = useMemo(() => {
-    if (pinnedIds.size === 0) return [];
-    const pinned = allGames.filter((g) => pinnedIds.has(g.id));
-    return sortByStatusThenTime(pinned);
-  }, [allGames, pinnedIds]);
-
   // Sorted sections
   const sortedSections = useMemo(
     () =>
       SECTION_ORDER.map((key) => {
         const sec = sections.find((s) => s.key === key);
+        // Yesterday and older: sort final games alphabetically by away team
+        const finalsAlpha = key !== "Today";
         return {
           key,
-          games: sec ? sortByStatusThenTime(sec.games) : [],
+          games: sec ? sortByStatusThenTime(sec.games, finalsAlpha) : [],
         };
       }),
     [sections],
@@ -212,7 +191,7 @@ export default function HomePage() {
     clearAllPositions();
   }, [visibleGameIds, reveal, clearAllPositions]);
 
-  const hasAnyGames = pinnedGames.length > 0 || sortedSections.some((s) => s.games.length > 0);
+  const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 
   // Track toolbar height for section header sticky offset
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -334,11 +313,6 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Pinned section (expanded by default) */}
-      {pinnedGames.length > 0 && (
-        <PinnedSection games={pinnedGames} stickyTop={stickyTop} />
-      )}
-
       {/* Sections */}
       {sortedSections.map((section) => (
         <TimelineSection
@@ -346,6 +320,7 @@ export default function HomePage() {
           title={section.key}
           games={section.games}
           stickyTop={stickyTop}
+          pinnedIds={pinnedIds}
         />
       ))}
     </div>

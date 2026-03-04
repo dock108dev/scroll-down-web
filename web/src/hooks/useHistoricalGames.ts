@@ -36,11 +36,12 @@ interface UseHistoricalGamesReturn {
 // ── Hook ───────────────────────────────────────────────────
 
 export function useHistoricalGames(
-  date: string,
+  startDate: string,
+  endDate: string,
   league?: string,
   team?: string,
 ): UseHistoricalGamesReturn {
-  const cacheKey = `history:${date}:${league ?? ""}`;
+  const cacheKey = `history:${startDate}:${endDate}:${league ?? ""}`;
   const upsertFromList = useGameData((s) => s.upsertFromList);
   const games = useGameData((s) => s.games);
 
@@ -68,8 +69,8 @@ export function useHistoricalGames(
     setError(null);
 
     const params = new URLSearchParams();
-    params.set("startDate", date);
-    params.set("endDate", date);
+    params.set("startDate", startDate);
+    params.set("endDate", endDate);
     params.set("limit", "200");
     if (league) params.set("league", league);
     if (debouncedTeam) params.set("team", debouncedTeam);
@@ -87,9 +88,9 @@ export function useHistoricalGames(
       setError(err instanceof Error ? err.message : "Failed to fetch games");
       setLoading(false);
     }
-  }, [date, league, debouncedTeam, cacheKey, upsertFromList]);
+  }, [startDate, endDate, league, debouncedTeam, cacheKey, upsertFromList]);
 
-  // Re-fetch when date/league/team change
+  // Re-fetch when dates/league/team change
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- async data fetch on dep change, same pattern as useGamesList
     fetchGames();

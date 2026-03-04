@@ -12,6 +12,7 @@ import { pickSnapshot } from "@/lib/score-display";
 
 interface GameRowProps {
   game: GameCore;
+  showPin?: boolean;
 }
 
 function hasNoData(game: GameCore): boolean {
@@ -28,7 +29,7 @@ function formatGameDateTime(dateStr: string): string {
   return `${time} ET`;
 }
 
-export const GameRow = memo(function GameRow({ game }: GameRowProps) {
+export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowProps) {
   const router = useRouter();
   const { reveal, acceptUpdate, isRevealed } = useReveal();
   const display = useScoreDisplay(game.id);
@@ -193,7 +194,7 @@ export const GameRow = memo(function GameRow({ game }: GameRowProps) {
           <span className="uppercase font-medium text-neutral-500 text-xs">
             {game.leagueCode}
           </span>
-          {(pinned || pinnedCount < 10) && (
+          {showPin && (pinned || pinnedCount < 10) && (
             <button
               onClick={(e) => {
                 e.stopPropagation();

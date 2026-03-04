@@ -46,8 +46,8 @@ function SettingsIcon({ className }: { className?: string }) {
 
 const TABS = [
   { href: "/", label: "Games", Icon: GamesIcon },
-  { href: "/history", label: "History", Icon: HistoryIcon },
   { href: "/fairbet", label: "FairBet", Icon: FairBetIcon },
+  { href: "/history", label: "History", Icon: HistoryIcon },
 ];
 
 export function BottomTabs() {

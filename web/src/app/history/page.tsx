@@ -45,51 +45,83 @@ function deriveLeagues(games: GameCore[]): string[] {
   return Array.from(set).sort();
 }
 
+// ── Sort modes ─────────────────────────────────────────────
+
+type SortMode = "away" | "home" | "time";
+
+const SORT_OPTIONS: { value: SortMode; label: string }[] = [
+  { value: "away", label: "Away Team" },
+  { value: "home", label: "Home Team" },
+  { value: "time", label: "Time" },
+];
+
+function sortGames(games: GameCore[], mode: SortMode): GameCore[] {
+  return [...games].sort((a, b) => {
+    switch (mode) {
+      case "away":
+        return a.awayTeam.localeCompare(b.awayTeam);
+      case "home":
+        return a.homeTeam.localeCompare(b.homeTeam);
+      case "time":
+        return new Date(a.gameDate).getTime() - new Date(b.gameDate).getTime();
+    }
+  });
+}
+
 // ── Inner component (uses useSearchParams) ─────────────────
 
 function HistoryPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const dateParam = searchParams.get("date") || yesterdayStr();
+  const defaultDate = yesterdayStr();
+  const startDate = searchParams.get("start") || defaultDate;
+  const endDate = searchParams.get("end") || startDate;
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("away");
 
   const { games, loading, error } = useHistoricalGames(
-    dateParam,
+    startDate,
+    endDate,
     league || undefined,
     search || undefined,
   );
 
   const handleDateChange = useCallback(
-    (newDate: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("date", newDate);
+    (newStart: string, newEnd: string) => {
+      const params = new URLSearchParams();
+      params.set("start", newStart);
+      params.set("end", newEnd);
       router.replace(`/history?${params.toString()}`, { scroll: false });
     },
-    [router, searchParams],
+    [router],
   );
 
   const availableLeagues = useMemo(() => deriveLeagues(games), [games]);
 
-  const formattedDate = useMemo(() => {
-    const d = new Date(dateParam + "T12:00:00");
-    return d.toLocaleDateString("en-US", {
-      weekday: "long",
+  const sortedGames = useMemo(() => sortGames(games, sortMode), [games, sortMode]);
+
+  const formattedRange = useMemo(() => {
+    const opts: Intl.DateTimeFormatOptions = {
       month: "long",
       day: "numeric",
       year: "numeric",
-    });
-  }, [dateParam]);
+    };
+    const s = new Date(startDate + "T12:00:00").toLocaleDateString("en-US", opts);
+    if (startDate === endDate) return s;
+    const e = new Date(endDate + "T12:00:00").toLocaleDateString("en-US", opts);
+    return `${s} – ${e}`;
+  }, [startDate, endDate]);
 
   return (
     <div className="mx-auto max-w-2xl">
       {/* Sticky toolbar */}
       <div className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
-        <DateNavigator date={dateParam} onChange={handleDateChange} loading={loading} />
+        <DateNavigator startDate={startDate} endDate={endDate} onChange={handleDateChange} loading={loading} />
         <SearchBar value={search} onChange={setSearch} />
 
-        {/* League filter pills */}
+        {/* League filter pills + sort pills */}
         <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
           <button
             onClick={() => setLeague("")}
@@ -117,6 +149,25 @@ function HistoryPageInner() {
             </button>
           ))}
         </div>
+
+        {/* Sort controls */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-medium uppercase tracking-wider text-neutral-500">Sort</span>
+          {SORT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setSortMode(opt.value)}
+              className={cn(
+                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition",
+                sortMode === opt.value
+                  ? "bg-neutral-50 text-neutral-950"
+                  : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
+              )}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Loading state */}
@@ -136,13 +187,13 @@ function HistoryPageInner() {
       {/* Empty state */}
       {!loading && !error && games.length === 0 && (
         <div className="px-4 py-8 text-center text-neutral-500 text-sm">
-          No games found for {formattedDate}
+          No games found for {formattedRange}
         </div>
       )}
 
       {/* Game list */}
-      {games.map((game) => (
-        <GameRow key={game.id} game={game} />
+      {sortedGames.map((game) => (
+        <GameRow key={game.id} game={game} showPin={false} />
       ))}
     </div>
   );
