@@ -134,8 +134,9 @@ export const GameRow = memo(function GameRow({ game, showPin = true }: GameRowPr
   // ── Score zone ────────────────────────────────────────────────
 
   const scoreZone = (() => {
-    // Pregame: nothing
-    if (pregame || !hasScoreData) return null;
+    // Pregame: nothing. Also hide if no score data anywhere (core or display snapshot).
+    const hasDisplayScores = display?.homeScore != null && display?.awayScore != null;
+    if (pregame || (!hasScoreData && !hasDisplayScores)) return null;
 
     // Hide mode + unrevealed: reveal button
     if (canToggle && !scoresVisible) {
