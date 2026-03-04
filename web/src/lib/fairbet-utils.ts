@@ -93,7 +93,7 @@ const METHOD_DISPLAY_NAMES: Record<string, string> = {
   sharp_reference: "Sharp book reference",
 };
 
-export function getMethodDisplayName(method?: string): string {
+function getMethodDisplayName(method?: string): string {
   if (!method) return "Unknown method";
   return METHOD_DISPLAY_NAMES[method] ?? method.replace(/_/g, " ");
 }
@@ -113,7 +113,7 @@ const METHOD_EXPLANATIONS: Record<string, string> = {
     "A sharp sportsbook (e.g. Pinnacle, Circa) directly prices this market. Their line, after vig removal, serves as the fair value reference.",
 };
 
-export function getMethodExplanation(method?: string): string {
+function getMethodExplanation(method?: string): string {
   if (!method) return "The method used to estimate the fair probability for this market.";
   return METHOD_EXPLANATIONS[method] ?? "The method used to estimate the fair probability for this market.";
 }
@@ -152,7 +152,7 @@ const MARKET_KEY_LABELS: Record<string, string> = {
   alternate_totals: "Alt Total",
 };
 
-export function marketKeyToLabel(key: string): string {
+function marketKeyToLabel(key: string): string {
   return MARKET_KEY_LABELS[key.toLowerCase()] ?? key.replace(/_/g, " ");
 }
 
@@ -306,14 +306,14 @@ function titleCaseIfShoutyCaps(str: string, homeTeam?: string, awayTeam?: string
 // ── Probability / odds helpers ──────────────────────────────────────
 
 /** Convert American odds to implied probability (0-1). */
-export function americanToImpliedProb(odds: number): number {
+function americanToImpliedProb(odds: number): number {
   if (!Number.isFinite(odds) || odds === 0) return NaN;
   if (odds > 0) return 100 / (odds + 100);
   return Math.abs(odds) / (Math.abs(odds) + 100);
 }
 
 /** Convert probability (0-1) to American odds. */
-export function impliedProbToAmerican(prob: number): number {
+function impliedProbToAmerican(prob: number): number {
   if (prob <= 0 || prob >= 1) return 0;
   if (prob >= 0.5) {
     return Math.round(-prob / (1 - prob) * 100);
@@ -322,7 +322,7 @@ export function impliedProbToAmerican(prob: number): number {
 }
 
 /** Convert American odds to decimal odds. */
-export function americanToDecimal(american: number): number {
+function americanToDecimal(american: number): number {
   if (!Number.isFinite(american) || american === 0) return NaN;
   if (american > 0) return 1 + american / 100;
   return 1 + 100 / Math.abs(american);

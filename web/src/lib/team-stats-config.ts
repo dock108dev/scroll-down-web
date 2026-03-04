@@ -18,7 +18,7 @@ export interface StatGroup {
   stats: StatDef[];
 }
 
-export const BASKETBALL_GROUPS: StatGroup[] = [
+const BASKETBALL_GROUPS: StatGroup[] = [
   {
     title: "Overview",
     stats: [
@@ -57,7 +57,7 @@ export const BASKETBALL_GROUPS: StatGroup[] = [
   },
 ];
 
-export const HOCKEY_GROUPS: StatGroup[] = [
+const HOCKEY_GROUPS: StatGroup[] = [
   {
     title: "Offense",
     stats: [
@@ -238,102 +238,3 @@ export function buildGroupsFromNormalized(
   return ordered;
 }
 
-// ─── Stat annotations ──────────────────────────────────────────
-
-export interface Annotation {
-  text: string;
-}
-
-export function generateAnnotations(
-  homeStats: Record<string, unknown>,
-  awayStats: Record<string, unknown>,
-  homeTeam: string,
-  awayTeam: string,
-  leagueCode: string,
-): Annotation[] {
-  const annotations: Annotation[] = [];
-
-  function getVal(stats: Record<string, unknown>, aliases: string[]): number {
-    return resolveStatValue(stats, aliases) ?? 0;
-  }
-
-  function teamName(isHome: boolean): string {
-    return isHome ? homeTeam : awayTeam;
-  }
-
-  if (leagueCode === "nhl") return annotations;
-
-  // Off Reb diff >= 5
-  const homeOreb = getVal(homeStats, ["offReb", "oreb", "offensiveRebounds", "offensive_rebounds"]);
-  const awayOreb = getVal(awayStats, ["offReb", "oreb", "offensiveRebounds", "offensive_rebounds"]);
-  const orebDiff = Math.abs(homeOreb - awayOreb);
-  if (orebDiff >= 5) {
-    const winner = homeOreb > awayOreb;
-    annotations.push({
-      text: `+${orebDiff} extra possessions for ${teamName(winner)}`,
-    });
-  }
-
-  // Turnovers diff > 2
-  const homeTo = getVal(homeStats, ["turnovers", "to", "tov"]);
-  const awayTo = getVal(awayStats, ["turnovers", "to", "tov"]);
-  const toDiff = Math.abs(homeTo - awayTo);
-  if (toDiff > 2) {
-    const loser = homeTo > awayTo;
-    annotations.push({
-      text: `${teamName(loser)} +${toDiff} giveaways`,
-    });
-  }
-
-  // Assists diff >= 5
-  const homeAst = getVal(homeStats, ["assists", "ast"]);
-  const awayAst = getVal(awayStats, ["assists", "ast"]);
-  const astDiff = Math.abs(homeAst - awayAst);
-  if (astDiff >= 5) {
-    const winner = homeAst > awayAst;
-    annotations.push({
-      text: `Ball movement favored ${teamName(winner)}`,
-    });
-  }
-
-  // Rebounds diff >= 8
-  const homeReb = getVal(homeStats, ["rebounds", "reb", "totalRebounds", "total_rebounds"]);
-  const awayReb = getVal(awayStats, ["rebounds", "reb", "totalRebounds", "total_rebounds"]);
-  const rebDiff = Math.abs(homeReb - awayReb);
-  if (rebDiff >= 8) {
-    const winner = homeReb > awayReb;
-    annotations.push({
-      text: `${teamName(winner)} controlled the glass`,
-    });
-  }
-
-  // FG% diff >= 8
-  const homeFgPct = getVal(homeStats, ["fgPct", "fg_pct", "fieldGoalPercentage", "fgPercentage"]);
-  const awayFgPct = getVal(awayStats, ["fgPct", "fg_pct", "fieldGoalPercentage", "fgPercentage"]);
-  const fgDiff = Math.abs(
-    (homeFgPct > 1 ? homeFgPct : homeFgPct * 100) -
-    (awayFgPct > 1 ? awayFgPct : awayFgPct * 100),
-  );
-  if (fgDiff >= 8) {
-    const winner = homeFgPct > awayFgPct;
-    annotations.push({
-      text: `${teamName(winner)} more efficient from the field`,
-    });
-  }
-
-  // 3PT% diff >= 10
-  const homeTpPct = getVal(homeStats, ["tpPct", "tp_pct", "threePointPercentage", "fg3Pct"]);
-  const awayTpPct = getVal(awayStats, ["tpPct", "tp_pct", "threePointPercentage", "fg3Pct"]);
-  const tpDiff = Math.abs(
-    (homeTpPct > 1 ? homeTpPct : homeTpPct * 100) -
-    (awayTpPct > 1 ? awayTpPct : awayTpPct * 100),
-  );
-  if (tpDiff >= 10) {
-    const winner = homeTpPct > awayTpPct;
-    annotations.push({
-      text: `${teamName(winner)} hot from deep`,
-    });
-  }
-
-  return annotations;
-}

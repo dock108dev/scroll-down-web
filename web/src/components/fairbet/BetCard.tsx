@@ -3,7 +3,7 @@
 import { memo, useState } from "react";
 import type { APIBet } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
-import { formatOdds, cn } from "@/lib/utils";
+import { formatOdds, formatDate, cn } from "@/lib/utils";
 import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
 import { MiniBookChip } from "./MiniBookChip";
 import { LeagueBadge } from "./LeagueBadge";
@@ -79,11 +79,7 @@ export const BetCard = memo(function BetCard({
     hour: "numeric",
     minute: "2-digit",
   });
-  const dateStr = gameDate.toLocaleDateString("en-US", {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
-  });
+  const dateStr = formatDate(bet.game_date);
 
   return (
     <div

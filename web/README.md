@@ -38,13 +38,13 @@ src/
 │   ├── settings/page.tsx     # User preferences
 │   └── api/                  # Server-side API proxy routes (4 routes)
 ├── components/
-│   ├── home/                 # GameRow, GameCard, GameSection, TimelineSection, SearchBar, PinnedBar
+│   ├── home/                 # GameRow, TimelineSection, SearchBar, PinnedBar
 │   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
 │   │                         # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, etc.
 │   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet
 │   ├── settings/             # SettingsContent
 │   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
-│   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader, TeamColorDot
+│   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader
 ├── hooks/
 │   ├── useGamesList.ts       # Home feed: date sections, 60s auto-refresh, client search
 │   ├── useGameDetail.ts      # Game detail: 5-min LRU cache, 45s live polling
