@@ -60,32 +60,63 @@ export function useGameDetail(id: number) {
     fetchGame();
   }, [fetchGame]);
 
-  // Live polling
+  // Live polling — pauses when tab is hidden, immediate refetch on wake.
+  // On wake: freeze snapshot + clear activeGame so scores don't silently jump.
+  // User must accept the update to see new scores.
   useEffect(() => {
     if (!data) return;
     const gameStatus = data.game.status;
-
-    if (isLive(gameStatus)) {
-      pollRef.current = setInterval(() => {
-        fetchGame({ silent: true });
-      }, POLLING.LIVE_GAME_POLL_MS);
+    if (!isLive(gameStatus)) {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
+      return;
     }
 
-    return () => {
+    const startPolling = () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      pollRef.current = setInterval(async () => {
+        await fetchGame({ silent: true });
+        // Auto-accept during continuous viewing (keeps snapshot in sync)
+        const c = getCore(id);
+        if (c && isRevealed(id)) {
+          acceptUpdate(id, pickSnapshot(c));
+        }
+      }, POLLING.LIVE_GAME_POLL_MS);
+    };
+
+    const stopPolling = () => {
       if (pollRef.current) {
         clearInterval(pollRef.current);
         pollRef.current = null;
       }
     };
-  }, [data?.game.status, fetchGame]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Stop polling once final
-  useEffect(() => {
-    if (data && isFinal(data.game.status) && pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  }, [data]);
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        // Freeze snapshot at pre-sleep state so hasUpdate detects changes
+        const c = getCore(id);
+        if (c && isRevealed(id)) {
+          acceptUpdate(id, pickSnapshot(c));
+        }
+        // Disable auto-accept by clearing active game
+        // (user must click to accept the update)
+        setActiveGame(null);
+        fetchGame({ silent: true });
+        startPolling();
+      } else {
+        stopPolling();
+      }
+    };
+
+    startPolling();
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, [data?.game.status, fetchGame, id, getCore, isRevealed, acceptUpdate, setActiveGame]);
 
   // Auto-accept: set active game on mount, sync snapshot on unmount
   useEffect(() => {

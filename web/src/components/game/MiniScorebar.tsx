@@ -2,6 +2,7 @@
 
 import type { Game } from "@/lib/types";
 import type { GameCore } from "@/stores/game-data";
+import { useGameData } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { useReveal } from "@/stores/reveal";
@@ -24,7 +25,8 @@ interface MiniScorebarProps {
 
 export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const display = useScoreDisplay(game.id);
-  const { reveal, hide, isRevealed } = useReveal();
+  const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
+  const setActiveGame = useGameData((s) => s.setActiveGame);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
   const revealed = isRevealed(game.id);
@@ -33,12 +35,17 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const pregame = isPregame(game.status);
   const showScore = display?.visible ?? false;
   const canToggle = display?.canToggle ?? false;
+  const hasUpdate = display?.hasUpdate ?? false;
 
   const awayColor = game.awayTeamColorDark || "#a3a3a3";
   const homeColor = game.homeTeamColorDark || "#a3a3a3";
 
   const handleReveal = () => reveal(game.id, pickSnapshot(game as GameCore));
   const handleHide = () => hide(game.id);
+  const handleAcceptUpdate = () => {
+    acceptUpdate(game.id, pickSnapshot(game as GameCore));
+    setActiveGame(game.id);
+  };
 
   const showToggle = canToggle && scoreRevealMode !== "always" && !pregame;
 
@@ -134,8 +141,8 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                 </span>
               )}
 
-              {/* Live: period + clock + indicator */}
-              {live && (
+              {/* Live: period + clock + indicator (or update prompt) */}
+              {live && !hasUpdate && (
                 <>
                   {(game.currentPeriodLabel || game.gameClock) && (
                     <span className="text-xs font-medium text-neutral-300 tabular-nums">
@@ -153,6 +160,18 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                     </span>
                   </span>
                 </>
+              )}
+              {live && hasUpdate && (
+                <button
+                  onClick={handleAcceptUpdate}
+                  className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors"
+                >
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
+                  </span>
+                  Update
+                </button>
               )}
 
               {/* Final label */}

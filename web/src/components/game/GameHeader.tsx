@@ -2,6 +2,7 @@
 
 import type { Game } from "@/lib/types";
 import type { GameCore } from "@/stores/game-data";
+import { useGameData } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
@@ -23,7 +24,8 @@ interface GameHeaderProps {
 }
 
 export function GameHeader({ game }: GameHeaderProps) {
-  const { reveal, hide, isRevealed } = useReveal();
+  const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
+  const setActiveGame = useGameData((s) => s.setActiveGame);
   const display = useScoreDisplay(game.id);
 
   const pinned = usePinnedGames((s) => s.isPinned)(game.id);
@@ -37,13 +39,16 @@ export function GameHeader({ game }: GameHeaderProps) {
 
   const hasScoreData = game.homeScore != null && game.awayScore != null;
   const showScore = display?.visible ?? false;
-
-  // On detail page, isActiveView=true so scores always render from live (auto-accept)
-  // hasUpdate is always false here since active view
   const hasScoreUpdate = display?.hasUpdate ?? false;
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
+    // Pending update (e.g. after wake): accept it and restore live auto-accept
+    if (hasScoreUpdate) {
+      acceptUpdate(game.id, pickSnapshot(game as GameCore));
+      setActiveGame(game.id);
+      return;
+    }
     if (read) hide(game.id);
     else reveal(game.id, pickSnapshot(game as GameCore));
   };
@@ -80,21 +85,31 @@ export function GameHeader({ game }: GameHeaderProps) {
               </button>
             )}
           </span>
-          {live && (
+          {live && !hasScoreUpdate && (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
-              <span className={cn("relative flex h-2 w-2", hasScoreUpdate ? "text-amber-400" : "text-green-400")}>
-                <span className={cn("animate-ping absolute inline-flex h-full w-full rounded-full opacity-75", hasScoreUpdate ? "bg-amber-400" : "bg-green-400")} />
-                <span className={cn("relative inline-flex rounded-full h-2 w-2", hasScoreUpdate ? "bg-amber-400" : "bg-green-400")} />
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
               </span>
-              <span className={hasScoreUpdate ? "text-amber-400" : "text-green-400"}>
-                {hasScoreUpdate ? "UPDATED" : "LIVE"}
-              </span>
+              <span className="text-green-400">LIVE</span>
               {(game.currentPeriodLabel || game.gameClock) && (
                 <span className="text-neutral-500 font-normal">
                   {game.currentPeriodLabel ?? ""}{game.gameClock ? ` ${game.gameClock}` : ""}
                 </span>
               )}
             </span>
+          )}
+          {live && hasScoreUpdate && (
+            <button
+              onClick={handleScoreToggle}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-400/10 hover:bg-amber-400/20 transition-colors"
+            >
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+              </span>
+              <span className="text-amber-400">TAP TO UPDATE</span>
+            </button>
           )}
           {final && (
             <span className="text-xs text-neutral-500 uppercase font-medium">Final</span>
