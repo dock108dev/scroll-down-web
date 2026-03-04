@@ -6,6 +6,7 @@ import type { GameCore } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
+import { usePinnedGames } from "@/stores/pinned-games";
 import { cn, cardDisplayName } from "@/lib/utils";
 import { pickSnapshot } from "@/lib/score-display";
 
@@ -31,6 +32,10 @@ export const GameRow = memo(function GameRow({ game }: GameRowProps) {
   const router = useRouter();
   const { reveal, acceptUpdate, isRevealed } = useReveal();
   const display = useScoreDisplay(game.id);
+
+  const pinned = usePinnedGames((s) => s.isPinned)(game.id);
+  const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
+  const togglePin = usePinnedGames((s) => s.togglePin);
 
   const read = isRevealed(game.id);
   const final = isFinal(game.status);
@@ -182,10 +187,31 @@ export const GameRow = memo(function GameRow({ game }: GameRowProps) {
         !noData && "cursor-pointer hover:bg-neutral-800/40 active:bg-neutral-800/50",
       )}
     >
-      {/* Left: league + status */}
+      {/* Left: league + pin + status */}
       <div className="shrink-0 w-[88px] flex flex-col gap-0.5">
-        <span className="uppercase font-medium text-neutral-500 text-xs">
-          {game.leagueCode}
+        <span className="inline-flex items-center gap-1">
+          <span className="uppercase font-medium text-neutral-500 text-xs">
+            {game.leagueCode}
+          </span>
+          {(pinned || pinnedCount < 10) && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                togglePin(game.id);
+              }}
+              className={cn(
+                "p-0.5 rounded transition",
+                pinned
+                  ? "text-blue-400 hover:text-blue-300"
+                  : "text-neutral-600 hover:text-neutral-400",
+              )}
+              title={pinned ? "Unpin game" : "Pin game"}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill={pinned ? "currentColor" : "none"} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 2l2.09 6.26L21 9.27l-5 4.87L17.18 22 12 18.56 6.82 22 8 14.14l-5-4.87 6.91-1.01L12 2z" />
+              </svg>
+            </button>
+          )}
         </span>
         {statusContent}
       </div>
