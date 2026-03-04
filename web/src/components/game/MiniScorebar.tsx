@@ -51,73 +51,76 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
 
   return (
     <div
-      className={cn(
-        "overflow-hidden transition-all duration-300 ease-in-out",
-        visible ? "max-h-16 opacity-100" : "max-h-0 opacity-0",
-      )}
+      className="grid transition-[grid-template-rows,opacity] duration-300 ease-in-out"
+      style={{
+        gridTemplateRows: visible ? "1fr" : "0fr",
+        opacity: visible ? 1 : 0,
+      }}
     >
-      <div className="border-b border-neutral-800 px-4 py-1.5">
-        <div className="flex items-center gap-4">
-          {/* Left: two team rows */}
-          <div className="flex flex-col gap-0.5 min-w-0">
-            {/* Away row */}
-            <div className="flex items-center gap-2">
-              <span
-                className="text-xs font-bold w-10 tracking-tight"
-                style={{ color: awayColor }}
-              >
-                {game.awayTeamAbbr ?? game.awayTeam}
-              </span>
-              {showScore && (
-                <span className="text-xs font-bold tabular-nums text-neutral-100">
-                  {display?.awayScore}
+      <div className="overflow-hidden">
+        <div className="border-b border-neutral-800 px-4 py-1.5">
+          <div className="flex items-center gap-4">
+            {/* Left: two team rows */}
+            <div className="flex flex-col gap-0.5 min-w-0">
+              {/* Away row */}
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xs font-bold w-10 tracking-tight"
+                  style={{ color: awayColor }}
+                >
+                  {game.awayTeamAbbr ?? game.awayTeam}
                 </span>
-              )}
-            </div>
-            {/* Home row */}
-            <div className="flex items-center gap-2">
-              <span
-                className="text-xs font-bold w-10 tracking-tight"
-                style={{ color: homeColor }}
-              >
-                {game.homeTeamAbbr ?? game.homeTeam}
-              </span>
-              {showScore && (
-                <span className="text-xs font-bold tabular-nums text-neutral-100">
-                  {display?.homeScore}
+                {showScore && (
+                  <span className="text-xs font-bold tabular-nums text-neutral-100">
+                    {display?.awayScore}
+                  </span>
+                )}
+              </div>
+              {/* Home row */}
+              <div className="flex items-center gap-2">
+                <span
+                  className="text-xs font-bold w-10 tracking-tight"
+                  style={{ color: homeColor }}
+                >
+                  {game.homeTeamAbbr ?? game.homeTeam}
                 </span>
-              )}
+                {showScore && (
+                  <span className="text-xs font-bold tabular-nums text-neutral-100">
+                    {display?.homeScore}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Center: status */}
-          <div className="flex-1 text-center">
-            <span
-              className={cn(
-                "text-xs font-medium",
-                !showScore && !pregame
-                  ? "text-neutral-600"
-                  : "text-neutral-500",
-              )}
-            >
-              {statusLabel}
-            </span>
-          </div>
+            {/* Center: status */}
+            <div className="flex-1 text-center">
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  !showScore && !pregame
+                    ? "text-neutral-600"
+                    : "text-neutral-500",
+                )}
+              >
+                {statusLabel}
+              </span>
+            </div>
 
-          {/* Right: toggle */}
-          {showToggle && (
-            <button
-              onClick={revealed ? handleHide : handleReveal}
-              className={cn(
-                "shrink-0 text-xs font-medium transition-colors",
-                revealed
-                  ? "text-neutral-500 hover:text-neutral-400"
-                  : "text-blue-400 hover:text-blue-300",
-              )}
-            >
-              {revealed ? "Hide" : "Reveal"}
-            </button>
-          )}
+            {/* Right: toggle */}
+            {showToggle && (
+              <button
+                onClick={revealed ? handleHide : handleReveal}
+                className={cn(
+                  "shrink-0 text-xs font-medium transition-colors",
+                  revealed
+                    ? "text-neutral-500 hover:text-neutral-400"
+                    : "text-blue-400 hover:text-blue-300",
+                )}
+              >
+                {revealed ? "Hide" : "Reveal"}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

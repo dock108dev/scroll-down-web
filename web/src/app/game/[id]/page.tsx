@@ -334,7 +334,7 @@ export default function GameDetailPage({
     );
     obs.observe(el);
     return () => obs.disconnect();
-  }, []);
+  }, [loading]);
 
   // ─── Loading state ─────────────────────────────────────────
   if (loading) {
@@ -365,7 +365,7 @@ export default function GameDetailPage({
       </div>
 
       <div
-        className="sticky z-30 bg-neutral-950/95 backdrop-blur"
+        className="sticky z-30 bg-neutral-950"
         style={{ top: "var(--header-h)" }}
       >
         <MiniScorebar game={game} visible={showMiniBar} />
