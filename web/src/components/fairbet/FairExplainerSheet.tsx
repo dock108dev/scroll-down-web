@@ -73,8 +73,8 @@ export function FairExplainerSheet({
             border: "1px solid var(--fb-border-subtle)",
           }}
         >
-          <div className="text-sm font-semibold text-neutral-50">{bet.selectionDisplay ?? bet.selection_key}</div>
-          <div className="text-xs text-neutral-500">
+          <div className="text-sm font-semibold text-neutral-50 text-center">{bet.selectionDisplay ?? bet.selection_key}</div>
+          <div className="text-xs text-neutral-500 text-center">
             {bet.away_team} @ {bet.home_team}
           </div>
 

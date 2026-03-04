@@ -156,6 +156,25 @@ function marketKeyToLabel(key: string): string {
   return MARKET_KEY_LABELS[key.toLowerCase()] ?? key.replace(/_/g, " ");
 }
 
+/** Short abbreviations used after the line value in prop displays. */
+const MARKET_SHORT_LABELS: Record<string, string> = {
+  player_points: "Pts",
+  player_rebounds: "Reb",
+  player_assists: "Ast",
+  player_threes: "3s",
+  player_blocks: "Blk",
+  player_steals: "Stl",
+  player_goals: "Goals",
+  player_shots_on_goal: "SOG",
+  player_total_saves: "Saves",
+  player_pra: "PRA",
+  team_total: "Team Total",
+};
+
+function marketKeyToShortLabel(key: string): string {
+  return MARKET_SHORT_LABELS[key.toLowerCase()] ?? marketKeyToLabel(key);
+}
+
 // ── Market category mapping ────────────────────────────────────────
 
 /** Map a market_key to a high-level market category for filtering. */
@@ -241,12 +260,13 @@ export function selectionDisplay(bet: APIBet): string {
   if (marketLower.startsWith("player_")) {
     const playerName = bet.player_name ?? selection;
     const side = bet.selection_key.startsWith("player:") ? "" : selection;
+    const shortLabel = marketKeyToShortLabel(bet.market_key);
     if (bet.line_value != null) {
       return side
-        ? `${playerName} ${marketLabel} ${side} ${bet.line_value}`
-        : `${playerName} ${marketLabel} ${bet.line_value}`;
+        ? `${playerName} ${side} ${bet.line_value} ${shortLabel}`
+        : `${playerName} ${bet.line_value} ${shortLabel}`;
     }
-    return `${playerName} ${marketLabel}`;
+    return `${playerName} ${shortLabel}`;
   }
 
   if (marketLower.startsWith("alternate_")) {
@@ -258,10 +278,11 @@ export function selectionDisplay(bet: APIBet): string {
   }
 
   if (marketLower === "team_total") {
+    const shortLabel = marketKeyToShortLabel(bet.market_key);
     if (bet.line_value != null) {
-      return `${selection} ${marketLabel} ${bet.line_value}`;
+      return `${selection} ${bet.line_value} ${shortLabel}`;
     }
-    return `${selection} ${marketLabel}`;
+    return `${selection} ${shortLabel}`;
   }
 
   if (bet.line_value != null && bet.line_value !== 0) {

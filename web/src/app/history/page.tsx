@@ -35,15 +35,9 @@ function yesterdayStr(): string {
   return fmt(y);
 }
 
-// ── Derive leagues from games ──────────────────────────────
+// ── All supported leagues ──────────────────────────────────
 
-function deriveLeagues(games: GameCore[]): string[] {
-  const set = new Set<string>();
-  for (const g of games) {
-    if (g.leagueCode) set.add(g.leagueCode.toLowerCase());
-  }
-  return Array.from(set).sort();
-}
+const ALL_LEAGUES = ["mlb", "nba", "ncaab", "nhl"];
 
 // ── Sort modes ─────────────────────────────────────────────
 
@@ -99,8 +93,6 @@ function HistoryPageInner() {
     [router],
   );
 
-  const availableLeagues = useMemo(() => deriveLeagues(games), [games]);
-
   const sortedGames = useMemo(() => sortGames(games, sortMode), [games, sortMode]);
 
   const formattedRange = useMemo(() => {
@@ -152,7 +144,7 @@ function HistoryPageInner() {
           >
             All
           </button>
-          {availableLeagues.map((code) => (
+          {ALL_LEAGUES.map((code) => (
             <button
               key={code}
               onClick={() => setLeague(code)}

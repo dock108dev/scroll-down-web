@@ -36,7 +36,6 @@ export function useHistoricalGames(
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [total, setTotal] = useState(0);
-  const [, setOffset] = useState(0);
 
   // Debounce team search
   const [debouncedTeam, setDebouncedTeam] = useState(team);
@@ -56,12 +55,10 @@ export function useHistoricalGames(
   const paramsKey = `${startDate}:${endDate}:${league ?? ""}:${debouncedTeam ?? ""}`;
   const prevParamsKey = useRef(paramsKey);
 
-  // Reset when params change
   useEffect(() => {
     if (prevParamsKey.current !== paramsKey) {
       prevParamsKey.current = paramsKey;
       setGameIds([]);
-      setOffset(0);
       setTotal(0);
     }
   }, [paramsKey]);
@@ -108,7 +105,7 @@ export function useHistoricalGames(
     [startDate, endDate, league, debouncedTeam, upsertFromList],
   );
 
-  // Initial fetch (and re-fetch on param change)
+  // Fetch on param change
   useEffect(() => {
     fetchPage(0, false);
   }, [fetchPage]);
@@ -117,12 +114,10 @@ export function useHistoricalGames(
 
   const loadMore = useCallback(() => {
     if (loadingMore || !hasMore) return;
-    const nextOffset = gameIds.length;
-    setOffset(nextOffset);
-    fetchPage(nextOffset, true);
+    fetchPage(gameIds.length, true);
   }, [loadingMore, hasMore, gameIds.length, fetchPage]);
 
-  // Derive game list from store (no sorting here — page handles it)
+  // Derive game list from store
   const gameList = useMemo(() => {
     const cores: GameCore[] = [];
     for (const id of gameIds) {

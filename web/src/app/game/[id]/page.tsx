@@ -12,6 +12,7 @@ import { TimelineSection } from "@/components/game/TimelineSection";
 import { PlayerStatsSection, TeamStatsSection } from "@/components/game/StatsSection";
 import { OddsSection } from "@/components/game/OddsSection";
 import { WrapUpSection } from "@/components/game/WrapUpSection";
+import { MLBAdvancedStatsSection } from "@/components/game/MLBAdvancedStatsSection";
 import { PregameBuzzSection } from "@/components/game/PregameBuzzSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
@@ -24,6 +25,8 @@ import { useSectionLayout } from "@/stores/section-layout";
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
   const status = data.game.status;
+
+  // ── Data availability checks ──
   const hasPregamePosts = data.socialPosts?.some(
     (p) =>
       p.gamePhase === "pregame" &&
@@ -37,29 +40,62 @@ function getSections(data: GameDetailResponse): string[] {
       o.price != null,
   );
   const hasBuzz = hasPregamePosts || hasMainlineOdds;
+  const hasTimeline = (data.plays?.length ?? 0) > 0;
+  const hasPlayerStats =
+    (data.playerStats?.length ?? 0) > 0 ||
+    (data.nhlSkaters?.length ?? 0) > 0 ||
+    (data.nhlGoalies?.length ?? 0) > 0 ||
+    (data.mlbBatters?.length ?? 0) > 0 ||
+    (data.mlbPitchers?.length ?? 0) > 0;
+  const hasTeamStats = (data.teamStats?.length ?? 0) > 0;
+  const hasAdvanced =
+    (data.mlbAdvancedStats?.length ?? 0) > 0 ||
+    (data.mlbAdvancedPlayerStats?.length ?? 0) > 0;
+  const hasOdds = (data.odds?.length ?? 0) > 0;
+  const hasFlow = data.game.hasFlow;
+  const hasPostgamePosts = data.socialPosts?.some(
+    (p) => p.gamePhase === "postgame",
+  );
+  const hasWrapUp =
+    (data.derivedMetrics != null && Object.keys(data.derivedMetrics).length > 0) ||
+    hasOdds ||
+    hasPostgamePosts;
 
+  // ── Build section list based on status + data ──
   if (isPregame(status)) {
     const s: string[] = [];
     if (hasBuzz) s.push("Pregame Buzz");
-    s.push("Odds");
+    if (hasOdds) s.push("Odds");
     return s;
   }
 
   if (isLive(status)) {
-    return ["Timeline", "Player Stats", "Team Stats", "Odds"];
+    const s: string[] = [];
+    if (hasTimeline) s.push("Timeline");
+    if (hasPlayerStats) s.push("Player Stats");
+    if (hasTeamStats) s.push("Team Stats");
+    if (hasAdvanced) s.push("Advanced Stats");
+    if (hasOdds) s.push("Odds");
+    return s;
   }
 
   if (isFinal(status)) {
     const s: string[] = [];
     if (hasBuzz) s.push("Pregame Buzz");
-    s.push("Flow", "Timeline", "Player Stats", "Team Stats", "Odds", "Wrap-Up");
+    if (hasFlow) s.push("Flow");
+    if (hasTimeline) s.push("Timeline");
+    if (hasPlayerStats) s.push("Player Stats");
+    if (hasTeamStats) s.push("Team Stats");
+    if (hasAdvanced) s.push("Advanced Stats");
+    if (hasOdds) s.push("Odds");
+    if (hasWrapUp) s.push("Wrap-Up");
     return s;
   }
 
   // Fallback
   const s: string[] = [];
   if (hasBuzz) s.push("Pregame Buzz");
-  s.push("Odds");
+  if (hasOdds) s.push("Odds");
   return s;
 }
 
@@ -84,6 +120,7 @@ function getDefaultExpanded(
       return !hasFlow;
     case "Player Stats":
     case "Team Stats":
+    case "Advanced Stats":
       return false;
     case "Odds":
       return false;
@@ -419,6 +456,24 @@ export default function GameDetailPage({
               homeTeam={game.homeTeam}
               awayTeam={game.awayTeam}
               leagueCode={game.leagueCode}
+              homeColor={game.homeTeamColorDark}
+              awayColor={game.awayTeamColorDark}
+            />
+          </CollapsibleSection>
+        )}
+
+        {/* ─── Advanced Stats (MLB only) ──────────────── */}
+        {sections.includes("Advanced Stats") && (
+          <CollapsibleSection
+            title="Advanced Stats"
+            open={isSectionOpen("Advanced Stats")}
+            onToggle={() => handleToggle("Advanced Stats")}
+          >
+            <MLBAdvancedStatsSection
+              teamStats={data.mlbAdvancedStats}
+              playerStats={data.mlbAdvancedPlayerStats}
+              homeTeam={game.homeTeam}
+              awayTeam={game.awayTeam}
               homeColor={game.homeTeamColorDark}
               awayColor={game.awayTeamColorDark}
             />
