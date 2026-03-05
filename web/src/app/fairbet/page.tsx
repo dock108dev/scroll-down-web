@@ -10,19 +10,10 @@ import { LiveOddsPanel } from "@/components/fairbet/LiveOddsPanel";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
-import { RENDER, REALTIME } from "@/lib/config";
-import { useGameData } from "@/stores/game-data";
+import { RENDER } from "@/lib/config";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
-  const connected = useGameData((s) => s.realtimeStatus.connected);
-  const lastEventAt = useGameData((s) => s.realtimeStatus.lastEventAt);
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    const iv = setInterval(() => setNow(Date.now()), REALTIME.FRESHNESS_INDICATOR_MS);
-    return () => clearInterval(iv);
-  }, []);
-  const isRealtimeFresh = connected && now - lastEventAt < REALTIME.FRESHNESS_INDICATOR_MS;
   const [explainerBet, setExplainerBet] = useState<APIBet | null>(null);
   const [showExplainer, setShowExplainer] = useState(false);
   const [showParlay, setShowParlay] = useState(false);
@@ -72,11 +63,6 @@ export default function FairBetPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-neutral-50">FairBet</h1>
-            <span
-              className="inline-block h-2 w-2 rounded-full"
-              style={{ backgroundColor: isRealtimeFresh ? "#22c55e" : "#6b7280" }}
-              title={isRealtimeFresh ? "Live" : "Offline"}
-            />
             {hook.canShowParlay && (
               <button
                 onClick={() => setShowParlay(true)}
