@@ -82,7 +82,6 @@ function handleEvent(event: RealtimeEvent): void {
   const store = useGameData.getState();
 
   if (REALTIME.DEBUG) {
-    // eslint-disable-next-line no-console
     console.debug("[realtime]", event.type, event.channel, "seq:", event.seq);
   }
 

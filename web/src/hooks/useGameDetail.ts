@@ -78,10 +78,11 @@ export function useGameDetail(id: number) {
 
   // ── Visibility change: freeze snapshot + refetch when offline ──
 
+  const gameStatus = data?.game.status;
+  const gameIsLive = data ? isLive(gameStatus!, data.game) : false;
+
   useEffect(() => {
-    if (!data) return;
-    const gameStatus = data.game.status;
-    if (!isLive(gameStatus, data.game)) return;
+    if (!gameIsLive) return;
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
@@ -101,7 +102,7 @@ export function useGameDetail(id: number) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [data?.game.status, fetchGame, id, getCore, isRevealed, acceptUpdate, setActiveGame, realtimeStatus.connected]);
+  }, [gameIsLive, fetchGame, id, getCore, isRevealed, acceptUpdate, setActiveGame, realtimeStatus.connected]);
 
   // Auto-accept: set active game on mount, sync snapshot on unmount
   useEffect(() => {

@@ -15,10 +15,14 @@ import { useGameData } from "@/stores/game-data";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
-  const realtimeStatus = useGameData((s) => s.realtimeStatus);
-  const isRealtimeFresh =
-    realtimeStatus.connected &&
-    Date.now() - realtimeStatus.lastEventAt < REALTIME.FRESHNESS_INDICATOR_MS;
+  const connected = useGameData((s) => s.realtimeStatus.connected);
+  const lastEventAt = useGameData((s) => s.realtimeStatus.lastEventAt);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), REALTIME.FRESHNESS_INDICATOR_MS);
+    return () => clearInterval(iv);
+  }, []);
+  const isRealtimeFresh = connected && now - lastEventAt < REALTIME.FRESHNESS_INDICATOR_MS;
   const [explainerBet, setExplainerBet] = useState<APIBet | null>(null);
   const [showExplainer, setShowExplainer] = useState(false);
   const [showParlay, setShowParlay] = useState(false);

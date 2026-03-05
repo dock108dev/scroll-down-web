@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiFetch, ApiError } from "@/lib/api-server";
 import type { GameFlowResponse } from "@/lib/types";
-import { API } from "@/lib/config";
+
 
 export async function GET(
   _req: NextRequest,

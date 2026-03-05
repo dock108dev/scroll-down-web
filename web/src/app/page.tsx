@@ -7,7 +7,7 @@ import type { GameCore } from "@/stores/game-data";
 import { SearchBar } from "@/components/home/SearchBar";
 import { TimelineSection } from "@/components/home/TimelineSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { isLive, isFinal, type GameStatus } from "@/lib/types";
+import { isLive, isFinal } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useSettings } from "@/stores/settings";
