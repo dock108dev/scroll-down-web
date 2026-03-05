@@ -8,7 +8,7 @@ import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { useReveal } from "@/stores/reveal";
 import { useSettings } from "@/stores/settings";
 import { pickSnapshot } from "@/lib/score-display";
-import { cn } from "@/lib/utils";
+import { cn, resolveTeamColor, teamColorStyle } from "@/lib/utils";
 
 function formatStartTime(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-US", {
@@ -37,8 +37,10 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const canToggle = display?.canToggle ?? false;
   const hasUpdate = display?.hasUpdate ?? false;
 
-  const awayColor = game.awayTeamColorDark || "#a3a3a3";
-  const homeColor = game.homeTeamColorDark || "#a3a3a3";
+  const awayColor = resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark, "#a3a3a3");
+  const homeColor = resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark, "#a3a3a3");
+  const awayTextStyle = teamColorStyle(game.awayTeamColorLight, game.awayTeamColorDark, "#a3a3a3");
+  const homeTextStyle = teamColorStyle(game.homeTeamColorLight, game.homeTeamColorDark, "#a3a3a3");
 
   const handleReveal = () => reveal(game.id, pickSnapshot(game as GameCore));
   const handleHide = () => hide(game.id);
@@ -83,7 +85,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                     "text-sm font-bold tracking-tight",
                     awayWinning ? "text-neutral-50" : "text-neutral-400",
                   )}
-                  style={awayWinning ? { color: awayColor } : undefined}
+                  style={awayWinning ? awayTextStyle : undefined}
                 >
                   {game.awayTeamAbbr ?? game.awayTeam}
                 </span>
@@ -121,7 +123,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                     "text-sm font-bold tracking-tight",
                     homeWinning ? "text-neutral-50" : "text-neutral-400",
                   )}
-                  style={homeWinning ? { color: homeColor } : undefined}
+                  style={homeWinning ? homeTextStyle : undefined}
                 >
                   {game.homeTeamAbbr ?? game.homeTeam}
                 </span>

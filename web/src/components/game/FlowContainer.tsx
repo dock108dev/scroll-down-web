@@ -5,6 +5,7 @@ import { useGameFlow } from "@/hooks/useGameFlow";
 import { FlowBlockCard } from "./FlowBlockCard";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import type { FlowBlock, FlowPlay, FlowMoment, SocialPostEntry } from "@/lib/types";
+import { resolveTeamColor } from "@/lib/utils";
 
 interface FlowContainerProps {
   gameId: number;
@@ -170,8 +171,8 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
               scoreAfter={resolveScoreAfter(block, moments)}
               homeTeam={data.homeTeamAbbr ?? data.homeTeam}
               awayTeam={data.awayTeamAbbr ?? data.awayTeam}
-              homeColor={data.homeTeamColorDark}
-              awayColor={data.awayTeamColorDark}
+              homeColor={resolveTeamColor(data.homeTeamColorLight, data.homeTeamColorDark)}
+              awayColor={resolveTeamColor(data.awayTeamColorLight, data.awayTeamColorDark)}
               isFirstBlock={i === 0}
               embeddedSocialPost={
                 block.embeddedSocialPostId != null

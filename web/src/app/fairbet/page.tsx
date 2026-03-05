@@ -113,7 +113,8 @@ export default function FairBetPage() {
               className="flex-1 text-xs font-semibold py-1.5 rounded-md transition-colors capitalize"
               style={{
                 backgroundColor: activeTab === tab ? "var(--fb-card-bg)" : "transparent",
-                color: activeTab === tab ? "#f5f5f5" : "#6b7280",
+                color: activeTab === tab ? "var(--ds-text-primary)" : "var(--ds-text-tertiary)",
+                boxShadow: activeTab === tab ? "var(--ds-shadow-subtle)" : "none",
               }}
             >
               {tab === "pregame" ? "Pre-Game" : "Live"}

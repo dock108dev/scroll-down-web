@@ -8,7 +8,7 @@ import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { pickSnapshot } from "@/lib/score-display";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, teamColorStyle } from "@/lib/utils";
 
 function formatGameTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -53,8 +53,8 @@ export function GameHeader({ game }: GameHeaderProps) {
     else reveal(game.id, pickSnapshot(game as GameCore));
   };
 
-  const awayColor = game.awayTeamColorDark || "#888";
-  const homeColor = game.homeTeamColorDark || "#888";
+  const awayStyle = teamColorStyle(game.awayTeamColorLight, game.awayTeamColorDark);
+  const homeStyle = teamColorStyle(game.homeTeamColorLight, game.homeTeamColorDark);
 
   return (
     <div className="px-4 pt-6 pb-4">
@@ -125,7 +125,7 @@ export function GameHeader({ game }: GameHeaderProps) {
           <div className="flex-1 text-center">
             <div
               className="text-3xl font-extrabold tracking-tight"
-              style={{ color: awayColor }}
+              style={awayStyle}
             >
               {game.awayTeamAbbr ?? game.awayTeam}
             </div>
@@ -183,7 +183,7 @@ export function GameHeader({ game }: GameHeaderProps) {
           <div className="flex-1 text-center">
             <div
               className="text-3xl font-extrabold tracking-tight"
-              style={{ color: homeColor }}
+              style={homeStyle}
             >
               {game.homeTeamAbbr ?? game.homeTeam}
             </div>

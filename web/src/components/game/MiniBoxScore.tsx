@@ -1,19 +1,6 @@
 import type { BlockMiniBox, BlockPlayerStat } from "@/lib/types";
 
-/**
- * Returns a readable foreground color for dark mode.
- * If the hex color is too dark (low luminance), returns white instead.
- */
-function readableColor(hex: string, fallback: string): string {
-  const clean = hex.replace("#", "").slice(0, 6);
-  if (clean.length !== 6) return fallback;
-  const n = parseInt(clean, 16);
-  const r = (n >> 16) & 255;
-  const g = (n >> 8) & 255;
-  const b = n & 255;
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance < 0.35 ? "#ffffff" : hex;
-}
+const TEAM_TEXT_OUTLINE = "var(--ds-team-text-outline)";
 
 interface MiniBoxScoreProps {
   miniBox: BlockMiniBox;
@@ -146,7 +133,7 @@ export function MiniBoxScore({
       {/* Away team row */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[15px] font-semibold" style={{ color: awayColor ? readableColor(awayColor, "#a3a3a3") : "#a3a3a3" }}>
+          <span className="text-[15px] font-semibold" style={{ color: awayColor ?? "#a3a3a3", textShadow: TEAM_TEXT_OUTLINE }}>
             {miniBox.away.team || awayTeam || "AWAY"}
           </span>
           {scoreAfter && (
@@ -168,7 +155,7 @@ export function MiniBoxScore({
       {/* Home team row */}
       <div>
         <div className="flex items-center justify-between mb-1">
-          <span className="text-[15px] font-semibold" style={{ color: homeColor ? readableColor(homeColor, "#a3a3a3") : "#a3a3a3" }}>
+          <span className="text-[15px] font-semibold" style={{ color: homeColor ?? "#a3a3a3", textShadow: TEAM_TEXT_OUTLINE }}>
             {miniBox.home.team || homeTeam || "HOME"}
           </span>
           {scoreAfter && (

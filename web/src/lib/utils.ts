@@ -38,6 +38,43 @@ export function cn(...classes: (string | false | null | undefined)[]): string {
   return classes.filter(Boolean).join(" ");
 }
 
+// ─── Team color helpers ───────────────────────────────────
+
+function isDarkMode(): boolean {
+  if (typeof document === "undefined") return true;
+  return document.documentElement.classList.contains("dark");
+}
+
+/**
+ * Pick the correct team color for the current theme.
+ * Falls back to `fallback` if no color is available.
+ */
+export function resolveTeamColor(
+  colorLight: string | undefined,
+  colorDark: string | undefined,
+  fallback = "#888",
+): string {
+  const dark = isDarkMode();
+  const color = dark ? colorDark : colorLight;
+  return color || fallback;
+}
+
+/**
+ * Returns inline style for team-colored text with a contrast outline.
+ * Uses a CSS variable so the outline adapts to light/dark mode automatically.
+ */
+export function teamColorStyle(
+  colorLight: string | undefined,
+  colorDark: string | undefined,
+  fallback = "#888",
+): React.CSSProperties {
+  const color = resolveTeamColor(colorLight, colorDark, fallback);
+  return {
+    color,
+    textShadow: "var(--ds-team-text-outline)",
+  };
+}
+
 // ─── Card display name helpers ─────────────────────────
 
 const COLLEGE_LEAGUES = new Set(["ncaab", "ncaaf"]);

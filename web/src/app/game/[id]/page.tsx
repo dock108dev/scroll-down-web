@@ -21,6 +21,7 @@ import { useReveal } from "@/stores/reveal";
 import { useSettings } from "@/stores/settings";
 import { useGameData } from "@/stores/game-data";
 import { POLLING } from "@/lib/config";
+import { resolveTeamColor } from "@/lib/utils";
 import { useSectionLayout } from "@/stores/section-layout";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gamePbpChannel } from "@/realtime/channels";
@@ -380,6 +381,8 @@ export default function GameDetailPage({
 
   // Use enriched core from canonical store (already has last-play enrichment)
   const game = core ?? data.game;
+  const homeColor = resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark);
+  const awayColor = resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark);
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -441,8 +444,8 @@ export default function GameDetailPage({
               plays={data.plays}
               homeTeamAbbr={game.homeTeamAbbr}
               awayTeamAbbr={game.awayTeamAbbr}
-              homeColor={game.homeTeamColorDark}
-              awayColor={game.awayTeamColorDark}
+              homeColor={homeColor}
+              awayColor={awayColor}
             />
           </CollapsibleSection>
         )}
@@ -479,8 +482,8 @@ export default function GameDetailPage({
               homeTeam={game.homeTeam}
               awayTeam={game.awayTeam}
               leagueCode={game.leagueCode}
-              homeColor={game.homeTeamColorDark}
-              awayColor={game.awayTeamColorDark}
+              homeColor={homeColor}
+              awayColor={awayColor}
             />
           </CollapsibleSection>
         )}
@@ -497,8 +500,8 @@ export default function GameDetailPage({
               playerStats={data.mlbAdvancedPlayerStats}
               homeTeam={game.homeTeam}
               awayTeam={game.awayTeam}
-              homeColor={game.homeTeamColorDark}
-              awayColor={game.awayTeamColorDark}
+              homeColor={homeColor}
+              awayColor={awayColor}
             />
           </CollapsibleSection>
         )}

@@ -207,11 +207,11 @@ export function TimelineRow({
         {/* Score display */}
         {play.awayScore != null && play.homeScore != null && (
           <span className="shrink-0 text-sm font-bold tabular-nums flex items-center gap-0.5">
-            <span style={{ color: awayColor ?? "#a3a3a3" }}>
+            <span style={{ color: awayColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>
               {play.awayScore}
             </span>
             <span className="text-neutral-600">-</span>
-            <span style={{ color: homeColor ?? "#a3a3a3" }}>
+            <span style={{ color: homeColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>
               {play.homeScore}
             </span>
             {scoreChanged && (

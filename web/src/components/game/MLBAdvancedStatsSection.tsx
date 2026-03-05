@@ -71,9 +71,9 @@ function TeamComparison({ away, home, awayColor, homeColor }: TeamComparisonProp
 
       {/* Header row */}
       <div className="grid grid-cols-[1fr_auto_1fr] items-center px-3 py-2 border-b border-neutral-800 text-xs font-medium text-neutral-400">
-        <span className="text-left" style={{ color: awayColor ?? "#a3a3a3" }}>{away.team}</span>
+        <span className="text-left" style={{ color: awayColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>{away.team}</span>
         <span className="px-4">Stat</span>
-        <span className="text-right" style={{ color: homeColor ?? "#a3a3a3" }}>{home.team}</span>
+        <span className="text-right" style={{ color: homeColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>{home.team}</span>
       </div>
 
       {/* Stat rows */}

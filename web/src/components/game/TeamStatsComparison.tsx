@@ -147,9 +147,9 @@ export function TeamStatsComparison({
       {/* Team header */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
         <div className="grid grid-cols-3 px-3 py-2 text-xs font-semibold border-b border-neutral-800 bg-neutral-800/50">
-          <span style={{ color: awayColor }}>{awayTeam}</span>
+          <span style={{ color: awayColor, textShadow: "var(--ds-team-text-outline)" }}>{awayTeam}</span>
           <span className="text-center text-neutral-500">Team Stats</span>
-          <span className="text-right" style={{ color: homeColor }}>
+          <span className="text-right" style={{ color: homeColor, textShadow: "var(--ds-team-text-outline)" }}>
             {homeTeam}
           </span>
         </div>

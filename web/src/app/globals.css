@@ -118,6 +118,9 @@
   --ds-team-b-bg: rgba(20, 184, 166, 0.08);
   --ds-team-b-bar: rgba(20, 184, 166, 0.7);
 
+  /* ── Team color text outline (light mode) ────────── */
+  --ds-team-text-outline: 0 0 1px rgba(0,0,0,0.5), 0 0 2px rgba(0,0,0,0.2);
+
   /* ── Border defaults (light mode) ────────────────── */
   --ds-border-color: rgba(0, 0, 0, 0.08);
 
@@ -183,6 +186,9 @@
   --ds-team-b: rgb(100, 200, 180);
   --ds-team-b-bg: rgba(100, 200, 180, 0.15);
   --ds-team-b-bar: rgba(100, 200, 180, 0.8);
+
+  /* ── Team color text outline (dark mode) ─────────── */
+  --ds-team-text-outline: 0 0 1px rgba(255,255,255,0.6), 0 0 2px rgba(255,255,255,0.3);
 
   /* ── Border defaults (dark mode) ─────────────────── */
   --ds-border-color: rgba(255, 255, 255, 0.08);
