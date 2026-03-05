@@ -5,8 +5,10 @@ import type {
   GameDetailResponse,
   GameFlowResponse,
   GameStatus,
+  PlayEntry,
 } from "@/lib/types";
 import { CACHE } from "@/lib/config";
+import type { TransportStatus } from "@/realtime/transport";
 
 // ─── Normalized core: union of GameSummary + Game fields ──────────
 
@@ -77,6 +79,17 @@ interface ListFetchMeta {
   gameIds: number[];
 }
 
+// ─── Sequence check result ───────────────────────────────────────
+
+export type SeqCheckResult = "ok" | "duplicate" | "gap";
+
+// ─── PBP dedup helper ────────────────────────────────────────────
+
+function pbpKey(p: PlayEntry): string {
+  if (p.eventId) return p.eventId;
+  return `${p.playIndex}|${p.gameClock ?? ""}|${p.playType ?? ""}|${p.description?.slice(0, 40) ?? ""}`;
+}
+
 // ─── Store interface ──────────────────────────────────────────────
 
 interface GameDataState {
@@ -84,18 +97,47 @@ interface GameDataState {
   listFetches: Map<string, ListFetchMeta>;
   activeGameId: number | null;
 
+  // Realtime state
+  seqByChannel: Map<string, number>;
+  desyncedByChannel: Map<string, boolean>;
+  realtimeStatus: TransportStatus;
+
+  // Recovery request flags (set by dispatcher, consumed by hooks)
+  needsListRefresh: Set<string>;
+  needsGameRefresh: Set<number>;
+  needsPbpRefresh: Set<number>;
+  needsFairbetRefresh: number; // counter, incremented per request
+
   // Mutations
-  upsertFromList: (league: string, games: GameSummary[]) => void;
+  upsertFromList: (listKey: string, games: GameSummary[]) => void;
   upsertFromDetail: (gameId: number, response: GameDetailResponse) => void;
   upsertFlow: (gameId: number, response: GameFlowResponse) => void;
   setActiveGame: (gameId: number | null) => void;
+
+  // Realtime mutations
+  applyGamePatch: (gameId: number, patch: Partial<GameCore>) => void;
+  appendPbp: (gameId: number, newPlays: PlayEntry[]) => void;
+  checkSeq: (channel: string, seq: number) => SeqCheckResult;
+  commitSeq: (channel: string, seq: number) => void;
+  markDesynced: (channel: string, value: boolean) => void;
+  setRealtimeStatus: (status: TransportStatus) => void;
+
+  // Recovery flag mutations
+  requestListRefresh: (listKey: string) => void;
+  requestGameRefresh: (gameId: number) => void;
+  requestPbpRefresh: (gameId: number) => void;
+  requestFairbetRefresh: () => void;
+  clearListRefresh: (listKey: string) => void;
+  clearGameRefresh: (gameId: number) => void;
+  clearPbpRefresh: (gameId: number) => void;
+  clearFairbetRefresh: (counter: number) => void;
 
   // Selectors (stable references when data unchanged)
   getGame: (id: number) => GameEntry | undefined;
   getCore: (id: number) => GameCore | undefined;
   getDetail: (id: number) => GameDetailResponse | undefined;
   getFlow: (id: number) => GameFlowResponse | undefined;
-  getListGameIds: (league: string) => number[];
+  getListGameIds: (listKey: string) => number[];
   isDetailFresh: (id: number) => boolean;
   isFlowFresh: (id: number) => boolean;
 }
@@ -197,8 +239,15 @@ export const useGameData = create<GameDataState>()((set, get) => ({
   games: new Map<number, GameEntry>(),
   listFetches: new Map<string, ListFetchMeta>(),
   activeGameId: null,
+  seqByChannel: new Map<string, number>(),
+  desyncedByChannel: new Map<string, boolean>(),
+  realtimeStatus: { mode: "offline" as const, connected: false, lastEventAt: 0 },
+  needsListRefresh: new Set<string>(),
+  needsGameRefresh: new Set<number>(),
+  needsPbpRefresh: new Set<number>(),
+  needsFairbetRefresh: 0,
 
-  upsertFromList: (league, summaries) => {
+  upsertFromList: (listKey, summaries) => {
     set((s) => {
       const next = new Map(s.games);
       const ids: number[] = [];
@@ -230,7 +279,7 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       }
 
       const nextList = new Map(s.listFetches);
-      nextList.set(league, { fetchedAt: now, gameIds: ids });
+      nextList.set(listKey, { fetchedAt: now, gameIds: ids });
 
       return { games: next, listFetches: nextList };
     });
@@ -272,11 +321,163 @@ export const useGameData = create<GameDataState>()((set, get) => ({
 
   setActiveGame: (gameId) => set({ activeGameId: gameId }),
 
+  // ── Realtime mutations ──────────────────────────────────────
+
+  applyGamePatch: (gameId, patch) => {
+    set((s) => {
+      const next = new Map(s.games);
+      const existing = next.get(gameId);
+      if (existing) {
+        next.set(gameId, {
+          ...existing,
+          core: { ...existing.core, ...patch },
+          coreUpdatedAt: Date.now(),
+        });
+      } else {
+        // Fix 3: Don't drop patches for unknown games — create minimal entry
+        const minimalCore: GameCore = {
+          id: gameId,
+          leagueCode: "",
+          gameDate: "",
+          status: "scheduled" as GameStatus,
+          homeTeam: "",
+          awayTeam: "",
+          homeScore: null,
+          awayScore: null,
+          ...patch,
+        };
+        next.set(gameId, {
+          core: minimalCore,
+          coreUpdatedAt: Date.now(),
+          detail: null,
+          flow: null,
+        });
+      }
+      return { games: next };
+    });
+  },
+
+  appendPbp: (gameId, newPlays) => {
+    set((s) => {
+      const entry = s.games.get(gameId);
+      if (!entry?.detail) return s;
+      const existing = entry.detail.response.plays;
+      // Fix 7: Prefer eventId for dedup, fallback to composite key
+      const existingKeys = new Set(existing.map(pbpKey));
+      const deduped = newPlays.filter((p) => !existingKeys.has(pbpKey(p)));
+      if (deduped.length === 0) return s;
+      const next = new Map(s.games);
+      next.set(gameId, {
+        ...entry,
+        detail: {
+          ...entry.detail,
+          response: {
+            ...entry.detail.response,
+            plays: [...existing, ...deduped],
+          },
+        },
+      });
+      return { games: next };
+    });
+  },
+
+  // Fix 5: Split seq check (read-only) from commit (mutate)
+  checkSeq: (channel, seq) => {
+    const last = get().seqByChannel.get(channel) ?? 0;
+    if (seq <= last) return "duplicate";
+    if (last > 0 && seq > last + 1) return "gap";
+    return "ok";
+  },
+
+  commitSeq: (channel, seq) => {
+    const next = new Map(get().seqByChannel);
+    next.set(channel, seq);
+    set({ seqByChannel: next });
+  },
+
+  markDesynced: (channel, value) => {
+    const next = new Map(get().desyncedByChannel);
+    if (value) {
+      next.set(channel, true);
+    } else {
+      next.delete(channel);
+    }
+    set({ desyncedByChannel: next });
+  },
+
+  setRealtimeStatus: (status) => set({ realtimeStatus: status }),
+
+  // ── Recovery flag mutations ─────────────────────────────────
+
+  requestListRefresh: (listKey) => {
+    set((s) => {
+      const next = new Set(s.needsListRefresh);
+      next.add(listKey);
+      return { needsListRefresh: next };
+    });
+  },
+
+  requestGameRefresh: (gameId) => {
+    set((s) => {
+      const next = new Set(s.needsGameRefresh);
+      next.add(gameId);
+      return { needsGameRefresh: next };
+    });
+  },
+
+  requestPbpRefresh: (gameId) => {
+    set((s) => {
+      const next = new Set(s.needsPbpRefresh);
+      next.add(gameId);
+      return { needsPbpRefresh: next };
+    });
+  },
+
+  requestFairbetRefresh: () => {
+    set((s) => ({ needsFairbetRefresh: s.needsFairbetRefresh + 1 }));
+  },
+
+  clearListRefresh: (listKey) => {
+    set((s) => {
+      const next = new Set(s.needsListRefresh);
+      next.delete(listKey);
+      return { needsListRefresh: next };
+    });
+  },
+
+  clearGameRefresh: (gameId) => {
+    set((s) => {
+      const next = new Set(s.needsGameRefresh);
+      next.delete(gameId);
+      return { needsGameRefresh: next };
+    });
+  },
+
+  clearPbpRefresh: (gameId) => {
+    set((s) => {
+      const next = new Set(s.needsPbpRefresh);
+      next.delete(gameId);
+      return { needsPbpRefresh: next };
+    });
+  },
+
+  clearFairbetRefresh: (counter) => {
+    set((s) => {
+      // Only clear if no new requests came in since we started
+      if (s.needsFairbetRefresh === counter) {
+        return { needsFairbetRefresh: 0 };
+      }
+      return s;
+    });
+  },
+
+  // ── Selectors ───────────────────────────────────────────────
+
   getGame: (id) => get().games.get(id),
   getCore: (id) => get().games.get(id)?.core,
   getDetail: (id) => get().games.get(id)?.detail?.response,
   getFlow: (id) => get().games.get(id)?.flow?.response,
-  getListGameIds: (league) => get().listFetches.get(league)?.gameIds ?? [],
+  getListGameIds: (listKey) => get().listFetches.get(listKey)?.gameIds ?? [],
 
   isDetailFresh: (id) => {
     const entry = get().games.get(id)?.detail;

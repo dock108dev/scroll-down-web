@@ -5,7 +5,9 @@ import { api } from "@/lib/api";
 import type { GameSummary } from "@/lib/types";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
-import { CACHE, POLLING, API } from "@/lib/config";
+import { CACHE, API } from "@/lib/config";
+import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
+import { gameListChannel } from "@/realtime/channels";
 
 // ── Date helpers (US/Eastern) ──────────────────────────────
 
@@ -109,36 +111,50 @@ interface UseGamesListReturn {
   refetch: () => Promise<void>;
 }
 
-// ── Track list fetch freshness per league ───────────────────
+// ── Track list fetch freshness per listKey ──────────────────
 
 const listFetchTimestamps = new Map<string, number>();
 
 // ── Hook ───────────────────────────────────────────────────
 
 export function useGamesList(league?: string, search?: string): UseGamesListReturn {
-  const cacheKey = league ?? "";
+  const leagueKey = league || "all";
   const upsertFromList = useGameData((s) => s.upsertFromList);
   const games = useGameData((s) => s.games);
   const listFetches = useGameData((s) => s.listFetches);
+  const realtimeStatus = useGameData((s) => s.realtimeStatus);
+  const needsListRefresh = useGameData((s) => s.needsListRefresh);
+  const clearListRefresh = useGameData((s) => s.clearListRefresh);
+
+  // Fix 4: channels + listKeys aligned by league+date
+  const ranges = useMemo(() => getSectionDateRanges(), []);
+
+  const channels = useMemo(() => {
+    return SECTION_ORDER.map((key) =>
+      gameListChannel(leagueKey, ranges[key].startDate),
+    );
+  }, [leagueKey, ranges]);
+
+  // listKey per section (matches channel naming)
+  const listKeys = useMemo(
+    () => SECTION_ORDER.map((key) => gameListChannel(leagueKey, ranges[key].startDate)),
+    [leagueKey, ranges],
+  );
 
   // Track section keys per league (Yesterday/Today game IDs).
-  // Lazy initializer reconstructs from the Zustand store on remount so
-  // back-navigation doesn't show an empty list while the cache-check
-  // skips the network fetch.
   const [sectionIds, setSectionIds] = useState<Record<SectionKey, number[]>>(
     () => {
-      const meta = listFetches.get(cacheKey);
-      if (!meta) return { Yesterday: [], Today: [] };
-      const ranges = getSectionDateRanges();
       const result: Record<SectionKey, number[]> = { Yesterday: [], Today: [] };
-      for (const id of meta.gameIds) {
-        const entry = games.get(id);
-        if (!entry) continue;
-        const d = toEasternDateStr(entry.core.gameDate);
-        for (const key of SECTION_ORDER) {
+      for (const key of SECTION_ORDER) {
+        const lk = gameListChannel(leagueKey, ranges[key].startDate);
+        const meta = listFetches.get(lk);
+        if (!meta) continue;
+        for (const id of meta.gameIds) {
+          const entry = games.get(id);
+          if (!entry) continue;
+          const d = toEasternDateStr(entry.core.gameDate);
           if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
             result[key].push(id);
-            break;
           }
         }
       }
@@ -146,25 +162,23 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     },
   );
 
-  const hasCached = listFetches.has(cacheKey);
+  const hasCached = listKeys.some((lk) => listFetches.has(lk));
   const [loading, setLoading] = useState(!hasCached);
   const [error, setError] = useState<string | null>(null);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevLeagueRef = useRef(league);
 
   const fetchAll = useCallback(async (showLoading?: boolean, force?: boolean) => {
-    // Check freshness — skip if recently fetched (unless forced)
+    // Check freshness per listKey — skip if all recently fetched (unless forced)
     if (!force) {
-      const lastFetch = listFetchTimestamps.get(cacheKey);
-      if (lastFetch && !showLoading) {
-        const age = Date.now() - lastFetch;
-        if (age < CACHE.GAMES_FRESH_MS) return;
-      }
+      const allFresh = listKeys.every((lk) => {
+        const last = listFetchTimestamps.get(lk);
+        return last && !showLoading && Date.now() - last < CACHE.GAMES_FRESH_MS;
+      });
+      if (allFresh) return;
     }
 
     if (showLoading) setLoading(true);
     setError(null);
-    const ranges = getSectionDateRanges();
 
     try {
       const [yesterday, today] = await Promise.all([
@@ -172,25 +186,29 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         fetchSection(ranges.Today, league),
       ]);
 
-      // Deduplicate and upsert into canonical game data store
-      const allFetched = new Map<number, GameSummary>();
-      for (const g of [...yesterday, ...today]) allFetched.set(g.id, g);
-      upsertFromList(cacheKey, Array.from(allFetched.values()));
-      listFetchTimestamps.set(cacheKey, Date.now());
-
-      // Bucket by Eastern-time date (backend may use UTC boundaries)
+      // Upsert per section with aligned listKeys
+      const sections: [SectionKey, GameSummary[]][] = [
+        ["Yesterday", yesterday],
+        ["Today", today],
+      ];
       const buckets: Record<SectionKey, number[]> = { Yesterday: [], Today: [] };
-      for (const g of allFetched.values()) {
-        const d = toEasternDateStr(g.gameDate);
-        for (const key of SECTION_ORDER) {
+
+      for (const [key, summaries] of sections) {
+        const lk = gameListChannel(leagueKey, ranges[key].startDate);
+        const deduped = new Map<number, GameSummary>();
+        for (const g of summaries) deduped.set(g.id, g);
+        upsertFromList(lk, Array.from(deduped.values()));
+        listFetchTimestamps.set(lk, Date.now());
+
+        for (const g of deduped.values()) {
+          const d = toEasternDateStr(g.gameDate);
           if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
             buckets[key].push(g.id);
-            break;
           }
         }
       }
-      setSectionIds(buckets);
 
+      setSectionIds(buckets);
       setLoading(false);
     } catch (err) {
       setError(
@@ -198,7 +216,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
       );
       setLoading(false);
     }
-  }, [league, cacheKey, upsertFromList]);
+  }, [league, leagueKey, ranges, listKeys, upsertFromList]);
 
   // Initial fetch + refetch on league change
   useEffect(() => {
@@ -208,35 +226,34 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAll]);
 
-  // Auto-refresh every 60s, pause when tab is hidden
+  // ── Realtime subscription (channels only — dispatcher handles events) ──
+
+  useRealtimeSubscription(channels);
+
+  // ── Watch recovery flags set by dispatcher ──────────────────
+
   useEffect(() => {
-    const start = () => {
-      if (!intervalRef.current) {
-        intervalRef.current = setInterval(() => fetchAll(), POLLING.GAMES_REFRESH_MS);
-      }
-    };
-    const stop = () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    const pending = listKeys.filter((lk) => needsListRefresh.has(lk));
+    if (pending.length === 0) return;
+    // Clear flags first to prevent re-trigger
+    for (const lk of pending) clearListRefresh(lk);
+    fetchAll(false, true);
+  }, [needsListRefresh, listKeys, clearListRefresh, fetchAll]);
+
+  // ── Visibility change: only snapshot-refresh when offline ──
+
+  useEffect(() => {
     const onVisibility = () => {
-      if (document.hidden) {
-        stop();
-      } else {
+      if (!document.hidden && !realtimeStatus.connected) {
         fetchAll(false, true);
-        start();
       }
     };
 
-    start();
     document.addEventListener("visibilitychange", onVisibility);
     return () => {
-      stop();
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [fetchAll]);
+  }, [fetchAll, realtimeStatus.connected]);
 
   // Derive sections from store using tracked section IDs
   const sections: SectionData[] = useMemo(() => {

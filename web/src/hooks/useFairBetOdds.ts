@@ -4,6 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { APIBet } from "@/lib/types";
 import { CACHE, API, FAIRBET } from "@/lib/config";
+import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
+import { fairbetChannel } from "@/realtime/channels";
+import { useGameData } from "@/stores/game-data";
 import {
   betId,
   enrichBet,
@@ -232,6 +235,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     }
   }, [doFullFetch]);
 
+  // Initial fetch (with cache check)
   useEffect(() => {
     const entry = getFairbetCached();
     if (entry) {
@@ -258,6 +262,51 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ── Realtime subscription (channels only — dispatcher handles events) ──
+
+  const realtimeStatus = useGameData((s) => s.realtimeStatus);
+  const needsFairbetRefresh = useGameData((s) => s.needsFairbetRefresh);
+  const clearFairbetRefresh = useGameData((s) => s.clearFairbetRefresh);
+
+  const channels = useMemo(() => [fairbetChannel()], []);
+  useRealtimeSubscription(channels);
+
+  // Watch recovery flag set by dispatcher
+  const lastSeenRefresh = useRef(0);
+  useEffect(() => {
+    if (needsFairbetRefresh === 0 || needsFairbetRefresh === lastSeenRefresh.current) return;
+    lastSeenRefresh.current = needsFairbetRefresh;
+    const counter = needsFairbetRefresh;
+
+    fairbetCache = null;
+    const controller = new AbortController();
+    abortRef.current?.abort();
+    abortRef.current = controller;
+    doFullFetch(controller)
+      .then(() => clearFairbetRefresh(counter))
+      .catch(() => clearFairbetRefresh(counter));
+  }, [needsFairbetRefresh, clearFairbetRefresh, doFullFetch]);
+
+  // Visibility change: only snapshot-refresh when realtime is offline
+  useEffect(() => {
+    const onVisibility = () => {
+      if (!document.hidden && !realtimeStatus.connected) {
+        fairbetCache = null;
+        const controller = new AbortController();
+        abortRef.current?.abort();
+        abortRef.current = controller;
+        doFullFetch(controller).catch(() => {
+          // Silent — stale data still shown
+        });
+      }
+    };
+
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [doFullFetch, realtimeStatus.connected]);
 
   // ── Loading progress ─────────────────────────────────────────────
 

@@ -1,14 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { GameDetailResponse } from "@/lib/types";
-import { isLive, isFinal } from "@/lib/types";
+import { isLive } from "@/lib/types";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
 import { useReveal } from "@/stores/reveal";
 import { pickSnapshot } from "@/lib/score-display";
-import { POLLING } from "@/lib/config";
+import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
+import { gameSummaryChannel } from "@/realtime/channels";
 
 export function useGameDetail(id: number) {
   const upsertFromDetail = useGameData((s) => s.upsertFromDetail);
@@ -16,6 +17,9 @@ export function useGameDetail(id: number) {
   const isDetailFresh = useGameData((s) => s.isDetailFresh);
   const getDetail = useGameData((s) => s.getDetail);
   const getCore = useGameData((s) => s.getCore);
+  const realtimeStatus = useGameData((s) => s.realtimeStatus);
+  const needsGameRefresh = useGameData((s) => s.needsGameRefresh);
+  const clearGameRefresh = useGameData((s) => s.clearGameRefresh);
 
   const isRevealed = useReveal((s) => s.isRevealed);
   const acceptUpdate = useReveal((s) => s.acceptUpdate);
@@ -24,7 +28,6 @@ export function useGameDetail(id: number) {
   const [data, setData] = useState<GameDetailResponse | null>(cachedDetail ?? null);
   const [loading, setLoading] = useState(!cachedDetail);
   const [error, setError] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchGame = useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -60,65 +63,51 @@ export function useGameDetail(id: number) {
     fetchGame();
   }, [fetchGame]);
 
-  // Live polling — pauses when tab is hidden, immediate refetch on wake.
-  // On wake: freeze snapshot + clear activeGame so scores don't silently jump.
-  // The isActiveView && live branch in computeScoreDisplay handles auto-accept
-  // during continuous viewing — polling just needs to fetch fresh data.
+  // ── Realtime subscription (channels only — dispatcher handles events) ──
+
+  const channels = useMemo(() => [gameSummaryChannel(id)], [id]);
+  useRealtimeSubscription(channels);
+
+  // ── Watch recovery flags set by dispatcher ──────────────────
+
+  useEffect(() => {
+    if (!needsGameRefresh.has(id)) return;
+    clearGameRefresh(id);
+    fetchGame({ silent: true });
+  }, [needsGameRefresh, id, clearGameRefresh, fetchGame]);
+
+  // ── Visibility change: freeze snapshot + refetch when offline ──
+
   useEffect(() => {
     if (!data) return;
     const gameStatus = data.game.status;
-    if (!isLive(gameStatus, data.game)) {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-      return;
-    }
-
-    const startPolling = () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = setInterval(() => {
-        fetchGame({ silent: true });
-      }, POLLING.LIVE_GAME_POLL_MS);
-    };
-
-    const stopPolling = () => {
-      if (pollRef.current) {
-        clearInterval(pollRef.current);
-        pollRef.current = null;
-      }
-    };
+    if (!isLive(gameStatus, data.game)) return;
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        // Freeze snapshot at pre-sleep state so hasUpdate detects changes
         const c = getCore(id);
         if (c && isRevealed(id)) {
           acceptUpdate(id, pickSnapshot(c));
         }
-        // Disable isActiveView auto-accept — user must tap to see new scores
         setActiveGame(null);
-        fetchGame({ silent: true });
-        startPolling();
-      } else {
-        stopPolling();
+
+        if (!realtimeStatus.connected) {
+          fetchGame({ silent: true });
+        }
       }
     };
 
-    startPolling();
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
-      stopPolling();
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [data?.game.status, fetchGame, id, getCore, isRevealed, acceptUpdate, setActiveGame]);
+  }, [data?.game.status, fetchGame, id, getCore, isRevealed, acceptUpdate, setActiveGame, realtimeStatus.connected]);
 
   // Auto-accept: set active game on mount, sync snapshot on unmount
   useEffect(() => {
     setActiveGame(id);
     return () => {
       setActiveGame(null);
-      // Freeze snapshot to what user last saw
       const core = getCore(id);
       if (core && isRevealed(id) && isLive(core.status, core)) {
         acceptUpdate(id, pickSnapshot(core));
@@ -127,7 +116,6 @@ export function useGameDetail(id: number) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  // Derive core from store for consumers
   const core: GameCore | undefined = getCore(id);
 
   return { data, core, loading, error, refetch: fetchGame };

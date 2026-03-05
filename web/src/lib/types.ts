@@ -306,6 +306,7 @@ export interface MLBAdvancedPlayerStats {
 // ─── Plays / Timeline ───────────────────────────────────
 
 export interface PlayEntry {
+  eventId?: string;
   playIndex: number;
   quarter?: number;
   gameClock?: string;
@@ -571,6 +572,51 @@ export interface EVDiagnostics {
   no_pair?: number;
   reference_missing?: number;
   extrapolated?: number;
+}
+
+// ─── FairBet Live Odds ───────────────────────────────────
+
+export interface LiveOddsSelection {
+  selection: string;
+  line?: number;
+  price: number;
+}
+
+export interface LiveSnapshot {
+  last_updated_at: number;
+  provider: string;
+  selections: LiveOddsSelection[];
+  ttl_seconds_remaining: number;
+}
+
+export interface ClosingLine {
+  provider: string;
+  market_key: string;
+  selection: string;
+  line_value: number | null;
+  price_american: number;
+  captured_at: string;
+  source_type: string;
+}
+
+export interface LiveHistoryEntry {
+  t: number;
+  selections: { s: string; p: number; l?: number }[];
+}
+
+export interface LiveOddsMeta {
+  league: string;
+  live_updated_at: string | null;
+  closing_count: number;
+}
+
+export interface FairbetLiveResponse {
+  game_id: number;
+  market_key?: string;
+  closing: ClosingLine[];
+  live: LiveSnapshot | Record<string, LiveSnapshot> | null;
+  history: LiveHistoryEntry[];
+  meta: LiveOddsMeta;
 }
 
 // ─── Helpers ────────────────────────────────────────────

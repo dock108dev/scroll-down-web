@@ -34,6 +34,17 @@ export const FAIRBET = {
   EV_HIGHLIGHT_THRESHOLD: 5, // EV% at which a bet gets the strong-positive color
 };
 
+export const REALTIME = {
+  WS_FAIL_THRESHOLD: 2,
+  WS_FAIL_WINDOW_MS: 60_000,
+  SSE_FALLBACK_DURATION_MS: 5 * 60_000,
+  BACKOFF_INITIAL_MS: 1_000,
+  BACKOFF_MAX_MS: 30_000,
+  FRESHNESS_INDICATOR_MS: 20_000,
+  RECOVERY_MIN_INTERVAL_MS: 8_000,
+  DEBUG: false,
+};
+
 export const LAYOUT = {
   HEADER_HEIGHT_WITH_PINS: "88px", // nav + pinned bar
   HEADER_HEIGHT_DEFAULT: "56px", // nav only

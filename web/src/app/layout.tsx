@@ -4,6 +4,7 @@ import { TopNav } from "@/components/layout/TopNav";
 import { BottomTabs } from "@/components/layout/BottomTabs";
 import { SettingsDrawer } from "@/components/layout/SettingsDrawer";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { RealtimeProvider } from "@/components/layout/RealtimeProvider";
 
 export const metadata: Metadata = {
   title: "Scroll Down Sports",
@@ -26,6 +27,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="bg-neutral-950 text-neutral-50 antialiased">
         <ThemeProvider>
+          <RealtimeProvider />
           <div className="min-h-screen flex flex-col">
             <TopNav />
             <main className="flex-1 pb-16 md:pb-0">

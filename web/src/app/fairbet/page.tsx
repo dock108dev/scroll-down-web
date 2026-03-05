@@ -6,17 +6,24 @@ import { BetCard } from "@/components/fairbet/BetCard";
 import { BookFilters } from "@/components/fairbet/BookFilters";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
+import { LiveOddsPanel } from "@/components/fairbet/LiveOddsPanel";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
-import { RENDER } from "@/lib/config";
+import { RENDER, REALTIME } from "@/lib/config";
+import { useGameData } from "@/stores/game-data";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
+  const realtimeStatus = useGameData((s) => s.realtimeStatus);
+  const isRealtimeFresh =
+    realtimeStatus.connected &&
+    Date.now() - realtimeStatus.lastEventAt < REALTIME.FRESHNESS_INDICATOR_MS;
   const [explainerBet, setExplainerBet] = useState<APIBet | null>(null);
   const [showExplainer, setShowExplainer] = useState(false);
   const [showParlay, setShowParlay] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [activeTab, setActiveTab] = useState<"pregame" | "live">("pregame");
 
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
@@ -61,6 +68,11 @@ export default function FairBetPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-neutral-50">FairBet</h1>
+            <span
+              className="inline-block h-2 w-2 rounded-full"
+              style={{ backgroundColor: isRealtimeFresh ? "#22c55e" : "#6b7280" }}
+              title={isRealtimeFresh ? "Live" : "Offline"}
+            />
             {hook.canShowParlay && (
               <button
                 onClick={() => setShowParlay(true)}
@@ -88,8 +100,25 @@ export default function FairBetPage() {
           </button>
         </div>
 
-        {/* ── Filters ── */}
-        <BookFilters
+        {/* ── Tabs ── */}
+        <div className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
+          {(["pregame", "live"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className="flex-1 text-xs font-semibold py-1.5 rounded-md transition-colors capitalize"
+              style={{
+                backgroundColor: activeTab === tab ? "var(--fb-card-bg)" : "transparent",
+                color: activeTab === tab ? "#f5f5f5" : "#6b7280",
+              }}
+            >
+              {tab === "pregame" ? "Pre-Game" : "Live"}
+            </button>
+          ))}
+        </div>
+
+        {/* ── Filters (pregame only) ── */}
+        {activeTab === "pregame" && <BookFilters
           availableLeagues={hook.availableLeagues}
           selectedLeague={hook.filters.league}
           onLeagueChange={hook.setLeague}
@@ -107,12 +136,15 @@ export default function FairBetPage() {
           parlayCount={hook.parlayCount}
           onParlayClick={() => setShowParlay(true)}
           onRefresh={hook.refetch}
-        />
+        />}
 
       </div>
 
       {/* ── Content ── */}
       <div className="px-4 pb-4 space-y-3">
+        {activeTab === "live" && <LiveOddsPanel />}
+
+        {activeTab === "pregame" && <>
         {/* Loading state */}
         {hook.loading && (
           <div className="py-12 space-y-4">
@@ -205,6 +237,7 @@ export default function FairBetPage() {
             </div>
           </div>
         )}
+        </>}
       </div>
 
       {/* ── Sheets ── */}

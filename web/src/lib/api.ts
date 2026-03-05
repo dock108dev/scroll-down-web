@@ -3,6 +3,7 @@ import type {
   GameDetailResponse,
   GameFlowResponse,
   BetsResponse,
+  FairbetLiveResponse,
 } from "./types";
 
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -20,4 +21,10 @@ export const api = {
     fetchApi<BetsResponse>(
       `/api/fairbet/odds${params ? `?${params}` : ""}`,
     ),
+  fairbetLive: (gameId: number, marketKey?: string, historyCount?: number) => {
+    const params = new URLSearchParams({ game_id: String(gameId) });
+    if (marketKey) params.set("market_key", marketKey);
+    if (historyCount !== undefined) params.set("history_count", String(historyCount));
+    return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
+  },
 };

@@ -19,8 +19,11 @@ import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useReveal } from "@/stores/reveal";
 import { useSettings } from "@/stores/settings";
+import { useGameData } from "@/stores/game-data";
 import { POLLING } from "@/lib/config";
 import { useSectionLayout } from "@/stores/section-layout";
+import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
+import { gamePbpChannel } from "@/realtime/channels";
 
 // ─── Section definitions by status ─────────────────────────────
 function getSections(data: GameDetailResponse): string[] {
@@ -141,7 +144,7 @@ export default function GameDetailPage({
 }) {
   const { id } = use(params);
   const gameId = Number(id);
-  const { data, core, loading, error } = useGameDetail(gameId);
+  const { data, core, loading, error, refetch: refetchDetail } = useGameDetail(gameId);
 
   const sections = useMemo(() => (data ? getSections(data) : []), [data]);
   const [activeSection, setActiveSection] = useState<string>("");
@@ -193,6 +196,25 @@ export default function GameDetailPage({
     },
     [expandedSections, gameId, sectionLayout],
   );
+
+  // ── PBP realtime subscription (only when Timeline is expanded) ──
+  const needsPbpRefresh = useGameData((s) => s.needsPbpRefresh);
+  const clearPbpRefresh = useGameData((s) => s.clearPbpRefresh);
+  const timelineOpen = isSectionOpen("Timeline");
+
+  const pbpChannels = useMemo(
+    () => (timelineOpen ? [gamePbpChannel(gameId)] : []),
+    [timelineOpen, gameId],
+  );
+
+  useRealtimeSubscription(pbpChannels);
+
+  // Watch PBP recovery flag — refetch full detail to recover
+  useEffect(() => {
+    if (!needsPbpRefresh.has(gameId)) return;
+    clearPbpRefresh(gameId);
+    refetchDetail({ silent: true });
+  }, [needsPbpRefresh, gameId, clearPbpRefresh, refetchDetail]);
 
   // New play count for badge on collapsed Timeline
   const savedPos = data ? getPosition(gameId) : undefined;
