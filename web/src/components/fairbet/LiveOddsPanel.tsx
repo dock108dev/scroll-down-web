@@ -34,7 +34,12 @@ export function LiveOddsPanel() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await api.games();
+        const today = new Date().toISOString().slice(0, 10);
+        const params = new URLSearchParams({
+          startDate: today,
+          endDate: today,
+        });
+        const res = await api.games(params);
         const live = (res.games ?? [])
           .filter((g) => g.isLive)
           .map((g) => ({
@@ -57,7 +62,9 @@ export function LiveOddsPanel() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    // Re-fetch game list every 60s so newly-live games appear
+    const iv = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(iv); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
