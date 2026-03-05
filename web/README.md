@@ -20,13 +20,6 @@ npm run dev                         # http://localhost:3001
 | `npm run lint` | ESLint check |
 | `npx tsc --noEmit` | TypeScript type check |
 
-## Stack
-
-- **Next.js 16** (App Router) + **React 19** + **TypeScript 5**
-- **Zustand 5** for state management (persisted to localStorage)
-- **Tailwind CSS 4** for styling
-- **Docker** (node:22-alpine multi-stage) for deployment
-
 ## Project Structure
 
 ```
@@ -34,49 +27,53 @@ src/
 ├── app/
 │   ├── page.tsx              # Home page (game feed)
 │   ├── game/[id]/page.tsx    # Game detail
-│   ├── fairbet/page.tsx      # FairBet odds comparison
+│   ├── fairbet/page.tsx      # FairBet odds (Pre-Game + Live tabs)
+│   ├── history/page.tsx      # Historical game browsing
 │   ├── settings/page.tsx     # User preferences
-│   └── api/                  # Server-side API proxy routes (4 routes)
+│   └── api/                  # Server-side API proxy routes (5 routes)
 ├── components/
 │   ├── home/                 # GameRow, TimelineSection, SearchBar, PinnedBar
 │   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
 │   │                         # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, etc.
-│   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet
+│   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet, LiveOddsPanel
+│   ├── history/              # DateNavigator
 │   ├── settings/             # SettingsContent
-│   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
+│   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer, RealtimeProvider
 │   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader
 ├── hooks/
-│   ├── useGamesList.ts       # Home feed: date sections, 60s auto-refresh, client search
-│   ├── useGameDetail.ts      # Game detail: 5-min LRU cache, 45s live polling
+│   ├── useGamesList.ts       # Home feed: realtime patches, visibility-driven refresh
+│   ├── useGameDetail.ts      # Game detail: realtime patches, visibility-driven refresh
 │   ├── useGameFlow.ts        # Game flow: narrative blocks, background refresh
-│   ├── useFairBetOdds.ts     # FairBet: pagination, filtering, sorting, parlay
+│   ├── useFairBetOdds.ts     # FairBet pre-game: pagination, filtering, sorting, parlay
+│   ├── useFairBetLive.ts     # FairBet live: per-game live odds with 15s polling
+│   ├── useHistoricalGames.ts # History: paginated games by date range
 │   └── useScoreDisplay.ts    # Score reveal/hide display logic
+├── realtime/
+│   ├── transport.ts          # WebSocket + SSE transport singleton
+│   ├── dispatcher.ts         # Centralized event routing with seq/gap handling
+│   ├── channels.ts           # Channel naming helpers
+│   ├── useRealtimeSubscription.ts  # Declarative channel subscription hook
+│   └── useRealtimeStatus.ts  # Transport status sync to Zustand
 ├── stores/
 │   ├── settings.ts           # Theme, odds format, score reveal, section expansion
 │   ├── reveal.ts             # Score reveal state with frozen snapshots (persisted)
 │   ├── reading-position.ts   # Per-game scroll position with score snapshot
 │   ├── section-layout.ts     # Game detail section collapse/expand state
 │   ├── pinned-games.ts       # User-pinned games for quick access
-│   ├── game-data.ts          # Normalized game data cache (in-memory)
+│   ├── game-data.ts          # Normalized game data cache + realtime state (in-memory)
 │   ├── home-scroll.ts        # Home page scroll position (in-memory)
 │   └── ui.ts                 # Transient UI state (drawers, sheets)
 └── lib/
-    ├── types.ts              # All TypeScript interfaces (GameSummary, APIBet, FlowBlock, etc.)
+    ├── types.ts              # All TypeScript interfaces
     ├── api.ts                # Client-side fetch wrapper (browser → /api/* proxy routes)
     ├── api-server.ts         # Server-side fetch with X-API-Key header, UTF-8 mojibake repair
-    ├── config.ts             # Centralized app constants (cache TTLs, polling, API, storage keys)
+    ├── config.ts             # Centralized app constants
     ├── utils.ts              # Date formatting, odds conversion, team name display
     ├── fairbet-utils.ts      # EV colors, confidence labels, market labels, bet enrichment
     ├── score-display.ts      # Score visibility logic (reveal/freeze/update)
     ├── storage-bounds.ts     # Storage pruning utilities (max entries, max age)
-    ├── theme.ts              # FairBet theme constants, book abbreviation utility
+    ├── theme.ts              # FairBet theme constants
     └── team-stats-config.ts  # Sport-specific stat groupings and comparison logic
 ```
 
-## Architecture
-
-The web app is a **thin display layer**. All game data, EV calculations, and derived metrics come from the backend API. The Next.js API routes (`/api/*`) proxy requests to the backend, keeping the API key server-side.
-
-For full documentation, see the [main README](../README.md) and [Architecture](../docs/architecture.md).
-
-Client-side logic catalog: [client-logic.md](../docs/client-logic.md)
+For full documentation, see the [main README](../README.md) and [docs/](../docs/).

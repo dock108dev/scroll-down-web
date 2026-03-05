@@ -26,7 +26,7 @@ See `web/.env.local.example` for local development defaults.
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Development server with hot reload |
+| `npm run dev` | Development server with hot reload (port 3001) |
 | `npm run build` | Production build (standalone output) |
 | `npm start` | Start production server |
 | `npm run lint` | ESLint check |
@@ -40,52 +40,6 @@ docker build -t scrolldown-web .
 docker run -p 3001:3001 --env-file .env.local scrolldown-web
 ```
 
-## Project Structure
-
-```
-src/
-├── app/
-│   ├── page.tsx              # Home page (game feed)
-│   ├── game/[id]/page.tsx    # Game detail
-│   ├── fairbet/page.tsx      # FairBet odds comparison
-│   ├── settings/page.tsx     # User preferences
-│   └── api/                  # Server-side API proxy routes (4 routes)
-├── components/
-│   ├── home/                 # GameRow, TimelineSection, SearchBar, PinnedBar
-│   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
-│   │                         # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, etc.
-│   ├── fairbet/              # BetCard, BookFilters, FairExplainerSheet, ParlaySheet
-│   ├── settings/             # SettingsContent
-│   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer
-│   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader
-├── hooks/
-│   ├── useGamesList.ts       # Home feed: date sections, 60s auto-refresh, client search
-│   ├── useGameDetail.ts      # Game detail: 5-min LRU cache, 45s live polling
-│   ├── useGameFlow.ts        # Game flow: narrative blocks, background refresh
-│   ├── useFairBetOdds.ts     # FairBet: pagination, filtering, sorting, parlay
-│   └── useScoreDisplay.ts    # Score reveal/hide display logic
-├── stores/
-│   ├── settings.ts           # Theme, odds format, score reveal, section expansion
-│   ├── reveal.ts             # Score reveal state with frozen snapshots (persisted as sd-read-state)
-│   ├── reading-position.ts   # Per-game scroll position with score snapshot
-│   ├── section-layout.ts     # Game detail section collapse/expand state
-│   ├── pinned-games.ts       # User-pinned games for quick access
-│   ├── game-data.ts          # Normalized game data cache (in-memory)
-│   ├── home-scroll.ts        # Home page scroll position (in-memory)
-│   └── ui.ts                 # Transient UI state (drawers, sheets)
-└── lib/
-    ├── types.ts              # All TypeScript interfaces (GameSummary, APIBet, FlowBlock, etc.)
-    ├── api.ts                # Client-side fetch wrapper (browser → /api/* proxy routes)
-    ├── api-server.ts         # Server-side fetch with X-API-Key header, UTF-8 mojibake repair
-    ├── config.ts             # Centralized app constants (cache TTLs, polling, API, storage keys)
-    ├── utils.ts              # Date formatting, odds conversion, team name display
-    ├── fairbet-utils.ts      # EV colors, confidence labels, market labels, bet enrichment
-    ├── score-display.ts      # Score visibility logic (reveal/freeze/update)
-    ├── storage-bounds.ts     # Storage pruning utilities (max entries, max age)
-    ├── theme.ts              # FairBet theme constants, book abbreviation utility
-    └── team-stats-config.ts  # Sport-specific stat groupings and comparison logic
-```
-
 ## How Data Flows
 
 1. **Browser** calls a client-side API function (e.g., `api.games()`)
@@ -95,9 +49,11 @@ src/
 5. A **React hook** (`useGamesList`, `useGameDetail`, etc.) stores the data in state
 6. **Components** render from hook state and Zustand stores
 
+For live games, realtime updates arrive via WebSocket/SSE and are applied directly to the Zustand store by the centralized dispatcher. Components re-render automatically.
+
 The API key never leaves the server. Client-side code only talks to local `/api/*` routes.
 
-## Key Behaviors to Understand
+## Key Behaviors
 
 ### Score Reveal
 - Default mode (`onMarkRead`): scores hidden until user taps to reveal
@@ -105,14 +61,17 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - Revealed live game scores **freeze** at the moment of reveal
 - When a live game goes final while frozen, scores auto-hide
 
-### Live Polling
-- `useGameDetail`: 45s polling when game is `in_progress` or `live`. Silent refresh (no loading spinner).
-- `useGamesList`: 60s auto-refresh. Pauses when tab is hidden, resumes immediately on focus.
+### Realtime Updates
+- WebSocket primary transport, SSE fallback after repeated WS failures
+- Centralized dispatcher routes events by type (game patches, PBP appends, FairBet refreshes)
+- Sequence-numbered events with gap detection and recovery
+- Visibility-driven refresh when tab regains focus while offline
+- Enable debug logging: set `REALTIME.DEBUG = true` in `lib/config.ts`
 
 ### FairBet Loading
-- First 100 bets render immediately
-- Remaining pages load in background (3 concurrent fetches)
-- Client filters, sorts, and deduplicates the full bet list
+- Pre-Game tab: first 100 bets render immediately, remaining pages load in background (3 concurrent fetches)
+- Live tab: per-game live odds with 15s auto-refresh
+- Client filters, sorts, and deduplicates the full pre-game bet list
 - Parlay evaluation is client-side (`parlayProbIndependent()` in `fairbet-utils.ts`)
 
 ### Theming
@@ -145,11 +104,22 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Mini scorebar appears when scrolling past header
 
 ### FairBet
-- [ ] Odds load with progressive pagination
+- [ ] Pre-Game tab: odds load with progressive pagination
 - [ ] BetCard shows EV, fair odds, book chips
 - [ ] FairExplainer sheet opens with method explanation
 - [ ] Filters work (league, market, +EV only, search)
 - [ ] Parlay builder works (select bets, client-side evaluation)
+- [ ] Live tab: game picker populates with live games
+- [ ] Live tab: closing lines, live snapshot, and history display
+- [ ] Live tab: auto-refreshes every 15s
+
+### History
+- [ ] Date navigator works (start/end date selection)
+- [ ] League filter works
+- [ ] Search filters by team name
+- [ ] Sort modes work (Away, Home, Time)
+- [ ] Infinite scroll loads more games
+- [ ] URL params persist across navigation
 
 ### Settings
 - [ ] Theme toggle works (system, light, dark)
@@ -162,6 +132,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Loading skeletons appear during data fetch
 - [ ] Empty states show contextual messages
 - [ ] Error states show retry button
+- [ ] Realtime connection indicator (green dot on FairBet page)
 
 ## Common Issues
 
@@ -179,6 +150,12 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - Web types are in `web/src/lib/types.ts` — keep in sync with API responses
 
 **Light mode issues:**
-- Ensure `@theme` (not `@theme inline`) in `globals.css` — inline mode hardcodes values instead of using CSS variables
+- Ensure `@theme` (not `@theme inline`) in `globals.css`
 - Check for hardcoded `text-white`, `bg-white`, or inline `style={{ color: "white" }}` — use `text-neutral-50`, `bg-neutral-50`, or `var(--ds-text-primary)` instead
-- FairBet components should use `var(--fb-*)` CSS variables, not `FairBetTheme.*` TypeScript constants for backgrounds/borders
+- FairBet components should use `var(--fb-*)` CSS variables for backgrounds/borders
+
+**Realtime not connecting:**
+- Check browser console for WebSocket connection errors
+- Verify backend is running and `/v1/ws` endpoint is accessible
+- Enable debug logging: set `REALTIME.DEBUG = true` in `lib/config.ts`
+- Check the green/gray dot on the FairBet page for connection status

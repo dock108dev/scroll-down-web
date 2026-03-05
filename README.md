@@ -27,34 +27,30 @@ npm run dev                         # http://localhost:3001
 | Feature | Status |
 |---------|--------|
 | Home feed (Yesterday / Today) | Yes |
+| Game history browsing by date range | Yes |
 | Game search by team name | Yes |
 | Game detail with collapsible sections | Yes |
 | Flow-based narrative timeline | Yes |
 | Tiered play-by-play | Yes |
 | Cross-book odds table | Yes |
-| FairBet odds comparison with EV | Yes |
+| FairBet odds comparison with EV (Pre-Game) | Yes |
+| FairBet live odds with closing line + movement history | Yes |
+| Parlay builder with client-side evaluation | Yes |
 | Score reveal preference (spoiler-free) | Yes |
 | Reading position tracking with resume | Yes |
 | Theme selection (system / light / dark) | Yes |
-| Live game auto-polling | Yes |
+| Realtime updates (WebSocket primary, SSE fallback) | Yes |
 | NHL skater / goalie stats | Yes |
-| Parlay builder with client-side evaluation | Yes |
 | Pinned games (up to 10, mini scores in header) | Yes |
 
 ## Architecture
 
-The app is a **thin display layer**. The backend (`sports-data-admin.dock108.ai`) computes all derived data — period labels, play tiers, odds outcomes, team colors, merged timelines. The client reads pre-computed values and renders them. No backend code lives in this repository.
+The app is a **thin display layer**. The backend (`sports-data-admin.dock108.ai`) computes all derived data — period labels, play tiers, odds outcomes, team colors, merged timelines, EV calculations. The client reads pre-computed values and renders them. No backend code lives in this repository.
 
 ```
 Browser (React)
-    ↓ fetch("/api/games")
-Next.js API Route (server-side)
-    ↓ apiFetch() with X-API-Key header
-Backend API (sports-data-admin.dock108.ai)
-    ↓ JSON response
-Next.js API Route
-    ↓ NextResponse.json()
-Browser → React hook → Component re-render
+    ├─ fetch("/api/games")          → Next.js API Route → Backend API → JSON response
+    └─ WebSocket/SSE realtime       → Backend /v1/ws or /v1/sse → Event patches
 ```
 
 ## Stack
@@ -68,11 +64,10 @@ Browser → React hook → Component re-render
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](docs/architecture.md) | System architecture and data flow |
-| [Development](docs/development.md) | Local dev, testing, debugging |
-| [CI/CD](docs/ci-cd.md) | GitHub Actions, Docker, deployment |
+| [Architecture](docs/architecture.md) | System architecture, data flow, realtime layer, state management |
+| [Development](docs/development.md) | Local dev setup, debugging, QA checklist |
 | [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
-| [Deployment](docs/deployment.md) | Production deployment procedures |
+| [CI/CD & Deployment](docs/ci-cd.md) | GitHub Actions, Docker, Hetzner deployment |
 
 ## Repository Layout
 
