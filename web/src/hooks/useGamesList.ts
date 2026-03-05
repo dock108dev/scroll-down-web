@@ -152,12 +152,14 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const prevLeagueRef = useRef(league);
 
-  const fetchAll = useCallback(async (showLoading?: boolean) => {
-    // Check freshness — skip if recently fetched
-    const lastFetch = listFetchTimestamps.get(cacheKey);
-    if (lastFetch && !showLoading) {
-      const age = Date.now() - lastFetch;
-      if (age < CACHE.GAMES_FRESH_MS) return;
+  const fetchAll = useCallback(async (showLoading?: boolean, force?: boolean) => {
+    // Check freshness — skip if recently fetched (unless forced)
+    if (!force) {
+      const lastFetch = listFetchTimestamps.get(cacheKey);
+      if (lastFetch && !showLoading) {
+        const age = Date.now() - lastFetch;
+        if (age < CACHE.GAMES_FRESH_MS) return;
+      }
     }
 
     if (showLoading) setLoading(true);
@@ -223,7 +225,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
       if (document.hidden) {
         stop();
       } else {
-        fetchAll();
+        fetchAll(false, true);
         start();
       }
     };

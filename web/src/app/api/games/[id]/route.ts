@@ -10,7 +10,7 @@ export async function GET(
   try {
     const data = await apiFetch<GameDetailResponse>(
       `/api/admin/sports/games/${id}`,
-      { revalidate: 30 },
+      { revalidate: 0 },
     );
     return NextResponse.json(data);
   } catch (err) {

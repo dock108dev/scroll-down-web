@@ -11,7 +11,7 @@ export async function GET(
   try {
     const data = await apiFetch<GameFlowResponse>(
       `/api/admin/sports/games/${id}/flow`,
-      { revalidate: API.ISR_REVALIDATE_S },
+      { revalidate: 0 },
     );
     return NextResponse.json(data);
   } catch (err) {

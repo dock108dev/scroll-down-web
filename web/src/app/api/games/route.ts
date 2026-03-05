@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const path = `/api/admin/sports/games${qs ? `?${qs}` : ""}`;
 
   try {
-    const data = await apiFetch<GameListResponse>(path, { revalidate: API.ISR_REVALIDATE_S });
+    const data = await apiFetch<GameListResponse>(path, { revalidate: 0 });
     return NextResponse.json(data);
   } catch (err) {
     const status = err instanceof ApiError ? err.status : 500;
