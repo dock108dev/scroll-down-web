@@ -38,13 +38,7 @@ function getSections(data: GameDetailResponse): string[] {
       (p.tweetText || p.imageUrl || p.videoUrl) &&
       p.revealLevel !== "post",
   );
-  const hasMainlineOdds = data.odds?.some(
-    (o) =>
-      ["spread", "moneyline", "total"].includes(o.marketType) &&
-      !o.isClosingLine &&
-      o.price != null,
-  );
-  const hasBuzz = hasPregamePosts || hasMainlineOdds;
+  const hasBuzz = !!hasPregamePosts;
   const hasTimeline = (data.plays?.length ?? 0) > 0;
   const hasPlayerStats =
     (data.playerStats?.length ?? 0) > 0 ||
