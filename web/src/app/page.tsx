@@ -215,81 +215,81 @@ export default function HomePage() {
       <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
         <SearchBar value={search} onChange={setSearch} />
 
-        {/* League filter pills */}
-        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-          <button
-            onClick={() => setLeague("")}
-            className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition",
-              league === ""
-                ? "bg-neutral-50 text-neutral-950"
-                : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
-            )}
-          >
-            All
-          </button>
-          {availableLeagues.map((code) => (
+        {/* League pills + batch actions + refresh */}
+        <div className="flex items-center gap-2">
+          {/* Scrollable league pills */}
+          <div className="flex gap-1.5 overflow-x-auto scrollbar-none min-w-0">
             <button
-              key={code}
-              onClick={() => setLeague(code)}
+              onClick={() => setLeague("")}
               className={cn(
-                "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition uppercase",
-                league === code
+                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition",
+                league === ""
                   ? "bg-neutral-50 text-neutral-950"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
               )}
             >
-              {code}
+              All
             </button>
-          ))}
-        </div>
+            {availableLeagues.map((code) => (
+              <button
+                key={code}
+                onClick={() => setLeague(code)}
+                className={cn(
+                  "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition uppercase",
+                  league === code
+                    ? "bg-neutral-50 text-neutral-950"
+                    : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
+                )}
+              >
+                {code}
+              </button>
+            ))}
+          </div>
 
-        {/* Batch actions + refresh */}
-        {hasAnyGames && (
-          <div className="flex items-center gap-3">
-            {scoreRevealMode !== "always" && catchUpCount > 0 && (
+          {/* Right-justified: read/unread + refresh */}
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+            {hasAnyGames && scoreRevealMode !== "always" && catchUpCount > 0 && (
               <button
                 onClick={handleCatchUp}
-                className="inline-flex items-center gap-1.5 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-500 transition"
+                className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-500 transition"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                Mark All Read
-                <span className="ml-0.5 bg-white/20 rounded-full px-1.5 py-0.5 text-[10px]">
+                Read
+                <span className="bg-white/20 rounded-full px-1.5 py-0.5 text-[9px] leading-none">
                   {catchUpCount}
                 </span>
               </button>
             )}
-            {scoreRevealMode !== "always" && readCount > 0 && (
+            {hasAnyGames && scoreRevealMode !== "always" && readCount > 0 && (
               <button
                 onClick={handleReset}
-                className="inline-flex items-center gap-1.5 rounded-full bg-neutral-800 px-3 py-1.5 text-xs font-medium text-neutral-400 hover:text-neutral-50 transition"
+                className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-2 py-1 text-[11px] font-medium text-neutral-400 hover:text-neutral-50 transition"
               >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
                   <line x1="1" y1="1" x2="23" y2="23" />
                 </svg>
-                Mark as Unread
-                <span className="ml-0.5 bg-neutral-700 rounded-full px-1.5 py-0.5 text-[10px]">
+                Unread
+                <span className="bg-neutral-700 rounded-full px-1.5 py-0.5 text-[9px] leading-none">
                   {readCount}
                 </span>
               </button>
             )}
-            <div className="flex-1" />
             <button
               onClick={() => refetch()}
               className="p-1.5 rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
               title="Refresh"
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="23 4 23 10 17 10" />
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
               </svg>
             </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Loading state */}
