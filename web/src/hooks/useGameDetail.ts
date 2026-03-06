@@ -86,9 +86,14 @@ export function useGameDetail(id: number) {
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        const c = getCore(id);
-        if (c && isRevealed(id)) {
-          acceptUpdate(id, pickSnapshot(c));
+        // Only freeze a new snapshot if we were in active/auto-accept mode;
+        // otherwise the user hasn't accepted the pending update yet.
+        const wasActive = useGameData.getState().activeGameId === id;
+        if (wasActive) {
+          const c = getCore(id);
+          if (c && isRevealed(id)) {
+            acceptUpdate(id, pickSnapshot(c));
+          }
         }
         setActiveGame(null);
 
@@ -118,10 +123,16 @@ export function useGameDetail(id: number) {
     }
 
     return () => {
+      // Only sync snapshot on unmount if we were in active/auto-accept mode.
+      // If the user navigated here with a pending update and never accepted,
+      // don't silently advance the snapshot.
+      const wasActive = useGameData.getState().activeGameId === id;
       setActiveGame(null);
-      const core = getCore(id);
-      if (core && isRevealed(id) && isLive(core.status, core)) {
-        acceptUpdate(id, pickSnapshot(core));
+      if (wasActive) {
+        const core = getCore(id);
+        if (core && isRevealed(id) && isLive(core.status, core)) {
+          acceptUpdate(id, pickSnapshot(core));
+        }
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
