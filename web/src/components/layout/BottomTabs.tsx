@@ -57,7 +57,7 @@ export function BottomTabs() {
   const { followingLive, toggle: toggleLive, available: liveAvailable } = useFollowingLive();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur md:hidden">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur pb-[env(safe-area-inset-bottom)] md:hidden">
       <div className="flex h-16 items-center justify-around">
         {TABS.map((tab) => {
           const isActive =
