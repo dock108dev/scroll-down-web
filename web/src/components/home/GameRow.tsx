@@ -136,6 +136,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   // ── Status indicator ──────────────────────────────────────────
 
   const statusContent = (() => {
+    // History variant: always show "Final", never show update indicators
+    if (isHistory) {
+      return <span className="text-neutral-600 text-xs">Final</span>;
+    }
+
     if (live) {
       if (hasNewData) {
         return (

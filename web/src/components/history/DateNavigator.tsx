@@ -26,7 +26,12 @@ interface DateNavigatorProps {
 }
 
 export function DateNavigator({ startDate, endDate, onChange }: DateNavigatorProps) {
-  const todayStr = fmt(easternToday());
+  // History excludes today and yesterday (game day and game day + 1)
+  const maxDate = (() => {
+    const d = easternToday();
+    d.setDate(d.getDate() - 2);
+    return fmt(d);
+  })();
 
   return (
     <div className="flex items-center gap-2">
@@ -47,10 +52,10 @@ export function DateNavigator({ startDate, endDate, onChange }: DateNavigatorPro
         type="date"
         value={endDate}
         min={startDate}
-        max={todayStr}
+        max={maxDate}
         onChange={(e) => {
           const val = e.target.value;
-          if (val && val >= startDate && val <= todayStr) onChange(startDate, val);
+          if (val && val >= startDate && val <= maxDate) onChange(startDate, val);
         }}
         className="rounded-lg bg-neutral-800 border border-neutral-700 px-2.5 py-1.5 text-sm text-neutral-50 focus:outline-none focus:border-neutral-500 transition [color-scheme:dark]"
       />
