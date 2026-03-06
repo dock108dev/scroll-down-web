@@ -76,7 +76,12 @@ export function useGameDetail(id: number) {
     fetchGame({ silent: true });
   }, [needsGameRefresh, id, clearGameRefresh, fetchGame]);
 
-  // ── Visibility change: freeze snapshot + refetch when offline ──
+  // ── Visibility change: sync snapshot + refetch when offline ──
+  //
+  // When the user returns to the tab we freeze a snapshot (so the home-page
+  // pinned bar reflects what they last saw) and refetch if the realtime
+  // connection dropped.  We do NOT clear activeGameId — the user is still
+  // on the game page and should keep seeing live score updates.
 
   const gameStatus = data?.game.status;
   const gameIsLive = data ? isLive(gameStatus!, data.game) : false;
@@ -86,16 +91,16 @@ export function useGameDetail(id: number) {
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        // Only freeze a new snapshot if we were in active/auto-accept mode;
-        // otherwise the user hasn't accepted the pending update yet.
-        const wasActive = useGameData.getState().activeGameId === id;
-        if (wasActive) {
+        // Sync snapshot so the pinned bar / home page has a current baseline,
+        // but only if we're in active/auto-accept mode.
+        const isActive = useGameData.getState().activeGameId === id;
+        if (isActive) {
           const c = getCore(id);
           if (c && isRevealed(id)) {
             acceptUpdate(id, pickSnapshot(c));
           }
         }
-        setActiveGame(null);
+        // Don't clear activeGameId — keep live updates flowing on this page.
 
         if (!realtimeStatus.connected) {
           fetchGame({ silent: true });
@@ -107,7 +112,7 @@ export function useGameDetail(id: number) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [gameIsLive, fetchGame, id, getCore, isRevealed, acceptUpdate, setActiveGame, realtimeStatus.connected]);
+  }, [gameIsLive, fetchGame, id, getCore, isRevealed, acceptUpdate, realtimeStatus.connected]);
 
   // Auto-accept: set active game on mount, sync snapshot on unmount
   // Skip setting activeGameId if the game already has a pending update (UPD);
