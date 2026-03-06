@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUI } from "@/stores/ui";
+import { useFollowingLive } from "@/hooks/useFollowingLive";
 import { cn } from "@/lib/utils";
 
 function GamesIcon({ className }: { className?: string }) {
@@ -53,6 +54,7 @@ const TABS = [
 export function BottomTabs() {
   const pathname = usePathname();
   const openSettings = useUI((s) => s.openSettings);
+  const { followingLive, toggle: toggleLive, available: liveAvailable } = useFollowingLive();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-neutral-800 bg-neutral-950/95 backdrop-blur md:hidden">
@@ -76,6 +78,30 @@ export function BottomTabs() {
             </Link>
           );
         })}
+        {liveAvailable && (
+          <button
+            onClick={toggleLive}
+            className={cn(
+              "flex flex-col items-center gap-1 text-xs transition",
+              followingLive ? "text-green-400" : "text-neutral-500",
+            )}
+          >
+            <span
+              className={cn(
+                "relative inline-flex h-4 w-7 items-center rounded-full transition-colors",
+                followingLive ? "bg-green-500" : "bg-neutral-600",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-3 w-3 rounded-full bg-white transition-transform",
+                  followingLive ? "translate-x-3.5" : "translate-x-0.5",
+                )}
+              />
+            </span>
+            LIVE
+          </button>
+        )}
         <button
           onClick={openSettings}
           className="flex flex-col items-center gap-1 text-xs text-neutral-500 transition"

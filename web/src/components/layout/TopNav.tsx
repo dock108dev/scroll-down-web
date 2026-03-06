@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUI } from "@/stores/ui";
 import { usePinnedGames } from "@/stores/pinned-games";
+import { useFollowingLive } from "@/hooks/useFollowingLive";
 import { LAYOUT } from "@/lib/config";
 import { PinnedBar } from "@/components/home/PinnedBar";
 import { cn } from "@/lib/utils";
@@ -20,6 +21,7 @@ export function TopNav() {
   const pathname = usePathname();
   const openSettings = useUI((s) => s.openSettings);
   const hasPins = usePinnedGames((s) => s.pinnedIds.size > 0);
+  const { followingLive, toggle: toggleLive, available: liveAvailable } = useFollowingLive();
 
   // Update --header-h CSS variable when pin count changes
   useEffect(() => {
@@ -59,6 +61,33 @@ export function TopNav() {
           ))}
         </div>
         <div className="flex-1" />
+        {liveAvailable && (
+          <button
+            onClick={toggleLive}
+            className={cn(
+              "hidden md:flex items-center gap-2 mr-3 px-3 py-1.5 rounded-full text-xs font-medium transition",
+              followingLive
+                ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
+                : "bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
+            )}
+            title={followingLive ? "Following live — click to freeze scores" : "Click to follow live scores"}
+          >
+            <span
+              className={cn(
+                "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors",
+                followingLive ? "bg-green-500" : "bg-neutral-600",
+              )}
+            >
+              <span
+                className={cn(
+                  "inline-block h-3 w-3 rounded-full bg-white transition-transform",
+                  followingLive ? "translate-x-3.5" : "translate-x-0.5",
+                )}
+              />
+            </span>
+            LIVE
+          </button>
+        )}
         <button
           onClick={openSettings}
           className="hidden md:flex p-1.5 rounded-full text-neutral-400 hover:text-neutral-50 hover:bg-neutral-800 transition"
