@@ -2,8 +2,7 @@
 
 import type { Game } from "@/lib/types";
 import type { GameCore } from "@/stores/game-data";
-import { useGameData } from "@/stores/game-data";
-import { isLive, isFinal, isPregame } from "@/lib/types";
+import { isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
@@ -25,7 +24,6 @@ interface GameHeaderProps {
 
 export function GameHeader({ game }: GameHeaderProps) {
   const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
-  const setActiveGame = useGameData((s) => s.setActiveGame);
   const display = useScoreDisplay(game.id);
 
   const pinned = usePinnedGames((s) => s.isPinned)(game.id);
@@ -33,20 +31,18 @@ export function GameHeader({ game }: GameHeaderProps) {
   const togglePin = usePinnedGames((s) => s.togglePin);
 
   const read = isRevealed(game.id);
-  const live = isLive(game.status, game);
-  const final = isFinal(game.status, game);
   const pregame = isPregame(game.status, game);
 
   const hasScoreData = game.homeScore != null && game.awayScore != null;
   const showScore = display?.visible ?? false;
   const hasScoreUpdate = display?.hasUpdate ?? false;
+  const statusCategory = display?.statusCategory ?? "other";
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
-    // Pending update (e.g. after wake): accept it and restore live auto-accept
+    // Pending update: accept it (scores unfreeze to current core)
     if (hasScoreUpdate) {
       acceptUpdate(game.id, pickSnapshot(game as GameCore));
-      setActiveGame(game.id);
       return;
     }
     if (read) hide(game.id);
@@ -85,7 +81,7 @@ export function GameHeader({ game }: GameHeaderProps) {
               </button>
             )}
           </span>
-          {live && !hasScoreUpdate && (
+          {statusCategory === "live" && (
             <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
@@ -99,7 +95,7 @@ export function GameHeader({ game }: GameHeaderProps) {
               )}
             </span>
           )}
-          {live && hasScoreUpdate && (
+          {statusCategory === "live-updated" && (
             <button
               onClick={handleScoreToggle}
               className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-400/10 hover:bg-amber-400/20 transition-colors"
@@ -108,13 +104,13 @@ export function GameHeader({ game }: GameHeaderProps) {
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
               </span>
-              <span className="text-amber-400">TAP TO UPDATE</span>
+              <span className="text-amber-400">LIVE Update</span>
             </button>
           )}
-          {final && (
+          {statusCategory === "final" && (
             <span className="text-xs text-neutral-500 uppercase font-medium">Final</span>
           )}
-          {pregame && (
+          {statusCategory === "pregame" && (
             <span className="text-xs text-neutral-500 uppercase font-medium">Upcoming</span>
           )}
         </div>
@@ -154,11 +150,15 @@ export function GameHeader({ game }: GameHeaderProps) {
             {showScore ? (
               <>
                 <span className="text-neutral-600 text-sm font-medium">@</span>
-                {display?.canToggle && (
+                {hasScoreUpdate ? (
+                  <p className="text-xs text-amber-400 mt-1 font-medium hover:text-amber-300 transition-colors">
+                    Update
+                  </p>
+                ) : display?.canToggle ? (
                   <p className="text-xs text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
                     Hide score
                   </p>
-                )}
+                ) : null}
               </>
             ) : (
               <>
