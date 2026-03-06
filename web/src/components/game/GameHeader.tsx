@@ -69,7 +69,7 @@ export function GameHeader({ game }: GameHeaderProps) {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  togglePin(game.id);
+                  togglePin(game.id, { awayTeamAbbr: game.awayTeamAbbr ?? "AWY", homeTeamAbbr: game.homeTeamAbbr ?? "HME" });
                 }}
                 className={cn(
                   "p-0.5 rounded transition",

@@ -32,7 +32,8 @@ function ChipScore({ gameId }: { gameId: number }) {
   );
 }
 
-function StatusDot({ status, game }: { status: GameStatus; game?: { isLive?: boolean; isFinal?: boolean } }) {
+function StatusDot({ status, game }: { status?: GameStatus; game?: { isLive?: boolean; isFinal?: boolean } }) {
+  if (!status) return null;
   if (isLive(status, game)) {
     return (
       <span className="relative flex h-1.5 w-1.5 shrink-0">
@@ -50,13 +51,16 @@ function StatusDot({ status, game }: { status: GameStatus; game?: { isLive?: boo
 export function PinnedBar() {
   const router = useRouter();
   const pinnedIds = usePinnedGames((s) => s.pinnedIds);
+  const pinMeta = usePinnedGames((s) => s.pinMeta);
   const togglePin = usePinnedGames((s) => s.togglePin);
   const games = useGameData((s) => s.games);
 
   if (pinnedIds.size === 0) return null;
 
-  // Build ordered list from Set iteration order
-  const chips: { id: number; awayTeamAbbr: string; homeTeamAbbr: string; status: GameStatus; isLive?: boolean; isFinal?: boolean }[] = [];
+  // Build ordered list from Set iteration order.
+  // Use core data when available, fall back to persisted pinMeta so chips
+  // still render after a page reload that hasn't fetched every game yet.
+  const chips: { id: number; awayTeamAbbr: string; homeTeamAbbr: string; status?: GameStatus; isLive?: boolean; isFinal?: boolean }[] = [];
   for (const id of pinnedIds) {
     const entry = games.get(id);
     if (entry) {
@@ -68,6 +72,15 @@ export function PinnedBar() {
         isLive: entry.core.isLive,
         isFinal: entry.core.isFinal,
       });
+    } else {
+      const meta = pinMeta.get(id);
+      if (meta) {
+        chips.push({
+          id,
+          awayTeamAbbr: meta.awayTeamAbbr,
+          homeTeamAbbr: meta.homeTeamAbbr,
+        });
+      }
     }
   }
 
