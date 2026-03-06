@@ -183,9 +183,14 @@ function coreFromSummary(g: GameSummary): GameCore {
   };
 }
 
-function coreFromGame(g: Game, plays?: { homeScore?: number; awayScore?: number }[]): GameCore {
-  // Enrich with last play scores if available
+function coreFromGame(
+  g: Game,
+  plays?: { homeScore?: number; awayScore?: number; gameClock?: string; timeLabel?: string; periodLabel?: string }[],
+): GameCore {
+  // Enrich with last play scores + clock if available
   const lastPlay = plays?.length ? plays[plays.length - 1] : null;
+  const clockFromPlay = lastPlay?.gameClock ?? lastPlay?.timeLabel;
+  const periodFromPlay = lastPlay?.periodLabel;
   return {
     id: g.id,
     leagueCode: g.leagueCode,
@@ -196,8 +201,8 @@ function coreFromGame(g: Game, plays?: { homeScore?: number; awayScore?: number 
     homeScore: lastPlay?.homeScore ?? g.homeScore ?? null,
     awayScore: lastPlay?.awayScore ?? g.awayScore ?? null,
     currentPeriod: g.currentPeriod,
-    gameClock: g.gameClock ?? g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel,
-    currentPeriodLabel: g.currentPeriodLabel ?? g.liveSnapshot?.periodLabel,
+    gameClock: g.gameClock ?? g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? clockFromPlay,
+    currentPeriodLabel: g.currentPeriodLabel ?? g.liveSnapshot?.periodLabel ?? periodFromPlay,
     homeTeamAbbr: g.homeTeamAbbr,
     awayTeamAbbr: g.awayTeamAbbr,
     homeTeamColorLight: g.homeTeamColorLight,
@@ -257,6 +262,15 @@ export const useGameData = create<GameDataState>()((set, get) => ({
         ids.push(g.id);
         const existing = next.get(g.id);
         const core = coreFromSummary(g);
+        // Preserve clock/period from previous core when new data lacks them
+        if (existing) {
+          if (!core.gameClock && existing.core.gameClock) {
+            core.gameClock = existing.core.gameClock;
+          }
+          if (!core.currentPeriodLabel && existing.core.currentPeriodLabel) {
+            core.currentPeriodLabel = existing.core.currentPeriodLabel;
+          }
+        }
         if (existing) {
           // Don't overwrite core with list data when the detail page
           // recently polled fresher scores for this game.
@@ -291,6 +305,15 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const now = Date.now();
       const existing = next.get(gameId);
       const core = coreFromGame(response.game, response.plays);
+      // Preserve clock/period from previous core when detail lacks them
+      if (existing) {
+        if (!core.gameClock && existing.core.gameClock) {
+          core.gameClock = existing.core.gameClock;
+        }
+        if (!core.currentPeriodLabel && existing.core.currentPeriodLabel) {
+          core.currentPeriodLabel = existing.core.currentPeriodLabel;
+        }
+      }
 
       next.set(gameId, {
         core,
@@ -329,12 +352,18 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const existing = next.get(gameId);
       if (existing) {
         const merged = { ...existing.core, ...patch };
-        // Enrich gameClock / currentPeriodLabel from liveSnapshot when
-        // the patch includes a snapshot but no top-level clock fields.
-        const snap = merged.liveSnapshot;
-        if (snap) {
-          if (!merged.gameClock) merged.gameClock = snap.gameClock ?? snap.timeLabel;
-          if (!merged.currentPeriodLabel) merged.currentPeriodLabel = snap.periodLabel;
+        // Recover gameClock / currentPeriodLabel when a patch clears them.
+        // Fallback chain: liveSnapshot → previous core value.
+        if (!merged.gameClock) {
+          merged.gameClock =
+            merged.liveSnapshot?.gameClock ??
+            merged.liveSnapshot?.timeLabel ??
+            existing.core.gameClock;
+        }
+        if (!merged.currentPeriodLabel) {
+          merged.currentPeriodLabel =
+            merged.liveSnapshot?.periodLabel ??
+            existing.core.currentPeriodLabel;
         }
         next.set(gameId, {
           ...existing,
@@ -374,14 +403,25 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const existingKeys = new Set(existing.map(pbpKey));
       const deduped = newPlays.filter((p) => !existingKeys.has(pbpKey(p)));
       if (deduped.length === 0) return s;
+      const allPlays = [...existing, ...deduped];
+      const lastPlay = allPlays[allPlays.length - 1];
+      const clockFromPlay = lastPlay?.gameClock ?? lastPlay?.timeLabel;
+      const periodFromPlay = lastPlay?.periodLabel;
       const next = new Map(s.games);
       next.set(gameId, {
         ...entry,
+        core: {
+          ...entry.core,
+          // Keep clock up-to-date from the latest play (e.g. NCAAB
+          // where the backend doesn't send a top-level gameClock)
+          ...(clockFromPlay ? { gameClock: clockFromPlay } : {}),
+          ...(periodFromPlay ? { currentPeriodLabel: periodFromPlay } : {}),
+        },
         detail: {
           ...entry.detail,
           response: {
             ...entry.detail.response,
-            plays: [...existing, ...deduped],
+            plays: allPlays,
           },
         },
       });
