@@ -155,8 +155,8 @@ function coreFromSummary(g: GameSummary): GameCore {
     homeScore: g.homeScore ?? null,
     awayScore: g.awayScore ?? null,
     currentPeriod: g.currentPeriod,
-    gameClock: g.gameClock,
-    currentPeriodLabel: g.currentPeriodLabel,
+    gameClock: g.gameClock ?? g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel,
+    currentPeriodLabel: g.currentPeriodLabel ?? g.liveSnapshot?.periodLabel,
     homeTeamAbbr: g.homeTeamAbbr,
     awayTeamAbbr: g.awayTeamAbbr,
     homeTeamColorLight: g.homeTeamColorLight,
@@ -196,8 +196,8 @@ function coreFromGame(g: Game, plays?: { homeScore?: number; awayScore?: number 
     homeScore: lastPlay?.homeScore ?? g.homeScore ?? null,
     awayScore: lastPlay?.awayScore ?? g.awayScore ?? null,
     currentPeriod: g.currentPeriod,
-    gameClock: g.gameClock,
-    currentPeriodLabel: g.currentPeriodLabel,
+    gameClock: g.gameClock ?? g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel,
+    currentPeriodLabel: g.currentPeriodLabel ?? g.liveSnapshot?.periodLabel,
     homeTeamAbbr: g.homeTeamAbbr,
     awayTeamAbbr: g.awayTeamAbbr,
     homeTeamColorLight: g.homeTeamColorLight,
@@ -328,9 +328,17 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const next = new Map(s.games);
       const existing = next.get(gameId);
       if (existing) {
+        const merged = { ...existing.core, ...patch };
+        // Enrich gameClock / currentPeriodLabel from liveSnapshot when
+        // the patch includes a snapshot but no top-level clock fields.
+        const snap = merged.liveSnapshot;
+        if (snap) {
+          if (!merged.gameClock) merged.gameClock = snap.gameClock ?? snap.timeLabel;
+          if (!merged.currentPeriodLabel) merged.currentPeriodLabel = snap.periodLabel;
+        }
         next.set(gameId, {
           ...existing,
-          core: { ...existing.core, ...patch },
+          core: merged,
           coreUpdatedAt: Date.now(),
         });
       } else {
