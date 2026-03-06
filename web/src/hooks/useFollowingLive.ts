@@ -44,13 +44,13 @@ export function useFollowingLive() {
   const followingLive = useUI((s) => s.followingLive);
   const setFollowingLive = useUI((s) => s.setFollowingLive);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
-  const lastActivityRef = useRef(Date.now());
+  const lastActivityRef = useRef(0);
 
   // Track user activity while following live
   useEffect(() => {
     if (!followingLive) return;
 
-    lastActivityRef.current = Date.now();
+    lastActivityRef.current = Date.now(); // seed on activation
 
     const onActivity = () => {
       lastActivityRef.current = Date.now();
