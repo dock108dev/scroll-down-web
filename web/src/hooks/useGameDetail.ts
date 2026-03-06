@@ -7,7 +7,7 @@ import { isLive } from "@/lib/types";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
 import { useReveal } from "@/stores/reveal";
-import { pickSnapshot } from "@/lib/score-display";
+import { pickSnapshot, differs } from "@/lib/score-display";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameSummaryChannel } from "@/realtime/channels";
 
@@ -105,8 +105,18 @@ export function useGameDetail(id: number) {
   }, [gameIsLive, fetchGame, id, getCore, isRevealed, acceptUpdate, setActiveGame, realtimeStatus.connected]);
 
   // Auto-accept: set active game on mount, sync snapshot on unmount
+  // Skip setting activeGameId if the game already has a pending update (UPD);
+  // the user should see the snapshot score and manually accept via "TAP TO UPDATE".
   useEffect(() => {
-    setActiveGame(id);
+    const snap = useReveal.getState().getSnapshot(id);
+    const c = getCore(id);
+    const hasPendingUpdate =
+      c && snap && isRevealed(id) && isLive(c.status, c) && differs(c, snap);
+
+    if (!hasPendingUpdate) {
+      setActiveGame(id);
+    }
+
     return () => {
       setActiveGame(null);
       const core = getCore(id);
