@@ -11,6 +11,7 @@ import { isLive, isFinal } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useSettings } from "@/stores/settings";
+import { useUI } from "@/stores/ui";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useHomeScroll } from "@/stores/home-scroll";
 import { pickSnapshot } from "@/lib/score-display";
@@ -61,6 +62,7 @@ export default function HomePage() {
   const clearAllPositions = useReadingPosition((s) => s.clearAll);
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
+  const followingLive = useUI((s) => s.followingLive);
 
   const pinnedIds = usePinnedGames((s) => s.pinnedIds);
   const pruneStale = usePinnedGames((s) => s.pruneStale);
@@ -248,7 +250,7 @@ export default function HomePage() {
 
           {/* Right-justified: read/unread + refresh */}
           <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-            {hasAnyGames && scoreRevealMode !== "always" && catchUpCount > 0 && (
+            {hasAnyGames && scoreRevealMode !== "always" && !followingLive && catchUpCount > 0 && (
               <button
                 onClick={handleCatchUp}
                 className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-500 transition"
@@ -263,7 +265,7 @@ export default function HomePage() {
                 </span>
               </button>
             )}
-            {hasAnyGames && scoreRevealMode !== "always" && readCount > 0 && (
+            {hasAnyGames && scoreRevealMode !== "always" && !followingLive && readCount > 0 && (
               <button
                 onClick={handleReset}
                 className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-2 py-1 text-[11px] font-medium text-neutral-400 hover:text-neutral-50 transition"
