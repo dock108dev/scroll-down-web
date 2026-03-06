@@ -6,8 +6,6 @@ import type { GameDetailResponse } from "@/lib/types";
 import { isLive } from "@/lib/types";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
-import { useReveal } from "@/stores/reveal";
-import { pickSnapshot, differs } from "@/lib/score-display";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameSummaryChannel } from "@/realtime/channels";
 
@@ -20,9 +18,6 @@ export function useGameDetail(id: number) {
   const realtimeStatus = useGameData((s) => s.realtimeStatus);
   const needsGameRefresh = useGameData((s) => s.needsGameRefresh);
   const clearGameRefresh = useGameData((s) => s.clearGameRefresh);
-
-  const isRevealed = useReveal((s) => s.isRevealed);
-  const acceptUpdate = useReveal((s) => s.acceptUpdate);
 
   const cachedDetail = getDetail(id);
   const [data, setData] = useState<GameDetailResponse | null>(cachedDetail ?? null);
@@ -76,12 +71,10 @@ export function useGameDetail(id: number) {
     fetchGame({ silent: true });
   }, [needsGameRefresh, id, clearGameRefresh, fetchGame]);
 
-  // ── Visibility change: sync snapshot + refetch when offline ──
+  // ── Visibility change: refetch when offline ──
   //
-  // When the user returns to the tab we freeze a snapshot (so the home-page
-  // pinned bar reflects what they last saw) and refetch if the realtime
-  // connection dropped.  We do NOT clear activeGameId — the user is still
-  // on the game page and should keep seeing live score updates.
+  // When the user returns to the tab, refetch if the realtime connection
+  // dropped. We never auto-sync the snapshot — the user controls updates.
 
   const gameStatus = data?.game.status;
   const gameIsLive = data ? isLive(gameStatus!, data.game) : false;
@@ -91,17 +84,6 @@ export function useGameDetail(id: number) {
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
-        // Sync snapshot so the pinned bar / home page has a current baseline,
-        // but only if we're in active/auto-accept mode.
-        const isActive = useGameData.getState().activeGameId === id;
-        if (isActive) {
-          const c = getCore(id);
-          if (c && isRevealed(id)) {
-            acceptUpdate(id, pickSnapshot(c));
-          }
-        }
-        // Don't clear activeGameId — keep live updates flowing on this page.
-
         if (!realtimeStatus.connected) {
           fetchGame({ silent: true });
         }
@@ -112,33 +94,14 @@ export function useGameDetail(id: number) {
     return () => {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [gameIsLive, fetchGame, id, getCore, isRevealed, acceptUpdate, realtimeStatus.connected]);
+  }, [gameIsLive, fetchGame, realtimeStatus.connected]);
 
-  // Auto-accept: set active game on mount, sync snapshot on unmount
-  // Skip setting activeGameId if the game already has a pending update (UPD);
-  // the user should see the snapshot score and manually accept via "TAP TO UPDATE".
+  // Track which game page is open (used by visibility handler).
+  // No auto-accept: the user must manually click "Update" to advance the snapshot.
   useEffect(() => {
-    const snap = useReveal.getState().getSnapshot(id);
-    const c = getCore(id);
-    const hasPendingUpdate =
-      c && snap && isRevealed(id) && isLive(c.status, c) && differs(c, snap);
-
-    if (!hasPendingUpdate) {
-      setActiveGame(id);
-    }
-
+    setActiveGame(id);
     return () => {
-      // Only sync snapshot on unmount if we were in active/auto-accept mode.
-      // If the user navigated here with a pending update and never accepted,
-      // don't silently advance the snapshot.
-      const wasActive = useGameData.getState().activeGameId === id;
       setActiveGame(null);
-      if (wasActive) {
-        const core = getCore(id);
-        if (core && isRevealed(id) && isLive(core.status, core)) {
-          acceptUpdate(id, pickSnapshot(core));
-        }
-      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

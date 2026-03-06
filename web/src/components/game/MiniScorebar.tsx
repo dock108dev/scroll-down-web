@@ -2,8 +2,7 @@
 
 import type { Game } from "@/lib/types";
 import type { GameCore } from "@/stores/game-data";
-import { useGameData } from "@/stores/game-data";
-import { isLive, isFinal, isPregame } from "@/lib/types";
+import { isPregame } from "@/lib/types";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { useReveal } from "@/stores/reveal";
 import { useSettings } from "@/stores/settings";
@@ -26,16 +25,14 @@ interface MiniScorebarProps {
 export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const display = useScoreDisplay(game.id);
   const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
-  const setActiveGame = useGameData((s) => s.setActiveGame);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
   const revealed = isRevealed(game.id);
-  const live = isLive(game.status, game);
-  const final = isFinal(game.status, game);
   const pregame = isPregame(game.status, game);
   const showScore = display?.visible ?? false;
   const canToggle = display?.canToggle ?? false;
   const hasUpdate = display?.hasUpdate ?? false;
+  const statusCategory = display?.statusCategory ?? "other";
 
   const awayColor = resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark, "#a3a3a3");
   const homeColor = resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark, "#a3a3a3");
@@ -46,7 +43,6 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const handleHide = () => hide(game.id);
   const handleAcceptUpdate = () => {
     acceptUpdate(game.id, pickSnapshot(game as GameCore));
-    setActiveGame(game.id);
   };
 
   const showToggle = canToggle && scoreRevealMode !== "always" && !pregame;
@@ -103,7 +99,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
 
               {/* Separator */}
               <span className="text-neutral-700 text-xs font-medium shrink-0">
-                {pregame || (!showScore && !live) ? "@" : "—"}
+                {pregame || (!showScore && statusCategory !== "live" && statusCategory !== "live-updated") ? "@" : "—"}
               </span>
 
               {/* Home team */}
@@ -143,8 +139,8 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                 </span>
               )}
 
-              {/* Live: period + clock + indicator (or update prompt) */}
-              {live && !hasUpdate && (
+              {/* Live: period + clock + indicator */}
+              {statusCategory === "live" && (
                 <>
                   {(game.currentPeriodLabel || game.gameClock) && (
                     <span className="text-xs font-medium text-neutral-300 tabular-nums">
@@ -163,7 +159,9 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                   </span>
                 </>
               )}
-              {live && hasUpdate && (
+
+              {/* Pending update (live or game just went final) → LIVE Update */}
+              {statusCategory === "live-updated" && (
                 <button
                   onClick={handleAcceptUpdate}
                   className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors"
@@ -172,12 +170,12 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
                     <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
                   </span>
-                  Update
+                  LIVE Update
                 </button>
               )}
 
-              {/* Final label */}
-              {final && showScore && (
+              {/* Final label (only when no pending update) */}
+              {statusCategory === "final" && showScore && (
                 <span className="text-xs font-medium text-neutral-500 uppercase">
                   Final
                 </span>

@@ -85,21 +85,9 @@ export function computeScoreDisplay(
     };
   }
 
-  // mode=onMarkRead, revealed, active view + LIVE only → auto-accept from core
-  // Final games always use snapshot so users can hide/reveal freely on detail page
-  if (isActiveView && live) {
-    return {
-      visible: !pregame && hasScoreData,
-      homeScore: core.homeScore,
-      awayScore: core.awayScore,
-      frozen: false,
-      hasUpdate: false,
-      canToggle,
-      statusCategory: "live",
-    };
-  }
-
-  // mode=onMarkRead, revealed, NOT active → render from snapshot
+  // mode=onMarkRead, revealed → render from snapshot
+  // Scores stay frozen at the last-accepted snapshot; the UI shows an
+  // "Update" indicator when new data arrives so the user stays in control.
   if (snapshot) {
     const hasUpdate = differs(core, snapshot);
     return {

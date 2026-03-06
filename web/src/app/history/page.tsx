@@ -28,11 +28,12 @@ function fmt(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-function yesterdayStr(): string {
+/** Earliest allowed date: 2 days ago (excludes today and yesterday). */
+function historyMaxDate(): string {
   const today = easternToday();
-  const y = new Date(today);
-  y.setDate(y.getDate() - 1);
-  return fmt(y);
+  const d = new Date(today);
+  d.setDate(d.getDate() - 2);
+  return fmt(d);
 }
 
 // ── All supported leagues ──────────────────────────────────
@@ -68,7 +69,7 @@ function HistoryPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const defaultDate = yesterdayStr();
+  const defaultDate = historyMaxDate();
   const startDate = searchParams.get("start") || defaultDate;
   const endDate = searchParams.get("end") || startDate;
   const league = searchParams.get("league") || "";
