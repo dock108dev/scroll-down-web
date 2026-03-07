@@ -21,10 +21,10 @@ export const api = {
     fetchApi<BetsResponse>(
       `/api/fairbet/odds${params ? `?${params}` : ""}`,
     ),
-  fairbetLive: (gameId: number, marketKey?: string, historyCount?: number) => {
+  fairbetLive: (gameId: number, marketCategory?: string, sortBy?: string) => {
     const params = new URLSearchParams({ game_id: String(gameId) });
-    if (marketKey) params.set("market_key", marketKey);
-    if (historyCount !== undefined) params.set("history_count", String(historyCount));
+    if (marketCategory) params.set("market_category", marketCategory);
+    if (sortBy) params.set("sort_by", sortBy);
     return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
   },
 };

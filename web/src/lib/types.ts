@@ -576,47 +576,26 @@ export interface EVDiagnostics {
 
 // ─── FairBet Live Odds ───────────────────────────────────
 
-export interface LiveOddsSelection {
-  selection: string;
-  line?: number;
-  price: number;
-}
-
-export interface LiveSnapshot {
-  last_updated_at: number;
-  provider: string;
-  selections: LiveOddsSelection[];
-  ttl_seconds_remaining: number;
-}
-
-export interface ClosingLine {
-  provider: string;
-  market_key: string;
-  selection: string;
-  line_value: number | null;
-  price_american: number;
-  captured_at: string;
-  source_type: string;
-}
-
-export interface LiveHistoryEntry {
-  t: number;
-  selections: { s: string; p: number; l?: number }[];
-}
-
-export interface LiveOddsMeta {
-  league: string;
-  live_updated_at: string | null;
-  closing_count: number;
-}
-
 export interface FairbetLiveResponse {
   game_id: number;
-  market_key?: string;
-  closing: ClosingLine[];
-  live: LiveSnapshot | Record<string, LiveSnapshot> | null;
-  history: LiveHistoryEntry[];
-  meta: LiveOddsMeta;
+  league_code?: string;
+  home_team?: string;
+  away_team?: string;
+  bets: APIBet[];
+  total: number;
+  books_available: string[];
+  market_categories_available?: string[];
+  last_updated_at?: string | null;
+  ev_diagnostics?: {
+    total_pairs?: number;
+    total_unpaired?: number;
+    passed?: number;
+    reference_missing?: number;
+  };
+  ev_config?: {
+    min_books_for_display?: number;
+    ev_color_thresholds?: { strong_positive?: number; positive?: number };
+  };
 }
 
 // ─── Helpers ────────────────────────────────────────────
