@@ -31,7 +31,6 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
   const pregame = isPregame(game.status, game);
   const showScore = display?.visible ?? false;
   const canToggle = display?.canToggle ?? false;
-  const hasUpdate = display?.hasUpdate ?? false;
   const statusCategory = display?.statusCategory ?? "other";
 
   const awayColor = resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark, "#a3a3a3");

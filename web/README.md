@@ -30,7 +30,10 @@ src/
 │   ├── fairbet/page.tsx      # FairBet odds (Pre-Game + Live tabs)
 │   ├── history/page.tsx      # Historical game browsing
 │   ├── settings/page.tsx     # User preferences
-│   └── api/                  # Server-side API proxy routes (5 routes)
+│   └── api/                  # Server-side API proxy routes (8 routes)
+│       ├── games/            # Game list, detail, flow
+│       ├── fairbet/          # FairBet pre-game odds, live odds
+│       └── analytics/        # Simulation, MLB pitch model, run expectancy
 ├── components/
 │   ├── home/                 # GameRow, TimelineSection, SearchBar, PinnedBar
 │   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
@@ -40,6 +43,18 @@ src/
 │   ├── settings/             # SettingsContent
 │   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer, RealtimeProvider
 │   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader
+├── features/
+│   └── analytics/            # Analytics tab: modular analytics app framework
+│       ├── AnalyticsTab.tsx   # Hub — routes between app grid and active app
+│       ├── AnalyticsAppGrid.tsx # Displays available analytics tools as cards
+│       ├── types.ts           # Shared analytics types
+│       ├── apps/
+│       │   ├── SimulationApp.tsx           # Alternate Game Universes (Monte Carlo)
+│       │   └── LivePredictionApp/          # What Happens Next
+│       │       ├── LivePredictionApp.tsx    # Pitch predictions + run expectancy
+│       │       └── animation/              # SVG pitch matchup animation engine
+│       ├── components/        # ProbabilityBar, UniverseCard, AnalyticsAppCard
+│       └── services/          # SimulationService, PredictionService (API + caching)
 ├── hooks/
 │   ├── useGamesList.ts       # Home feed: realtime patches, visibility-driven refresh
 │   ├── useGameDetail.ts      # Game detail: realtime patches, visibility-driven refresh
@@ -47,7 +62,8 @@ src/
 │   ├── useFairBetOdds.ts     # FairBet pre-game: pagination, filtering, sorting, parlay
 │   ├── useFairBetLive.ts     # FairBet live: per-game live odds with 15s polling
 │   ├── useHistoricalGames.ts # History: paginated games by date range
-│   └── useScoreDisplay.ts    # Score reveal/hide display logic
+│   ├── useScoreDisplay.ts    # Score reveal/hide display logic
+│   └── useFollowingLive.ts   # Live-following mode behavior
 ├── realtime/
 │   ├── transport.ts          # WebSocket + SSE transport singleton
 │   ├── dispatcher.ts         # Centralized event routing with seq/gap handling
@@ -62,7 +78,7 @@ src/
 │   ├── pinned-games.ts       # User-pinned games for quick access
 │   ├── game-data.ts          # Normalized game data cache + realtime state (in-memory)
 │   ├── home-scroll.ts        # Home page scroll position (in-memory)
-│   └── ui.ts                 # Transient UI state (drawers, sheets)
+│   └── ui.ts                 # Transient UI state (drawers, live-following)
 └── lib/
     ├── types.ts              # All TypeScript interfaces
     ├── api.ts                # Client-side fetch wrapper (browser → /api/* proxy routes)

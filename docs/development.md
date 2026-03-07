@@ -94,7 +94,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Scores respect reveal mode setting
 
 ### Game Detail
-- [ ] Sections render based on status (Pregame Buzz, Flow, Timeline, Player Stats, Team Stats, Odds, Wrap-Up)
+- [ ] Sections render based on status (Pregame Buzz, Flow, Analytics, Timeline, Player Stats, Team Stats, Odds, Wrap-Up)
 - [ ] Flow blocks display for completed games
 - [ ] Timeline shows tiered plays for live games
 - [ ] Odds table shows cross-book comparison with category tabs
@@ -102,6 +102,19 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Reading position saves on scroll and restores on return
 - [ ] Score freeze works for revealed live games (frozen scores, amber dot on new data)
 - [ ] Mini scorebar appears when scrolling past header
+
+### Analytics (MLB, NBA, NHL, NCAAB games only)
+- [ ] Analytics section appears for supported leagues
+- [ ] Analytics section does NOT appear for NFL, NCAAF
+- [ ] App grid shows available tools with correct enabled/disabled states
+- [ ] Alternate Game Universes: simulation loads, probability bars render, universe cards display
+- [ ] What Happens Next: only enabled during live MLB games
+- [ ] What Happens Next: pitch prediction bars render with correct probabilities
+- [ ] What Happens Next: run expectancy card displays
+- [ ] What Happens Next: pitch animation plays on "Simulate Pitch" tap
+- [ ] What Happens Next: outcome overlay shows correct label and probability
+- [ ] Back navigation ("All Tools") returns to app grid
+- [ ] Simulation results cache per game (no duplicate API calls on re-open)
 
 ### FairBet
 - [ ] Pre-Game tab: odds load with progressive pagination

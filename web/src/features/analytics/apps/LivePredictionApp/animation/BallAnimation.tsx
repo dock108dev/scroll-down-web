@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import type { AnimationPhase } from "./AnimationController";
 
 interface BallAnimationProps {
@@ -26,33 +26,47 @@ export function BallAnimation({
   foulTrajectory,
   inPlayTrajectory,
 }: BallAnimationProps) {
-  const [pos, setPos] = useState({ x: 95, y: 82 });
-  const [visible, setVisible] = useState(false);
+  const circleRef = useRef<SVGCircleElement>(null);
   const rafRef = useRef<number>(0);
   const startRef = useRef<number>(0);
 
   // Pitch path: mound to plate
   const startX = 95;
   const startY = 82;
-  const endX = inZone ? 258 : 258;
-  const endY = inZone ? 90 : 78; // out of zone = high/outside
+  const endX = 258;
+  const endY = inZone ? 90 : 78;
   const cpX = 175;
-  const cpY = inZone ? 70 : 60; // arc control point
+  const cpY = inZone ? 70 : 60;
+
+  const setCirclePos = useCallback((x: number, y: number) => {
+    const el = circleRef.current;
+    if (!el) return;
+    el.setAttribute("cx", String(x));
+    el.setAttribute("cy", String(y));
+  }, []);
+
+  const show = useCallback(() => {
+    circleRef.current?.setAttribute("visibility", "visible");
+  }, []);
+
+  const hideEl = useCallback(() => {
+    circleRef.current?.setAttribute("visibility", "hidden");
+  }, []);
 
   useEffect(() => {
     if (phase === "travel") {
-      setVisible(true);
+      show();
       startRef.current = performance.now();
 
       const animate = (now: number) => {
         const elapsed = now - startRef.current;
-        const t = Math.min(elapsed / 600, 1); // 600ms travel
-        const eased = t * t * (3 - 2 * t); // smoothstep
+        const t = Math.min(elapsed / 600, 1);
+        const eased = t * t * (3 - 2 * t);
 
-        setPos({
-          x: quadBezier(eased, startX, cpX, endX),
-          y: quadBezier(eased, startY, cpY, endY),
-        });
+        setCirclePos(
+          quadBezier(eased, startX, cpX, endX),
+          quadBezier(eased, startY, cpY, endY),
+        );
 
         if (t < 1) {
           rafRef.current = requestAnimationFrame(animate);
@@ -64,36 +78,27 @@ export function BallAnimation({
     }
 
     if (phase === "result") {
-      // Post-contact trajectory
       if (foulTrajectory) {
-        // Foul ball pops up and back
         startRef.current = performance.now();
         const animate = (now: number) => {
           const elapsed = now - startRef.current;
           const t = Math.min(elapsed / 400, 1);
-          setPos({
-            x: 258 + t * 30,
-            y: 90 - t * 60,
-          });
+          setCirclePos(258 + t * 30, 90 - t * 60);
           if (t < 1) rafRef.current = requestAnimationFrame(animate);
-          else setVisible(false);
+          else hideEl();
         };
         rafRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(rafRef.current);
       }
 
       if (inPlayTrajectory) {
-        // Ball hit into field — travels forward and up
         startRef.current = performance.now();
         const animate = (now: number) => {
           const elapsed = now - startRef.current;
           const t = Math.min(elapsed / 500, 1);
-          setPos({
-            x: 258 - t * 100,
-            y: 90 - t * 50,
-          });
+          setCirclePos(258 - t * 100, 90 - t * 50);
           if (t < 1) rafRef.current = requestAnimationFrame(animate);
-          else setVisible(false);
+          else hideEl();
         };
         rafRef.current = requestAnimationFrame(animate);
         return () => cancelAnimationFrame(rafRef.current);
@@ -103,21 +108,21 @@ export function BallAnimation({
     }
 
     if (phase === "idle") {
-      setVisible(false);
-      setPos({ x: startX, y: startY });
+      hideEl();
+      setCirclePos(startX, startY);
     }
-  }, [phase, inZone, foulTrajectory, inPlayTrajectory, startX, cpX, cpY, endX, endY]);
-
-  if (!visible) return null;
+  }, [phase, inZone, foulTrajectory, inPlayTrajectory, startX, cpX, cpY, endX, endY, show, hideEl, setCirclePos]);
 
   return (
     <circle
-      cx={pos.x}
-      cy={pos.y}
+      ref={circleRef}
+      cx={startX}
+      cy={startY}
       r="4"
       fill="#fafafa"
       stroke="#737373"
       strokeWidth="0.5"
+      visibility="hidden"
       style={{ filter: "drop-shadow(0 0 3px rgba(255,255,255,0.4))" }}
     />
   );

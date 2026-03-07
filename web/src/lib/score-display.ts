@@ -51,7 +51,6 @@ export function computeScoreDisplay(
   revealed: boolean,
   snapshot: RevealSnapshot | undefined,
   scoreRevealMode: "always" | "onMarkRead",
-  isActiveView: boolean,
 ): ScoreDisplayResult {
   const live = isLive(core.status, core);
   const final = isFinal(core.status, core);

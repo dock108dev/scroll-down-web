@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProbabilityBar } from "../../components/ProbabilityBar";
 import { MatchupAnimation } from "./animation/MatchupAnimation";
+import { OUTCOME_COLORS, OUTCOME_LABELS } from "./animation/AnimationController";
 import {
   getPitchPrediction,
   getRunExpectancy,
@@ -15,22 +16,6 @@ import { cardDisplayName } from "@/lib/utils";
 import { useGameData } from "@/stores/game-data";
 
 const POLL_INTERVAL = 5_000;
-
-const PITCH_COLORS: Record<string, string> = {
-  ball: "#60a5fa",
-  called_strike: "#f87171",
-  swinging_strike: "#fb923c",
-  foul: "#a78bfa",
-  in_play: "#34d399",
-};
-
-const PITCH_LABELS: Record<string, string> = {
-  ball: "Ball",
-  called_strike: "Called Strike",
-  swinging_strike: "Swinging Strike",
-  foul: "Foul",
-  in_play: "In Play",
-};
 
 interface LivePredictionAppProps {
   ctx: AnalyticsGameContext;
@@ -236,9 +221,9 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
                 .map(([key, prob]) => (
                   <ProbabilityBar
                     key={key}
-                    label={PITCH_LABELS[key] ?? key}
+                    label={OUTCOME_LABELS[key as keyof typeof OUTCOME_LABELS] ?? key}
                     probability={prob}
-                    color={PITCH_COLORS[key] ?? "#888"}
+                    color={OUTCOME_COLORS[key as keyof typeof OUTCOME_COLORS] ?? "#888"}
                     labelWidth="w-32"
                   />
                 ))}
