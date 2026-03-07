@@ -15,7 +15,7 @@ import type {
 import { cardDisplayName } from "@/lib/utils";
 import { useGameData } from "@/stores/game-data";
 
-const POLL_INTERVAL = 5_000;
+const POLL_INTERVAL = 15_000;
 
 interface LivePredictionAppProps {
   ctx: AnalyticsGameContext;
@@ -24,16 +24,17 @@ interface LivePredictionAppProps {
 
 interface GameState {
   inning: number;
-  half: "top" | "bottom";
-  outs: number;
-  balls: number;
-  strikes: number;
-  baseState: number;
+  half: "top" | "bottom" | null;
+  outs: number | null;
+  balls: number | null;
+  strikes: number | null;
+  baseState: number | null;
   homeScore: number;
   awayScore: number;
 }
 
-function parseBaseStateLabel(state: number): string {
+function parseBaseStateLabel(state: number | null): string {
+  if (state == null) return "—";
   if (state === 0) return "Bases empty";
   const parts: string[] = [];
   if (state & 1) parts.push("1st");
@@ -42,7 +43,8 @@ function parseBaseStateLabel(state: number): string {
   return `Runner${parts.length > 1 ? "s" : ""} on ${parts.join(", ")}`;
 }
 
-function formatHalf(half: "top" | "bottom"): string {
+function formatHalf(half: "top" | "bottom" | null): string {
+  if (half == null) return "—";
   return half === "top" ? "Top" : "Bot";
 }
 
@@ -61,13 +63,14 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
 
   const core = useGameData((s) => s.getCore(ctx.gameId));
 
+  // Derive what we can from core; fields the backend doesn't provide are null
   const gameState: GameState = {
     inning: core?.currentPeriod ?? 1,
-    half: "top",
-    outs: 0,
-    balls: 0,
-    strikes: 0,
-    baseState: 0,
+    half: null,
+    outs: null,
+    balls: null,
+    strikes: null,
+    baseState: null,
     homeScore: core?.homeScore ?? 0,
     awayScore: core?.awayScore ?? 0,
   };
@@ -85,15 +88,17 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
 
   const fetchPredictions = useCallback(async () => {
     try {
+      const pitchParams: Record<string, number> = {};
+      if (gameState.balls != null) pitchParams.count_balls = gameState.balls;
+      if (gameState.strikes != null) pitchParams.count_strikes = gameState.strikes;
+
+      const reParams: Record<string, number> = {};
+      if (gameState.baseState != null) reParams.base_state = gameState.baseState;
+      if (gameState.outs != null) reParams.outs = gameState.outs;
+
       const [pitchRes, reRes] = await Promise.all([
-        getPitchPrediction({
-          count_balls: gameState.balls,
-          count_strikes: gameState.strikes,
-        }),
-        getRunExpectancy({
-          base_state: gameState.baseState,
-          outs: gameState.outs,
-        }),
+        getPitchPrediction(pitchParams),
+        getRunExpectancy(reParams),
       ]);
       setPitchProbs(pitchRes.pitch_probabilities);
       setRunExp(reRes.expected_runs);
@@ -133,6 +138,9 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
     );
   }
 
+  const hasCountData = gameState.balls != null && gameState.strikes != null;
+  const hasSituationData = gameState.outs != null || gameState.baseState != null;
+
   return (
     <div className="space-y-4">
       <button
@@ -157,7 +165,9 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
 
         <div className="flex items-center justify-between">
           <span className="text-sm text-neutral-300">
-            {formatHalf(gameState.half)} {ordinal(gameState.inning)}
+            {gameState.half != null
+              ? `${formatHalf(gameState.half)} ${ordinal(gameState.inning)}`
+              : ordinal(gameState.inning)}
           </span>
           <div className="flex gap-3 text-sm tabular-nums">
             <span className="text-neutral-400">
@@ -175,15 +185,23 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-neutral-500">
-          <span>{parseBaseStateLabel(gameState.baseState)}</span>
-          <span>
-            {gameState.outs} out{gameState.outs !== 1 ? "s" : ""}
-          </span>
-          <span>
-            Count {gameState.balls}-{gameState.strikes}
-          </span>
-        </div>
+        {(hasSituationData || hasCountData) && (
+          <div className="flex items-center gap-4 text-xs text-neutral-500">
+            {gameState.baseState != null && (
+              <span>{parseBaseStateLabel(gameState.baseState)}</span>
+            )}
+            {gameState.outs != null && (
+              <span>
+                {gameState.outs} out{gameState.outs !== 1 ? "s" : ""}
+              </span>
+            )}
+            {hasCountData && (
+              <span>
+                Count {gameState.balls}-{gameState.strikes}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Matchup Animation */}

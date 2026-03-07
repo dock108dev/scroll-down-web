@@ -138,7 +138,7 @@ export function SimulationApp({ ctx, onBack }: SimulationAppProps) {
                 Most Likely Universes
               </h4>
               <div className="space-y-2">
-                {result.score_distribution
+                {[...result.score_distribution]
                   .sort((a, b) => b.frequency - a.frequency)
                   .slice(0, MAX_UNIVERSES)
                   .map((outcome, i) => (
