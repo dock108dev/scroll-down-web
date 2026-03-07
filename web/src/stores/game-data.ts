@@ -137,7 +137,6 @@ interface GameDataState {
   getCore: (id: number) => GameCore | undefined;
   getDetail: (id: number) => GameDetailResponse | undefined;
   getFlow: (id: number) => GameFlowResponse | undefined;
-  getListGameIds: (listKey: string) => number[];
   isDetailFresh: (id: number) => boolean;
   isFlowFresh: (id: number) => boolean;
 }
@@ -522,7 +521,6 @@ export const useGameData = create<GameDataState>()((set, get) => ({
   getCore: (id) => get().games.get(id)?.core,
   getDetail: (id) => get().games.get(id)?.detail?.response,
   getFlow: (id) => get().games.get(id)?.flow?.response,
-  getListGameIds: (listKey) => get().listFetches.get(listKey)?.gameIds ?? [],
 
   isDetailFresh: (id) => {
     const entry = get().games.get(id)?.detail;

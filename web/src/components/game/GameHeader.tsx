@@ -7,16 +7,7 @@ import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { pickSnapshot } from "@/lib/score-display";
-import { cn, formatDate, teamColorStyle } from "@/lib/utils";
-
-function formatGameTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  return date.toLocaleString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  }) + " ET";
-}
+import { cn, formatDate, formatTimeET, teamColorStyle } from "@/lib/utils";
 
 interface GameHeaderProps {
   game: Game | GameCore;
@@ -59,7 +50,7 @@ export function GameHeader({ game }: GameHeaderProps) {
         <div className="flex items-center justify-between mb-5">
           <span className="inline-flex items-center gap-2">
             <span className="text-xs uppercase font-medium text-neutral-500 tracking-wide">
-              {game.leagueCode.toUpperCase()} &middot; {formatDate(game.gameDate)} &middot; {formatGameTime(game.gameDate)}
+              {game.leagueCode.toUpperCase()} &middot; {formatDate(game.gameDate)} &middot; {formatTimeET(game.gameDate)}
             </span>
             {(pinned || pinnedCount < 10) && (
               <button

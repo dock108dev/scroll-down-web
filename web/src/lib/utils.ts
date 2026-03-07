@@ -1,5 +1,13 @@
 import type { OddsFormat } from "./types";
 
+export function formatTimeET(dateStr: string): string {
+  return new Date(dateStr).toLocaleString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: "America/New_York",
+  }) + " ET";
+}
+
 export function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString("en-US", {

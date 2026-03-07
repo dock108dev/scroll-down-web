@@ -14,6 +14,7 @@ import { OddsSection } from "@/components/game/OddsSection";
 import { WrapUpSection } from "@/components/game/WrapUpSection";
 import { MLBAdvancedStatsSection } from "@/components/game/MLBAdvancedStatsSection";
 import { PregameBuzzSection } from "@/components/game/PregameBuzzSection";
+import { AnalyticsTab } from "@/features/analytics/AnalyticsTab";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { useReadingPosition } from "@/stores/reading-position";
@@ -27,6 +28,8 @@ import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gamePbpChannel } from "@/realtime/channels";
 
 // ─── Section definitions by status ─────────────────────────────
+const ANALYTICS_LEAGUES = new Set(["mlb", "nba", "nhl", "ncaab"]);
+
 function getSections(data: GameDetailResponse): string[] {
   const status = data.game.status;
   const game = data.game;
@@ -59,11 +62,13 @@ function getSections(data: GameDetailResponse): string[] {
     (data.derivedMetrics != null && Object.keys(data.derivedMetrics).length > 0) ||
     hasOdds ||
     hasPostgamePosts;
+  const hasAnalytics = ANALYTICS_LEAGUES.has(game.leagueCode?.toLowerCase());
 
   // ── Build section list based on status + data ──
   if (isPregame(status, game)) {
     const s: string[] = [];
     if (hasBuzz) s.push("Pregame Buzz");
+    if (hasAnalytics) s.push("Analytics");
     if (hasOdds) s.push("Odds");
     return s;
   }
@@ -71,6 +76,7 @@ function getSections(data: GameDetailResponse): string[] {
   if (isLive(status, game)) {
     const s: string[] = [];
     if (hasTimeline) s.push("Timeline");
+    if (hasAnalytics) s.push("Analytics");
     if (hasPlayerStats) s.push("Player Stats");
     if (hasTeamStats) s.push("Team Stats");
     if (hasAdvanced) s.push("Advanced Stats");
@@ -82,6 +88,7 @@ function getSections(data: GameDetailResponse): string[] {
     const s: string[] = [];
     if (hasBuzz) s.push("Pregame Buzz");
     if (hasFlow) s.push("Flow");
+    if (hasAnalytics) s.push("Analytics");
     if (hasTimeline) s.push("Timeline");
     if (hasPlayerStats) s.push("Player Stats");
     if (hasTeamStats) s.push("Team Stats");
@@ -94,6 +101,7 @@ function getSections(data: GameDetailResponse): string[] {
   // Fallback
   const s: string[] = [];
   if (hasBuzz) s.push("Pregame Buzz");
+  if (hasAnalytics) s.push("Analytics");
   if (hasOdds) s.push("Odds");
   return s;
 }
@@ -120,6 +128,8 @@ function getDefaultExpanded(
     case "Player Stats":
     case "Team Stats":
     case "Advanced Stats":
+      return false;
+    case "Analytics":
       return false;
     case "Odds":
       return false;
@@ -416,6 +426,27 @@ export default function GameDetailPage({
             onToggle={() => handleToggle("Flow")}
           >
             <FlowContainer gameId={gameId} socialPosts={data.socialPosts} />
+          </CollapsibleSection>
+        )}
+
+        {/* ─── Analytics ────────────────────────────────── */}
+        {sections.includes("Analytics") && (
+          <CollapsibleSection
+            title="Analytics"
+            open={isSectionOpen("Analytics")}
+            onToggle={() => handleToggle("Analytics")}
+          >
+            <AnalyticsTab
+              gameId={gameId}
+              leagueCode={game.leagueCode}
+              homeTeam={game.homeTeam}
+              awayTeam={game.awayTeam}
+              homeTeamAbbr={game.homeTeamAbbr}
+              awayTeamAbbr={game.awayTeamAbbr}
+              homeColor={homeColor}
+              awayColor={awayColor}
+              isLive={isLive(status, game)}
+            />
           </CollapsibleSection>
         )}
 

@@ -1,0 +1,40 @@
+"use client";
+
+interface ProbabilityBarProps {
+  label: string;
+  probability: number;
+  color: string;
+  labelWidth?: string;
+}
+
+export function ProbabilityBar({
+  label,
+  probability,
+  color,
+  labelWidth = "w-28",
+}: ProbabilityBarProps) {
+  const pct = Math.round(probability * 100);
+
+  return (
+    <div className="flex items-center gap-3">
+      <span
+        className={`text-sm text-neutral-300 truncate shrink-0 ${labelWidth}`}
+      >
+        {label}
+      </span>
+      <div className="flex-1 h-5 bg-neutral-800 rounded overflow-hidden">
+        <div
+          className="h-full rounded transition-all duration-700 ease-out"
+          style={{
+            width: `${pct}%`,
+            backgroundColor: color,
+            opacity: 0.85,
+          }}
+        />
+      </div>
+      <span className="text-sm font-medium text-neutral-200 w-10 text-right tabular-nums">
+        {pct}%
+      </span>
+    </div>
+  );
+}
