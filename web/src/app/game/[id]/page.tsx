@@ -445,6 +445,7 @@ export default function GameDetailPage({
               awayTeamAbbr={game.awayTeamAbbr}
               homeColor={homeColor}
               awayColor={awayColor}
+              isLive={isLive(status, game)}
             />
           </CollapsibleSection>
         )}

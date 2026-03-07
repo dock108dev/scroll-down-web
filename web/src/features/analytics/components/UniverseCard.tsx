@@ -1,6 +1,6 @@
 "use client";
 
-import type { ScoreOutcome } from "./types";
+import type { ScoreOutcome } from "../types";
 
 interface UniverseCardProps {
   rank: number;

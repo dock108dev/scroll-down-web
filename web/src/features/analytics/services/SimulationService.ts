@@ -1,4 +1,4 @@
-import type { SimulationResult } from "./types";
+import type { SimulationResult } from "../types";
 
 const cache = new Map<number, SimulationResult>();
 

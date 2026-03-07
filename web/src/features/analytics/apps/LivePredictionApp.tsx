@@ -1,0 +1,264 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ProbabilityBar } from "../components/ProbabilityBar";
+import {
+  getPitchPrediction,
+  getRunExpectancy,
+} from "../services/PredictionService";
+import type {
+  AnalyticsGameContext,
+  PitchProbabilities,
+} from "../types";
+import { cardDisplayName } from "@/lib/utils";
+import { useGameData } from "@/stores/game-data";
+
+const POLL_INTERVAL = 5_000;
+
+const PITCH_COLORS: Record<string, string> = {
+  ball: "#60a5fa",
+  called_strike: "#f87171",
+  swinging_strike: "#fb923c",
+  foul: "#a78bfa",
+  in_play: "#34d399",
+};
+
+const PITCH_LABELS: Record<string, string> = {
+  ball: "Ball",
+  called_strike: "Called Strike",
+  swinging_strike: "Swinging Strike",
+  foul: "Foul",
+  in_play: "In Play",
+};
+
+interface LivePredictionAppProps {
+  ctx: AnalyticsGameContext;
+  onBack: () => void;
+}
+
+interface GameState {
+  inning: number;
+  half: "top" | "bottom";
+  outs: number;
+  balls: number;
+  strikes: number;
+  baseState: number;
+  homeScore: number;
+  awayScore: number;
+}
+
+function parseBaseStateLabel(state: number): string {
+  if (state === 0) return "Bases empty";
+  const parts: string[] = [];
+  if (state & 1) parts.push("1st");
+  if (state & 2) parts.push("2nd");
+  if (state & 4) parts.push("3rd");
+  return `Runner${parts.length > 1 ? "s" : ""} on ${parts.join(", ")}`;
+}
+
+function formatHalf(half: "top" | "bottom"): string {
+  return half === "top" ? "Top" : "Bot";
+}
+
+function ordinal(n: number): string {
+  const s = ["th", "st", "nd", "rd"];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
+export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
+  const [pitchProbs, setPitchProbs] = useState<PitchProbabilities | null>(null);
+  const [runExp, setRunExp] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Get latest game core from store for live state
+  const core = useGameData((s) => s.getCore(ctx.gameId));
+
+  // Derive game state from the latest PBP/core data
+  const gameState: GameState = {
+    inning: core?.currentPeriod ?? 1,
+    half: "top",
+    outs: 0,
+    balls: 0,
+    strikes: 0,
+    baseState: 0,
+    homeScore: core?.homeScore ?? 0,
+    awayScore: core?.awayScore ?? 0,
+  };
+
+  const homeDisplay = cardDisplayName(
+    ctx.homeTeam,
+    ctx.leagueCode,
+    ctx.homeTeamAbbr,
+  );
+  const awayDisplay = cardDisplayName(
+    ctx.awayTeam,
+    ctx.leagueCode,
+    ctx.awayTeamAbbr,
+  );
+
+  const fetchPredictions = useCallback(async () => {
+    try {
+      const [pitchRes, reRes] = await Promise.all([
+        getPitchPrediction({
+          count_balls: gameState.balls,
+          count_strikes: gameState.strikes,
+        }),
+        getRunExpectancy({
+          base_state: gameState.baseState,
+          outs: gameState.outs,
+        }),
+      ]);
+      setPitchProbs(pitchRes.pitch_probabilities);
+      setRunExp(reRes.expected_runs);
+      setError(null);
+    } catch {
+      setError("Unable to load predictions.");
+    } finally {
+      setLoading(false);
+    }
+  }, [gameState.balls, gameState.strikes, gameState.baseState, gameState.outs]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchPredictions();
+  }, [fetchPredictions]);
+
+  // Auto-poll every 5s for live games
+  useEffect(() => {
+    if (!ctx.isLive) return;
+
+    intervalRef.current = setInterval(fetchPredictions, POLL_INTERVAL);
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [ctx.isLive, fetchPredictions]);
+
+  if (!ctx.isLive) {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={onBack}
+          className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+        >
+          &larr; All Tools
+        </button>
+        <div className="text-center text-sm text-neutral-500 py-8">
+          Live predictions are available during games.
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <button
+        onClick={onBack}
+        className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+      >
+        &larr; All Tools
+      </button>
+
+      <h3 className="text-section-header">What Happens Next</h3>
+
+      {/* Current Game State */}
+      <div className="card px-4 py-3 space-y-1">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+            Current State
+          </span>
+          <span className="text-xs text-neutral-600 tabular-nums">
+            Auto-updating
+          </span>
+        </div>
+
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-neutral-300">
+            {formatHalf(gameState.half)} {ordinal(gameState.inning)}
+          </span>
+          <div className="flex gap-3 text-sm tabular-nums">
+            <span className="text-neutral-400">
+              {awayDisplay}{" "}
+              <span className="text-neutral-200 font-semibold">
+                {gameState.awayScore}
+              </span>
+            </span>
+            <span className="text-neutral-400">
+              {homeDisplay}{" "}
+              <span className="text-neutral-200 font-semibold">
+                {gameState.homeScore}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 text-xs text-neutral-500">
+          <span>{parseBaseStateLabel(gameState.baseState)}</span>
+          <span>
+            {gameState.outs} out{gameState.outs !== 1 ? "s" : ""}
+          </span>
+          <span>
+            Count {gameState.balls}-{gameState.strikes}
+          </span>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-5 bg-neutral-800 rounded animate-pulse" />
+          ))}
+        </div>
+      )}
+
+      {error && (
+        <div className="text-center text-sm text-neutral-500 py-4">
+          {error}
+        </div>
+      )}
+
+      {!loading && !error && pitchProbs && (
+        <>
+          {/* Pitch Outcome Probabilities */}
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+              Next Pitch Outcome
+            </h4>
+            <div className="space-y-1.5">
+              {Object.entries(pitchProbs)
+                .sort(([, a], [, b]) => b - a)
+                .map(([key, prob]) => (
+                  <ProbabilityBar
+                    key={key}
+                    label={PITCH_LABELS[key] ?? key}
+                    probability={prob}
+                    color={PITCH_COLORS[key] ?? "#888"}
+                    labelWidth="w-32"
+                  />
+                ))}
+            </div>
+          </div>
+
+          {/* Run Expectancy */}
+          {runExp != null && (
+            <div className="card px-4 py-3">
+              <div className="text-xs font-medium text-neutral-500 uppercase tracking-wider mb-1">
+                Run Expectancy
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl font-semibold text-neutral-200 tabular-nums">
+                  {runExp.toFixed(2)}
+                </span>
+                <span className="text-xs text-neutral-500">
+                  expected runs this inning
+                </span>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

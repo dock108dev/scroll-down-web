@@ -1,22 +1,26 @@
 "use client";
 
 interface ProbabilityBarProps {
-  teamName: string;
+  label: string;
   probability: number;
   color: string;
+  labelWidth?: string;
 }
 
 export function ProbabilityBar({
-  teamName,
+  label,
   probability,
   color,
+  labelWidth = "w-28",
 }: ProbabilityBarProps) {
   const pct = Math.round(probability * 100);
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-sm text-neutral-300 w-28 truncate shrink-0">
-        {teamName}
+      <span
+        className={`text-sm text-neutral-300 truncate shrink-0 ${labelWidth}`}
+      >
+        {label}
       </span>
       <div className="flex-1 h-5 bg-neutral-800 rounded overflow-hidden">
         <div
