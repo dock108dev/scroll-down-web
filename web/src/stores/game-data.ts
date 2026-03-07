@@ -155,8 +155,8 @@ function coreFromSummary(g: GameSummary): GameCore {
     homeScore: g.homeScore ?? null,
     awayScore: g.awayScore ?? null,
     currentPeriod: g.currentPeriod,
-    gameClock: g.gameClock ?? g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel,
-    currentPeriodLabel: g.currentPeriodLabel ?? g.liveSnapshot?.periodLabel,
+    gameClock: g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? g.gameClock,
+    currentPeriodLabel: g.liveSnapshot?.periodLabel ?? g.currentPeriodLabel,
     homeTeamAbbr: g.homeTeamAbbr,
     awayTeamAbbr: g.awayTeamAbbr,
     homeTeamColorLight: g.homeTeamColorLight,
@@ -201,8 +201,8 @@ function coreFromGame(
     homeScore: lastPlay?.homeScore ?? g.homeScore ?? null,
     awayScore: lastPlay?.awayScore ?? g.awayScore ?? null,
     currentPeriod: g.currentPeriod,
-    gameClock: g.gameClock ?? g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? clockFromPlay,
-    currentPeriodLabel: g.currentPeriodLabel ?? g.liveSnapshot?.periodLabel ?? periodFromPlay,
+    gameClock: g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? clockFromPlay ?? g.gameClock,
+    currentPeriodLabel: g.liveSnapshot?.periodLabel ?? periodFromPlay ?? g.currentPeriodLabel,
     homeTeamAbbr: g.homeTeamAbbr,
     awayTeamAbbr: g.awayTeamAbbr,
     homeTeamColorLight: g.homeTeamColorLight,
@@ -352,19 +352,16 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const existing = next.get(gameId);
       if (existing) {
         const merged = { ...existing.core, ...patch };
-        // Recover gameClock / currentPeriodLabel when a patch clears them.
-        // Fallback chain: liveSnapshot → previous core value.
-        if (!merged.gameClock) {
-          merged.gameClock =
-            merged.liveSnapshot?.gameClock ??
-            merged.liveSnapshot?.timeLabel ??
-            existing.core.gameClock;
-        }
-        if (!merged.currentPeriodLabel) {
-          merged.currentPeriodLabel =
-            merged.liveSnapshot?.periodLabel ??
-            existing.core.currentPeriodLabel;
-        }
+        // liveSnapshot is SSOT for clock/period; fall back to patch/previous core.
+        merged.gameClock =
+          merged.liveSnapshot?.gameClock ??
+          merged.liveSnapshot?.timeLabel ??
+          merged.gameClock ??
+          existing.core.gameClock;
+        merged.currentPeriodLabel =
+          merged.liveSnapshot?.periodLabel ??
+          merged.currentPeriodLabel ??
+          existing.core.currentPeriodLabel;
         next.set(gameId, {
           ...existing,
           core: merged,

@@ -126,11 +126,13 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     if (!live) return "";
     const showClock = scoresVisible;
     const snapshot = useReveal.getState().getSnapshot(game.id);
-    return display?.frozen && snapshot?.periodLabel
-      ? `${snapshot.periodLabel}${snapshot.clock ? ` ${snapshot.clock}` : ""}`
-      : showClock && (game.currentPeriodLabel || game.gameClock)
-        ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
-        : "";
+    if (display?.frozen && snapshot?.periodLabel) {
+      return `${snapshot.periodLabel}${snapshot.clock ? ` ${snapshot.clock}` : ""}`;
+    }
+    if (!showClock) return "";
+    return (game.currentPeriodLabel || game.gameClock)
+      ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
+      : "";
   })();
 
   // ── Status indicator ──────────────────────────────────────────
