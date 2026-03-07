@@ -7,15 +7,7 @@ import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { useReveal } from "@/stores/reveal";
 import { useSettings } from "@/stores/settings";
 import { pickSnapshot } from "@/lib/score-display";
-import { cn, resolveTeamColor, teamColorStyle } from "@/lib/utils";
-
-function formatStartTime(dateStr: string): string {
-  return new Date(dateStr).toLocaleString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  }) + " ET";
-}
+import { cn, formatTimeET, resolveTeamColor, teamColorStyle } from "@/lib/utils";
 
 interface MiniScorebarProps {
   game: Game | GameCore;
@@ -134,7 +126,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
               {/* Pregame: start time */}
               {pregame && (
                 <span className="text-xs text-neutral-400 tabular-nums">
-                  {formatStartTime(game.gameDate)}
+                  {formatTimeET(game.gameDate)}
                 </span>
               )}
 

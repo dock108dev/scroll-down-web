@@ -7,7 +7,7 @@ import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
-import { cn, cardDisplayName } from "@/lib/utils";
+import { cn, cardDisplayName, formatTimeET } from "@/lib/utils";
 import { pickSnapshot } from "@/lib/score-display";
 
 interface GameRowProps {
@@ -18,16 +18,6 @@ interface GameRowProps {
 
 function hasNoData(game: GameCore): boolean {
   return !game.hasOdds && !game.hasPbp && !game.hasSocial && !game.hasFlow;
-}
-
-function formatGameDateTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const time = date.toLocaleString("en-US", {
-    hour: "numeric",
-    minute: "2-digit",
-    timeZone: "America/New_York",
-  });
-  return `${time} ET`;
 }
 
 function formatHistoryDateTime(dateStr: string): string {
@@ -189,7 +179,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     }
 
     if (pregame) {
-      return <span className="text-neutral-500 text-xs">{formatGameDateTime(game.gameDate)}</span>;
+      return <span className="text-neutral-500 text-xs">{formatTimeET(game.gameDate)}</span>;
     }
 
     return null;
