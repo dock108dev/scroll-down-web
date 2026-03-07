@@ -1,15 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ProbabilityBar } from "../components/ProbabilityBar";
+import { ProbabilityBar } from "../../components/ProbabilityBar";
+import { MatchupAnimation } from "./animation/MatchupAnimation";
 import {
   getPitchPrediction,
   getRunExpectancy,
-} from "../services/PredictionService";
+} from "../../services/PredictionService";
 import type {
   AnalyticsGameContext,
   PitchProbabilities,
-} from "../types";
+} from "../../types";
 import { cardDisplayName } from "@/lib/utils";
 import { useGameData } from "@/stores/game-data";
 
@@ -73,10 +74,8 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
   const [error, setError] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Get latest game core from store for live state
   const core = useGameData((s) => s.getCore(ctx.gameId));
 
-  // Derive game state from the latest PBP/core data
   const gameState: GameState = {
     inning: core?.currentPeriod ?? 1,
     half: "top",
@@ -121,15 +120,12 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
     }
   }, [gameState.balls, gameState.strikes, gameState.baseState, gameState.outs]);
 
-  // Initial fetch
   useEffect(() => {
     fetchPredictions();
   }, [fetchPredictions]);
 
-  // Auto-poll every 5s for live games
   useEffect(() => {
     if (!ctx.isLive) return;
-
     intervalRef.current = setInterval(fetchPredictions, POLL_INTERVAL);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -205,7 +201,15 @@ export function LivePredictionApp({ ctx, onBack }: LivePredictionAppProps) {
         </div>
       </div>
 
-      {loading && (
+      {/* Matchup Animation */}
+      {pitchProbs && (
+        <MatchupAnimation
+          probabilities={pitchProbs}
+          disabled={loading}
+        />
+      )}
+
+      {loading && !pitchProbs && (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-5 bg-neutral-800 rounded animate-pulse" />
