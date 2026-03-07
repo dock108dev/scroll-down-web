@@ -29,7 +29,10 @@ export default function AnalyticsPage() {
         });
         const res = await api.games(params);
         if (!cancelled) {
-          setGames(res.games ?? []);
+          const mlbOnly = (res.games ?? []).filter(
+            (g: GameSummary) => g.leagueCode?.toLowerCase() === "mlb",
+          );
+          setGames(mlbOnly);
         }
       } catch {
         // ignore
