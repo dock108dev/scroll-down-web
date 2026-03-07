@@ -65,7 +65,7 @@ export function TopNav() {
           <button
             onClick={toggleLive}
             className={cn(
-              "hidden md:flex items-center gap-2 mr-3 px-3 py-1.5 rounded-full text-xs font-medium transition",
+              "flex items-center gap-2 mr-3 px-3 py-1.5 rounded-full text-xs font-medium transition",
               followingLive
                 ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
                 : "bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
