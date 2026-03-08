@@ -10,7 +10,9 @@ export async function fetchTeams(): Promise<SimulatorTeam[]> {
   if (!res.ok) throw new Error(`Failed to fetch teams: ${res.status}`);
 
   const data = await res.json();
-  teamsCache = data.teams as SimulatorTeam[];
+  // Filter to real MLB teams (100+ games with advanced stats)
+  const allTeams = data.teams as SimulatorTeam[];
+  teamsCache = allTeams.filter((t) => t.games_with_stats >= 100);
   return teamsCache;
 }
 
