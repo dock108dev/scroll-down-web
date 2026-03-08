@@ -4,6 +4,7 @@ import type {
   GameFlowResponse,
   BetsResponse,
   FairbetLiveResponse,
+  LiveGameInfo,
 } from "./types";
 
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -21,6 +22,12 @@ export const api = {
     fetchApi<BetsResponse>(
       `/api/fairbet/odds${params ? `?${params}` : ""}`,
     ),
+  fairbetLiveGames: (league?: string) => {
+    const params = new URLSearchParams();
+    if (league) params.set("league", league);
+    const qs = params.toString();
+    return fetchApi<LiveGameInfo[]>(`/api/fairbet/live/games${qs ? `?${qs}` : ""}`);
+  },
   fairbetLive: (gameId: number, marketCategory?: string, sortBy?: string) => {
     const params = new URLSearchParams({ game_id: String(gameId) });
     if (marketCategory) params.set("market_category", marketCategory);

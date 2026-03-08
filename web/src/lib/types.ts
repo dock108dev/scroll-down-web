@@ -574,6 +574,17 @@ export interface EVDiagnostics {
   extrapolated?: number;
 }
 
+// ─── FairBet Live Game Discovery ──────────────────────────
+
+export interface LiveGameInfo {
+  game_id: number;
+  league_code: string;
+  home_team: string;
+  away_team: string;
+  game_date: string;
+  status: string;
+}
+
 // ─── FairBet Live Odds ───────────────────────────────────
 
 export interface FairbetLiveResponse {
