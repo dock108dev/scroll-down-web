@@ -35,10 +35,12 @@ export function LiveOddsPanel() {
   // Reset visible count when bets change
   const totalBets = hook.allBets.length;
   const prevBetsLen = useRef(totalBets);
-  if (prevBetsLen.current !== totalBets) {
-    prevBetsLen.current = totalBets;
-    setVisibleCount(RENDER.FAIRBET_BATCH);
-  }
+  useEffect(() => {
+    if (prevBetsLen.current !== totalBets) {
+      prevBetsLen.current = totalBets;
+      setVisibleCount(RENDER.FAIRBET_BATCH);
+    }
+  }, [totalBets]);
 
   // IntersectionObserver for infinite scroll
   useEffect(() => {
