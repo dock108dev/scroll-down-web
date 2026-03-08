@@ -36,9 +36,7 @@ npm run dev                         # http://localhost:3001
 | FairBet odds comparison with EV (Pre-Game) | Yes |
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
-| Analytics: Monte Carlo game simulations (Alternate Game Universes) | Yes |
-| Analytics: Live pitch prediction + run expectancy (What Happens Next) | Yes |
-| Analytics: Pitch matchup animation engine (SVG) | Yes |
+| MLB Matchup Simulator (Monte Carlo, Statcast-powered) | Yes |
 | Score reveal preference (spoiler-free) | Yes |
 | Reading position tracking with resume | Yes |
 | Theme selection (system / light / dark) | Yes |

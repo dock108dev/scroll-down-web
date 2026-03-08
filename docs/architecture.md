@@ -52,9 +52,8 @@ See the [Realtime Layer](#realtime-layer) section for details.
 | `GET /api/games/{id}/flow` | `/api/admin/sports/games/{id}/flow` | Game flow narrative (blocks + moments) |
 | `GET /api/fairbet/odds` | `/api/fairbet/odds` | FairBet odds with EV |
 | `GET /api/fairbet/live` | `/api/fairbet/live` | Live odds for a game (closing + live + history) |
-| `POST /api/analytics/simulate` | `/api/analytics/simulate` | Monte Carlo game simulation |
-| `GET /api/analytics/mlb/pitch-model` | `/api/analytics/mlb/pitch-model` | MLB pitch outcome probabilities |
-| `GET /api/analytics/mlb/run-expectancy` | `/api/analytics/mlb/run-expectancy` | MLB run expectancy for base/out state |
+| `GET /api/simulator/mlb/teams` | `/api/simulator/mlb/teams` | MLB teams available for simulation |
+| `POST /api/simulator/mlb` | `/api/simulator/mlb` | MLB Monte Carlo game simulation |
 
 All routes use `revalidate: 0` (no ISR caching — always fresh from backend).
 
@@ -93,9 +92,8 @@ components/
 └── shared/     # LoadingSkeleton, CollapsibleCard, SectionHeader
 
 features/
-└── analytics/  # Self-contained analytics module
-    ├── apps/   # SimulationApp, LivePredictionApp (with pitch animation engine)
-    ├── components/  # ProbabilityBar, UniverseCard, AnalyticsAppCard
+└── analytics/  # MLB Matchup Simulator
+    ├── components/  # ProbabilityBar, ScoreCard, PABreakdown
     └── services/    # SimulationService, PredictionService
 ```
 
@@ -264,11 +262,11 @@ scheduled → pregame → in_progress / live → completed / final → archived
 Helper functions: `isLive()`, `isFinal()`, `isPregame()` (in `lib/types.ts`).
 
 Content changes based on status:
-- **Pregame:** Pregame Buzz + Analytics + Odds sections
-- **Live:** Timeline + Analytics + Stats + Odds, with realtime patches
-- **Final:** Flow + Analytics + Timeline + Stats + Odds + Wrap-Up
+- **Pregame:** Pregame Buzz + Odds sections
+- **Live:** Timeline + Stats + Odds, with realtime patches
+- **Final:** Flow + Timeline + Stats + Odds + Wrap-Up
 
-The Analytics section appears for supported leagues (MLB, NBA, NHL, NCAAB) and provides access to multiple analytics apps (see [Analytics](#analytics) section below).
+The MLB Matchup Simulator is available as a standalone page (`/analytics`) — not embedded in the game detail page.
 
 ## Flow Rendering
 
@@ -330,54 +328,26 @@ CSS-variable-based light/dark mode:
 
 NBA, NCAAB, NFL, NCAAF, MLB, NHL.
 
-## Analytics
+## MLB Matchup Simulator
 
-The Analytics section is a modular analytics platform embedded in the game detail page. It appears as a collapsible section for MLB, NBA, NHL, and NCAAB games across all game statuses (pregame, live, final).
+The `/analytics` page provides an MLB matchup simulator powered by the backend's Monte Carlo engine and real Statcast data.
 
-### Architecture
+### Flow
 
-```
-AnalyticsTab (hub)
-├── AnalyticsAppGrid        # Card grid showing available tools
-├── SimulationApp            # Alternate Game Universes
-└── LivePredictionApp        # What Happens Next (MLB live only)
-    └── MatchupAnimation     # SVG pitch animation engine
-```
-
-The `AnalyticsTab` manages routing between the app grid and the active app. Each app is self-contained with its own API calls, caching, and UI.
-
-### Available Apps
-
-| App | ID | Leagues | Requires Live | Description |
-|-----|----|---------|---------------|-------------|
-| Alternate Game Universes | `simulation` | MLB, NBA, NHL, NCAAB | No | Monte Carlo simulation — win probabilities, average scores, top score outcomes |
-| What Happens Next | `live-prediction` | MLB | Yes | Pitch outcome probabilities + run expectancy with animated SVG matchup visualization |
-| Matchup Explorer | `matchup` | — | — | Placeholder (not yet implemented) |
-| Player Projections | `player-projections` | — | — | Placeholder (not yet implemented) |
+1. User selects home and away teams from dropdowns (populated via `GET /api/simulator/mlb/teams`)
+2. Clicking "Run Simulation" calls `POST /api/simulator/mlb` with team abbreviations
+3. Results display: win probabilities, expected scores, top 10 most likely final scores, and PA probability profiles
 
 ### API Integration
 
 | Client Route | Backend Endpoint | Method | Purpose |
 |---|---|---|---|
-| `/api/analytics/simulate` | `/api/analytics/simulate` | POST | Monte Carlo game simulation (5000 iterations, ensemble mode) |
-| `/api/analytics/mlb/pitch-model` | `/api/analytics/mlb/pitch-model` | GET | Pitch outcome probabilities (ball, strike, foul, in play) |
-| `/api/analytics/mlb/run-expectancy` | `/api/analytics/mlb/run-expectancy` | GET | Expected runs for base/out state |
+| `/api/simulator/mlb/teams` | `/api/simulator/mlb/teams` | GET | List MLB teams available for simulation |
+| `/api/simulator/mlb` | `/api/simulator/mlb` | POST | Run Monte Carlo simulation (5000 iterations, ML probability mode) |
 
 ### Caching
 
-- **Simulation results:** Cached per game ID in a module-level `Map`. Runs once per session — survives re-renders but clears on page reload.
-- **Pitch predictions:** 10-second TTL cache. Auto-polls every 5 seconds during live games.
-- **Run expectancy:** 10-second TTL cache. Fetched alongside pitch predictions.
-
-### Pitch Animation Engine
-
-The `LivePredictionApp` includes an SVG-based pitch matchup animation (`MatchupAnimation`) that visually simulates pitcher-batter interactions using API-driven probabilities.
-
-- Pure SVG + `requestAnimationFrame` — no external animation libraries
-- ~1.8 second animation timeline: windup → release → ball travel (quadratic bezier) → swing → outcome
-- Outcome sampled from probability distribution (`sampleOutcome()`)
-- Five outcome animations: ball (no swing), called strike (no swing), swinging strike, foul (pop-up trajectory), in play (field trajectory)
-- Overlay shows outcome label and probability percentage
+Simulation results are cached per matchup key (`home-away-iterations`) in a module-level `Map`. Team list is cached after first fetch. Both clear on page reload.
 
 ## Known Limitations
 

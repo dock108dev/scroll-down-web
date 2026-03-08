@@ -30,10 +30,10 @@ src/
 │   ├── fairbet/page.tsx      # FairBet odds (Pre-Game + Live tabs)
 │   ├── history/page.tsx      # Historical game browsing
 │   ├── settings/page.tsx     # User preferences
-│   └── api/                  # Server-side API proxy routes (8 routes)
+│   └── api/                  # Server-side API proxy routes
 │       ├── games/            # Game list, detail, flow
 │       ├── fairbet/          # FairBet pre-game odds, live odds
-│       └── analytics/        # Simulation, MLB pitch model, run expectancy
+│       └── simulator/        # MLB matchup simulator
 ├── components/
 │   ├── home/                 # GameRow, TimelineSection, SearchBar, PinnedBar
 │   ├── game/                 # GameHeader, FlowContainer, TimelineSection, StatsSection,
@@ -44,17 +44,10 @@ src/
 │   ├── layout/               # TopNav, BottomTabs, ThemeProvider, SettingsDrawer, RealtimeProvider
 │   └── shared/               # LoadingSkeleton, CollapsibleCard, SectionHeader
 ├── features/
-│   └── analytics/            # Analytics tab: modular analytics app framework
-│       ├── AnalyticsTab.tsx   # Hub — routes between app grid and active app
-│       ├── AnalyticsAppGrid.tsx # Displays available analytics tools as cards
-│       ├── types.ts           # Shared analytics types
-│       ├── apps/
-│       │   ├── SimulationApp.tsx           # Alternate Game Universes (Monte Carlo)
-│       │   └── LivePredictionApp/          # What Happens Next
-│       │       ├── LivePredictionApp.tsx    # Pitch predictions + run expectancy
-│       │       └── animation/              # SVG pitch matchup animation engine
-│       ├── components/        # ProbabilityBar, UniverseCard, AnalyticsAppCard
-│       └── services/          # SimulationService, PredictionService (API + caching)
+│   └── analytics/            # MLB Matchup Simulator
+│       ├── types.ts           # Simulator types (teams, results, PA probabilities)
+│       ├── components/        # ProbabilityBar, ScoreCard, PABreakdown
+│       └── services/          # SimulatorService (API + caching)
 ├── hooks/
 │   ├── useGamesList.ts       # Home feed: realtime patches, visibility-driven refresh
 │   ├── useGameDetail.ts      # Game detail: realtime patches, visibility-driven refresh

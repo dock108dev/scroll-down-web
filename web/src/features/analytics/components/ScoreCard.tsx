@@ -1,32 +1,35 @@
 "use client";
 
-import type { ScoreOutcome } from "../types";
-
-interface UniverseCardProps {
+interface ScoreCardProps {
   rank: number;
-  outcome: ScoreOutcome;
-  homeTeam: string;
+  score: string;
+  probability: number;
   awayTeam: string;
-  homeColor: string;
+  homeTeam: string;
   awayColor: string;
+  homeColor: string;
 }
 
-export function UniverseCard({
+export function ScoreCard({
   rank,
-  outcome,
-  homeTeam,
+  score,
+  probability,
   awayTeam,
-  homeColor,
+  homeTeam,
   awayColor,
-}: UniverseCardProps) {
-  const homeWins = outcome.home > outcome.away;
-  const pct = (outcome.frequency * 100).toFixed(1);
+  homeColor,
+}: ScoreCardProps) {
+  const pct = (probability * 100).toFixed(1);
+
+  // score format is "away-home" e.g. "4-5"
+  const [awayScore, homeScore] = score.split("-").map(Number);
+  const homeWins = homeScore > awayScore;
 
   return (
     <div className="card px-4 py-3 space-y-2">
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-neutral-500">
-          Universe #{rank}
+          #{rank}
         </span>
         <span className="text-xs text-neutral-500 tabular-nums">
           {pct}% of simulations
@@ -45,7 +48,7 @@ export function UniverseCard({
           className="text-lg font-semibold tabular-nums"
           style={{ color: !homeWins ? awayColor : undefined }}
         >
-          {outcome.away}
+          {awayScore}
         </span>
       </div>
 
@@ -61,7 +64,7 @@ export function UniverseCard({
           className="text-lg font-semibold tabular-nums"
           style={{ color: homeWins ? homeColor : undefined }}
         >
-          {outcome.home}
+          {homeScore}
         </span>
       </div>
     </div>
