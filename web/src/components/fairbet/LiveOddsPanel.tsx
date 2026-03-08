@@ -29,18 +29,10 @@ export function LiveOddsPanel() {
   const [showExplainer, setShowExplainer] = useState(false);
 
   // Progressive rendering
-  const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  // Reset visible count when bets change
   const totalBets = hook.allBets.length;
-  const prevBetsLen = useRef(totalBets);
-  useEffect(() => {
-    if (prevBetsLen.current !== totalBets) {
-      prevBetsLen.current = totalBets;
-      setVisibleCount(RENDER.FAIRBET_BATCH);
-    }
-  }, [totalBets]);
+  const prevTotalRef = useRef(totalBets);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
 
   // IntersectionObserver for infinite scroll
   useEffect(() => {
@@ -49,6 +41,12 @@ export function LiveOddsPanel() {
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
+          // Reset if total changed since last observation
+          if (prevTotalRef.current !== totalBets) {
+            prevTotalRef.current = totalBets;
+            setVisibleCount(RENDER.FAIRBET_BATCH);
+            return;
+          }
           setVisibleCount((c) => c + RENDER.FAIRBET_BATCH);
         }
       },
