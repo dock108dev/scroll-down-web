@@ -27,6 +27,37 @@ function abbreviateName(fullName: string): string {
   return `${firstName[0]}. ${lastName}${suffix}`;
 }
 
+// ─── Sorting helpers ────────────────────────────────────────────
+
+/** Compute plate appearances for sorting: PA = AB + BB + HBP + SF + SH (fallback to AB + BB) */
+function getPlateAppearances(b: MLBBatterStat): number {
+  const raw = b.rawStats ?? {};
+  // Check for explicit PA in rawStats
+  const pa = raw.plateAppearances ?? raw.pa ?? raw.PA;
+  if (pa != null && typeof pa === "number") return pa;
+  // Compute from available fields
+  const ab = b.atBats ?? 0;
+  const bb = b.baseOnBalls ?? 0;
+  const hbp = (typeof raw.hitByPitch === "number" ? raw.hitByPitch : 0) +
+    (typeof raw.hbp === "number" ? raw.hbp : 0 );
+  const sf = typeof raw.sacFlies === "number" ? raw.sacFlies :
+    typeof raw.sf === "number" ? raw.sf : 0;
+  const sh = typeof raw.sacBunts === "number" ? raw.sacBunts :
+    typeof raw.sh === "number" ? raw.sh : 0;
+  return ab + bb + hbp + sf + sh;
+}
+
+/** Parse IP string (e.g. "5.2" means 5 and 2/3 innings) to numeric value for sorting */
+function parseInningsPitched(ip: string | null | undefined): number {
+  if (!ip) return -1;
+  const num = Number(ip);
+  if (isNaN(num)) return -1;
+  // In baseball, "5.2" means 5 and 2/3 innings
+  const whole = Math.floor(num);
+  const frac = Math.round((num - whole) * 10);
+  return whole + frac / 3;
+}
+
 // ─── Batters table ──────────────────────────────────────────────
 
 interface MLBBattersTableProps {
@@ -34,7 +65,8 @@ interface MLBBattersTableProps {
   batters: MLBBatterStat[];
 }
 
-export function MLBBattersTable({ title, batters }: MLBBattersTableProps) {
+export function MLBBattersTable({ title, batters: rawBatters }: MLBBattersTableProps) {
+  const batters = [...rawBatters].sort((a, b) => getPlateAppearances(b) - getPlateAppearances(a));
   if (batters.length === 0) return null;
 
   return (
@@ -53,6 +85,7 @@ export function MLBBattersTable({ title, batters }: MLBBattersTableProps) {
               >
                 Player
               </th>
+              <th className="text-right px-2 py-2 font-medium">PA</th>
               <th className="text-right px-2 py-2 font-medium">AB</th>
               <th className="text-right px-2 py-2 font-medium">H</th>
               <th className="text-right px-2 py-2 font-medium">R</th>
@@ -79,6 +112,9 @@ export function MLBBattersTable({ title, batters }: MLBBattersTableProps) {
                   title={b.playerName}
                 >
                   {abbreviateName(b.playerName)}
+                </td>
+                <td className="text-right px-2 py-1.5 tabular-nums">
+                  {getPlateAppearances(b) || "-"}
                 </td>
                 <td className="text-right px-2 py-1.5 tabular-nums">
                   {b.atBats ?? "-"}
@@ -132,7 +168,10 @@ interface MLBPitchersTableProps {
   pitchers: MLBPitcherStat[];
 }
 
-export function MLBPitchersTable({ title, pitchers }: MLBPitchersTableProps) {
+export function MLBPitchersTable({ title, pitchers: rawPitchers }: MLBPitchersTableProps) {
+  const pitchers = [...rawPitchers].sort(
+    (a, b) => parseInningsPitched(b.inningsPitched) - parseInningsPitched(a.inningsPitched),
+  );
   if (pitchers.length === 0) return null;
 
   return (

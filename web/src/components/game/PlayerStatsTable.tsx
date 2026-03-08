@@ -240,12 +240,29 @@ function deduplicatePlayers(players: PlayerStat[]): PlayerStat[] {
   return Array.from(byName.values());
 }
 
+/** Extract numeric minutes value for sorting */
+function getMinutesValue(player: PlayerStat): number {
+  if (player.minutes != null) return player.minutes;
+  const raw = player.rawStats ?? {};
+  const val = resolveAlias(raw, ["minutes", "min", "mins", "minutesPlayed"]);
+  if (val == null) return -1;
+  const str = String(val);
+  // Handle "MM:SS" format
+  if (str.includes(":")) {
+    const [m, s] = str.split(":");
+    return Number(m) + Number(s) / 60;
+  }
+  const num = Number(val);
+  return isNaN(num) ? -1 : num;
+}
+
 export function PlayerStatsTable({
   title,
   players: rawPlayers,
   leagueCode = "nba",
 }: PlayerStatsTableProps) {
-  const players = deduplicatePlayers(rawPlayers);
+  const players = deduplicatePlayers(rawPlayers)
+    .sort((a, b) => getMinutesValue(b) - getMinutesValue(a));
   if (players.length === 0) return null;
 
   const sportColumns = getColumnsForSport(leagueCode);

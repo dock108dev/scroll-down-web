@@ -46,6 +46,19 @@ function formatSvPct(svPct: number | undefined): string {
   return `.${Math.round(pct * 1000)}`;
 }
 
+// ─── TOI parsing ────────────────────────────────────────────────
+
+/** Parse TOI string ("MM:SS") to total seconds for sorting */
+function parseTOI(toi: string | undefined): number {
+  if (!toi) return -1;
+  if (toi.includes(":")) {
+    const [m, s] = toi.split(":");
+    return Number(m) * 60 + Number(s);
+  }
+  const num = Number(toi);
+  return isNaN(num) ? -1 : num;
+}
+
 // ─── Skaters table ──────────────────────────────────────────────
 
 interface NHLSkatersTableProps {
@@ -53,7 +66,8 @@ interface NHLSkatersTableProps {
   skaters: NHLSkaterStat[];
 }
 
-export function NHLSkatersTable({ title, skaters }: NHLSkatersTableProps) {
+export function NHLSkatersTable({ title, skaters: rawSkaters }: NHLSkatersTableProps) {
+  const skaters = [...rawSkaters].sort((a, b) => parseTOI(b.toi) - parseTOI(a.toi));
   if (skaters.length === 0) return null;
 
   return (
@@ -157,7 +171,8 @@ interface NHLGoaliesTableProps {
   goalies: NHLGoalieStat[];
 }
 
-export function NHLGoaliesTable({ title, goalies }: NHLGoaliesTableProps) {
+export function NHLGoaliesTable({ title, goalies: rawGoalies }: NHLGoaliesTableProps) {
+  const goalies = [...rawGoalies].sort((a, b) => parseTOI(b.toi) - parseTOI(a.toi));
   if (goalies.length === 0) return null;
 
   return (
