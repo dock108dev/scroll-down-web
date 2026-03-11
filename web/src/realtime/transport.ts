@@ -52,10 +52,11 @@ type MessageHandler = (event: RealtimeEvent) => void;
 // ── Fix 1: Robust URL helpers ───────────────────────────────────
 
 function resolveBaseUrl(): string {
-  if (typeof window === "undefined") return "https://sports-data-admin.dock108.ai";
+  const fallback = "https://sports-data-admin.dock108.ai";
+  if (typeof window === "undefined") return fallback;
   const env = process.env.NEXT_PUBLIC_API_BASE_URL;
   if (env) return env;
-  return window.location.origin;
+  return fallback;
 }
 
 function toWsUrl(baseHttpUrl: string, path = "/v1/ws"): string {
