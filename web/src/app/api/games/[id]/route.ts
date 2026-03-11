@@ -1,16 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiFetch, ApiError } from "@/lib/api-server";
+import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
 import type { GameDetailResponse } from "@/lib/types";
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
   try {
     const data = await apiFetch<GameDetailResponse>(
       `/api/admin/sports/games/${id}`,
-      { revalidate: 0 },
+      { headers: forwardAuth(req), revalidate: 0 },
     );
     return NextResponse.json(data);
   } catch (err) {

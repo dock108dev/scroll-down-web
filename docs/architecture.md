@@ -18,7 +18,7 @@ Two data paths exist: REST for initial loads and realtime for live updates.
 Browser (React)
     ↓ fetch("/api/games")
 Next.js API Route (server-side)
-    ↓ apiFetch() with X-API-Key header
+    ↓ apiFetch() with X-API-Key + optional Authorization header
 Backend API (sports-data-admin.dock108.ai)
     ↓ JSON response
 Next.js API Route
@@ -26,7 +26,7 @@ Next.js API Route
 Browser → React hook → Component re-render
 ```
 
-All backend calls go through Next.js API routes (`/api/*`), which add the `X-API-Key` header server-side. The API key is never exposed to the browser.
+All backend calls go through Next.js API routes (`/api/*`), which add the `X-API-Key` header server-side. The API key is never exposed to the browser. When the user is authenticated, the client-side fetch wrapper includes a `Bearer` token, and the proxy routes forward it to the backend via `forwardAuth()`.
 
 ### Realtime (Live Updates)
 
@@ -52,10 +52,46 @@ See the [Realtime Layer](#realtime-layer) section for details.
 | `GET /api/games/{id}/flow` | `/api/admin/sports/games/{id}/flow` | Game flow narrative (blocks + moments) |
 | `GET /api/fairbet/odds` | `/api/fairbet/odds` | FairBet odds with EV |
 | `GET /api/fairbet/live` | `/api/fairbet/live` | Live odds for a game (closing + live + history) |
+| `GET /api/fairbet/live/games` | `/api/fairbet/live/games` | Live games with odds available |
 | `GET /api/simulator/mlb/teams` | `/api/simulator/mlb/teams` | MLB teams available for simulation |
 | `POST /api/simulator/mlb` | `/api/simulator/mlb` | MLB Monte Carlo game simulation |
+| `* /api/auth/*` | `/auth/*` | Authentication (login, signup, me, email, password, delete) |
 
-All routes use `revalidate: 0` (no ISR caching — always fresh from backend).
+Data routes use `revalidate: 0` (no ISR caching — always fresh from backend). FairBet and auth routes forward the `Authorization` header when present. Auth routes do not send `X-API-Key` — they are public endpoints on the backend.
+
+## Authentication
+
+JWT-based authentication with three roles:
+
+| Role | Assignment | Access |
+|---|---|---|
+| `guest` | Default (no token) | Games, settings, pregame FairBet |
+| `user` | Signed up / logged in | Everything guest + full FairBet, analytics |
+| `admin` | Backend-assigned | Everything user + history |
+
+### Flow
+
+1. User signs up or logs in via `/login` page
+2. Backend returns a JWT `access_token` and `role`
+3. Token is stored in the `auth` Zustand store (persisted to localStorage)
+4. `AuthProvider` validates the token on app mount via `GET /auth/me`; clears it on 401
+5. Client-side `fetchApi()` attaches `Authorization: Bearer <token>` to all requests
+6. Proxy routes forward the header to the backend via `forwardAuth()`
+
+### Feature Gating
+
+`AuthGate` provides soft, non-blocking access control. When the user lacks the required role, it shows a signup prompt instead of the content. No hard walls — the app stays open and informational.
+
+Currently gated:
+- **FairBet Live tab** — requires `user` role
+- **Analytics (MLB Simulator)** — requires `user` role
+- **History** — API returns 403 for non-admin; page shows graceful message
+
+### Navigation
+
+- **Forgot password:** Login page links to `/forgot-password` → user enters email → backend sends reset link → `/reset-password?token=...` → user sets new password
+- **Guest:** "Log In" link in desktop nav, Account section in Settings shows login/signup links
+- **Authenticated:** Email initial avatar in desktop nav linking to `/profile`, Account section in Settings shows email, role, manage/logout
 
 ## Pages
 
@@ -63,9 +99,14 @@ All routes use `revalidate: 0` (no ISR caching — always fresh from backend).
 |---|---|---|
 | `/` | Home | Game feed by date section (Yesterday, Today) with search, league filter, pinned games |
 | `/game/[id]` | Game Detail | Full game view with flow, timeline, stats, odds, social |
-| `/fairbet` | FairBet | Pre-Game tab (EV odds comparison + parlay) and Live tab (in-game odds movement) |
+| `/fairbet` | FairBet | Pre-Game tab (EV odds comparison + parlay) and Live tab (in-game odds movement, requires login) |
+| `/analytics` | Analytics | MLB Matchup Simulator — Monte Carlo simulation with Statcast data (requires login) |
 | `/history` | History | Browse past games by date range with search, sort, infinite scroll |
-| `/settings` | Settings | Theme, score reveal mode, odds format preferences |
+| `/login` | Login | Login and signup with tab switching, client-side validation |
+| `/forgot-password` | Forgot Password | Email entry for password reset link |
+| `/reset-password` | Reset Password | New password form with token from email link |
+| `/profile` | Profile | Account management — change email, change password, delete account |
+| `/settings` | Settings | Theme, score reveal mode, odds format, account section |
 
 ## Component Architecture
 
@@ -74,7 +115,7 @@ Pages are thin orchestrators. Hooks fetch data, stores provide persisted state, 
 ```
 page.tsx (route)
     ├─ useGamesList() / useGameDetail() / useFairBetOdds()   # Data fetching
-    ├─ useSettings() / useReveal()                           # Zustand state
+    ├─ useSettings() / useReveal() / useAuth()               # Zustand state
     └─ <TimelineSection> / <GameHeader> / <BetCard>          # Components
 ```
 
@@ -82,6 +123,7 @@ Components are organized by feature:
 
 ```
 components/
+├── auth/       # AuthProvider, AuthGate
 ├── home/       # GameRow, TimelineSection, SearchBar, PinnedBar
 ├── game/       # GameHeader, FlowContainer, TimelineSection, StatsSection,
 │               # OddsSection, MiniScorebar, WrapUpSection, PregameBuzzSection, SocialSection, etc.
@@ -94,7 +136,7 @@ components/
 features/
 └── analytics/  # MLB Matchup Simulator
     ├── components/  # ProbabilityBar, ScoreCard, PABreakdown
-    └── services/    # SimulationService, PredictionService
+    └── services/    # SimulatorService
 ```
 
 ## Realtime Layer
@@ -121,7 +163,7 @@ Single global event handler registered on the transport. Routes events by type:
 | `fairbet_patch` | `fairbet:odds` | Sets `needsFairbetRefresh` flag |
 
 **Sequence handling:** Each channel tracks a sequence number. Events are checked before application:
-- **Duplicate** (seq ≤ last): silently dropped
+- **Duplicate** (seq <= last): silently dropped
 - **Gap** (seq > last + 1): channel marked as desynced, recovery triggered
 - **OK** (seq = last + 1): applied normally, seq committed
 
@@ -213,10 +255,11 @@ Computes visible score state by combining core data, reveal state, and settings.
 
 ## State Management
 
-Five Zustand stores persist to localStorage. Three more are in-memory only.
+Six Zustand stores persist to localStorage. Three more are in-memory only.
 
 | Store | Key | Purpose |
 |---|---|---|
+| `auth` | `sd-auth` | JWT token, role, email, userId for authentication |
 | `settings` | `sd-settings` | Theme, odds format, score reveal mode, preferred book, section expansion |
 | `reveal` | `sd-read-state` | Score reveal state with frozen snapshots for live games |
 | `reading-position` | `sd-reading-position` | Per-game scroll position and score snapshot |
@@ -313,7 +356,7 @@ Additional behaviors:
 - Parlay selection state and client-side evaluation
 - Bet enrichment: adding camelCase aliases to snake_case API fields (`enrichBet()`)
 
-**Live tab:** Displays closing lines (captured at game start), current live odds from Redis, and movement history for a selected game. Per-game, per-market view with 15-second auto-refresh.
+**Live tab:** Displays closing lines (captured at game start), current live odds from Redis, and movement history for a selected game. Per-game, per-market view with 15-second auto-refresh. Requires `user` role — guests see a signup prompt.
 
 ## Theming
 
@@ -330,7 +373,7 @@ NBA, NCAAB, NFL, NCAAF, MLB, NHL.
 
 ## MLB Matchup Simulator
 
-The `/analytics` page provides an MLB matchup simulator powered by the backend's Monte Carlo engine and real Statcast data.
+The `/analytics` page provides an MLB matchup simulator powered by the backend's Monte Carlo engine and real Statcast data. Requires `user` role.
 
 ### Flow
 
@@ -343,7 +386,9 @@ The `/analytics` page provides an MLB matchup simulator powered by the backend's
 | Client Route | Backend Endpoint | Method | Purpose |
 |---|---|---|---|
 | `/api/simulator/mlb/teams` | `/api/simulator/mlb/teams` | GET | List MLB teams available for simulation |
-| `/api/simulator/mlb` | `/api/simulator/mlb` | POST | Run Monte Carlo simulation (5000 iterations, ML probability mode) |
+| `/api/simulator/mlb` | `/api/simulator/mlb` | POST | Run Monte Carlo simulation (5000 default iterations) |
+
+The downstream `/api/simulator/mlb` endpoint uses ML probability mode by default — no mode parameter is sent from the client.
 
 ### Caching
 
@@ -351,9 +396,9 @@ Simulation results are cached per matchup key (`home-away-iterations`) in a modu
 
 ## Known Limitations
 
-- **No authentication** — No user accounts. All state is local to the browser via localStorage.
 - **No service worker** — Cache is in-memory only, cleared on page reload.
 - **No offline support** — Requires network connectivity.
 - **Parlay assumes independent legs** — Client-side `parlayProbIndependent()` multiplies leg probabilities; no correlation modeling.
 - **FairBet client-side fallback removed** — All EV computation is server-side. If the server doesn't provide EV data for a bet, it's displayed without EV.
 - **Live odds polling** — `useFairBetLive` uses 15s polling rather than realtime. The `fairbet:odds` realtime channel covers pre-game odds only.
+- **Forgot-password depends on backend** — The web app has `/forgot-password` and `/reset-password` pages that call `POST /auth/forgot-password` and `POST /auth/reset-password`. These backend endpoints must be implemented to send reset emails and validate tokens.

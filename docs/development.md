@@ -111,9 +111,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Most likely final scores display as ranked cards
 - [ ] PA probability profiles show for both teams when profiles are loaded
 - [ ] "Using league-average defaults" warning appears when profiles are not loaded
-- [ ] What Happens Next: outcome overlay shows correct label and probability
-- [ ] Back navigation ("All Tools") returns to app grid
-- [ ] Simulation results cache per game (no duplicate API calls on re-open)
+- [ ] AuthGate blocks guests with signup prompt
 
 ### FairBet
 - [ ] Pre-Game tab: odds load with progressive pagination
@@ -132,6 +130,26 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Sort modes work (Away, Home, Time)
 - [ ] Infinite scroll loads more games
 - [ ] URL params persist across navigation
+
+### Authentication
+- [ ] Login with valid credentials succeeds and redirects to `/`
+- [ ] Login with wrong credentials shows "Invalid email or password"
+- [ ] Signup with new email succeeds and redirects to `/`
+- [ ] Signup with existing email shows "An account with this email already exists"
+- [ ] Signup validates: email format, password min 8 chars, confirm match
+- [ ] Auth state persists across page refresh (token in localStorage)
+- [ ] Expired token clears on next `/auth/me` call (auto-logout)
+- [ ] 401 from any API route triggers auto-logout
+- [ ] Guest sees "Log In" in top nav; authenticated user sees avatar initial
+- [ ] Profile page: change email, change password, delete account all work
+- [ ] Settings page: guests see "Sign in to sync" prompt; users see email + role + logout
+- [ ] AuthGate on FairBet Live tab shows signup prompt for guests
+- [ ] AuthGate on Analytics page shows signup prompt for guests
+- [ ] "Forgot password?" link on login page navigates to `/forgot-password`
+- [ ] Forgot password: submitting email shows confirmation message
+- [ ] Reset password: page without `?token=` shows invalid link state
+- [ ] Reset password: valid token + new password redirects to login on success
+- [ ] Reset password: expired/invalid token shows error with link to request new one
 
 ### Settings
 - [ ] Theme toggle works (system, light, dark)
@@ -165,6 +183,12 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - Ensure `@theme` (not `@theme inline`) in `globals.css`
 - Check for hardcoded `text-white`, `bg-white`, or inline `style={{ color: "white" }}` — use `text-neutral-50`, `bg-neutral-50`, or `var(--ds-text-primary)` instead
 - FairBet components should use `var(--fb-*)` CSS variables for backgrounds/borders
+
+**Auth issues (401 / unexpected logout):**
+- Check that `sd-auth` key in localStorage has a valid JWT token
+- Expired tokens are cleared automatically on the next `/auth/me` call
+- API routes forward the Authorization header via `forwardAuth()` — verify it's included in the route handler
+- Auth proxy (`/api/auth/*`) does NOT send X-API-Key — this is intentional
 
 **Realtime not connecting:**
 - Check browser console for WebSocket connection errors

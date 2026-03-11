@@ -1,4 +1,4 @@
-const BASE_URL =
+export const BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   "https://sports-data-admin.dock108.ai";
 const API_KEY = process.env.SPORTS_DATA_API_KEY || "";
@@ -43,6 +43,16 @@ function deepFixStrings<T>(obj: T): T {
     return fixed as T;
   }
   return obj;
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+
+/** Extract Authorization header from an incoming request to forward upstream. */
+export function forwardAuth(
+  req: { headers: { get(name: string): string | null } },
+): Record<string, string> {
+  const auth = req.headers.get("authorization");
+  return auth ? { Authorization: auth } : {};
 }
 
 // ── Fetch wrapper ───────────────────────────────────────────

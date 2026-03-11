@@ -1,7 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useSettings } from "@/stores/settings";
+import { useAuth } from "@/stores/auth";
 import { cn } from "@/lib/utils";
+import { Section, Row } from "@/components/shared/FormPrimitives";
 
 const KNOWN_BOOKS = [
   "DraftKings",
@@ -35,11 +38,68 @@ export function SettingsContent() {
     toggleTimelineTier,
   } = useSettings();
 
+  const { token, email: authEmail, role, logout } = useAuth();
+
   return (
     <div className="space-y-6">
+      {/* ─── Account ──────────────────────────────────────── */}
+      <Section title="Account">
+        {token ? (
+          <>
+            <div className="px-4 py-3">
+              <p className="text-sm text-neutral-200">{authEmail}</p>
+              <span
+                className={cn(
+                  "inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full",
+                  role === "admin"
+                    ? "bg-purple-500/20 text-purple-400"
+                    : "bg-blue-500/20 text-blue-400",
+                )}
+              >
+                {role}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <Link
+                href="/profile"
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Manage Account
+              </Link>
+              <button
+                onClick={logout}
+                className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
+              >
+                Log Out
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-neutral-500">
+              Sign in to sync your preferences and access all features
+            </p>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Log In
+              </Link>
+              <Link
+                href="/login?tab=signup"
+                className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
+              >
+                Sign Up
+              </Link>
+            </div>
+          </div>
+        )}
+      </Section>
+
       {/* ─── Appearance ──────────────────────────────────── */}
-      <SettingsSection title="Appearance">
-        <SettingsRow label="Theme">
+      <Section title="Appearance">
+        <Row label="Theme">
           <SegmentedControl
             options={[
               { value: "system", label: "System" },
@@ -49,11 +109,11 @@ export function SettingsContent() {
             value={theme}
             onChange={(v) => setTheme(v as "system" | "light" | "dark")}
           />
-        </SettingsRow>
-      </SettingsSection>
+        </Row>
+      </Section>
 
       {/* ─── Recaps — Default Expanded ──────────────────── */}
-      <SettingsSection title="Recaps — Default Expanded">
+      <Section title="Recaps — Default Expanded">
         {HOME_SECTIONS.map((section) => (
           <SettingsCheckRow
             key={section}
@@ -62,10 +122,10 @@ export function SettingsContent() {
             onToggle={() => toggleHomeSection(section)}
           />
         ))}
-      </SettingsSection>
+      </Section>
 
       {/* ─── Timeline — Default Tiers ────────────────────── */}
-      <SettingsSection title="Timeline — Default Tiers">
+      <Section title="Timeline — Default Tiers">
         {([
           { tier: 1, label: "Key Plays", desc: "Scoring, turnovers, big moments" },
           { tier: 2, label: "Secondary", desc: "Fouls, rebounds, stoppages" },
@@ -91,11 +151,11 @@ export function SettingsContent() {
             You can also toggle tiers per-game from the timeline header.
           </p>
         </div>
-      </SettingsSection>
+      </Section>
 
       {/* ─── Score Display ──────────────────────────────── */}
-      <SettingsSection title="Score Display">
-        <SettingsRow label="Score visibility">
+      <Section title="Score Display">
+        <Row label="Score visibility">
           <DarkSelect
             value={scoreRevealMode}
             onChange={(v) =>
@@ -109,18 +169,18 @@ export function SettingsContent() {
               { value: "always", label: "Always show scores" },
             ]}
           />
-        </SettingsRow>
+        </Row>
         <div className="px-4 pb-3 pt-2">
           <p className="text-xs text-neutral-500 leading-relaxed">
             Spoiler free hides scores until you tap. &apos;Always show&apos;
             displays live and final scores automatically.
           </p>
         </div>
-      </SettingsSection>
+      </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
-      <SettingsSection title="Odds">
-        <SettingsRow label="Default Book">
+      <Section title="Odds">
+        <Row label="Default Book">
           <DarkSelect
             value={preferredSportsbook}
             onChange={setPreferredSportsbook}
@@ -132,8 +192,8 @@ export function SettingsContent() {
               })),
             ]}
           />
-        </SettingsRow>
-        <SettingsRow label="Odds Format">
+        </Row>
+        <Row label="Odds Format">
           <SegmentedControl
             options={[
               { value: "american", label: "American" },
@@ -141,10 +201,10 @@ export function SettingsContent() {
             ]}
             value={oddsFormat}
             onChange={(v) =>
-              setOddsFormat(v as "american" | "decimal" | "fractional")
+              setOddsFormat(v as "american" | "decimal")
             }
           />
-        </SettingsRow>
+        </Row>
         <SettingsToggle
           label="Hide Thin Markets"
           checked={hideLimitedData}
@@ -157,7 +217,7 @@ export function SettingsContent() {
             estimate is just one book&apos;s opinion.
           </p>
         </div>
-      </SettingsSection>
+      </Section>
 
       {/* ─── Disclaimer ────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
@@ -183,13 +243,13 @@ export function SettingsContent() {
       </div>
 
       {/* ─── About ──────────────────────────────────────── */}
-      <SettingsSection title="About">
-        <SettingsRow label="Version">
+      <Section title="About">
+        <Row label="Version">
           <span className="text-sm text-neutral-400">0.1.0</span>
-        </SettingsRow>
-        <SettingsRow label="Build">
+        </Row>
+        <Row label="Build">
           <span className="text-sm text-neutral-400">Web</span>
-        </SettingsRow>
+        </Row>
         <div className="px-4 py-3 space-y-2">
           <a
             href="https://scrolldownsports.dev"
@@ -216,46 +276,12 @@ export function SettingsContent() {
             Terms of Service
           </a>
         </div>
-      </SettingsSection>
+      </Section>
     </div>
   );
 }
 
-/* ─── Shared Sub-components ──────────────────────────────────────── */
-
-function SettingsSection({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-1">
-      <h2 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide px-1 mb-2">
-        {title}
-      </h2>
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800">
-        {children}
-      </div>
-    </div>
-  );
-}
-
-function SettingsRow({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between px-4 py-3">
-      <span className="text-sm text-neutral-200">{label}</span>
-      {children}
-    </div>
-  );
-}
+/* ─── Settings-specific Sub-components ──────────────────────────── */
 
 function SettingsToggle({
   label,
