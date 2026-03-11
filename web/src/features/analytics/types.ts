@@ -7,11 +7,6 @@ export interface SimulatorTeam {
   games_with_stats: number;
 }
 
-export interface SimulatorTeamsResponse {
-  teams: SimulatorTeam[];
-  count: number;
-}
-
 export interface MostCommonScore {
   score: string;
   probability: number;

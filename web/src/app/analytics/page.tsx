@@ -12,6 +12,7 @@ import type {
 import { ProbabilityBar } from "@/features/analytics/components/ProbabilityBar";
 import { ScoreCard } from "@/features/analytics/components/ScoreCard";
 import { PABreakdown } from "@/features/analytics/components/PABreakdown";
+import { AuthGate } from "@/components/auth/AuthGate";
 
 const HOME_COLOR = "#1d4ed8";
 const AWAY_COLOR = "#dc2626";
@@ -76,6 +77,11 @@ export default function AnalyticsPage() {
           Monte Carlo simulation powered by real Statcast data.
         </p>
       </div>
+
+      <AuthGate
+        minRole="user"
+        message="Sign up for free to access the matchup simulator"
+      >
 
       {/* Team Pickers */}
       <div className="grid grid-cols-2 gap-3">
@@ -269,6 +275,8 @@ export default function AnalyticsPage() {
           </div>
         </div>
       )}
+
+      </AuthGate>
     </div>
   );
 }

@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://sports-data-admin.dock108.ai";
+import { BASE_URL } from "@/lib/api-server";
 
 /**
  * Auth proxy — forwards requests to /auth/* on the backend.

@@ -7,10 +7,6 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { home_team, away_team, iterations = 5000 } = body;
 
-    // Use the downstream simulator endpoint — its response shape
-    // matches SimulatorResult directly (profiles_loaded, rolling_window,
-    // model_home_win_probability all at top level). The admin
-    // /api/analytics/simulate endpoint nests these under profile_meta.
     const data = await apiFetch<SimulatorResult>("/api/simulator/mlb", {
       method: "POST",
       body: JSON.stringify({ home_team, away_team, iterations }),
