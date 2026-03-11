@@ -16,7 +16,7 @@ const NAV_LINKS = [
   { href: "/", label: "Games" },
   { href: "/fairbet", label: "FairBet" },
   { href: "/analytics", label: "Analytics" },
-  { href: "/history", label: "History" },
+  { href: "/history", label: "History", adminOnly: true },
 ];
 
 export function TopNav() {
@@ -26,6 +26,9 @@ export function TopNav() {
   const { followingLive, toggle: toggleLive, available: liveAvailable } = useFollowingLive();
   const token = useAuth((s) => s.token);
   const email = useAuth((s) => s.email);
+  const role = useAuth((s) => s.role);
+
+  const visibleLinks = NAV_LINKS.filter((l) => !l.adminOnly || role === "admin");
 
   // Update --header-h CSS variable when pin count changes
   useEffect(() => {
@@ -51,7 +54,7 @@ export function TopNav() {
           </span>
         </Link>
         <div className="ml-8 hidden md:flex gap-6 text-sm text-neutral-400">
-          {NAV_LINKS.map((link) => (
+          {visibleLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
