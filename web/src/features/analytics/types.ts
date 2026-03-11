@@ -52,15 +52,6 @@ export interface MostCommonScore {
   probability: number;
 }
 
-export interface PAProbabilities {
-  strikeout: number;
-  walk: number;
-  single: number;
-  double: number;
-  triple: number;
-  home_run: number;
-}
-
 export interface LineupModeInfo {
   enabled: boolean;
   home_batters_resolved: number;

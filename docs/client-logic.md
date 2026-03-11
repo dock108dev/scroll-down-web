@@ -100,3 +100,9 @@ History page stores all filters (league, search, sort mode, date range) in URL s
 
 ## 31. Progressive Card Rendering
 FairBet bet cards render in batches of 25 using IntersectionObserver, loading more as the user scrolls. History page uses the same infinite-scroll pattern with 25 games per page.
+
+## 32. Following Live Mode
+Toggle in the top nav that temporarily overrides `scoreRevealMode` to `always` for all games. Persisted in the `settings` store (`followingLive` + `followingLiveAt`). Auto-expires after 2 hours of inactivity. Activity detection (pointer, keyboard, scroll, visibility) resets the timer. On disable, all visible live/final game scores are snapshotted into the reveal store so they freeze in place.
+
+## 33. Preference Sync
+`preferences-sync.ts` syncs settings, pinned game IDs, and revealed game IDs to the server for authenticated users. Server is SSOT on login — local stores are replaced with server values. Local changes are debounced (2 seconds) and pushed back via `PUT /auth/me/preferences`. Non-authed users retain localStorage-only behavior. Reading positions and snapshots are not synced.

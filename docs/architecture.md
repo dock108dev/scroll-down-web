@@ -53,9 +53,10 @@ See the [Realtime Layer](#realtime-layer) section for details.
 | `GET /api/fairbet/odds` | `/api/fairbet/odds` | FairBet odds with EV |
 | `GET /api/fairbet/live` | `/api/fairbet/live` | Live odds for a game (closing + live + history) |
 | `GET /api/fairbet/live/games` | `/api/fairbet/live/games` | Live games with odds available |
-| `GET /api/simulator/mlb/teams` | `/api/simulator/mlb/teams` | MLB teams available for simulation |
-| `POST /api/simulator/mlb` | `/api/simulator/mlb` | MLB Monte Carlo game simulation |
-| `* /api/auth/*` | `/auth/*` | Authentication (login, signup, me, email, password, delete) |
+| `GET /api/analytics/mlb-teams` | `/api/analytics/mlb-teams` | MLB teams for simulation |
+| `GET /api/analytics/mlb-roster` | `/api/analytics/mlb-roster?team=XXX` | Team roster (batters + pitchers) |
+| `POST /api/analytics/simulate` | `/api/analytics/simulate` | Lineup-aware MLB simulation |
+| `* /api/auth/*` | `/auth/*` | Authentication (login, signup, me, preferences, email, password, delete) |
 
 Data routes use `revalidate: 0` (no ISR caching — always fresh from backend). FairBet and auth routes forward the `Authorization` header when present. Auth routes do not send `X-API-Key` — they are public endpoints on the backend.
 
@@ -75,8 +76,9 @@ JWT-based authentication with three roles:
 2. Backend returns a JWT `access_token` and `role`
 3. Token is stored in the `auth` Zustand store (persisted to localStorage)
 4. `AuthProvider` validates the token on app mount via `GET /auth/me`; clears it on 401
-5. Client-side `fetchApi()` attaches `Authorization: Bearer <token>` to all requests
-6. Proxy routes forward the header to the backend via `forwardAuth()`
+5. After validation, `pullAndStartSync()` fetches server-side preferences and hydrates local stores (settings, pinned games, reveals). Local store changes are debounced and pushed back to the server while authenticated.
+6. Client-side `fetchApi()` attaches `Authorization: Bearer <token>` to all requests
+7. Proxy routes forward the header to the backend via `forwardAuth()`
 
 ### Feature Gating
 
@@ -86,6 +88,21 @@ Currently gated:
 - **FairBet Live tab** — requires `user` role
 - **Analytics (MLB Simulator)** — requires `user` role
 - **History** — API returns 403 for non-admin; page shows graceful message
+
+### Preference Sync
+
+User preferences (settings, pinned games, revealed game IDs) sync to the server for authenticated users via `lib/preferences-sync.ts`. Non-authed users retain localStorage-only behavior.
+
+| Event | Behavior |
+|---|---|
+| Login / page reload with token | `GET /auth/me/preferences` → hydrate local stores from server (server is SSOT) |
+| Local store change while authed | 2-second debounced `PUT /auth/me/preferences` pushes current state |
+| Signup | Current localStorage pushed as initial preferences for the new account |
+| Logout | Sync stops; localStorage stays for guest browsing |
+| Tab close | `beforeunload` flushes any pending changes |
+| Backend unavailable | All sync calls fail silently; app works normally |
+
+Synced stores: `settings`, `pinned-games`, `reveal`. Reading positions are not synced (too transient). Pin metadata (team abbreviations) is not synced — derived from game data on render.
 
 ### Navigation
 
@@ -100,7 +117,7 @@ Currently gated:
 | `/` | Home | Game feed by date section (Yesterday, Today) with search, league filter, pinned games |
 | `/game/[id]` | Game Detail | Full game view with flow, timeline, stats, odds, social |
 | `/fairbet` | FairBet | Pre-Game tab (EV odds comparison + parlay) and Live tab (in-game odds movement, requires login) |
-| `/analytics` | Analytics | MLB Matchup Simulator — Monte Carlo simulation with Statcast data (requires login) |
+| `/analytics` | Analytics | MLB PA Simulator — lineup-aware Monte Carlo simulation with Statcast data (requires login) |
 | `/history` | History | Browse past games by date range with search, sort, infinite scroll |
 | `/login` | Login | Login and signup with tab switching, client-side validation |
 | `/forgot-password` | Forgot Password | Email entry for password reset link |
@@ -134,9 +151,9 @@ components/
 └── shared/     # LoadingSkeleton, CollapsibleCard, SectionHeader
 
 features/
-└── analytics/  # MLB Matchup Simulator
-    ├── components/  # ProbabilityBar, ScoreCard, PABreakdown
-    └── services/    # SimulatorService
+└── analytics/  # MLB PA Simulator (lineup-aware)
+    ├── components/  # ProbabilityBar, ScoreCard, PABreakdown, LineupBuilder
+    └── services/    # SimulatorService (teams, rosters, simulation)
 ```
 
 ## Realtime Layer
@@ -260,14 +277,14 @@ Six Zustand stores persist to localStorage. Three more are in-memory only.
 | Store | Key | Purpose |
 |---|---|---|
 | `auth` | `sd-auth` | JWT token, role, email, userId for authentication |
-| `settings` | `sd-settings` | Theme, odds format, score reveal mode, preferred book, section expansion |
+| `settings` | `sd-settings` | Theme, odds format, score reveal mode, preferred book, section expansion, following-live state |
 | `reveal` | `sd-read-state` | Score reveal state with frozen snapshots for live games |
 | `reading-position` | `sd-reading-position` | Per-game scroll position and score snapshot |
 | `section-layout` | `sd-section-layout` | Game detail section collapse/expand state |
 | `pinned-games` | `sd-pinned-games` | User-pinned games for quick access (max 10) |
 | `game-data` | — | Normalized game data cache + realtime state. Not persisted. |
 | `home-scroll` | — | Home page scroll position for restoration. Not persisted. |
-| `ui` | — | Transient UI state (settings drawer, live-following mode). Not persisted. |
+| `ui` | — | Transient UI state (settings drawer open/close). Not persisted. |
 
 Storage keys are centralized in `lib/config.ts` under `STORAGE_KEYS`.
 
@@ -295,6 +312,8 @@ All persisted stores enforce size limits to prevent unbounded localStorage growt
 | `homeExpandedSections` | `string[]` | `[]` | Expanded home sections |
 | `hideLimitedData` | `boolean` | `true` | Hide thin-market odds |
 | `timelineDefaultTiers` | `number[]` | `[1, 2, 3]` | Default play tier visibility |
+| `followingLive` | `boolean` | `false` | Live score following mode (auto-expires after 2hr inactivity) |
+| `followingLiveAt` | `number` | `0` | Timestamp of last activity while following live |
 
 ## Game Status Lifecycle
 
@@ -341,6 +360,7 @@ Additional behaviors:
 - **Score freeze:** Revealed live game scores freeze at the moment of reveal. An amber dot appears when new data arrives.
 - **Auto-hide on final:** When a live game transitions to final while scores are frozen, the game auto-hides to prevent spoiling the final score.
 - **Mark All Read:** Bulk action to reveal all eligible games.
+- **Following Live:** Toggle in the top nav (when `scoreRevealMode` is `onMarkRead`) temporarily treats all scores as `always` visible. Persisted in settings store and synced to server. Auto-expires after 2 hours of inactivity — activity (pointer, keyboard, scroll, visibility) resets the timer. Stored as `followingLive` + `followingLiveAt` timestamp; expiry checked both at runtime (60-second interval) and on store rehydration.
 
 ## FairBet Architecture
 
@@ -371,28 +391,33 @@ CSS-variable-based light/dark mode:
 
 NBA, NCAAB, NFL, NCAAF, MLB, NHL.
 
-## MLB Matchup Simulator
+## MLB PA Simulator
 
-The `/analytics` page provides an MLB matchup simulator powered by the backend's Monte Carlo engine and real Statcast data. Requires `user` role.
+The `/analytics` page provides a lineup-aware MLB plate appearance simulator powered by the backend's Monte Carlo engine and real Statcast data. Requires `user` role.
 
 ### Flow
 
-1. User selects home and away teams from dropdowns (populated via `GET /api/simulator/mlb/teams`)
-2. Clicking "Run Simulation" calls `POST /api/simulator/mlb` with team abbreviations
-3. Results display: win probabilities, expected scores, top 10 most likely final scores, and PA probability profiles
+1. User selects home and away teams from dropdowns (populated via `GET /api/analytics/mlb-teams`)
+2. Rosters auto-load for each selected team via `GET /api/analytics/mlb-roster?team=XXX`
+3. LineupBuilder components auto-fill the top 9 batters (by games played) and top starting pitcher for each team
+4. User can customize batting order, swap players, and select a different starter
+5. Starter innings slider sets when the bullpen takes over (default 6.0, range 4.0–9.0)
+6. "Run Simulation" calls `POST /api/analytics/simulate` with full lineup data
+7. Results display: lineup mode confirmation badge, win probabilities, expected scores, top 5 most likely final scores, and PA probability profiles
+
+Both lineups must have exactly 9 batters and a starting pitcher selected before simulation can run.
 
 ### API Integration
 
 | Client Route | Backend Endpoint | Method | Purpose |
 |---|---|---|---|
-| `/api/simulator/mlb/teams` | `/api/simulator/mlb/teams` | GET | List MLB teams available for simulation |
-| `/api/simulator/mlb` | `/api/simulator/mlb` | POST | Run Monte Carlo simulation (5000 default iterations) |
-
-The downstream `/api/simulator/mlb` endpoint uses ML probability mode by default — no mode parameter is sent from the client.
+| `/api/analytics/mlb-teams` | `/api/analytics/mlb-teams` | GET | List MLB teams |
+| `/api/analytics/mlb-roster` | `/api/analytics/mlb-roster?team=XXX` | GET | Team roster (batters + pitchers) |
+| `/api/analytics/simulate` | `/api/analytics/simulate` | POST | Run lineup-aware Monte Carlo simulation (10,000 iterations, ML mode) |
 
 ### Caching
 
-Simulation results are cached per matchup key (`home-away-iterations`) in a module-level `Map`. Team list is cached after first fetch. Both clear on page reload.
+Team list and rosters are cached in-memory after first fetch. Simulation results are not cached (lineup permutations make cache keys impractical). All caches clear on page reload.
 
 ## Known Limitations
 

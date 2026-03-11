@@ -103,14 +103,19 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Score freeze works for revealed live games (frozen scores, amber dot on new data)
 - [ ] Mini scorebar appears when scrolling past header
 
-### MLB Matchup Simulator (`/analytics`)
+### MLB PA Simulator (`/analytics`)
 - [ ] Team dropdowns populate from API
-- [ ] Simulation runs with two different teams selected
+- [ ] Selecting a team loads its roster (batters + pitchers)
+- [ ] LineupBuilder auto-fills top 9 batters and top pitcher per team
+- [ ] User can swap batters and reorder lineup
+- [ ] User can change starting pitcher
+- [ ] Starter innings slider works (4.0–9.0)
+- [ ] Simulation requires both 9-man lineups + both starters selected
+- [ ] Simulation runs and shows lineup mode badge
 - [ ] Win probability bars render with correct percentages
 - [ ] Expected scores and O/U display
-- [ ] Most likely final scores display as ranked cards
-- [ ] PA probability profiles show for both teams when profiles are loaded
-- [ ] "Using league-average defaults" warning appears when profiles are not loaded
+- [ ] Most likely final scores display (top 5) as ranked cards
+- [ ] PA probability profiles show for both teams
 - [ ] AuthGate blocks guests with signup prompt
 
 ### FairBet
@@ -150,6 +155,14 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Reset password: page without `?token=` shows invalid link state
 - [ ] Reset password: valid token + new password redirects to login on success
 - [ ] Reset password: expired/invalid token shows error with link to request new one
+
+### Preference Sync
+- [ ] Login pulls server preferences (settings, pins, reveals overwrite local)
+- [ ] Changing a setting while logged in pushes to server (check Network tab for PUT after ~2s)
+- [ ] Signup pushes current local state as initial preferences
+- [ ] Logout stops syncing; localStorage stays for guest browsing
+- [ ] Following Live toggle persists across login/logout cycle
+- [ ] Following Live auto-expires after 2 hours of inactivity
 
 ### Settings
 - [ ] Theme toggle works (system, light, dark)

@@ -36,7 +36,8 @@ npm run dev                         # http://localhost:3001
 | FairBet odds comparison with EV (Pre-Game) | Yes |
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
-| MLB Matchup Simulator (Monte Carlo, Statcast-powered) | Yes |
+| MLB PA Simulator (lineup-aware Monte Carlo, Statcast-powered) | Yes |
+| Server-synced user preferences (settings, pins, reveals) | Yes |
 | User authentication (login, signup, forgot password, profile) | Yes |
 | Role-based access (guest / user / admin) | Yes |
 | Score reveal preference (spoiler-free) | Yes |
