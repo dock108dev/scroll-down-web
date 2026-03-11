@@ -4,6 +4,8 @@
  * adjusted from a single file.
  */
 
+export const BACKEND_BASE_URL = "https://sports-data-admin.dock108.ai";
+
 export const CACHE = {
   GAMES_TTL_MS: 90_000,
   GAMES_FRESH_MS: 45_000, // skip network if cache is younger than this

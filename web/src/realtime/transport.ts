@@ -7,7 +7,7 @@
  *   rt.subscribe("games:nba:2026-03-05");
  */
 
-import { REALTIME } from "@/lib/config";
+import { BACKEND_BASE_URL, REALTIME } from "@/lib/config";
 
 // ── Event types ─────────────────────────────────────────────────
 
@@ -49,15 +49,7 @@ export interface TransportStatus {
 
 type MessageHandler = (event: RealtimeEvent) => void;
 
-// ── Fix 1: Robust URL helpers ───────────────────────────────────
-
-function resolveBaseUrl(): string {
-  const fallback = "https://sports-data-admin.dock108.ai";
-  if (typeof window === "undefined") return fallback;
-  const env = process.env.NEXT_PUBLIC_API_BASE_URL;
-  if (env) return env;
-  return fallback;
-}
+// ── URL helpers ──────────────────────────────────────────────────
 
 function toWsUrl(baseHttpUrl: string, path = "/v1/ws"): string {
   const u = new URL(baseHttpUrl);
@@ -96,7 +88,7 @@ class RealtimeTransport {
   private disposed = false;
 
   constructor() {
-    this.baseUrl = resolveBaseUrl();
+    this.baseUrl = BACKEND_BASE_URL;
   }
 
   // ── Public API ──────────────────────────────────────────────

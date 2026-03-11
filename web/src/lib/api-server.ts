@@ -1,6 +1,6 @@
-export const BASE_URL =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://sports-data-admin.dock108.ai";
+import { BACKEND_BASE_URL } from "@/lib/config";
+
+export const BASE_URL = BACKEND_BASE_URL;
 const API_KEY = process.env.SPORTS_DATA_API_KEY || "";
 
 export class ApiError extends Error {
