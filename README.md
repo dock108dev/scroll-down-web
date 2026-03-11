@@ -37,6 +37,8 @@ npm run dev                         # http://localhost:3001
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
 | MLB Matchup Simulator (Monte Carlo, Statcast-powered) | Yes |
+| User authentication (login, signup, profile) | Yes |
+| Role-based access (guest / user / admin) | Yes |
 | Score reveal preference (spoiler-free) | Yes |
 | Reading position tracking with resume | Yes |
 | Theme selection (system / light / dark) | Yes |
@@ -51,6 +53,7 @@ The app is a **thin display layer**. The backend (`sports-data-admin.dock108.ai`
 ```
 Browser (React)
     ├─ fetch("/api/games")          → Next.js API Route → Backend API → JSON response
+    ├─ fetch("/api/auth/login")     → Next.js Auth Proxy → Backend /auth/* → JWT token
     └─ WebSocket/SSE realtime       → Backend /v1/ws or /v1/sse → Event patches
 ```
 

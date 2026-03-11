@@ -24,6 +24,8 @@ interface AuthState {
     newPassword: string,
   ) => Promise<void>;
   deleteAccount: (password: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string) => Promise<void>;
 }
 
 async function authFetch<T>(
@@ -161,6 +163,22 @@ export const useAuth = create<AuthState>()(
             current_password: currentPassword,
             new_password: newPassword,
           }),
+        });
+      },
+
+      forgotPassword: async (email) => {
+        await authFetch("/api/auth/forgot-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+      },
+
+      resetPassword: async (token, newPassword) => {
+        await authFetch("/api/auth/reset-password", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token, new_password: newPassword }),
         });
       },
 

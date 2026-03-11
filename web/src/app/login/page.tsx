@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
 import { cn } from "@/lib/utils";
 
