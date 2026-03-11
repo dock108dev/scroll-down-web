@@ -40,6 +40,13 @@ async function authFetch<T>(
   return res.json();
 }
 
+/** Build common headers for authenticated JSON requests. */
+function authedJson(token: string | null): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) h.Authorization = `Bearer ${token}`;
+  return h;
+}
+
 export class AuthError extends Error {
   constructor(
     public status: number,
@@ -135,30 +142,22 @@ export const useAuth = create<AuthState>()(
       },
 
       updateEmail: async (email, password) => {
-        const { token } = get();
         const data = await authFetch<{
           id: number;
           email: string;
           role: string;
         }>("/api/auth/me/email", {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authedJson(get().token),
           body: JSON.stringify({ email, password }),
         });
         set({ email: data.email });
       },
 
       updatePassword: async (currentPassword, newPassword) => {
-        const { token } = get();
         await authFetch("/api/auth/me/password", {
           method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authedJson(get().token),
           body: JSON.stringify({
             current_password: currentPassword,
             new_password: newPassword,
@@ -183,13 +182,9 @@ export const useAuth = create<AuthState>()(
       },
 
       deleteAccount: async (password) => {
-        const { token } = get();
         await authFetch("/api/auth/me", {
           method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+          headers: authedJson(get().token),
           body: JSON.stringify({ password }),
         });
         get().logout();

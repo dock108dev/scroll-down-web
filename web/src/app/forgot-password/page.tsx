@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
+import { VALIDATION } from "@/lib/config";
 
 export default function ForgotPasswordPage() {
   const forgotPassword = useAuth((s) => s.forgotPassword);
@@ -17,7 +18,7 @@ export default function ForgotPasswordPage() {
       e.preventDefault();
       setError(null);
 
-      if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!email || !VALIDATION.EMAIL_RE.test(email)) {
         setError("Enter a valid email address");
         return;
       }

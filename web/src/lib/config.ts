@@ -73,6 +73,11 @@ export const RENDER = {
   FAIRBET_BATCH: 25,
 };
 
+export const VALIDATION = {
+  EMAIL_RE: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  PASSWORD_MIN_LENGTH: 8,
+};
+
 export const DEFAULTS = {
   HOME_EXPANDED: [] as string[],
   TIMELINE_TIERS: [1, 2, 3] as number[],

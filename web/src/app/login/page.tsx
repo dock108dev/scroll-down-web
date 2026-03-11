@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
+import { VALIDATION } from "@/lib/config";
 import { cn } from "@/lib/utils";
 
 type Tab = "login" | "signup";
@@ -21,10 +22,10 @@ export default function LoginPage() {
 
   const validate = useCallback(() => {
     const errs: Record<string, string> = {};
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
       errs.email = "Enter a valid email address";
     }
-    if (password.length < 8) {
+    if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
       errs.password = "Password must be at least 8 characters";
     }
     if (tab === "signup" && password !== confirmPassword) {

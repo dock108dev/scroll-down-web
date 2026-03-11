@@ -4,6 +4,7 @@ import { useState, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
+import { VALIDATION } from "@/lib/config";
 
 function ResetPasswordForm() {
   const searchParams = useSearchParams();
@@ -23,7 +24,7 @@ function ResetPasswordForm() {
       setError(null);
 
       const errs: Record<string, string> = {};
-      if (password.length < 8) {
+      if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
         errs.password = "Password must be at least 8 characters";
       }
       if (password !== confirmPassword) {
