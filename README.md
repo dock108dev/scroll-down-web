@@ -37,7 +37,7 @@ npm run dev                         # http://localhost:3001
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
 | MLB Matchup Simulator (Monte Carlo, Statcast-powered) | Yes |
-| User authentication (login, signup, profile) | Yes |
+| User authentication (login, signup, forgot password, profile) | Yes |
 | Role-based access (guest / user / admin) | Yes |
 | Score reveal preference (spoiler-free) | Yes |
 | Reading position tracking with resume | Yes |

@@ -89,6 +89,7 @@ Currently gated:
 
 ### Navigation
 
+- **Forgot password:** Login page links to `/forgot-password` → user enters email → backend sends reset link → `/reset-password?token=...` → user sets new password
 - **Guest:** "Log In" link in desktop nav, Account section in Settings shows login/signup links
 - **Authenticated:** Email initial avatar in desktop nav linking to `/profile`, Account section in Settings shows email, role, manage/logout
 
@@ -102,6 +103,8 @@ Currently gated:
 | `/analytics` | Analytics | MLB Matchup Simulator — Monte Carlo simulation with Statcast data (requires login) |
 | `/history` | History | Browse past games by date range with search, sort, infinite scroll |
 | `/login` | Login | Login and signup with tab switching, client-side validation |
+| `/forgot-password` | Forgot Password | Email entry for password reset link |
+| `/reset-password` | Reset Password | New password form with token from email link |
 | `/profile` | Profile | Account management — change email, change password, delete account |
 | `/settings` | Settings | Theme, score reveal mode, odds format, account section |
 
@@ -398,4 +401,4 @@ Simulation results are cached per matchup key (`home-away-iterations`) in a modu
 - **Parlay assumes independent legs** — Client-side `parlayProbIndependent()` multiplies leg probabilities; no correlation modeling.
 - **FairBet client-side fallback removed** — All EV computation is server-side. If the server doesn't provide EV data for a bet, it's displayed without EV.
 - **Live odds polling** — `useFairBetLive` uses 15s polling rather than realtime. The `fairbet:odds` realtime channel covers pre-game odds only.
-- **No forgot-password flow** — Auth supports login, signup, email change, password change, and account deletion. Password reset via email is not implemented.
+- **Forgot-password depends on backend** — The web app has `/forgot-password` and `/reset-password` pages that call `POST /auth/forgot-password` and `POST /auth/reset-password`. These backend endpoints must be implemented to send reset emails and validate tokens.

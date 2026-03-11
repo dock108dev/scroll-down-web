@@ -145,6 +145,11 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Settings page: guests see "Sign in to sync" prompt; users see email + role + logout
 - [ ] AuthGate on FairBet Live tab shows signup prompt for guests
 - [ ] AuthGate on Analytics page shows signup prompt for guests
+- [ ] "Forgot password?" link on login page navigates to `/forgot-password`
+- [ ] Forgot password: submitting email shows confirmation message
+- [ ] Reset password: page without `?token=` shows invalid link state
+- [ ] Reset password: valid token + new password redirects to login on success
+- [ ] Reset password: expired/invalid token shows error with link to request new one
 
 ### Settings
 - [ ] Theme toggle works (system, light, dark)

@@ -151,6 +151,18 @@ export default function LoginPage() {
           </div>
         )}
 
+        {/* Forgot password (login only) */}
+        {tab === "login" && (
+          <div className="text-right -mt-1">
+            <Link
+              href="/forgot-password"
+              className="text-xs text-blue-400 hover:text-blue-300"
+            >
+              Forgot password?
+            </Link>
+          </div>
+        )}
+
         {/* API error */}
         {error && (
           <p className="text-xs text-red-400 text-center">{error}</p>
