@@ -9,6 +9,7 @@ import { DateNavigator } from "@/components/history/DateNavigator";
 import { SearchBar } from "@/components/home/SearchBar";
 import { GameRow } from "@/components/home/GameRow";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { cn } from "@/lib/utils";
 
 // ── Date helpers ────────────────────────────────────────────
@@ -253,8 +254,10 @@ function HistoryPageInner() {
 
 export default function HistoryPage() {
   return (
-    <Suspense>
-      <HistoryPageInner />
-    </Suspense>
+    <AuthGate minRole="admin" message="This feature is restricted to admin users">
+      <Suspense>
+        <HistoryPageInner />
+      </Suspense>
+    </AuthGate>
   );
 }
