@@ -11,7 +11,6 @@ import { isLive, isFinal } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useSettings } from "@/stores/settings";
-import { useUI } from "@/stores/ui";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useHomeScroll } from "@/stores/home-scroll";
 import { pickSnapshot } from "@/lib/score-display";
@@ -62,7 +61,7 @@ export default function HomePage() {
   const clearAllPositions = useReadingPosition((s) => s.clearAll);
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
-  const followingLive = useUI((s) => s.followingLive);
+  const followingLive = useSettings((s) => s.followingLive);
 
   const pinnedIds = usePinnedGames((s) => s.pinnedIds);
   const pruneStale = usePinnedGames((s) => s.pruneStale);

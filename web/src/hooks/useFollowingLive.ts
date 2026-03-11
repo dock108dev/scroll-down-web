@@ -1,10 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useUI } from "@/stores/ui";
+import { useSettings } from "@/stores/settings";
 import { useGameData } from "@/stores/game-data";
 import { useReveal } from "@/stores/reveal";
-import { useSettings } from "@/stores/settings";
 import { pickSnapshot } from "@/lib/score-display";
 import { isLive, isFinal } from "@/lib/types";
 
@@ -29,7 +28,7 @@ function disableLive() {
     useReveal.getState().revealBatch(entries);
   }
 
-  useUI.getState().setFollowingLive(false);
+  useSettings.getState().setFollowingLive(false);
 }
 
 /**
@@ -41,10 +40,12 @@ function disableLive() {
  * touch events or page visibility changes).
  */
 export function useFollowingLive() {
-  const followingLive = useUI((s) => s.followingLive);
-  const setFollowingLive = useUI((s) => s.setFollowingLive);
+  const followingLive = useSettings((s) => s.followingLive);
+  const setFollowingLive = useSettings((s) => s.setFollowingLive);
+  const touchFollowingLive = useSettings((s) => s.touchFollowingLive);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const lastActivityRef = useRef(0);
+  const lastTouchRef = useRef(0);
 
   // Track user activity while following live
   useEffect(() => {
@@ -54,6 +55,11 @@ export function useFollowingLive() {
 
     const onActivity = () => {
       lastActivityRef.current = Date.now();
+      // Throttle store writes to once per 60s (the in-memory ref is instant)
+      if (Date.now() - lastTouchRef.current > 60_000) {
+        lastTouchRef.current = Date.now();
+        touchFollowingLive();
+      }
     };
 
     // Listen for any meaningful user interaction
@@ -77,7 +83,7 @@ export function useFollowingLive() {
       window.removeEventListener("visibilitychange", onActivity);
       clearInterval(interval);
     };
-  }, [followingLive]);
+  }, [followingLive, touchFollowingLive]);
 
   const toggle = useCallback(() => {
     if (followingLive) {

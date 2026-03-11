@@ -2,6 +2,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { STORAGE_KEYS, DEFAULTS } from "@/lib/config";
 
+/** How long followingLive stays active without user interaction (ms). */
+const FOLLOWING_LIVE_TTL_MS = 120 * 60_000; // 2 hours
+
 interface SettingsState {
   theme: "system" | "light" | "dark";
   scoreRevealMode: "always" | "onMarkRead";
@@ -11,6 +14,9 @@ interface SettingsState {
   homeExpandedSections: string[];
   hideLimitedData: boolean;
   timelineDefaultTiers: number[];
+  followingLive: boolean;
+  /** Timestamp (ms) when followingLive was last activated or activity detected. */
+  followingLiveAt: number;
 
   setTheme: (t: "system" | "light" | "dark") => void;
   setScoreRevealMode: (m: "always" | "onMarkRead") => void;
@@ -22,6 +28,8 @@ interface SettingsState {
   setTimelineDefaultTiers: (tiers: number[]) => void;
   toggleTimelineTier: (tier: number) => void;
   toggleHomeSection: (section: string) => void;
+  setFollowingLive: (v: boolean) => void;
+  touchFollowingLive: () => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -35,6 +43,8 @@ export const useSettings = create<SettingsState>()(
       homeExpandedSections: DEFAULTS.HOME_EXPANDED,
       hideLimitedData: true,
       timelineDefaultTiers: DEFAULTS.TIMELINE_TIERS,
+      followingLive: false,
+      followingLiveAt: 0,
 
       setTheme: (theme) => set({ theme }),
       setScoreRevealMode: (scoreRevealMode) => set({ scoreRevealMode }),
@@ -62,19 +72,39 @@ export const useSettings = create<SettingsState>()(
           : [...current, section];
         set({ homeExpandedSections: next });
       },
+      setFollowingLive: (v) =>
+        set({ followingLive: v, followingLiveAt: v ? Date.now() : 0 }),
+      touchFollowingLive: () => set({ followingLiveAt: Date.now() }),
     }),
     {
       name: STORAGE_KEYS.SETTINGS,
-      version: 1,
-      migrate: (persisted: unknown) => {
+      version: 2,
+      migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
-        // v0 → v1: empty homeExpandedSections → defaults
+        if (version < 1) {
+          // v0 → v1: empty homeExpandedSections → defaults
+          if (
+            !state.homeExpandedSections ||
+            (Array.isArray(state.homeExpandedSections) &&
+              state.homeExpandedSections.length === 0)
+          ) {
+            state.homeExpandedSections = DEFAULTS.HOME_EXPANDED;
+          }
+        }
+        if (version < 2) {
+          // v1 → v2: add followingLive fields
+          state.followingLive = false;
+          state.followingLiveAt = 0;
+        }
+        // Auto-expire followingLive if stale
         if (
-          !state.homeExpandedSections ||
-          (Array.isArray(state.homeExpandedSections) &&
-            state.homeExpandedSections.length === 0)
+          state.followingLive &&
+          typeof state.followingLiveAt === "number" &&
+          state.followingLiveAt > 0 &&
+          Date.now() - state.followingLiveAt >= FOLLOWING_LIVE_TTL_MS
         ) {
-          state.homeExpandedSections = DEFAULTS.HOME_EXPANDED;
+          state.followingLive = false;
+          state.followingLiveAt = 0;
         }
         return state as never;
       },

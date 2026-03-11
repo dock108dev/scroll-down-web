@@ -26,6 +26,8 @@ export interface ServerPreferences {
     homeExpandedSections: string[];
     hideLimitedData: boolean;
     timelineDefaultTiers: number[];
+    followingLive: boolean;
+    followingLiveAt: number;
   };
   pinnedGameIds: number[];
   revealedGameIds: number[];
@@ -77,6 +79,8 @@ function snapshotLocal(): Omit<ServerPreferences, "updatedAt"> {
       homeExpandedSections: settings.homeExpandedSections,
       hideLimitedData: settings.hideLimitedData,
       timelineDefaultTiers: settings.timelineDefaultTiers,
+      followingLive: settings.followingLive,
+      followingLiveAt: settings.followingLiveAt,
     },
     pinnedGameIds: [...pinned.pinnedIds],
     revealedGameIds: [...reveal.revealedIds],
@@ -98,6 +102,7 @@ function hydrateFromServer(prefs: ServerPreferences) {
   if (s.homeExpandedSections) setters.setHomeExpandedSections(s.homeExpandedSections);
   if (s.hideLimitedData !== undefined) setters.setHideLimitedData(s.hideLimitedData);
   if (s.timelineDefaultTiers) setters.setTimelineDefaultTiers(s.timelineDefaultTiers);
+  if (s.followingLive !== undefined) setters.setFollowingLive(s.followingLive);
 
   // Pinned games — replace current set with server set.
   // We don't sync pinMeta (derived from game data on render).
@@ -114,10 +119,19 @@ function hydrateFromServer(prefs: ServerPreferences) {
     if (!currentPins.has(id)) pinnedStore.togglePin(id);
   }
 
-  // Revealed games — union local + server (last-write-wins on the set)
+  // Revealed games — server is SSOT for the ID set.
+  // Local snapshots are kept (they're display-only cache).
   const revealStore = useReveal.getState();
-  const serverRevealed = prefs.revealedGameIds ?? [];
-  const toReveal = serverRevealed.filter((id) => !revealStore.revealedIds.has(id));
+  const serverRevealedSet = new Set(prefs.revealedGameIds ?? []);
+
+  // Hide local reveals not on server
+  const toHide = [...revealStore.revealedIds].filter((id) => !serverRevealedSet.has(id));
+  if (toHide.length > 0) {
+    revealStore.hideBatch(toHide);
+  }
+
+  // Add server reveals not in local
+  const toReveal = [...serverRevealedSet].filter((id) => !revealStore.revealedIds.has(id));
   if (toReveal.length > 0) {
     revealStore.revealBatch(
       toReveal.map((gameId) => ({
