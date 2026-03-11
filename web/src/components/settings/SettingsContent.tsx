@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useSettings } from "@/stores/settings";
+import { useAuth } from "@/stores/auth";
 import { cn } from "@/lib/utils";
 
 const KNOWN_BOOKS = [
@@ -35,8 +37,65 @@ export function SettingsContent() {
     toggleTimelineTier,
   } = useSettings();
 
+  const { token, email: authEmail, role, logout } = useAuth();
+
   return (
     <div className="space-y-6">
+      {/* ─── Account ──────────────────────────────────────── */}
+      <SettingsSection title="Account">
+        {token ? (
+          <>
+            <div className="px-4 py-3">
+              <p className="text-sm text-neutral-200">{authEmail}</p>
+              <span
+                className={cn(
+                  "inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full",
+                  role === "admin"
+                    ? "bg-purple-500/20 text-purple-400"
+                    : "bg-blue-500/20 text-blue-400",
+                )}
+              >
+                {role}
+              </span>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3">
+              <Link
+                href="/profile"
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Manage Account
+              </Link>
+              <button
+                onClick={logout}
+                className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
+              >
+                Log Out
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="px-4 py-3 space-y-2">
+            <p className="text-xs text-neutral-500">
+              Sign in to sync your preferences and access all features
+            </p>
+            <div className="flex items-center gap-3">
+              <Link
+                href="/login"
+                className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Log In
+              </Link>
+              <Link
+                href="/login"
+                className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
+              >
+                Sign Up
+              </Link>
+            </div>
+          </div>
+        )}
+      </SettingsSection>
+
       {/* ─── Appearance ──────────────────────────────────── */}
       <SettingsSection title="Appearance">
         <SettingsRow label="Theme">

@@ -5,6 +5,7 @@ import { BottomTabs } from "@/components/layout/BottomTabs";
 import { SettingsDrawer } from "@/components/layout/SettingsDrawer";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { RealtimeProvider } from "@/components/layout/RealtimeProvider";
+import { AuthProvider } from "@/components/auth/AuthProvider";
 
 export const viewport: Viewport = {
   viewportFit: "cover",
@@ -31,6 +32,7 @@ export default function RootLayout({
     <html lang="en" className="dark" suppressHydrationWarning>
       <body className="bg-neutral-950 text-neutral-50 antialiased">
         <ThemeProvider>
+          <AuthProvider />
           <RealtimeProvider />
           <div className="min-h-screen flex flex-col">
             <TopNav />

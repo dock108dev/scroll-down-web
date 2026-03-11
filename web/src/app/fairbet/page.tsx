@@ -7,6 +7,7 @@ import { BookFilters } from "@/components/fairbet/BookFilters";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
 import { LiveOddsPanel } from "@/components/fairbet/LiveOddsPanel";
+import { AuthGate } from "@/components/auth/AuthGate";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
@@ -133,7 +134,14 @@ export default function FairBetPage() {
 
       {/* ── Content ── */}
       <div className="px-4 pb-4 space-y-3">
-        {activeTab === "live" && <LiveOddsPanel />}
+        {activeTab === "live" && (
+          <AuthGate
+            minRole="user"
+            message="Sign up for free to access live odds"
+          >
+            <LiveOddsPanel />
+          </AuthGate>
+        )}
 
         {activeTab === "pregame" && <>
         {/* Loading state */}

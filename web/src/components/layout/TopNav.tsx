@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useUI } from "@/stores/ui";
 import { usePinnedGames } from "@/stores/pinned-games";
+import { useAuth } from "@/stores/auth";
 import { useFollowingLive } from "@/hooks/useFollowingLive";
 import { LAYOUT } from "@/lib/config";
 import { PinnedBar } from "@/components/home/PinnedBar";
@@ -23,6 +24,8 @@ export function TopNav() {
   const openSettings = useUI((s) => s.openSettings);
   const hasPins = usePinnedGames((s) => s.pinnedIds.size > 0);
   const { followingLive, toggle: toggleLive, available: liveAvailable } = useFollowingLive();
+  const token = useAuth((s) => s.token);
+  const email = useAuth((s) => s.email);
 
   // Update --header-h CSS variable when pin count changes
   useEffect(() => {
@@ -88,6 +91,22 @@ export function TopNav() {
             </span>
             LIVE
           </button>
+        )}
+        {token ? (
+          <Link
+            href="/profile"
+            className="hidden md:flex items-center justify-center h-7 w-7 mr-2 rounded-full bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 transition"
+            title={email ?? "Account"}
+          >
+            {(email?.[0] ?? "U").toUpperCase()}
+          </Link>
+        ) : (
+          <Link
+            href="/login"
+            className="hidden md:flex text-sm text-neutral-400 hover:text-neutral-50 mr-3 transition"
+          >
+            Log In
+          </Link>
         )}
         <button
           onClick={openSettings}

@@ -207,8 +207,12 @@ function HistoryPageInner() {
 
       {/* Error state */}
       {error && (
-        <div className="px-4 py-8 text-center text-red-500 text-sm">
-          {error}
+        <div className="px-4 py-8 text-center text-sm">
+          {error.includes("403") ? (
+            <p className="text-neutral-400">This feature requires elevated access</p>
+          ) : (
+            <p className="text-red-500">{error}</p>
+          )}
         </div>
       )}
 

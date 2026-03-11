@@ -45,6 +45,16 @@ function deepFixStrings<T>(obj: T): T {
   return obj;
 }
 
+// ── Helpers ──────────────────────────────────────────────────
+
+/** Extract Authorization header from an incoming request to forward upstream. */
+export function forwardAuth(
+  req: { headers: { get(name: string): string | null } },
+): Record<string, string> {
+  const auth = req.headers.get("authorization");
+  return auth ? { Authorization: auth } : {};
+}
+
 // ── Fetch wrapper ───────────────────────────────────────────
 
 export async function apiFetch<T>(

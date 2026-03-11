@@ -57,6 +57,7 @@ export const STORAGE_KEYS = {
   SETTINGS: "sd-settings",
   SECTION_LAYOUT: "sd-section-layout",
   READING_POSITION: "sd-reading-position",
+  AUTH: "sd-auth",
 };
 
 export const STORAGE = {

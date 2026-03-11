@@ -6,9 +6,21 @@ import type {
   FairbetLiveResponse,
   LiveGameInfo,
 } from "./types";
+import { useAuth } from "@/stores/auth";
 
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, init);
+  const token = useAuth.getState().token;
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(path, { ...init, headers });
+
+  if (res.status === 401) {
+    // Token expired — clear auth state
+    useAuth.getState().logout();
+  }
   if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
   return res.json();
 }
