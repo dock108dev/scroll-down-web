@@ -6,13 +6,25 @@ import type {
   FairbetLiveResponse,
   LiveGameInfo,
 } from "./types";
+import type {
+  SimulatorTeam,
+  SimulatorResult,
+} from "@/features/analytics/types";
 import { useAuth } from "@/stores/auth";
 
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = useAuth.getState().token;
-  const headers: Record<string, string> = {
-    ...(init?.headers as Record<string, string>),
-  };
+  // Normalize any HeadersInit form (Headers, [k,v][], or object) into a plain record
+  const headers: Record<string, string> = {};
+  if (init?.headers) {
+    const src =
+      init.headers instanceof Headers
+        ? init.headers
+        : new Headers(init.headers as HeadersInit);
+    src.forEach((v, k) => {
+      headers[k] = v;
+    });
+  }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const res = await fetch(path, { ...init, headers });
@@ -46,4 +58,16 @@ export const api = {
     if (sortBy) params.set("sort_by", sortBy);
     return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
   },
+  simulatorTeams: () =>
+    fetchApi<{ teams: SimulatorTeam[] }>("/api/simulator/mlb/teams"),
+  simulate: (homeTeam: string, awayTeam: string, iterations = 5000) =>
+    fetchApi<SimulatorResult>("/api/simulator/mlb", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        home_team: homeTeam,
+        away_team: awayTeam,
+        iterations,
+      }),
+    }),
 };

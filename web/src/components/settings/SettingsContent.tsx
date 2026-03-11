@@ -87,7 +87,7 @@ export function SettingsContent() {
                 Log In
               </Link>
               <Link
-                href="/login"
+                href="/login?tab=signup"
                 className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
               >
                 Sign Up

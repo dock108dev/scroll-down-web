@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiFetch, ApiError } from "@/lib/api-server";
+import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
 import type { SimulatorResult } from "@/features/analytics/types";
 
 export async function POST(req: NextRequest) {
@@ -10,6 +10,7 @@ export async function POST(req: NextRequest) {
     const data = await apiFetch<SimulatorResult>("/api/simulator/mlb", {
       method: "POST",
       body: JSON.stringify({ home_team, away_team, iterations }),
+      headers: forwardAuth(req),
       revalidate: 0,
     });
 

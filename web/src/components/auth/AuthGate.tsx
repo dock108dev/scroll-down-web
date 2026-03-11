@@ -32,7 +32,7 @@ export function AuthGate({
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-6 text-center space-y-3">
       <p className="text-sm text-neutral-400">{message}</p>
       <Link
-        href="/login"
+        href="/login?tab=signup"
         className="inline-block text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
       >
         Sign Up Free

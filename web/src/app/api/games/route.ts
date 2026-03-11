@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiFetch, ApiError } from "@/lib/api-server";
+import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
 import type { GameListResponse } from "@/lib/types";
 
 
@@ -9,7 +9,10 @@ export async function GET(req: NextRequest) {
   const path = `/api/admin/sports/games${qs ? `?${qs}` : ""}`;
 
   try {
-    const data = await apiFetch<GameListResponse>(path, { revalidate: 0 });
+    const data = await apiFetch<GameListResponse>(path, {
+      headers: forwardAuth(req),
+      revalidate: 0,
+    });
     return NextResponse.json(data);
   } catch (err) {
     const status = err instanceof ApiError ? err.status : 500;

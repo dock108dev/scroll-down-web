@@ -40,11 +40,13 @@ async function authFetch<T>(
   return res.json();
 }
 
-/** Build common headers for authenticated JSON requests. */
+/** Build headers for authenticated JSON requests. Throws if no token. */
 function authedJson(token: string | null): Record<string, string> {
-  const h: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) h.Authorization = `Bearer ${token}`;
-  return h;
+  if (!token) throw new AuthError(401, "Not authenticated");
+  return {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${token}`,
+  };
 }
 
 export class AuthError extends Error {
@@ -126,7 +128,7 @@ export const useAuth = create<AuthState>()(
             email: string | null;
             role: string;
           }>("/api/auth/me", {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: authedJson(token),
           });
           set({
             email: data.email,

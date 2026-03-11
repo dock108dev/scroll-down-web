@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useCallback, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
 import { VALIDATION } from "@/lib/config";
@@ -10,10 +10,20 @@ import { cn } from "@/lib/utils";
 type Tab = "login" | "signup";
 
 export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, signup, isLoading } = useAuth();
 
-  const [tab, setTab] = useState<Tab>("login");
+  const initialTab = searchParams.get("tab") === "signup" ? "signup" : "login";
+  const [tab, setTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
