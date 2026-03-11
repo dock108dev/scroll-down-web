@@ -3,7 +3,7 @@ import { apiFetch, ApiError } from "@/lib/api-server";
 
 export async function GET() {
   try {
-    const data = await apiFetch("/api/simulator/mlb/teams", {
+    const data = await apiFetch("/api/analytics/mlb-teams", {
       revalidate: 3600,
     });
     return NextResponse.json(data);

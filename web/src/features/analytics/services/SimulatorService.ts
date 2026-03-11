@@ -1,28 +1,66 @@
-import type { SimulatorTeam, SimulatorResult } from "../types";
-import { api } from "@/lib/api";
+import type {
+  SimulatorTeam,
+  SimulatorResult,
+  MLBRosterResponse,
+  SimulationRequest,
+} from "../types";
+import { useAuth } from "@/stores/auth";
+
+// ─── Helpers ────────────────────────────────────────────────
+
+function authHeaders(): Record<string, string> {
+  const token = useAuth.getState().token;
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return headers;
+}
+
+async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(url, {
+    ...init,
+    headers: { ...authHeaders(), ...init?.headers },
+  });
+  if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+  return res.json();
+}
+
+// ─── Teams ──────────────────────────────────────────────────
 
 let teamsCache: SimulatorTeam[] | null = null;
-const simCache = new Map<string, SimulatorResult>();
 
 export async function fetchTeams(): Promise<SimulatorTeam[]> {
   if (teamsCache) return teamsCache;
-
-  const data = await api.simulatorTeams();
-  // Filter to real MLB teams (100+ games with advanced stats)
-  teamsCache = data.teams.filter((t) => t.games_with_stats >= 100);
+  const data = await fetchJson<{ teams: SimulatorTeam[]; count: number }>(
+    "/api/analytics/mlb-teams",
+  );
+  teamsCache = data.teams;
   return teamsCache;
 }
 
-export async function runSimulation(
-  homeTeam: string,
-  awayTeam: string,
-  iterations = 5000,
-): Promise<SimulatorResult> {
-  const key = `${homeTeam}-${awayTeam}-${iterations}`;
-  const cached = simCache.get(key);
-  if (cached) return cached;
+// ─── Rosters ────────────────────────────────────────────────
 
-  const data = await api.simulate(homeTeam, awayTeam, iterations);
-  simCache.set(key, data);
+const rosterCache = new Map<string, MLBRosterResponse>();
+
+export async function fetchRoster(
+  teamAbbr: string,
+): Promise<MLBRosterResponse> {
+  const cached = rosterCache.get(teamAbbr);
+  if (cached) return cached;
+  const data = await fetchJson<MLBRosterResponse>(
+    `/api/analytics/mlb-roster?team=${encodeURIComponent(teamAbbr)}`,
+  );
+  rosterCache.set(teamAbbr, data);
   return data;
+}
+
+// ─── Simulation ─────────────────────────────────────────────
+
+export async function runSimulation(
+  request: SimulationRequest,
+): Promise<SimulatorResult> {
+  return fetchJson<SimulatorResult>("/api/analytics/simulate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(request),
+  });
 }

@@ -6,10 +6,6 @@ import type {
   FairbetLiveResponse,
   LiveGameInfo,
 } from "./types";
-import type {
-  SimulatorTeam,
-  SimulatorResult,
-} from "@/features/analytics/types";
 import { useAuth } from "@/stores/auth";
 
 async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -58,16 +54,4 @@ export const api = {
     if (sortBy) params.set("sort_by", sortBy);
     return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
   },
-  simulatorTeams: () =>
-    fetchApi<{ teams: SimulatorTeam[] }>("/api/simulator/mlb/teams"),
-  simulate: (homeTeam: string, awayTeam: string, iterations = 5000) =>
-    fetchApi<SimulatorResult>("/api/simulator/mlb", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        home_team: homeTeam,
-        away_team: awayTeam,
-        iterations,
-      }),
-    }),
 };
