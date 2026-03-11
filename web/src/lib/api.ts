@@ -8,7 +8,7 @@ import type {
 } from "./types";
 import { useAuth } from "@/stores/auth";
 
-async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
+export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = useAuth.getState().token;
   // Normalize any HeadersInit form (Headers, [k,v][], or object) into a plain record
   const headers: Record<string, string> = {};

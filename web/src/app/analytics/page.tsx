@@ -98,6 +98,10 @@ export default function AnalyticsPage() {
       return;
     }
     let cancelled = false;
+    setHomeBatters([]);
+    setHomePitchers([]);
+    setHomeLineup([...EMPTY_LINEUP]);
+    setHomeStarter(null);
     setHomeRosterLoading(true);
     fetchRoster(homeAbbr)
       .then((r) => {
@@ -113,6 +117,8 @@ export default function AnalyticsPage() {
         if (!cancelled) {
           setHomeBatters([]);
           setHomePitchers([]);
+          setHomeLineup([...EMPTY_LINEUP]);
+          setHomeStarter(null);
         }
       })
       .finally(() => {
@@ -132,6 +138,10 @@ export default function AnalyticsPage() {
       return;
     }
     let cancelled = false;
+    setAwayBatters([]);
+    setAwayPitchers([]);
+    setAwayLineup([...EMPTY_LINEUP]);
+    setAwayStarter(null);
     setAwayRosterLoading(true);
     fetchRoster(awayAbbr)
       .then((r) => {
@@ -147,6 +157,8 @@ export default function AnalyticsPage() {
         if (!cancelled) {
           setAwayBatters([]);
           setAwayPitchers([]);
+          setAwayLineup([...EMPTY_LINEUP]);
+          setAwayStarter(null);
         }
       })
       .finally(() => {
@@ -170,6 +182,8 @@ export default function AnalyticsPage() {
     awayLineupFilled === 9 &&
     homeStarter !== null &&
     awayStarter !== null &&
+    !homeRosterLoading &&
+    !awayRosterLoading &&
     !loading;
 
   // ─── Run simulation ──────────────────────────────────────
