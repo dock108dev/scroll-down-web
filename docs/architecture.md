@@ -58,7 +58,7 @@ See the [Realtime Layer](#realtime-layer) section for details.
 | `POST /api/analytics/simulate` | `/api/analytics/simulate` | Lineup-aware MLB simulation |
 | `* /api/auth/*` | `/auth/*` | Authentication (login, signup, me, preferences, email, password, delete) |
 
-Data routes use `revalidate: 0` (no ISR caching — always fresh from backend). FairBet and auth routes forward the `Authorization` header when present. Auth routes do not send `X-API-Key` — they are public endpoints on the backend.
+Data routes use `revalidate: 0` (no ISR caching — always fresh from backend). Analytics routes (`mlb-teams`, `mlb-roster`) use `revalidate: 3600` (1-hour ISR cache) since team/roster data changes infrequently. FairBet and auth routes forward the `Authorization` header when present. Auth routes do not send `X-API-Key` — they are public endpoints on the backend.
 
 ## Authentication
 
@@ -117,7 +117,8 @@ Synced stores: `settings`, `pinned-games`, `reveal`. Reading positions are not s
 | `/` | Home | Game feed by date section (Yesterday, Today) with search, league filter, pinned games |
 | `/game/[id]` | Game Detail | Full game view with flow, timeline, stats, odds, social |
 | `/fairbet` | FairBet | Pre-Game tab (EV odds comparison + parlay) and Live tab (in-game odds movement, requires login) |
-| `/analytics` | Analytics | MLB PA Simulator — lineup-aware Monte Carlo simulation with Statcast data (requires login) |
+| `/analytics` | Analytics | Sport selection landing page — cards for each sport (MLB active, others coming soon) |
+| `/analytics/mlb` | MLB Simulator | Lineup-aware Monte Carlo PA simulator powered by Statcast data (requires login) |
 | `/history` | History | Browse past games by date range with search, sort, infinite scroll |
 | `/login` | Login | Login and signup with tab switching, client-side validation |
 | `/forgot-password` | Forgot Password | Email entry for password reset link |
@@ -219,16 +220,16 @@ Fetches the home feed, organized by date sections (Yesterday, Today).
 
 - **Freshness:** 45-second window — skips network if cache is younger
 - **Cache TTL:** 90 seconds before expiry
-- **Updates:** Realtime patches via `gameListChannel`. Visibility-driven refresh when tab regains focus while offline.
+- **Updates:** Realtime patches via `gameListChannel`. Visibility-driven refresh when tab regains focus after >5 seconds hidden (browsers throttle background tabs, so realtime events may be missed even while connected).
 - **Client-side search:** Filters by team name/abbreviation without API round-trip
-- **Timezone:** Uses US/Eastern for section boundaries
+- **Timezone:** Uses US/Eastern for section boundaries via `lib/date-utils.ts`
 
 ### useGameDetail
 
 Fetches a single game detail with realtime patches.
 
 - **Cache:** 5-minute freshness TTL in `game-data` store
-- **Updates:** Realtime patches via `gameSummaryChannel`. Visibility-driven refresh when tab regains focus while offline.
+- **Updates:** Realtime patches via `gameSummaryChannel`. Visibility-driven refresh when tab regains focus after >5 seconds hidden.
 - **Score freeze:** Accepts reveal snapshot updates on unmount for live games
 
 ### useGameFlow
@@ -247,15 +248,17 @@ FairBet pre-game odds with pagination, filtering, sorting, and parlay management
 - **Filtering:** League, market category, book, search, +EV only, hide thin confidence, hide started. Minimum 3 books per bet.
 - **Sorting:** By best EV% (descending), game time, or league
 - **Parlay:** Client-side `parlayProbIndependent()` computes combined fair odds (assumes independent legs)
-- **Updates:** Realtime via `fairbetChannel()`. Visibility-driven refresh when offline.
+- **Updates:** Realtime via `fairbetChannel()`. Visibility-driven refresh when tab regains focus after >5 seconds hidden.
 
 ### useFairBetLive
 
-Fetches live odds for a single game — closing lines, current live snapshot, and movement history.
+Discovers all live games and fetches odds for each in parallel.
 
-- **Per-game:** Requires `game_id`. Optional `market_key` filter.
-- **Polling:** 15-second interval while a game is selected
-- **No cache:** Always fetches fresh data
+- **Discovery:** `GET /api/fairbet/live/games` returns all games with live odds available, optionally filtered by league.
+- **Parallel fetch:** Odds for all discovered games fetched via `Promise.allSettled()` — individual game failures don't block others.
+- **Polling:** 15-second full refresh (discover + fetch all) via `POLLING.LIVE_ODDS_REFRESH_MS`.
+- **Client-side filtering:** League, market category, +EV only, hide thin confidence, hide alternates, search text — all applied client-side for instant feedback.
+- **Parlay:** Client-side bet selection and parlay building across all live games.
 
 ### useHistoricalGames
 
@@ -328,7 +331,7 @@ Content changes based on status:
 - **Live:** Timeline + Stats + Odds, with realtime patches
 - **Final:** Flow + Timeline + Stats + Odds + Wrap-Up
 
-The MLB Matchup Simulator is available as a standalone page (`/analytics`) — not embedded in the game detail page.
+The MLB Matchup Simulator is available at `/analytics/mlb` (accessed from the `/analytics` sport selection landing page) — not embedded in the game detail page.
 
 ## Flow Rendering
 
@@ -376,7 +379,7 @@ Additional behaviors:
 - Parlay selection state and client-side evaluation
 - Bet enrichment: adding camelCase aliases to snake_case API fields (`enrichBet()`)
 
-**Live tab:** Displays closing lines (captured at game start), current live odds from Redis, and movement history for a selected game. Per-game, per-market view with 15-second auto-refresh. Requires `user` role — guests see a signup prompt.
+**Live tab:** Discovers all games with live odds, fetches closing lines, current live odds, and movement history for each in parallel. Supports league filter, market category, +EV only, hide thin/alternates, and search. 15-second full-refresh cycle. Requires `user` role — guests see a signup prompt.
 
 ## Theming
 
@@ -393,7 +396,7 @@ NBA, NCAAB, NFL, NCAAF, MLB, NHL.
 
 ## MLB PA Simulator
 
-The `/analytics` page provides a lineup-aware MLB plate appearance simulator powered by the backend's Monte Carlo engine and real Statcast data. Requires `user` role.
+The `/analytics` page is a sport selection landing page with cards for each sport. MLB is active and links to `/analytics/mlb`; other sports show "Coming Soon". The MLB simulator is a lineup-aware plate appearance simulator powered by the backend's Monte Carlo engine and real Statcast data. Requires `user` role.
 
 ### Flow
 
@@ -425,5 +428,5 @@ Team list and rosters are cached in-memory after first fetch. Simulation results
 - **No offline support** — Requires network connectivity.
 - **Parlay assumes independent legs** — Client-side `parlayProbIndependent()` multiplies leg probabilities; no correlation modeling.
 - **FairBet client-side fallback removed** — All EV computation is server-side. If the server doesn't provide EV data for a bet, it's displayed without EV.
-- **Live odds polling** — `useFairBetLive` uses 15s polling rather than realtime. The `fairbet:odds` realtime channel covers pre-game odds only.
+- **Live odds polling** — `useFairBetLive` discovers all live games and fetches their odds in parallel on a 15s polling interval rather than realtime. The `fairbet:odds` realtime channel covers pre-game odds only.
 - **Forgot-password depends on backend** — The web app has `/forgot-password` and `/reset-password` pages that call `POST /auth/forgot-password` and `POST /auth/reset-password`. These backend endpoints must be implemented to send reset emails and validate tokens.

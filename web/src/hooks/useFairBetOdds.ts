@@ -7,6 +7,7 @@ import { CACHE, API, FAIRBET } from "@/lib/config";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { fairbetChannel } from "@/realtime/channels";
 import { useGameData } from "@/stores/game-data";
+import { useVisibilityRefresh } from "./useVisibilityRefresh";
 import {
   betId,
   enrichBet,
@@ -288,25 +289,19 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
       .catch(() => clearFairbetRefresh(counter));
   }, [needsFairbetRefresh, clearFairbetRefresh, doFullFetch]);
 
-  // Visibility change: only snapshot-refresh when realtime is offline
-  useEffect(() => {
-    const onVisibility = () => {
-      if (!document.hidden && !realtimeStatus.connected) {
-        fairbetCache = null;
-        const controller = new AbortController();
-        abortRef.current?.abort();
-        abortRef.current = controller;
-        doFullFetch(controller).catch(() => {
-          // Silent — stale data still shown
-        });
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [doFullFetch, realtimeStatus.connected]);
+  // Visibility change: refresh when returning from background
+  useVisibilityRefresh(
+    () => {
+      fairbetCache = null;
+      const controller = new AbortController();
+      abortRef.current?.abort();
+      abortRef.current = controller;
+      doFullFetch(controller).catch(() => {
+        // Silent — stale data still shown
+      });
+    },
+    realtimeStatus.connected,
+  );
 
   // ── Loading progress ─────────────────────────────────────────────
 

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { APIBet, FairbetLiveResponse, LiveGameInfo } from "@/lib/types";
 import { enrichBet, betId } from "@/lib/fairbet-utils";
-import { FAIRBET } from "@/lib/config";
+import { FAIRBET, POLLING } from "@/lib/config";
 
 export interface LiveGameData {
   game: LiveGameInfo;
@@ -153,7 +153,7 @@ export function useFairBetLive(): UseFairBetLiveReturn {
 
   // Auto-refresh every 15s
   useEffect(() => {
-    const iv = setInterval(fullRefresh, 15_000);
+    const iv = setInterval(fullRefresh, POLLING.LIVE_ODDS_REFRESH_MS);
     return () => clearInterval(iv);
   }, [fullRefresh]);
 

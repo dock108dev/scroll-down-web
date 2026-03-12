@@ -8,6 +8,7 @@ import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameSummaryChannel } from "@/realtime/channels";
+import { useVisibilityRefresh } from "./useVisibilityRefresh";
 
 export function useGameDetail(id: number) {
   const upsertFromDetail = useGameData((s) => s.upsertFromDetail);
@@ -79,27 +80,10 @@ export function useGameDetail(id: number) {
   const gameStatus = data?.game.status;
   const gameIsLive = data ? isLive(gameStatus!, data.game) : false;
 
-  useEffect(() => {
-    if (!gameIsLive) return;
-    let hiddenAt = 0;
-
-    const handleVisibility = () => {
-      if (document.hidden) {
-        hiddenAt = Date.now();
-      } else {
-        // Always refresh if tab was hidden for more than 5 seconds
-        const away = hiddenAt ? Date.now() - hiddenAt : 0;
-        if (away > 5_000 || !realtimeStatus.connected) {
-          fetchGame({ silent: true });
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [gameIsLive, fetchGame, realtimeStatus.connected]);
+  useVisibilityRefresh(
+    () => { if (gameIsLive) fetchGame({ silent: true }); },
+    realtimeStatus.connected,
+  );
 
   // Track which game page is open (used by visibility handler).
   // No auto-accept: the user must manually click "Update" to advance the snapshot.

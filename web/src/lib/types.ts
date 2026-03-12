@@ -611,8 +611,8 @@ export interface FairbetLiveResponse {
 
 // ─── Helpers ────────────────────────────────────────────
 
-const TERMINAL_STATUSES: GameStatus[] = ["final", "completed", "archived", "postponed", "canceled"];
-const PREGAME_STATUSES: GameStatus[] = ["pregame", "scheduled"];
+export const TERMINAL_STATUSES: GameStatus[] = ["final", "completed", "archived", "postponed", "canceled"];
+export const PREGAME_STATUSES: GameStatus[] = ["pregame", "scheduled"];
 
 export function isLive(status: GameStatus, game?: { isLive?: boolean }): boolean {
   // Status is authoritative — a terminal or pregame status is never "live",

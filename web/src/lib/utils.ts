@@ -1,10 +1,11 @@
 import type { OddsFormat } from "./types";
+import { APP_TIMEZONE } from "./date-utils";
 
 export function formatTimeET(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/New_York",
+    timeZone: APP_TIMEZONE,
   }) + " ET";
 }
 
