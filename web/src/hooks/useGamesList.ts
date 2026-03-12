@@ -211,7 +211,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     fetchAll(false, true);
   }, [needsListRefresh, listKeys, clearListRefresh, fetchAll]);
 
-  // ── Visibility change: always refresh when returning from background ──
+  // ── Visibility change: refresh after prolonged background or offline ──
 
   useVisibilityRefresh(
     () => fetchAll(false, true),

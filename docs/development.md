@@ -65,7 +65,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - WebSocket primary transport, SSE fallback after repeated WS failures
 - Centralized dispatcher routes events by type (game patches, PBP appends, FairBet refreshes)
 - Sequence-numbered events with gap detection and recovery
-- Visibility-driven refresh when tab regains focus after >5 seconds hidden (via `useVisibilityRefresh` hook)
+- Visibility-driven refresh when tab regains focus: triggers if hidden >5 seconds *or* if realtime is offline (via `useVisibilityRefresh` hook)
 - Enable debug logging: set `REALTIME.DEBUG = true` in `lib/config.ts`
 
 ### FairBet Loading

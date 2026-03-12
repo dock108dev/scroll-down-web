@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CACHE } from "@/lib/config";
 
 /**
@@ -11,14 +11,16 @@ export function useVisibilityRefresh(
   onRefresh: () => void,
   realtimeConnected: boolean,
 ) {
-  useEffect(() => {
-    let hiddenAt = 0;
+  const hiddenAtRef = useRef(0);
 
+  useEffect(() => {
     const onVisibility = () => {
       if (document.hidden) {
-        hiddenAt = Date.now();
+        hiddenAtRef.current = Date.now();
       } else {
-        const away = hiddenAt ? Date.now() - hiddenAt : 0;
+        const away = hiddenAtRef.current
+          ? Date.now() - hiddenAtRef.current
+          : 0;
         if (away > CACHE.VISIBILITY_AWAY_MS || !realtimeConnected) {
           onRefresh();
         }
