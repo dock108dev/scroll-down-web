@@ -31,7 +31,11 @@ export interface LineupSlot {
   name: string;
 }
 
-export type PitcherSlot = LineupSlot;
+export interface PitcherSlot {
+  external_ref: string;
+  name: string;
+  avg_ip?: number;
+}
 
 export interface SimulationRequest {
   sport: string;
@@ -45,6 +49,7 @@ export interface SimulationRequest {
   home_starter?: PitcherSlot;
   away_starter?: PitcherSlot;
   starter_innings?: number;
+  exclude_playoffs?: boolean;
 }
 
 export interface MostCommonScore {
@@ -79,7 +84,19 @@ export interface SimulatorResult {
     rolling_window?: number;
     model_win_probability?: number;
     lineup_mode?: LineupModeInfo;
+    home_pitcher?: PitcherProfileInfo;
+    away_pitcher?: PitcherProfileInfo;
+    home_bullpen?: Record<string, number>;
+    away_bullpen?: Record<string, number>;
   };
   home_pa_probabilities?: Record<string, number>;
   away_pa_probabilities?: Record<string, number>;
+}
+
+export interface PitcherProfileInfo {
+  name: string | null;
+  avg_ip: number | null;
+  raw_profile: Record<string, number> | null;
+  adjusted_profile: Record<string, number> | null;
+  is_regressed: boolean;
 }

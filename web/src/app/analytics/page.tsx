@@ -17,6 +17,7 @@ import type {
 import { ProbabilityBar } from "@/features/analytics/components/ProbabilityBar";
 import { ScoreCard } from "@/features/analytics/components/ScoreCard";
 import { PABreakdown } from "@/features/analytics/components/PABreakdown";
+import { PitcherProfile } from "@/features/analytics/components/PitcherProfile";
 import { LineupBuilder } from "@/features/analytics/components/LineupBuilder";
 import { AuthGate } from "@/components/auth/AuthGate";
 
@@ -26,8 +27,6 @@ const EMPTY_LINEUP: LineupSlot[] = Array.from({ length: 9 }, () => ({
   external_ref: "",
   name: "",
 }));
-const DEFAULT_STARTER_INNINGS = 6.0;
-
 function autoFillLineup(batters: RosterBatter[]): LineupSlot[] {
   return batters.slice(0, 9).map((b) => ({
     external_ref: b.external_ref,
@@ -37,7 +36,7 @@ function autoFillLineup(batters: RosterBatter[]): LineupSlot[] {
 
 function autoFillStarter(pitchers: RosterPitcher[]): PitcherSlot | null {
   const p = pitchers[0];
-  return p ? { external_ref: p.external_ref, name: p.name } : null;
+  return p ? { external_ref: p.external_ref, name: p.name, avg_ip: p.avg_ip } : null;
 }
 
 export default function AnalyticsPage() {
@@ -60,7 +59,6 @@ export default function AnalyticsPage() {
   const [awayLineup, setAwayLineup] = useState<LineupSlot[]>([...EMPTY_LINEUP]);
   const [homeStarter, setHomeStarter] = useState<PitcherSlot | null>(null);
   const [awayStarter, setAwayStarter] = useState<PitcherSlot | null>(null);
-  const [starterInnings, setStarterInnings] = useState(DEFAULT_STARTER_INNINGS);
 
   // Results
   const [result, setResult] = useState<SimulatorResult | null>(null);
@@ -204,7 +202,8 @@ export default function AnalyticsPage() {
         away_lineup: awayLineup,
         home_starter: homeStarter!,
         away_starter: awayStarter!,
-        starter_innings: starterInnings,
+        starter_innings: 6,
+        exclude_playoffs: true,
       });
       setResult(data);
     } catch {
@@ -220,7 +219,6 @@ export default function AnalyticsPage() {
     awayLineup,
     homeStarter,
     awayStarter,
-    starterInnings,
   ]);
 
   // ─── Derived display names ────────────────────────────────
@@ -333,27 +331,6 @@ export default function AnalyticsPage() {
                 loading={homeRosterLoading}
               />
             )}
-          </div>
-        )}
-
-        {/* ── Starter Innings ───────────────────────────── */}
-        {homeAbbr && awayAbbr && (
-          <div className="flex items-center gap-3">
-            <label className="text-xs font-medium text-neutral-500 uppercase tracking-wider shrink-0">
-              Starter Innings
-            </label>
-            <input
-              type="range"
-              min={4}
-              max={9}
-              step={0.5}
-              value={starterInnings}
-              onChange={(e) => setStarterInnings(parseFloat(e.target.value))}
-              className="flex-1 accent-blue-500"
-            />
-            <span className="text-sm font-medium text-neutral-300 tabular-nums w-8 text-right">
-              {starterInnings.toFixed(1)}
-            </span>
           </div>
         )}
 
@@ -506,6 +483,31 @@ export default function AnalyticsPage() {
                     label={homeName}
                     probs={result.home_pa_probabilities}
                   />
+                </div>
+              </div>
+            )}
+
+            {/* Pitching Analytics */}
+            {(result.profile_meta?.away_pitcher || result.profile_meta?.home_pitcher) && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+                  Pitching Profiles
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  {result.profile_meta?.away_pitcher && (
+                    <PitcherProfile
+                      label={awayName}
+                      info={result.profile_meta.away_pitcher}
+                      bullpen={result.profile_meta.away_bullpen}
+                    />
+                  )}
+                  {result.profile_meta?.home_pitcher && (
+                    <PitcherProfile
+                      label={homeName}
+                      info={result.profile_meta.home_pitcher}
+                      bullpen={result.profile_meta.home_bullpen}
+                    />
+                  )}
                 </div>
               </div>
             )}
