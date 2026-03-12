@@ -42,7 +42,6 @@ export interface SimulationRequest {
   home_team: string;
   away_team: string;
   iterations?: number;
-  rolling_window?: number;
   probability_mode?: "rule_based" | "ml" | "ensemble";
   home_lineup?: LineupSlot[];
   away_lineup?: LineupSlot[];
@@ -81,7 +80,6 @@ export interface SimulatorResult {
   probability_source?: string;
   profile_meta?: {
     has_profiles?: boolean;
-    rolling_window?: number;
     model_win_probability?: number;
     lineup_mode?: LineupModeInfo;
     home_pitcher?: PitcherProfileInfo;

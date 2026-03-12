@@ -208,7 +208,6 @@ export default function MLBSimulatorPage() {
         home_team: homeAbbr,
         away_team: awayAbbr,
         iterations: 10000,
-        rolling_window: 30,
         probability_mode: "ml",
         home_lineup: homeLineup,
         away_lineup: awayLineup,
@@ -527,9 +526,6 @@ export default function MLBSimulatorPage() {
             {/* Metadata */}
             <div className="flex flex-wrap gap-4 text-[11px] text-neutral-600 pt-2 border-t border-neutral-800/50">
               <span>{result.iterations.toLocaleString()} iterations</span>
-              {result.profile_meta?.rolling_window && (
-                <span>{result.profile_meta.rolling_window}-game window</span>
-              )}
               {result.probability_source && (
                 <span>Source: {result.probability_source}</span>
               )}
