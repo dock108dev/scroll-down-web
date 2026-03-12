@@ -2,12 +2,24 @@
 
 import type { PitcherProfileInfo } from "../types";
 
-const METRICS: { key: string; label: string }[] = [
-  { key: "strikeout", label: "K Rate" },
-  { key: "walk", label: "BB Rate" },
-  { key: "contact_suppression", label: "Contact Supp." },
-  { key: "power_suppression", label: "Power Supp." },
+const METRICS: { keys: string[]; label: string }[] = [
+  { keys: ["strikeout_rate", "k_rate", "strikeout"], label: "K Rate" },
+  { keys: ["walk_rate", "bb_rate", "walk"], label: "BB Rate" },
+  { keys: ["contact_suppression"], label: "Contact Supp." },
+  { keys: ["power_suppression"], label: "Power Supp." },
 ];
+
+/** Resolve the first matching key from a profile record. */
+function resolve(
+  profile: Record<string, number> | null | undefined,
+  keys: string[],
+): number | undefined {
+  if (!profile) return undefined;
+  for (const k of keys) {
+    if (k in profile) return profile[k];
+  }
+  return undefined;
+}
 
 function fmtPct(v: number): string {
   return `${(v * 100).toFixed(1)}%`;
@@ -46,13 +58,13 @@ export function PitcherProfile({ label, info, bullpen }: PitcherProfileProps) {
 
       {hasProfile && profile && (
         <div className="space-y-1">
-          {METRICS.map(({ key, label: metricLabel }) => {
-            const raw = info.raw_profile?.[key];
-            const adj = info.adjusted_profile?.[key];
+          {METRICS.map(({ keys, label: metricLabel }) => {
+            const raw = resolve(info.raw_profile, keys);
+            const adj = resolve(info.adjusted_profile, keys);
             const display = adj ?? raw;
 
             return (
-              <div key={key} className="flex items-center justify-between text-xs">
+              <div key={keys[0]} className="flex items-center justify-between text-xs">
                 <span className="text-neutral-500 w-24 shrink-0">{metricLabel}</span>
                 {info.is_regressed && raw != null && adj != null ? (
                   <span className="text-neutral-400 tabular-nums">
@@ -74,10 +86,10 @@ export function PitcherProfile({ label, info, bullpen }: PitcherProfileProps) {
       {bullpen && Object.keys(bullpen).length > 0 && (
         <div className="pt-1.5 border-t border-neutral-800/50 space-y-1">
           <span className="text-[11px] text-neutral-600">Bullpen</span>
-          {METRICS.map(({ key, label: metricLabel }) => {
-            const val = bullpen[key];
+          {METRICS.map(({ keys, label: metricLabel }) => {
+            const val = resolve(bullpen, keys);
             return val != null ? (
-              <div key={key} className="flex items-center justify-between text-xs">
+              <div key={keys[0]} className="flex items-center justify-between text-xs">
                 <span className="text-neutral-500 w-24 shrink-0">{metricLabel}</span>
                 <span className="text-neutral-400 tabular-nums">{fmtPct(val)}</span>
               </div>
