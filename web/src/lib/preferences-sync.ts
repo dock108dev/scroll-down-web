@@ -4,15 +4,15 @@
  * - On login: pulls preferences from server → hydrates local stores.
  * - On store changes (while authed): debounced push to server.
  * - On logout: stops syncing, localStorage stays as-is.
- *
- * The backend endpoints (GET/PUT /auth/me/preferences) may not exist yet.
- * All calls are wrapped in try/catch so the app degrades gracefully.
  */
 
 import { useAuth } from "@/stores/auth";
 import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useReveal } from "@/stores/reveal";
+import { useSyncStatus } from "@/stores/sync-status";
+
+const TAG = "[prefs-sync]";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -34,6 +34,10 @@ export interface ServerPreferences {
   updatedAt?: string;
 }
 
+// ─── Hydration guard ────────────────────────────────────────────────
+
+let isHydrating = false;
+
 // ─── API helpers ────────────────────────────────────────────────────
 
 async function fetchPreferences(): Promise<ServerPreferences | null> {
@@ -44,7 +48,10 @@ async function fetchPreferences(): Promise<ServerPreferences | null> {
     headers: { Authorization: `Bearer ${token}` },
   });
 
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.warn(`${TAG} fetchPreferences failed: ${res.status} ${res.statusText}`);
+    return null;
+  }
   return res.json();
 }
 
@@ -52,7 +59,7 @@ async function pushPreferences(prefs: Omit<ServerPreferences, "updatedAt">): Pro
   const token = useAuth.getState().token;
   if (!token) return;
 
-  await fetch("/api/auth/me/preferences", {
+  const res = await fetch("/api/auth/me/preferences", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -60,6 +67,11 @@ async function pushPreferences(prefs: Omit<ServerPreferences, "updatedAt">): Pro
     },
     body: JSON.stringify(prefs),
   });
+
+  if (!res.ok) {
+    console.warn(`${TAG} pushPreferences failed: ${res.status} ${res.statusText}`);
+    throw new Error(`Push failed: ${res.status}`);
+  }
 }
 
 // ─── Snapshot current local state ───────────────────────────────────
@@ -153,12 +165,23 @@ let pushTimer: ReturnType<typeof setTimeout> | null = null;
 const PUSH_DEBOUNCE_MS = 2_000;
 
 function schedulePush() {
+  if (isHydrating) return;
+
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
     pushTimer = null;
-    pushPreferences(snapshotLocal()).catch(() => {
-      // Silently fail — server may not support this yet
-    });
+    const sync = useSyncStatus.getState();
+    sync.setStatus("pushing");
+
+    pushPreferences(snapshotLocal())
+      .then(() => {
+        console.info(`${TAG} pushed preferences to server`);
+        useSyncStatus.getState().setSynced();
+      })
+      .catch((err) => {
+        console.warn(`${TAG} push failed:`, err);
+        useSyncStatus.getState().setError(err instanceof Error ? err.message : "Push failed");
+      });
   }, PUSH_DEBOUNCE_MS);
 }
 
@@ -193,13 +216,24 @@ function stopSyncing() {
  * Pulls server preferences then starts watching for local changes.
  */
 export async function pullAndStartSync(): Promise<void> {
+  const sync = useSyncStatus.getState();
+  sync.setStatus("pulling");
+
   try {
     const prefs = await fetchPreferences();
     if (prefs) {
-      hydrateFromServer(prefs);
+      isHydrating = true;
+      try {
+        hydrateFromServer(prefs);
+      } finally {
+        isHydrating = false;
+      }
+      console.info(`${TAG} pulled preferences from server`);
     }
-  } catch {
-    // Server may not support preferences yet — continue silently
+    sync.setSynced();
+  } catch (err) {
+    console.warn(`${TAG} pull failed:`, err);
+    sync.setError(err instanceof Error ? err.message : "Pull failed");
   }
 
   startSyncing();
@@ -211,20 +245,35 @@ export async function pullAndStartSync(): Promise<void> {
  */
 export function stopPreferenceSync(): void {
   stopSyncing();
+  useSyncStatus.getState().setStatus("idle");
 }
 
 /**
  * Immediately push current state to server (e.g. before tab close).
+ * Uses keepalive so the request survives page unload.
  */
-export async function flushPreferences(): Promise<void> {
-  if (!useAuth.getState().token) return;
+export function flushPreferences(): void {
+  const token = useAuth.getState().token;
+  if (!token) return;
+
   if (pushTimer) {
     clearTimeout(pushTimer);
     pushTimer = null;
   }
+
+  const body = JSON.stringify(snapshotLocal());
+
   try {
-    await pushPreferences(snapshotLocal());
+    fetch("/api/auth/me/preferences", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body,
+      keepalive: true,
+    });
   } catch {
-    // best-effort
+    // best-effort on unload
   }
 }

@@ -611,17 +611,25 @@ export interface FairbetLiveResponse {
 
 // ─── Helpers ────────────────────────────────────────────
 
+const TERMINAL_STATUSES: GameStatus[] = ["final", "completed", "archived", "postponed", "canceled"];
+const PREGAME_STATUSES: GameStatus[] = ["pregame", "scheduled"];
+
 export function isLive(status: GameStatus, game?: { isLive?: boolean }): boolean {
+  // Status is authoritative — a terminal or pregame status is never "live",
+  // even if a stale boolean override says otherwise.
+  if (TERMINAL_STATUSES.includes(status) || PREGAME_STATUSES.includes(status)) return false;
   if (game?.isLive !== undefined) return game.isLive;
   return status === "live" || status === "in_progress";
 }
 
 export function isFinal(status: GameStatus, game?: { isFinal?: boolean }): boolean {
+  if (TERMINAL_STATUSES.includes(status)) return true;
   if (game?.isFinal !== undefined) return game.isFinal;
-  return status === "final" || status === "completed" || status === "archived";
+  return false;
 }
 
 export function isPregame(status: GameStatus, game?: { isPregame?: boolean }): boolean {
+  if (PREGAME_STATUSES.includes(status)) return true;
   if (game?.isPregame !== undefined) return game.isPregame;
-  return status === "pregame" || status === "scheduled";
+  return false;
 }

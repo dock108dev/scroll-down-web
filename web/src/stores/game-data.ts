@@ -351,6 +351,16 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const existing = next.get(gameId);
       if (existing) {
         const merged = { ...existing.core, ...patch };
+        // Don't let a stale patch revert a terminal status back to live.
+        const terminalStatuses = ["final", "completed", "archived", "postponed", "canceled"];
+        if (terminalStatuses.includes(existing.core.status) && !terminalStatuses.includes(merged.status)) {
+          merged.status = existing.core.status;
+        }
+        // Keep boolean flags consistent with status.
+        if (terminalStatuses.includes(merged.status)) {
+          merged.isLive = false;
+          merged.isFinal = true;
+        }
         // liveSnapshot is SSOT for clock/period; fall back to patch/previous core.
         merged.gameClock =
           merged.liveSnapshot?.gameClock ??

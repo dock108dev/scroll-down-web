@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { STORAGE_KEYS } from "@/lib/config";
-import {
-  pullAndStartSync,
-  stopPreferenceSync,
-} from "@/lib/preferences-sync";
+import { stopPreferenceSync } from "@/lib/preferences-sync";
 
 export type Role = "guest" | "user" | "admin";
 
@@ -88,8 +85,6 @@ export const useAuth = create<AuthState>()(
           });
           // Populate email/userId from /auth/me
           await get().refreshMe();
-          // Sync preferences from server + start watching for changes
-          await pullAndStartSync();
         } finally {
           set({ isLoading: false });
         }
@@ -111,8 +106,6 @@ export const useAuth = create<AuthState>()(
             role: data.role as Role,
           });
           await get().refreshMe();
-          // Push current local state as initial preferences for new account
-          await pullAndStartSync();
         } finally {
           set({ isLoading: false });
         }
