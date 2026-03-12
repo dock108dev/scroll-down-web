@@ -20,7 +20,7 @@ export function PABreakdown({ label, probs }: PABreakdownProps) {
       <span className="text-xs font-medium text-neutral-400">{label}</span>
       <div className="space-y-1.5">
         {EVENT_LABELS.map(({ key, label: eventLabel }) => {
-          const val = probs[key] ?? 0;
+          const val = probs[`${key}_probability`] ?? probs[key] ?? 0;
           const pct = (val * 100).toFixed(1);
           return (
             <div key={key} className="flex items-center justify-between text-xs">

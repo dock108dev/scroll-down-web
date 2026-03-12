@@ -76,14 +76,14 @@ export function LineupBuilder({
           value={starter?.external_ref ?? ""}
           onChange={(e) => {
             const p = pitchers.find((p) => p.external_ref === e.target.value);
-            onStarterChange(p ? { external_ref: p.external_ref, name: p.name } : null);
+            onStarterChange(p ? { external_ref: p.external_ref, name: p.name, avg_ip: p.avg_ip } : null);
           }}
           className="w-full text-xs rounded-md px-2 py-1.5 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none"
         >
           <option value="">Select pitcher</option>
           {pitchers.map((p) => (
             <option key={p.external_ref} value={p.external_ref}>
-              {p.name} ({p.games}G, {p.avg_ip.toFixed(1)} IP/G)
+              {p.name}
             </option>
           ))}
         </select>
@@ -118,7 +118,7 @@ export function LineupBuilder({
                       value={b.external_ref}
                       disabled={taken}
                     >
-                      {b.name} ({b.games_played}G){taken ? " (in lineup)" : ""}
+                      {b.name}{taken ? " (in lineup)" : ""}
                     </option>
                   );
                 })}
