@@ -240,12 +240,20 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     fetchAll(false, true);
   }, [needsListRefresh, listKeys, clearListRefresh, fetchAll]);
 
-  // ── Visibility change: only snapshot-refresh when offline ──
+  // ── Visibility change: always refresh when returning from background ──
 
   useEffect(() => {
+    let hiddenAt = 0;
+
     const onVisibility = () => {
-      if (!document.hidden && !realtimeStatus.connected) {
-        fetchAll(false, true);
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else {
+        // Always refresh if tab was hidden for more than 5 seconds
+        const away = hiddenAt ? Date.now() - hiddenAt : 0;
+        if (away > 5_000 || !realtimeStatus.connected) {
+          fetchAll(false, true);
+        }
       }
     };
 

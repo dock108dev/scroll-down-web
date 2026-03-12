@@ -81,10 +81,15 @@ export function useGameDetail(id: number) {
 
   useEffect(() => {
     if (!gameIsLive) return;
+    let hiddenAt = 0;
 
     const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        if (!realtimeStatus.connected) {
+      if (document.hidden) {
+        hiddenAt = Date.now();
+      } else {
+        // Always refresh if tab was hidden for more than 5 seconds
+        const away = hiddenAt ? Date.now() - hiddenAt : 0;
+        if (away > 5_000 || !realtimeStatus.connected) {
           fetchGame({ silent: true });
         }
       }
