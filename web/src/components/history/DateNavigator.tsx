@@ -1,21 +1,6 @@
 "use client";
 
-// ── Date helpers (US/Eastern) ──────────────────────────────
-
-function easternToday(): Date {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/New_York" }),
-  );
-  now.setHours(0, 0, 0, 0);
-  return now;
-}
-
-function fmt(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
+import { easternToday, fmtDate } from "@/lib/date-utils";
 
 // ── Component ──────────────────────────────────────────────
 
@@ -30,7 +15,7 @@ export function DateNavigator({ startDate, endDate, onChange }: DateNavigatorPro
   const maxDate = (() => {
     const d = easternToday();
     d.setDate(d.getDate() - 2);
-    return fmt(d);
+    return fmtDate(d);
   })();
 
   return (

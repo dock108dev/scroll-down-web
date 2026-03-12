@@ -16,12 +16,16 @@ export const CACHE = {
   FLOW_MAX_ENTRIES: 8,
   FAIRBET_TTL_MS: 3 * 60_000,
   FAIRBET_FRESH_MS: 90_000,
+  VISIBILITY_AWAY_MS: 5_000, // force refresh when tab hidden longer than this
 };
 
 export const POLLING = {
   GAMES_REFRESH_MS: 60_000,
   LIVE_GAME_POLL_MS: 45_000,
+  LIVE_ODDS_REFRESH_MS: 15_000,
   READING_RESUME_DELAY_MS: 300, // wait for DOM render before scrolling to saved position
+  FOLLOWING_LIVE_TTL_MS: 120 * 60_000, // 2 hours of inactivity before auto-disabling
+  FOLLOWING_LIVE_CHECK_MS: 60_000, // how often to check for inactivity expiry
 };
 
 export const API = {

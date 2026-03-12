@@ -6,9 +6,7 @@ import { useGameData } from "@/stores/game-data";
 import { useReveal } from "@/stores/reveal";
 import { pickSnapshot } from "@/lib/score-display";
 import { isLive, isFinal } from "@/lib/types";
-
-const LIVE_TIMEOUT_MS = 120 * 60_000; // 120 minutes
-const CHECK_INTERVAL_MS = 60_000; // check every minute
+import { POLLING } from "@/lib/config";
 
 /** Snapshot all visible games and turn off following-live. */
 function disableLive() {
@@ -55,8 +53,8 @@ export function useFollowingLive() {
 
     const onActivity = () => {
       lastActivityRef.current = Date.now();
-      // Throttle store writes to once per 60s (the in-memory ref is instant)
-      if (Date.now() - lastTouchRef.current > 60_000) {
+      // Throttle store writes to once per check interval (the in-memory ref is instant)
+      if (Date.now() - lastTouchRef.current > POLLING.FOLLOWING_LIVE_CHECK_MS) {
         lastTouchRef.current = Date.now();
         touchFollowingLive();
       }
@@ -71,10 +69,10 @@ export function useFollowingLive() {
     // Periodically check if we've exceeded the timeout
     const interval = setInterval(() => {
       const elapsed = Date.now() - lastActivityRef.current;
-      if (elapsed >= LIVE_TIMEOUT_MS) {
+      if (elapsed >= POLLING.FOLLOWING_LIVE_TTL_MS) {
         disableLive();
       }
-    }, CHECK_INTERVAL_MS);
+    }, POLLING.FOLLOWING_LIVE_CHECK_MS);
 
     return () => {
       window.removeEventListener("pointerdown", onActivity);

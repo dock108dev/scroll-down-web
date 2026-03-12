@@ -65,12 +65,12 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - WebSocket primary transport, SSE fallback after repeated WS failures
 - Centralized dispatcher routes events by type (game patches, PBP appends, FairBet refreshes)
 - Sequence-numbered events with gap detection and recovery
-- Visibility-driven refresh when tab regains focus while offline
+- Visibility-driven refresh when tab regains focus: triggers if hidden >5 seconds *or* if realtime is offline (via `useVisibilityRefresh` hook)
 - Enable debug logging: set `REALTIME.DEBUG = true` in `lib/config.ts`
 
 ### FairBet Loading
 - Pre-Game tab: first 100 bets render immediately, remaining pages load in background (3 concurrent fetches)
-- Live tab: per-game live odds with 15s auto-refresh
+- Live tab: discovers all live games, fetches odds in parallel with 15s auto-refresh
 - Client filters, sorts, and deduplicates the full pre-game bet list
 - Parlay evaluation is client-side (`parlayProbIndependent()` in `fairbet-utils.ts`)
 
@@ -103,8 +103,14 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Score freeze works for revealed live games (frozen scores, amber dot on new data)
 - [ ] Mini scorebar appears when scrolling past header
 
-### MLB PA Simulator (`/analytics`)
-- [ ] Team dropdowns populate from API
+### Analytics Landing (`/analytics`)
+- [ ] Sport cards render (MLB, NBA, NFL, NHL, NCAAB, NCAAF)
+- [ ] Non-MLB cards are greyed out with "Coming Soon" badge
+- [ ] MLB card navigates to `/analytics/mlb`
+- [ ] AuthGate blocks guests with signup prompt
+
+### MLB PA Simulator (`/analytics/mlb`)
+- [ ] Team dropdowns populate from API (no duplicate abbreviations across sports)
 - [ ] Selecting a team loads its roster (batters + pitchers)
 - [ ] LineupBuilder auto-fills top 9 batters and top pitcher per team
 - [ ] User can swap batters and reorder lineup

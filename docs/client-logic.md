@@ -26,7 +26,7 @@ Instant team name / abbreviation filtering on the home page and history page for
 Hooks declare which channels to subscribe to via `useRealtimeSubscription()`. The transport layer manages WebSocket/SSE connections. Components do not handle raw events — the centralized dispatcher routes events into the Zustand store, and components re-render from store state.
 
 ## 8. Visibility-Driven Refresh
-When the browser tab regains focus and the realtime connection is offline, hooks trigger a silent REST refresh. This replaces the previous periodic polling approach. Live games also freeze/accept score snapshots on visibility changes.
+When the browser tab regains focus after being hidden for more than 5 seconds, hooks force a silent REST refresh regardless of realtime connection status. Browsers throttle background tabs, so realtime events may be missed even when the WebSocket appears connected. If the tab was hidden for less than 5 seconds, refresh only occurs when the realtime connection is offline. Live games also freeze/accept score snapshots on visibility changes.
 
 ## 9. Client-side Cache
 Freshness-based caching in the `game-data` Zustand store (in-memory, not persisted):
@@ -45,7 +45,7 @@ American/decimal/fractional display toggle. `formatOdds()` in `utils.ts` handles
 `formatDate()` — locale-aware display formatting. Stays client-side because it depends on user timezone/locale.
 
 ## 13. Eastern Timezone Date Bucketing
-`toEasternDateStr()` in `useGamesList.ts` converts game dates to US/Eastern time before bucketing into Yesterday/Today sections. This prevents late-night ET games (whose UTC date is the next day) from appearing in the wrong section.
+`toEasternDateStr()` in `lib/date-utils.ts` converts game dates to US/Eastern time before bucketing into Yesterday/Today sections. This prevents late-night ET games (whose UTC date is the next day) from appearing in the wrong section.
 
 ## 14. Bold Keywords in Timeline
 `BOLD_KEYWORDS` array in `TimelineRow.tsx` for play description styling (e.g., "GOAL", "TOUCHDOWN", "DUNK", "makes", "MISS"). Combined with a regex that also de-emphasizes parenthetical content.

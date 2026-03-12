@@ -1,9 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { STORAGE_KEYS, DEFAULTS } from "@/lib/config";
-
-/** How long followingLive stays active without user interaction (ms). */
-const FOLLOWING_LIVE_TTL_MS = 120 * 60_000; // 2 hours
+import { STORAGE_KEYS, DEFAULTS, POLLING } from "@/lib/config";
 
 interface SettingsState {
   theme: "system" | "light" | "dark";
@@ -101,7 +98,7 @@ export const useSettings = create<SettingsState>()(
           state.followingLive &&
           typeof state.followingLiveAt === "number" &&
           state.followingLiveAt > 0 &&
-          Date.now() - state.followingLiveAt >= FOLLOWING_LIVE_TTL_MS
+          Date.now() - state.followingLiveAt >= POLLING.FOLLOWING_LIVE_TTL_MS
         ) {
           state.followingLive = false;
           state.followingLiveAt = 0;

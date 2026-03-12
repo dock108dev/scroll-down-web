@@ -8,37 +8,8 @@ import type { GameCore } from "@/stores/game-data";
 import { CACHE, API } from "@/lib/config";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameListChannel } from "@/realtime/channels";
-
-// ── Date helpers (US/Eastern) ──────────────────────────────
-
-function easternToday(): Date {
-  const now = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/New_York" }),
-  );
-  now.setHours(0, 0, 0, 0);
-  return now;
-}
-
-function addDays(d: Date, n: number): Date {
-  const r = new Date(d);
-  r.setDate(r.getDate() + n);
-  return r;
-}
-
-function fmt(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-/** Convert a gameDate (ISO datetime or YYYY-MM-DD) to an Eastern-time date string */
-function toEasternDateStr(gameDate: string): string {
-  if (gameDate.length === 10) return gameDate;
-  return new Date(gameDate).toLocaleDateString("en-CA", {
-    timeZone: "America/New_York",
-  });
-}
+import { easternToday, addDays, fmtDate, toEasternDateStr } from "@/lib/date-utils";
+import { useVisibilityRefresh } from "./useVisibilityRefresh";
 
 // ── Section date ranges ────────────────────────────────────
 
@@ -58,12 +29,12 @@ function getSectionDateRanges(): Record<SectionKey, DateRange> {
   const today = easternToday();
   return {
     Yesterday: {
-      startDate: fmt(addDays(today, -1)),
-      endDate: fmt(addDays(today, -1)),
+      startDate: fmtDate(addDays(today, -1)),
+      endDate: fmtDate(addDays(today, -1)),
     },
     Today: {
-      startDate: fmt(today),
-      endDate: fmt(today),
+      startDate: fmtDate(today),
+      endDate: fmtDate(today),
     },
   };
 }
@@ -240,28 +211,12 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     fetchAll(false, true);
   }, [needsListRefresh, listKeys, clearListRefresh, fetchAll]);
 
-  // ── Visibility change: always refresh when returning from background ──
+  // ── Visibility change: refresh after prolonged background or offline ──
 
-  useEffect(() => {
-    let hiddenAt = 0;
-
-    const onVisibility = () => {
-      if (document.hidden) {
-        hiddenAt = Date.now();
-      } else {
-        // Always refresh if tab was hidden for more than 5 seconds
-        const away = hiddenAt ? Date.now() - hiddenAt : 0;
-        if (away > 5_000 || !realtimeStatus.connected) {
-          fetchAll(false, true);
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", onVisibility);
-    };
-  }, [fetchAll, realtimeStatus.connected]);
+  useVisibilityRefresh(
+    () => fetchAll(false, true),
+    realtimeStatus.connected,
+  );
 
   // Derive sections from store using tracked section IDs
   const sections: SectionData[] = useMemo(() => {

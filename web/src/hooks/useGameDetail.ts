@@ -8,6 +8,7 @@ import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameSummaryChannel } from "@/realtime/channels";
+import { useVisibilityRefresh } from "./useVisibilityRefresh";
 
 export function useGameDetail(id: number) {
   const upsertFromDetail = useGameData((s) => s.upsertFromDetail);
@@ -71,35 +72,20 @@ export function useGameDetail(id: number) {
     fetchGame({ silent: true });
   }, [needsGameRefresh, id, clearGameRefresh, fetchGame]);
 
-  // ── Visibility change: refetch when offline ──
+  // ── Visibility change: refetch after prolonged background or offline ──
   //
-  // When the user returns to the tab, refetch if the realtime connection
-  // dropped. We never auto-sync the snapshot — the user controls updates.
+  // Browsers throttle background tabs, so realtime events may be missed even
+  // while the WebSocket appears connected. useVisibilityRefresh triggers a
+  // silent REST refresh when hidden > VISIBILITY_AWAY_MS *or* when the
+  // realtime connection is offline. Only fires for live games.
 
   const gameStatus = data?.game.status;
   const gameIsLive = data ? isLive(gameStatus!, data.game) : false;
 
-  useEffect(() => {
-    if (!gameIsLive) return;
-    let hiddenAt = 0;
-
-    const handleVisibility = () => {
-      if (document.hidden) {
-        hiddenAt = Date.now();
-      } else {
-        // Always refresh if tab was hidden for more than 5 seconds
-        const away = hiddenAt ? Date.now() - hiddenAt : 0;
-        if (away > 5_000 || !realtimeStatus.connected) {
-          fetchGame({ silent: true });
-        }
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-    return () => {
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [gameIsLive, fetchGame, realtimeStatus.connected]);
+  useVisibilityRefresh(
+    () => { if (gameIsLive) fetchGame({ silent: true }); },
+    realtimeStatus.connected,
+  );
 
   // Track which game page is open (used by visibility handler).
   // No auto-accept: the user must manually click "Update" to advance the snapshot.

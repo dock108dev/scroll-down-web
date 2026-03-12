@@ -8,6 +8,7 @@ import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { cn, cardDisplayName, formatTimeET } from "@/lib/utils";
+import { APP_TIMEZONE } from "@/lib/date-utils";
 import { pickSnapshot } from "@/lib/score-display";
 
 interface GameRowProps {
@@ -25,12 +26,12 @@ function formatHistoryDateTime(dateStr: string): string {
   const monthDay = date.toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-    timeZone: "America/New_York",
+    timeZone: APP_TIMEZONE,
   });
   const time = date.toLocaleString("en-US", {
     hour: "numeric",
     minute: "2-digit",
-    timeZone: "America/New_York",
+    timeZone: APP_TIMEZONE,
   });
   return `${monthDay} · ${time} ET`;
 }
