@@ -27,6 +27,8 @@ interface AuthState {
   deleteAccount: (password: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string) => Promise<void>;
+  requestMagicLink: (email: string) => Promise<void>;
+  verifyMagicLink: (token: string) => Promise<void>;
 }
 
 async function authFetch<T>(
@@ -173,7 +175,10 @@ export const useAuth = create<AuthState>()(
         await authFetch("/api/auth/forgot-password", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email }),
+          body: JSON.stringify({
+            email,
+            redirect_url: window.location.origin,
+          }),
         });
       },
 
@@ -183,6 +188,38 @@ export const useAuth = create<AuthState>()(
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ token, new_password: newPassword }),
         });
+      },
+
+      requestMagicLink: async (email) => {
+        await authFetch("/api/auth/magic-link", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            redirect_url: window.location.origin,
+          }),
+        });
+      },
+
+      verifyMagicLink: async (token) => {
+        set({ isLoading: true });
+        try {
+          const data = await authFetch<{
+            access_token: string;
+            role: string;
+          }>("/api/auth/magic-link/verify", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token }),
+          });
+          set({
+            token: data.access_token,
+            role: data.role as Role,
+          });
+          await get().refreshMe();
+        } finally {
+          set({ isLoading: false });
+        }
       },
 
       deleteAccount: async (password) => {

@@ -20,7 +20,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, signup, isLoading } = useAuth();
+  const { login, signup, requestMagicLink, isLoading } = useAuth();
 
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -29,6 +29,7 @@ function LoginForm() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const validate = useCallback(() => {
     const errs: Record<string, string> = {};
@@ -74,6 +75,20 @@ function LoginForm() {
     },
     [tab, email, password, validate, login, signup, router],
   );
+
+  const handleMagicLink = useCallback(async () => {
+    setError(null);
+    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+      setFieldErrors({ email: "Enter a valid email address" });
+      return;
+    }
+    try {
+      await requestMagicLink(email);
+      setMagicLinkSent(true);
+    } catch {
+      setError("Something went wrong. Try again.");
+    }
+  }, [email, requestMagicLink]);
 
   return (
     <div className="mx-auto max-w-sm px-4 py-12">
@@ -191,6 +206,31 @@ function LoginForm() {
               ? "Log In"
               : "Create Account"}
         </button>
+
+        {/* Magic link (login tab only) */}
+        {tab === "login" && !magicLinkSent && (
+          <>
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-neutral-800" />
+              <span className="text-xs text-neutral-500">or</span>
+              <div className="flex-1 h-px bg-neutral-800" />
+            </div>
+            <button
+              type="button"
+              onClick={handleMagicLink}
+              disabled={isLoading}
+              className="w-full text-sm font-medium rounded-lg px-4 py-2.5 bg-neutral-800 text-neutral-200 transition-colors hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Send me a sign-in link
+            </button>
+          </>
+        )}
+
+        {tab === "login" && magicLinkSent && (
+          <p className="text-sm text-green-400 text-center">
+            Check your email for a sign-in link.
+          </p>
+        )}
       </form>
 
       {/* Footer hint */}
