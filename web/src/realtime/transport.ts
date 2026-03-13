@@ -59,8 +59,10 @@ function toWsUrl(baseHttpUrl: string, path = "/v1/ws"): string {
   return u.toString();
 }
 
-function toSseUrl(baseHttpUrl: string, channels: string[]): string {
-  const u = new URL("/v1/sse", baseHttpUrl);
+function toSseUrl(_baseHttpUrl: string, channels: string[]): string {
+  // Route through the Next.js SSE proxy so the server-side API key is injected.
+  // EventSource cannot send custom headers, so a proxy is required.
+  const u = new URL("/api/realtime/sse", window.location.origin);
   u.searchParams.set("channels", channels.join(","));
   return u.toString();
 }
@@ -96,7 +98,9 @@ class RealtimeTransport {
   connect(): void {
     if (this.disposed) return;
     if (this.connected) return;
-    this.attemptWs();
+    // SSE is proxied through Next.js API routes (which inject the API key).
+    // WebSocket can't be proxied through Next.js, so prefer SSE.
+    this.attemptSse();
   }
 
   disconnect(): void {
@@ -298,15 +302,8 @@ class RealtimeTransport {
       this.teardownSse();
       this.connected = false;
       this.mode = "offline";
-      this.scheduleReconnect(() => this.attemptWs());
+      this.scheduleReconnect(() => this.attemptSse());
     };
-
-    // After SSE_FALLBACK_DURATION, try WS again in the background
-    setTimeout(() => {
-      if (this.mode === "sse" && !this.disposed) {
-        this.attemptWs();
-      }
-    }, REALTIME.SSE_FALLBACK_DURATION_MS);
   }
 
   private reconnectSse(): void {
