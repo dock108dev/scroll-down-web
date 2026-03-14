@@ -11,6 +11,14 @@ import { FairBetTheme } from "./theme";
 import { FAIRBET } from "./config";
 import type { APIBet } from "./types";
 
+// ── Parlay leg snapshot ─────────────────────────────────────────────
+
+export interface ParlayLeg {
+  id: string;
+  snapshot: APIBet;
+  status: "fresh" | "stale";
+}
+
 // ── Formatting ─────────────────────────────────────────────────────
 
 /** Format EV percent with sign: "+5.2%" or "-2.1%" */

@@ -19,6 +19,7 @@ import {
   decimalToAmerican,
   hasCorrelatedLegs,
   parlayConfidenceTier,
+  type ParlayLeg,
 } from "@/lib/fairbet-utils";
 import {
   type SortMode,
@@ -80,6 +81,7 @@ export interface UseFairBetOddsReturn {
   parlayFairAmericanOdds: number;
   parlayConfidence: string;
   parlayCorrelated: boolean;
+  staleBetIds: Set<string>;
   toggleParlay: (id: string) => void;
   clearParlay: () => void;
 }
@@ -127,8 +129,8 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   // Filters
   const [filters, setFilters] = useState<FairBetFilters>(DEFAULT_FILTERS);
 
-  // Parlay
-  const [parlayBetIds, setParlayBetIds] = useState<Set<string>>(new Set());
+  // Parlay — snapshot-based to survive odds refreshes
+  const [parlayLegs, setParlayLegs] = useState<Map<string, ParlayLeg>>(new Map());
 
   // Abort controller for cancellation
   const abortRef = useRef<AbortController | null>(null);
@@ -372,13 +374,60 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
   // ── Parlay ───────────────────────────────────────────────────────
 
-  const parlayBets = useMemo(() => {
-    if (parlayBetIds.size === 0) return [];
-    return allBets.filter((b) => parlayBetIds.has(betId(b)));
-  }, [allBets, parlayBetIds]);
+  // Derive convenience values from the snapshot map
+  const parlayBetIds = useMemo(() => new Set(parlayLegs.keys()), [parlayLegs]);
+  const parlayBets = useMemo(
+    () => Array.from(parlayLegs.values()).map((l) => l.snapshot),
+    [parlayLegs],
+  );
+  const staleBetIds = useMemo(
+    () => new Set(
+      Array.from(parlayLegs.entries())
+        .filter(([, l]) => l.status === "stale")
+        .map(([id]) => id),
+    ),
+    [parlayLegs],
+  );
 
-  const parlayCount = parlayBetIds.size;
+  const parlayCount = parlayLegs.size;
   const canShowParlay = parlayCount >= 2;
+
+  // Reconcile parlay legs when allBets changes (refresh / realtime)
+  useEffect(() => {
+    if (parlayLegs.size === 0) return;
+    const betsById = new Map<string, APIBet>();
+    for (const b of allBets) betsById.set(betId(b), b);
+
+    setParlayLegs((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const [id, leg] of next) {
+        const fresh = betsById.get(id);
+        if (!fresh) {
+          // Bet disappeared — mark stale
+          if (leg.status !== "stale") {
+            next.set(id, { ...leg, status: "stale" });
+            changed = true;
+          }
+        } else {
+          // Check if odds changed materially
+          const probDiff = Math.abs((fresh.true_prob ?? 0) - (leg.snapshot.true_prob ?? 0));
+          const priceDiff = Math.abs((fresh.reference_price ?? 0) - (leg.snapshot.reference_price ?? 0));
+          const isStale = probDiff > 0.001 || priceDiff > 0.5;
+
+          if (isStale && leg.status !== "stale") {
+            next.set(id, { ...leg, status: "stale" });
+            changed = true;
+          } else if (!isStale && leg.status !== "fresh") {
+            next.set(id, { ...leg, snapshot: fresh, status: "fresh" });
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allBets]);
 
   // ── Client-side parlay evaluation ──────────────────────────────
 
@@ -428,19 +477,23 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   const parlayConfidence = parlayResult.confidence;
 
   const toggleParlay = useCallback((id: string) => {
-    setParlayBetIds((prev) => {
-      const next = new Set(prev);
+    setParlayLegs((prev) => {
+      const next = new Map(prev);
       if (next.has(id)) {
         next.delete(id);
       } else {
-        next.add(id);
+        // Snapshot the bet at toggle time
+        const bet = allBets.find((b) => betId(b) === id);
+        if (bet) {
+          next.set(id, { id, snapshot: bet, status: "fresh" });
+        }
       }
       return next;
     });
-  }, []);
+  }, [allBets]);
 
   const clearParlay = useCallback(() => {
-    setParlayBetIds(new Set());
+    setParlayLegs(new Map());
   }, []);
 
   // ── Filter setters ───────────────────────────────────────────────
@@ -492,6 +545,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     parlayFairAmericanOdds,
     parlayConfidence,
     parlayCorrelated,
+    staleBetIds,
     toggleParlay,
     clearParlay,
   };

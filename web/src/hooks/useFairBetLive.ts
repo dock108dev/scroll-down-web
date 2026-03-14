@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { APIBet, FairbetLiveResponse, LiveGameInfo } from "@/lib/types";
-import { enrichBet, betId } from "@/lib/fairbet-utils";
+import { enrichBet, betId, type ParlayLeg } from "@/lib/fairbet-utils";
 import { FAIRBET, POLLING } from "@/lib/config";
 
 export interface LiveGameData {
@@ -47,6 +47,7 @@ export interface UseFairBetLiveReturn {
   parlayBets: APIBet[];
   parlayCount: number;
   canShowParlay: boolean;
+  staleBetIds: Set<string>;
 }
 
 export function useFairBetLive(): UseFairBetLiveReturn {
@@ -65,7 +66,7 @@ export function useFairBetLive(): UseFairBetLiveReturn {
   >(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [parlayIds, setParlayIds] = useState<Set<string>>(new Set());
+  const [parlayLegs, setParlayLegs] = useState<Map<string, ParlayLeg>>(new Map());
 
   // Track current fetch to avoid stale updates
   const fetchIdRef = useRef(0);
@@ -249,24 +250,69 @@ export function useFairBetLive(): UseFairBetLiveReturn {
     return map;
   }, [rawGameResponses]);
 
+  // Derive convenience values from snapshot map
+  const parlayBetIds = useMemo(() => new Set(parlayLegs.keys()), [parlayLegs]);
+  const parlayBets = useMemo(
+    () => Array.from(parlayLegs.values()).map((l) => l.snapshot),
+    [parlayLegs],
+  );
+  const staleBetIds = useMemo(
+    () => new Set(
+      Array.from(parlayLegs.entries())
+        .filter(([, l]) => l.status === "stale")
+        .map(([id]) => id),
+    ),
+    [parlayLegs],
+  );
+
+  // Reconcile parlay legs when bets refresh
+  useEffect(() => {
+    if (parlayLegs.size === 0) return;
+    setParlayLegs((prev) => {
+      let changed = false;
+      const next = new Map(prev);
+      for (const [id, leg] of next) {
+        const fresh = allBetsById.get(id);
+        if (!fresh) {
+          if (leg.status !== "stale") {
+            next.set(id, { ...leg, status: "stale" });
+            changed = true;
+          }
+        } else {
+          const probDiff = Math.abs((fresh.true_prob ?? 0) - (leg.snapshot.true_prob ?? 0));
+          const priceDiff = Math.abs((fresh.reference_price ?? 0) - (leg.snapshot.reference_price ?? 0));
+          const isStale = probDiff > 0.001 || priceDiff > 0.5;
+
+          if (isStale && leg.status !== "stale") {
+            next.set(id, { ...leg, status: "stale" });
+            changed = true;
+          } else if (!isStale && leg.status !== "fresh") {
+            next.set(id, { ...leg, snapshot: fresh, status: "fresh" });
+            changed = true;
+          }
+        }
+      }
+      return changed ? next : prev;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allBetsById]);
+
   const toggleParlay = useCallback((id: string) => {
-    setParlayIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+    setParlayLegs((prev) => {
+      const next = new Map(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        const bet = allBetsById.get(id);
+        if (bet) {
+          next.set(id, { id, snapshot: bet, status: "fresh" });
+        }
+      }
       return next;
     });
-  }, []);
+  }, [allBetsById]);
 
-  const clearParlay = useCallback(() => setParlayIds(new Set()), []);
-
-  const parlayBets = useMemo(
-    () =>
-      Array.from(parlayIds)
-        .map((id) => allBetsById.get(id))
-        .filter(Boolean) as APIBet[],
-    [parlayIds, allBetsById],
-  );
+  const clearParlay = useCallback(() => setParlayLegs(new Map()), []);
 
   return {
     liveGames,
@@ -294,9 +340,10 @@ export function useFairBetLive(): UseFairBetLiveReturn {
     refetch: fullRefresh,
     toggleParlay,
     clearParlay,
-    parlayBetIds: parlayIds,
+    parlayBetIds,
     parlayBets,
-    parlayCount: parlayIds.size,
-    canShowParlay: parlayIds.size >= 2,
+    parlayCount: parlayLegs.size,
+    canShowParlay: parlayLegs.size >= 2,
+    staleBetIds,
   };
 }

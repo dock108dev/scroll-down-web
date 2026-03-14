@@ -25,6 +25,7 @@ interface ParlaySheetProps {
   parlayProbability: number;
   parlayConfidence: string;
   parlayCorrelated: boolean;
+  staleBetIds: Set<string>;
   onRemoveLeg: (id: string) => void;
   onClearAll: () => void;
 }
@@ -37,6 +38,7 @@ export function ParlaySheet({
   parlayProbability,
   parlayConfidence,
   parlayCorrelated,
+  staleBetIds,
   onRemoveLeg,
   onClearAll,
 }: ParlaySheetProps) {
@@ -216,6 +218,23 @@ export function ParlaySheet({
                         </span>
                       )}
                     </div>
+                    {staleBetIds.has(id) && (
+                      <div
+                        className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] mt-1"
+                        style={{
+                          backgroundColor: "rgba(234, 179, 8, 0.08)",
+                          border: "1px solid rgba(234, 179, 8, 0.20)",
+                          color: "rgb(234, 179, 8)",
+                        }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                          <line x1="12" y1="9" x2="12" y2="13" />
+                          <line x1="12" y1="17" x2="12.01" y2="17" />
+                        </svg>
+                        Price may have changed — confirm with current odds
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => onRemoveLeg(id)}

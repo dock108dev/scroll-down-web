@@ -254,6 +254,7 @@ export default function FairBetPage() {
         parlayProbability={hook.parlayFairProbability}
         parlayConfidence={hook.parlayConfidence}
         parlayCorrelated={hook.parlayCorrelated}
+        staleBetIds={hook.staleBetIds}
         onRemoveLeg={hook.toggleParlay}
         onClearAll={hook.clearParlay}
       />
