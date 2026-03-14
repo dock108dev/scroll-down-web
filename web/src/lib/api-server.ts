@@ -2,7 +2,7 @@ import { BACKEND_BASE_URL } from "@/lib/config";
 
 // Server-side fetches prefer the internal Docker URL (avoids hairpin NAT).
 export const BASE_URL = process.env.SPORTS_API_INTERNAL_URL || BACKEND_BASE_URL;
-const API_KEY = process.env.SPORTS_DATA_API_KEY || process.env.SPORTS_API_KEY || process.env.API_KEY || "";
+export const API_KEY = process.env.SPORTS_DATA_API_KEY || process.env.SPORTS_API_KEY || process.env.API_KEY || "";
 
 export class ApiError extends Error {
   constructor(

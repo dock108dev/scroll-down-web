@@ -38,6 +38,7 @@ export const test = base.extend<Fixtures>({
       storageState: AUTH_STATE_PATH,
     });
     const page = await ctx.newPage();
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- Playwright fixture callback, not a React hook
     await use(page);
     await ctx.close();
   },
@@ -71,8 +72,6 @@ export async function signupViaUI(
 ): Promise<void> {
   await page.goto("/login?tab=signup");
   await page.getByPlaceholder("you@example.com").fill(email);
-  const passwordFields = page.getByRole("textbox").filter({ hasText: "" });
-  // Fill password fields by placeholder
   await page.locator('input[placeholder="Min 8 characters"]').fill(password);
   await page.locator('input[placeholder="Re-enter password"]').fill(password);
   await page.getByRole("button", { name: "Create Account" }).click();
