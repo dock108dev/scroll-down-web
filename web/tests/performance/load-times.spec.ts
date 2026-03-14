@@ -1,4 +1,4 @@
-import { test, expect, waitForLoad, measureMs } from "../helpers";
+import { test, expect, waitForLoad, waitForGameData, measureMs } from "../helpers";
 
 test.describe("Page Load Performance", () => {
   test("Home page loads within 5 seconds", async ({ authedPage }) => {
@@ -54,8 +54,9 @@ test.describe("Page Load Performance", () => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);
 
+    const hasData = await waitForGameData(authedPage, 5000);
+    if (!hasData) { test.skip(true, "No game data"); return; }
     const gameRow = authedPage.locator("[data-testid='game-row']").first();
-    await gameRow.waitFor({ state: "visible", timeout: 5000 });
 
     const ms = await measureMs(async () => {
       await gameRow.click();

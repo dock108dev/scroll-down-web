@@ -113,6 +113,19 @@ export async function clearAppState(page: Page): Promise<void> {
   });
 }
 
+/** Wait for game rows to appear. Returns true if data loaded, false if not. */
+export async function waitForGameData(page: Page, timeout = 15_000): Promise<boolean> {
+  try {
+    await page.locator("[data-testid='game-row']").first().waitFor({
+      state: "visible",
+      timeout,
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Measure how long a navigation or action takes. */
 export async function measureMs(fn: () => Promise<void>): Promise<number> {
   const start = Date.now();

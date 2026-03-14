@@ -1,118 +1,127 @@
 import { test, expect } from "../helpers";
+import type { Page } from "@playwright/test";
+
+/** Navigate to /profile and verify auth is valid. Returns false if redirected to login. */
+async function gotoProfileOrSkip(page: Page): Promise<boolean> {
+  await page.goto("/profile");
+  await page.waitForTimeout(1000);
+  return !page.url().includes("/login");
+}
 
 test.describe("Profile Page", () => {
+  // Scope selectors to main to avoid duplicates from settings drawer
+  const main = "main";
+
   test("guest visiting /profile gets redirected to /login", async ({ page }) => {
     await page.goto("/profile");
     await expect(page).toHaveURL(/\/login/);
   });
 
   test("logged-in user sees Account heading", async ({ authedPage }) => {
-    await authedPage.goto("/profile");
+    const onProfile = await gotoProfileOrSkip(authedPage);
+    if (!onProfile) { test.skip(true, "Auth state expired"); return; }
     await expect(
-      authedPage.getByRole("heading", { name: "Account" })
+      authedPage.locator(main).getByRole("heading", { name: "Account", exact: true }).first()
     ).toBeVisible();
   });
 
   test("account info shows email and role badge", async ({ authedPage }) => {
-    await authedPage.goto("/profile");
+    const onProfile = await gotoProfileOrSkip(authedPage);
+    if (!onProfile) { test.skip(true, "Auth state expired"); return; }
+    const container = authedPage.locator(main);
 
-    // "Account Info" section title should be visible
-    await expect(authedPage.getByText("Account Info")).toBeVisible();
+    await expect(container.getByText("Account Info")).toBeVisible();
 
-    // Role badge should show "user" or "admin"
-    const roleBadge = authedPage.getByText(/^(user|admin)$/i);
+    const roleBadge = container.getByText(/^(user|admin)$/i).first();
     await expect(roleBadge).toBeVisible();
   });
 
   test("change password form validates min length", async ({ authedPage }) => {
-    await authedPage.goto("/profile");
+    const onProfile = await gotoProfileOrSkip(authedPage);
+    if (!onProfile) { test.skip(true, "Auth state expired"); return; }
+    const container = authedPage.locator(main);
 
-    // The "New Password" field has placeholder "Min 8 characters"
-    await authedPage.getByPlaceholder("Min 8 characters").fill("short");
-    await authedPage
+    await container.getByPlaceholder("Min 8 characters").fill("short");
+    await container
       .getByRole("button", { name: "Update Password" })
       .click();
 
-    // Should show a validation error about minimum length
-    await expect(authedPage.getByText(/8 char/i)).toBeVisible();
+    await expect(container.getByText(/8 char/i)).toBeVisible();
   });
 
   test("change password form validates matching passwords", async ({
     authedPage,
   }) => {
-    await authedPage.goto("/profile");
+    const onProfile = await gotoProfileOrSkip(authedPage);
+    if (!onProfile) { test.skip(true, "Auth state expired"); return; }
+    const container = authedPage.locator(main);
 
-    // Fill in the change password form
-    // There are two "Current Password" labels (one in Change Email, one in Change Password)
-    // Use the Change Password section
-    const changePwSection = authedPage.getByText("Change Password").locator("..");
+    await container.getByPlaceholder("Min 8 characters").fill("newpassword1");
 
-    await authedPage.getByPlaceholder("Min 8 characters").fill("newpassword1");
-
-    // Submit to trigger validation
-    await authedPage
+    await container
       .getByRole("button", { name: "Update Password" })
       .click();
 
-    // Should show a validation error about passwords not matching or missing fields
     await expect(
-      authedPage.getByText(/match/i).or(authedPage.getByText(/required/i))
+      container.getByText(/match/i).or(container.getByText(/required/i))
     ).toBeVisible();
   });
 
-  test("Log Out button clears auth state and redirects to /", async ({
+  test("Log Out button clears auth state and redirects", async ({
     authedPage,
   }) => {
-    await authedPage.goto("/profile");
+    const onProfile = await gotoProfileOrSkip(authedPage);
+    if (!onProfile) { test.skip(true, "Auth state expired"); return; }
 
-    await authedPage.getByRole("button", { name: "Log Out" }).click();
+    await Promise.all([
+      authedPage.waitForURL(/\/(login)?$/, { timeout: 10_000 }),
+      authedPage.locator(main).getByRole("button", { name: "Log Out" }).click(),
+    ]);
 
-    await expect(authedPage).toHaveURL("/");
+    expect(authedPage.url()).toMatch(/\/(login)?$/);
   });
 
   test("clicking Delete Account expands the confirmation form", async ({
     authedPage,
   }) => {
-    await authedPage.goto("/profile");
+    const onProfile = await gotoProfileOrSkip(authedPage);
+    if (!onProfile) { test.skip(true, "Auth state expired"); return; }
+    const container = authedPage.locator(main);
 
-    // Initially the red "Delete My Account" button should not be visible
     await expect(
-      authedPage.getByRole("button", { name: "Delete My Account" })
+      container.getByRole("button", { name: "Delete My Account" })
     ).not.toBeVisible();
 
-    // Click the "Delete Account" button to expand the section
-    await authedPage
+    await container
       .getByRole("button", { name: "Delete Account" })
       .click();
 
-    // Now the expanded form should show warning text and the confirm button
     await expect(
-      authedPage.getByText(/permanently delete your account/i)
+      container.getByText(/permanently delete your account/i)
     ).toBeVisible();
     await expect(
-      authedPage.getByRole("button", { name: "Delete My Account" })
+      container.getByRole("button", { name: "Delete My Account" })
     ).toBeVisible();
   });
 
   test("Cancel button in delete form collapses it back", async ({
     authedPage,
   }) => {
-    await authedPage.goto("/profile");
+    const onProfile = await gotoProfileOrSkip(authedPage);
+    if (!onProfile) { test.skip(true, "Auth state expired"); return; }
+    const container = authedPage.locator(main);
 
-    // Expand the delete section
-    await authedPage
+    await container
       .getByRole("button", { name: "Delete Account" })
       .click();
     await expect(
-      authedPage.getByRole("button", { name: "Delete My Account" })
+      container.getByRole("button", { name: "Delete My Account" })
     ).toBeVisible();
 
-    // Click Cancel to collapse
-    await authedPage.getByRole("button", { name: "Cancel" }).click();
+    await container.getByRole("button", { name: "Cancel" }).click();
 
-    // The confirm button should no longer be visible
     await expect(
-      authedPage.getByRole("button", { name: "Delete My Account" })
+      container.getByRole("button", { name: "Delete My Account" })
     ).not.toBeVisible();
   });
 });

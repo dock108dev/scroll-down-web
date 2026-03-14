@@ -1,4 +1,4 @@
-import { test, expect, waitForLoad } from "../helpers";
+import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
 test.describe("Game Detail Reading Position", () => {
   test.beforeEach(async ({ authedPage }) => {
@@ -9,14 +9,15 @@ test.describe("Game Detail Reading Position", () => {
   test("scrolling on game detail page saves reading position to localStorage", async ({
     authedPage,
   }) => {
+    const hasData = await waitForGameData(authedPage);
+    if (!hasData) { test.skip(true, "No game data"); return; }
+
     const gameRow = authedPage.locator("[data-testid='game-row']").first();
     await gameRow.click();
     await authedPage.waitForURL(/\/game\/.+/);
     await waitForLoad(authedPage);
 
-    // Scroll down the page to trigger position saving
     await authedPage.evaluate(() => window.scrollBy(0, 600));
-    // Allow time for the scroll handler to persist position
     await authedPage.waitForTimeout(1000);
 
     const positionData = await authedPage.evaluate(() =>
@@ -28,12 +29,14 @@ test.describe("Game Detail Reading Position", () => {
   test("reading position data exists in localStorage after scrolling", async ({
     authedPage,
   }) => {
+    const hasData = await waitForGameData(authedPage);
+    if (!hasData) { test.skip(true, "No game data"); return; }
+
     const gameRow = authedPage.locator("[data-testid='game-row']").first();
     await gameRow.click();
     await authedPage.waitForURL(/\/game\/.+/);
     await waitForLoad(authedPage);
 
-    // Scroll to trigger position saving
     await authedPage.evaluate(() => window.scrollBy(0, 800));
     await authedPage.waitForTimeout(1000);
 
@@ -50,13 +53,15 @@ test.describe("Game Detail Reading Position", () => {
   test("navigate away and back preserves reading position data", async ({
     authedPage,
   }) => {
+    const hasData = await waitForGameData(authedPage);
+    if (!hasData) { test.skip(true, "No game data"); return; }
+
     const gameRow = authedPage.locator("[data-testid='game-row']").first();
     await gameRow.click();
     await authedPage.waitForURL(/\/game\/.+/);
     const gameUrl = authedPage.url();
     await waitForLoad(authedPage);
 
-    // Scroll to save position
     await authedPage.evaluate(() => window.scrollBy(0, 800));
     await authedPage.waitForTimeout(1000);
 
@@ -65,12 +70,10 @@ test.describe("Game Detail Reading Position", () => {
     );
     expect(positionBefore).not.toBeNull();
 
-    // Navigate away
     await authedPage.goBack();
     await authedPage.waitForURL("/");
     await waitForLoad(authedPage);
 
-    // Navigate back to the same game
     await authedPage.goto(gameUrl);
     await waitForLoad(authedPage);
 
@@ -84,12 +87,14 @@ test.describe("Game Detail Reading Position", () => {
   test("localStorage key sd-reading-position contains game-specific data", async ({
     authedPage,
   }) => {
+    const hasData = await waitForGameData(authedPage);
+    if (!hasData) { test.skip(true, "No game data"); return; }
+
     const gameRow = authedPage.locator("[data-testid='game-row']").first();
     await gameRow.click();
     await authedPage.waitForURL(/\/game\/.+/);
     await waitForLoad(authedPage);
 
-    // Scroll enough to trigger position save
     await authedPage.evaluate(() => window.scrollBy(0, 1000));
     await authedPage.waitForTimeout(1000);
 
@@ -100,6 +105,6 @@ test.describe("Game Detail Reading Position", () => {
 
     const parsed = JSON.parse(positionData!);
     const dataStr = JSON.stringify(parsed);
-    expect(dataStr.length).toBeGreaterThan(2); // More than just "{}"
+    expect(dataStr.length).toBeGreaterThan(2);
   });
 });

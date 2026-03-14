@@ -34,10 +34,15 @@ export default defineConfig({
       dependencies: ["setup"],
     },
 
-    // Mobile viewport
+    // Mobile viewport (Chromium with mobile viewport to avoid needing WebKit installed)
     {
       name: "mobile",
-      use: { ...devices["iPhone 14"] },
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+      },
       dependencies: ["setup"],
     },
   ],

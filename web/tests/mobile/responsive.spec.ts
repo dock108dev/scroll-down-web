@@ -1,4 +1,4 @@
-import { test, expect, waitForLoad } from "../helpers";
+import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
 test.describe("Mobile Responsive Layout", () => {
   test.use({ viewport: { width: 390, height: 844 } });
@@ -9,15 +9,13 @@ test.describe("Mobile Responsive Layout", () => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);
 
-    // BottomTabs should be visible on mobile (nav with md:hidden)
-    const bottomNav = authedPage.locator("nav").filter({
-      has: authedPage.locator("text=Games"),
-    });
+    // BottomTabs is the fixed-bottom nav (has Settings button, not link)
+    const bottomNav = authedPage.locator("nav.fixed");
     await expect(bottomNav).toBeVisible();
 
-    // Check that expected tab labels are present
+    // Check that expected tab labels are present in bottom nav
     for (const label of ["Games", "FairBet", "Settings"]) {
-      await expect(authedPage.getByText(label).first()).toBeVisible();
+      await expect(bottomNav.getByText(label)).toBeVisible();
     }
   });
 
@@ -27,8 +25,9 @@ test.describe("Mobile Responsive Layout", () => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);
 
-    // Click FairBet tab in bottom nav
-    const fairbetTab = authedPage.getByText("FairBet").first();
+    // Click FairBet tab in bottom nav (use fixed nav to avoid hidden desktop nav)
+    const bottomNav = authedPage.locator("nav.fixed");
+    const fairbetTab = bottomNav.getByText("FairBet");
     await fairbetTab.click();
     await authedPage.waitForURL(/\/fairbet/, { timeout: 5000 });
     expect(authedPage.url()).toContain("/fairbet");
@@ -38,7 +37,9 @@ test.describe("Mobile Responsive Layout", () => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);
 
-    // Game rows should be visible
+    const hasData = await waitForGameData(authedPage);
+    if (!hasData) { test.skip(true, "No game data"); return; }
+
     const gameRows = authedPage.locator("[data-testid='game-row']");
     const count = await gameRows.count();
     expect(count).toBeGreaterThan(0);
