@@ -81,11 +81,7 @@ function triggerRecovery(channel: string): void {
 function handleEvent(event: RealtimeEvent): void {
   const store = useGameData.getState();
 
-  if (REALTIME.DEBUG) {
-    console.debug("[realtime]", event.type, event.channel, "seq:", event.seq);
-  }
-
-  // Fix 5: Check seq without committing
+  // Check seq without committing
   const seqResult = store.checkSeq(event.channel, event.seq);
 
   if (seqResult === "duplicate") return;

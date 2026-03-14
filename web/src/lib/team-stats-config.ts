@@ -2,7 +2,7 @@ import type { NormalizedStat } from "@/lib/types";
 
 // ─── Stat category grouping ────────────────────────────────────
 
-export interface StatDef {
+interface StatDef {
   key: string;
   label: string;
   /** Ordered alias keys to try in team stats */

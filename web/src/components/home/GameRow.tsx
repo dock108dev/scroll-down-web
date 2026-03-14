@@ -246,6 +246,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
 
   return (
     <div
+      data-testid="game-row"
       onClick={handleNavigate}
       className={cn(
         "flex items-center min-h-[52px] px-4 py-3 border-b border-neutral-800/40 transition select-none",

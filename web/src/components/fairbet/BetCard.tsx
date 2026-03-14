@@ -83,6 +83,7 @@ export const BetCard = memo(function BetCard({
 
   return (
     <div
+      data-testid="bet-card"
       className="rounded-[14px] px-3.5 py-2.5 space-y-2 min-w-0"
       style={{
         backgroundColor: "var(--fb-card-bg)",

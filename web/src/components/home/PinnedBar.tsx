@@ -87,10 +87,11 @@ export function PinnedBar() {
   if (chips.length === 0) return null;
 
   return (
-    <div className="flex gap-2 overflow-x-auto scrollbar-none py-1 px-4">
+    <div data-testid="pinned-bar" className="flex gap-2 overflow-x-auto scrollbar-none py-1 px-4">
       {chips.map((chip) => (
         <button
           key={chip.id}
+          data-testid="pinned-chip"
           onClick={() => router.push(`/game/${chip.id}`)}
           className="shrink-0 inline-flex items-center gap-1.5 rounded-full bg-neutral-800 pl-2.5 pr-1.5 py-1 text-xs text-neutral-300 hover:bg-neutral-700 transition group"
         >

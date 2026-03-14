@@ -1,7 +1,5 @@
 import { NextRequest } from "next/server";
-import { BASE_URL } from "@/lib/api-server";
-
-const API_KEY = process.env.SPORTS_DATA_API_KEY || process.env.SPORTS_API_KEY || process.env.API_KEY || "";
+import { BASE_URL, API_KEY } from "@/lib/api-server";
 
 /**
  * SSE proxy — streams /v1/sse from the backend with the API key injected.

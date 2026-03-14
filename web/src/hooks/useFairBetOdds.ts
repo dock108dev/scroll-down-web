@@ -20,21 +20,15 @@ import {
   hasCorrelatedLegs,
   parlayConfidenceTier,
 } from "@/lib/fairbet-utils";
+import {
+  type SortMode,
+  type FairBetFilters,
+  DEFAULT_FILTERS,
+  bestEVForBet,
+  filterAndSortBets,
+} from "@/lib/fairbet-filters";
 
-// ── Types ──────────────────────────────────────────────────────────
-
-export type SortMode = "bestEV" | "gameTime" | "league";
-
-export interface FairBetFilters {
-  league: string;
-  market: string; // moneyline | spread | total | player_props | team_props | ""
-  book: string;
-  searchText: string;
-  evOnly: boolean;
-  hideThin: boolean;
-  hideStarted: boolean;
-  sort: SortMode;
-}
+export type { SortMode, FairBetFilters };
 
 export interface UseFairBetOddsReturn {
   /** All bets from all pages (raw from API). */
@@ -131,16 +125,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [filters, setFilters] = useState<FairBetFilters>({
-    league: "",
-    market: "",
-    book: "",
-    searchText: "",
-    evOnly: false,
-    hideThin: false,
-    hideStarted: false,
-    sort: "bestEV",
-  });
+  const [filters, setFilters] = useState<FairBetFilters>(DEFAULT_FILTERS);
 
   // Parlay
   const [parlayBetIds, setParlayBetIds] = useState<Set<string>>(new Set());
@@ -342,107 +327,10 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
   // ── Client-side filtering + sorting ──────────────────────────────
 
-  const filteredBets = useMemo(() => {
-    const now = new Date();
-    let result = allBets;
-
-    // Filter: only bets with enough books
-    result = result.filter((b) => b.books.length >= FAIRBET.MIN_BOOKS);
-
-    // Deduplicate by betId (API can return same market from different methods)
-    const seen = new Set<string>();
-    result = result.filter((b) => {
-      const id = betId(b);
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-
-    // Filter: league
-    if (filters.league) {
-      result = result.filter(
-        (b) => b.league_code.toLowerCase() === filters.league.toLowerCase(),
-      );
-    }
-
-    // Filter: market category
-    if (filters.market) {
-      result = result.filter(
-        (b) => marketKeyToCategory(b.market_key) === filters.market,
-      );
-    }
-
-    // Filter: book (bet must have at least one price from this book)
-    if (filters.book) {
-      result = result.filter(
-        (b) => b.books.some((bp) => bp.book.toLowerCase() === filters.book.toLowerCase()),
-      );
-    }
-
-    // Filter: search text
-    if (filters.searchText) {
-      const q = filters.searchText.toLowerCase();
-      result = result.filter((b) => {
-        return (
-          b.home_team.toLowerCase().includes(q) ||
-          b.away_team.toLowerCase().includes(q) ||
-          b.selection_key.toLowerCase().includes(q) ||
-          (b.player_name && b.player_name.toLowerCase().includes(q))
-        );
-      });
-    }
-
-    // Filter: +EV only (reliable positive EV)
-    if (filters.evOnly) {
-      result = result.filter((b) => {
-        return isReliablyPositive(bestEVForBet(b), b.ev_confidence_tier);
-      });
-    }
-
-    // Filter: hide thin markets
-    if (filters.hideThin) {
-      result = result.filter(
-        (b) =>
-          b.ev_confidence_tier !== "thin" && b.ev_confidence_tier !== "none",
-      );
-    }
-
-    // Filter: hide started games
-    if (filters.hideStarted) {
-      result = result.filter((b) => {
-        const gameDate = new Date(b.game_date);
-        return gameDate > now;
-      });
-    }
-
-    // Sort
-    switch (filters.sort) {
-      case "bestEV":
-        result = [...result].sort((a, b) => {
-          const evA = bestEVForBet(a);
-          const evB = bestEVForBet(b);
-          return evB - evA;
-        });
-        break;
-      case "gameTime":
-        result = [...result].sort((a, b) => {
-          return new Date(a.game_date).getTime() - new Date(b.game_date).getTime();
-        });
-        break;
-      case "league":
-        result = [...result].sort((a, b) => {
-          const cmp = a.league_code.localeCompare(b.league_code);
-          if (cmp !== 0) return cmp;
-          // Secondary sort by EV within league
-          const evA = bestEVForBet(a);
-          const evB = bestEVForBet(b);
-          return evB - evA;
-        });
-        break;
-    }
-
-    return result;
-  }, [allBets, filters]);
+  const filteredBets = useMemo(
+    () => filterAndSortBets(allBets, filters),
+    [allBets, filters],
+  );
 
   // ── Computed stats ───────────────────────────────────────────────
 
@@ -607,11 +495,4 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     toggleParlay,
     clearParlay,
   };
-}
-
-// ── Helpers ────────────────────────────────────────────────────────
-
-/** Get the best EV percent for a bet from the API field. */
-function bestEVForBet(bet: APIBet): number {
-  return bet.bestEvPercent ?? 0;
 }

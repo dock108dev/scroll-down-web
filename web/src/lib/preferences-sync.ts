@@ -10,13 +10,12 @@ import { useAuth } from "@/stores/auth";
 import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useReveal } from "@/stores/reveal";
-import { useSyncStatus } from "@/stores/sync-status";
 
 const TAG = "[prefs-sync]";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-export interface ServerPreferences {
+interface ServerPreferences {
   settings: {
     theme: string;
     scoreRevealMode: string;
@@ -170,17 +169,12 @@ function schedulePush() {
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
     pushTimer = null;
-    const sync = useSyncStatus.getState();
-    sync.setStatus("pushing");
-
     pushPreferences(snapshotLocal())
       .then(() => {
         console.info(`${TAG} pushed preferences to server`);
-        useSyncStatus.getState().setSynced();
       })
       .catch((err) => {
         console.warn(`${TAG} push failed:`, err);
-        useSyncStatus.getState().setError(err instanceof Error ? err.message : "Push failed");
       });
   }, PUSH_DEBOUNCE_MS);
 }
@@ -216,9 +210,6 @@ function stopSyncing() {
  * Pulls server preferences then starts watching for local changes.
  */
 export async function pullAndStartSync(): Promise<void> {
-  const sync = useSyncStatus.getState();
-  sync.setStatus("pulling");
-
   try {
     const prefs = await fetchPreferences();
     if (prefs) {
@@ -230,10 +221,8 @@ export async function pullAndStartSync(): Promise<void> {
       }
       console.info(`${TAG} pulled preferences from server`);
     }
-    sync.setSynced();
   } catch (err) {
     console.warn(`${TAG} pull failed:`, err);
-    sync.setError(err instanceof Error ? err.message : "Pull failed");
   }
 
   startSyncing();
@@ -245,7 +234,6 @@ export async function pullAndStartSync(): Promise<void> {
  */
 export function stopPreferenceSync(): void {
   stopSyncing();
-  useSyncStatus.getState().setStatus("idle");
 }
 
 /**

@@ -48,7 +48,6 @@ export const REALTIME = {
   BACKOFF_MAX_MS: 30_000,
   FRESHNESS_INDICATOR_MS: 20_000,
   RECOVERY_MIN_INTERVAL_MS: 8_000,
-  DEBUG: false,
 };
 
 export const LAYOUT = {
