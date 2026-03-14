@@ -4,7 +4,7 @@ import type { Page } from "@playwright/test";
 /** Navigate to /profile and verify auth is valid. Returns false if redirected to login. */
 async function gotoProfileOrSkip(page: Page): Promise<boolean> {
   await page.goto("/profile");
-  await page.waitForTimeout(1000);
+  await page.waitForLoadState("networkidle");
   return !page.url().includes("/login");
 }
 

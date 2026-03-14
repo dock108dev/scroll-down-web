@@ -1,21 +1,6 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import path from "path";
 
-// ---------------------------------------------------------------------------
-// Test accounts — create these once via the API before running the suite.
-// The global-setup script handles this automatically.
-// ---------------------------------------------------------------------------
-
-export const TEST_USER = {
-  email: `e2e-user-${Date.now()}@test.scrolldown.dev`,
-  password: "Test1234!secure",
-};
-
-export const TEST_ADMIN = {
-  email: `e2e-admin-${Date.now()}@test.scrolldown.dev`,
-  password: "Admin1234!secure",
-};
-
 // Persistent auth state file (written by global-setup, loaded by tests)
 export const AUTH_STATE_PATH = path.join(
   __dirname,

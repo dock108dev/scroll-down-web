@@ -1,5 +1,5 @@
 import { test as setup } from "@playwright/test";
-import { loginViaUI, signupViaUI, AUTH_STATE_PATH } from "./helpers";
+import { signupViaUI, AUTH_STATE_PATH } from "./helpers";
 import fs from "fs";
 import path from "path";
 
@@ -15,17 +15,13 @@ setup("create test account and save auth state", async ({ page }) => {
   const email = `e2e-${Date.now()}@test.scrolldown.dev`;
   const password = "Test1234!secure";
 
-  // Try to sign up; if the account already exists, log in instead.
-  // If the backend is unreachable, save empty auth state so dependent
-  // tests can still run (they'll detect the missing session and skip).
+  // Sign up a fresh account. If the backend is unreachable, save empty
+  // auth state so dependent tests can still run (they'll detect the
+  // missing session and skip).
   try {
     await signupViaUI(page, email, password);
   } catch {
-    try {
-      await loginViaUI(page, email, password);
-    } catch {
-      console.warn("[global-setup] Backend unavailable — saving empty auth state");
-    }
+    console.warn("[global-setup] Backend unavailable — saving empty auth state");
   }
 
   // Save authenticated state (cookies + localStorage)
