@@ -6,7 +6,7 @@ test.describe("FairBet Page - Odds", () => {
     await waitForLoad(page);
   });
 
-  test("page loads and shows FairBet heading", async ({ page }) => {
+  test("page loads and shows FairBet heading @smoke", async ({ page }) => {
     await expect(page.getByRole("heading", { name: "FairBet" })).toBeVisible();
   });
 
@@ -35,7 +35,7 @@ test.describe("FairBet Page - Odds", () => {
     }
   });
 
-  test('"What is this?" button opens explainer', async ({ page }) => {
+  test('"What is this?" button opens explainer @smoke', async ({ page }) => {
     const whatIsThisButton = page.getByRole("button", { name: "What is this?" });
     await expect(whatIsThisButton).toBeVisible();
     await whatIsThisButton.click();

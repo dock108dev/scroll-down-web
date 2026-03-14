@@ -8,6 +8,7 @@
     "start": "next start --port 3001",
     "lint": "eslint",
     "test": "npx playwright test",
+    "test:smoke": "npx playwright test --grep @smoke",
     "test:ui": "npx playwright test --ui",
     "test:headed": "npx playwright test --headed"
   },

@@ -3,7 +3,7 @@ import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 test.describe("Mobile Responsive Layout", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
-  test("BottomTabs nav is visible at mobile width", async ({
+  test("BottomTabs nav is visible at mobile width @smoke", async ({
     authedPage,
   }) => {
     await authedPage.goto("/");
@@ -52,7 +52,7 @@ test.describe("Mobile Responsive Layout", () => {
     expect(box!.width).toBeLessThanOrEqual(390);
   });
 
-  test("Login page form is usable at mobile width", async ({
+  test("Login page form is usable at mobile width @smoke", async ({
     authedPage,
   }) => {
     await authedPage.goto("/login");

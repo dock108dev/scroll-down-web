@@ -1,7 +1,7 @@
 import { test, expect, waitForLoad, waitForGameData, measureMs } from "../helpers";
 
 test.describe("Page Load Performance", () => {
-  test("Home page loads within 5 seconds", async ({ authedPage }) => {
+  test("Home page loads within 5 seconds @smoke", async ({ authedPage }) => {
     const ms = await measureMs(async () => {
       await authedPage.goto("/");
       await waitForLoad(authedPage);
@@ -35,7 +35,7 @@ test.describe("Page Load Performance", () => {
     }
   });
 
-  test("Navigation between pages is fast (< 3 seconds)", async ({
+  test("Navigation between pages is fast @smoke", async ({
     authedPage,
   }) => {
     await authedPage.goto("/");

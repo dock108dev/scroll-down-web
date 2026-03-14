@@ -42,7 +42,7 @@ test.describe('Sign Up', () => {
     expect(token).toBeTruthy();
   });
 
-  test('sign up with short password shows validation error', async ({ page }) => {
+  test('sign up with short password shows validation error @smoke', async ({ page }) => {
     const email = `test+${Date.now()}@example.com`;
 
     await page.getByPlaceholder('you@example.com').fill(email);
@@ -53,7 +53,7 @@ test.describe('Sign Up', () => {
     await expect(page.getByText('Password must be at least 8 characters')).toBeVisible();
   });
 
-  test('sign up with mismatched passwords shows error', async ({ page }) => {
+  test('sign up with mismatched passwords shows error @smoke', async ({ page }) => {
     const email = `test+${Date.now()}@example.com`;
 
     await page.getByPlaceholder('you@example.com').fill(email);

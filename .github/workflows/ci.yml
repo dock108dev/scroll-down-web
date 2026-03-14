@@ -46,6 +46,41 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
 
   # ────────────────────────────────────────────────────────
+  # Playwright — smoke E2E tests (~2 min)
+  # ────────────────────────────────────────────────────────
+  playwright-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests
+        run: npx playwright test --grep "@smoke"
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-smoke-report
+          path: web/playwright-report/
+          retention-days: 7
+
+  # ────────────────────────────────────────────────────────
   # Docker — build + push image (main branch only)
   # ────────────────────────────────────────────────────────
   docker:
