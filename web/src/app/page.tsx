@@ -219,7 +219,7 @@ export default function HomePage() {
         {/* League pills + batch actions + refresh */}
         <div className="flex items-center gap-2">
           {/* Scrollable league pills */}
-          <div className="flex gap-1.5 overflow-x-auto scrollbar-none min-w-0">
+          <div data-testid="league-filter" className="flex gap-1.5 overflow-x-auto scrollbar-none min-w-0">
             <button
               onClick={() => setLeague("")}
               className={cn(
