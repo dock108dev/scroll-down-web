@@ -221,18 +221,6 @@ body {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Button press animation
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.press {
-  transition: transform 120ms ease, opacity 120ms ease;
-}
-
-.press:active {
-  transform: scale(0.97);
-  opacity: 0.85;
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Loading skeleton shimmer animation
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @keyframes shimmer {
@@ -270,12 +258,6 @@ body {
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Typography scale classes (matching iOS DesignSystem.Typography)
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.text-section-header {
-  font-size: 0.8125rem;
-  line-height: 1.4;
-  font-weight: 600;
-}
-
 .text-stat-label {
   font-size: 0.6875rem;
   line-height: 1.35;
