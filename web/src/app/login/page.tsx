@@ -74,7 +74,7 @@ function LoginForm() {
         }
       }
     },
-    [tab, email, password, validate, login, signup, router],
+    [tab, email, password, rememberMe, validate, login, signup, router],
   );
 
   const handleMagicLink = useCallback(async () => {
