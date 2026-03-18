@@ -26,12 +26,13 @@ export default function BatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [expandedJob, setExpandedJob] = useState<string | null>(null);
+  const [expandedJob, setExpandedJob] = useState<number | null>(null);
 
   // Form state
-  const [date, setDate] = useState("");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
   const [modelId, setModelId] = useState("");
-  const [iterations, setIterations] = useState("10000");
+  const [iterations, setIterations] = useState("5000");
 
   useEffect(() => {
     let cancelled = false;
@@ -60,7 +61,7 @@ export default function BatchPage() {
 
   // Poll jobs while any are running
   useEffect(() => {
-    const hasRunning = jobs.some((j) => j.status === "running" || j.status === "pending");
+    const hasRunning = jobs.some((j) => ["running", "pending", "queued"].includes(j.status));
     if (!hasRunning) return;
     const interval = setInterval(async () => {
       try {
@@ -71,30 +72,30 @@ export default function BatchPage() {
     return () => clearInterval(interval);
   }, [jobs]);
 
-  // Build model options: active models + completed training jobs that produced a model
+  // Build model options: active models + completed training jobs
   const activeModel = models.find((m) => m.is_active);
   const completedTrainingModels = trainingJobs
     .filter((t) => t.status === "completed" && t.id)
     .map((t) => t.id);
-  // Deduplicate: include active model + all registered models (admin-selected or user-trained)
   const modelOptions = models.filter((m) => m.is_active || completedTrainingModels.includes(m.id));
-  // If no models match training jobs, just show all registered models as fallback
   const availableModels = modelOptions.length > 0 ? modelOptions : models;
 
   const handleLaunch = async () => {
-    if (!date) return;
+    if (!dateStart || !dateEnd) return;
     try {
       setSubmitting(true);
       setError(null);
       await startBatchSimulation({
         sport: "mlb",
-        date,
+        date_start: dateStart,
+        date_end: dateEnd,
         model_id: modelId || undefined,
-        iterations: parseInt(iterations) || 10000,
+        iterations: parseInt(iterations) || 5000,
       });
       const j = await fetchBatchJobs();
       setJobs(j);
-      setDate("");
+      setDateStart("");
+      setDateEnd("");
       setModelId("");
     } catch {
       setError("Failed to start batch simulation.");
@@ -148,16 +149,27 @@ export default function BatchPage() {
             Launch Batch Simulation
           </h2>
           <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-3">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <label className="text-xs font-medium text-neutral-500">Date</label>
+                <label className="text-xs font-medium text-neutral-500">Start Date</label>
                 <input
                   type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
+                  value={dateStart}
+                  onChange={(e) => setDateStart(e.target.value)}
                   className="w-full text-sm rounded-lg px-3 py-2 bg-neutral-950 text-neutral-200 border border-neutral-800 outline-none"
                 />
               </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-neutral-500">End Date</label>
+                <input
+                  type="date"
+                  value={dateEnd}
+                  onChange={(e) => setDateEnd(e.target.value)}
+                  className="w-full text-sm rounded-lg px-3 py-2 bg-neutral-950 text-neutral-200 border border-neutral-800 outline-none"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <label className="text-xs font-medium text-neutral-500">Model</label>
                 <select
@@ -185,7 +197,7 @@ export default function BatchPage() {
             </div>
             <button
               onClick={handleLaunch}
-              disabled={!date || submitting}
+              disabled={!dateStart || !dateEnd || submitting}
               className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {submitting ? "Starting..." : "Start Batch"}
@@ -202,55 +214,63 @@ export default function BatchPage() {
             <p className="text-sm text-neutral-500">No batch jobs.</p>
           ) : (
             <div className="space-y-2">
-              {jobs.map((job) => (
-                <div key={job.id} className="rounded-lg border border-neutral-800 bg-neutral-900">
-                  <button
-                    onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}
-                    className="w-full px-4 py-3 text-left"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-neutral-200">{job.date}</span>
-                        <StatusBadge status={job.status} />
+              {jobs.map((job) => {
+                const dateLabel = [job.date_start, job.date_end].filter(Boolean).join(" → ") || "—";
+                return (
+                  <div key={job.id} className="rounded-lg border border-neutral-800 bg-neutral-900">
+                    <button
+                      onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}
+                      className="w-full px-4 py-3 text-left"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-neutral-200">{dateLabel}</span>
+                          <StatusBadge status={job.status} />
+                        </div>
+                        <span className="text-xs text-neutral-500">
+                          {job.game_count ?? 0} games &middot; {(job.iterations ?? 0).toLocaleString()} iter
+                        </span>
                       </div>
-                      <span className="text-xs text-neutral-500">
-                        {job.game_count ?? 0} games &middot; {(job.iterations ?? 0).toLocaleString()} iter
-                      </span>
-                    </div>
-                  </button>
-                  {expandedJob === job.id && job.summary && (
-                    <div className="px-4 pb-3 border-t border-neutral-800 pt-3 space-y-2">
-                      <div className="grid grid-cols-3 gap-2 text-xs">
-                        <div>
-                          <span className="text-neutral-500">Avg Home Win</span>
-                          <div className="text-neutral-200 font-medium">
-                            {fmtPct(job.summary.avg_home_win_prob)}
+                    </button>
+                    {expandedJob === job.id && (
+                      <div className="px-4 pb-3 border-t border-neutral-800 pt-3 space-y-2">
+                        {job.error_message && (
+                          <p className="text-xs text-red-400">{job.error_message}</p>
+                        )}
+                        {job.batch_summary && (
+                          <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div>
+                              <span className="text-neutral-500">Home Win Rate</span>
+                              <div className="text-neutral-200 font-medium">
+                                {fmtPct(job.batch_summary.home_win_rate)}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-neutral-500">Avg Total</span>
+                              <div className="text-neutral-200 font-medium">
+                                {job.batch_summary.avg_total_per_game?.toFixed(1) ?? "—"}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-neutral-500">Avg Runs/Team</span>
+                              <div className="text-neutral-200 font-medium">
+                                {job.batch_summary.avg_runs_per_team?.toFixed(1) ?? "—"}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <span className="text-neutral-500">Avg Total</span>
-                          <div className="text-neutral-200 font-medium">
-                            {job.summary.avg_total != null ? job.summary.avg_total.toFixed(1) : "—"}
+                        )}
+                        {job.warnings && job.warnings.length > 0 && (
+                          <div className="text-xs text-amber-400 space-y-1">
+                            {job.warnings.map((w, i) => (
+                              <p key={i}>{w}</p>
+                            ))}
                           </div>
-                        </div>
-                        <div>
-                          <span className="text-neutral-500">Duration</span>
-                          <div className="text-neutral-200 font-medium">
-                            {job.summary.duration_seconds != null ? `${job.summary.duration_seconds.toFixed(0)}s` : "—"}
-                          </div>
-                        </div>
+                        )}
                       </div>
-                      {job.warnings && job.warnings.length > 0 && (
-                        <div className="text-xs text-amber-400 space-y-1">
-                          {job.warnings.map((w, i) => (
-                            <p key={i}>{w}</p>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ))}
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </section>
@@ -273,26 +293,33 @@ export default function BatchPage() {
             <p className="text-sm text-neutral-500">No prediction outcomes recorded.</p>
           ) : (
             <div className="space-y-2">
-              {outcomes.slice(0, 20).map((o, i) => (
+              {outcomes.slice(0, 20).map((o) => (
                 <div
-                  key={i}
+                  key={o.id}
                   className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 flex items-center justify-between"
                 >
                   <div>
                     <span className="text-sm text-neutral-200">
                       {o.away_team} @ {o.home_team}
                     </span>
-                    <span className="text-xs text-neutral-500 ml-2">{o.date}</span>
+                    <span className="text-xs text-neutral-500 ml-2">{o.game_date}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-neutral-400">
-                      Pred: {fmtPct(o.predicted_home_win_prob)}
+                      Pred: {fmtPct(o.predicted_home_wp)}
                     </span>
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      o.correct ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"
-                    }`}>
-                      {o.correct ? "Correct" : "Incorrect"}
-                    </span>
+                    {o.correct_winner != null && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        o.correct_winner ? "bg-green-900/50 text-green-400" : "bg-red-900/50 text-red-400"
+                      }`}>
+                        {o.correct_winner ? "Correct" : "Incorrect"}
+                      </span>
+                    )}
+                    {o.correct_winner == null && (
+                      <span className="text-xs px-2 py-0.5 rounded-full bg-neutral-800 text-neutral-500">
+                        Pending
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

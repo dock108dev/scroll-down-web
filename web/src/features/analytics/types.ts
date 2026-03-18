@@ -166,35 +166,58 @@ export interface DegradationAlert {
 
 export interface BatchSimRequest {
   sport: string;
-  date: string;
+  date_start: string;
+  date_end: string;
   model_id?: string;
-  iterations: number;
+  iterations?: number;
+  probability_mode?: string;
+  rolling_window?: number;
 }
 
 export interface BatchSummary {
-  avg_home_win_prob: number;
-  avg_total: number;
-  duration_seconds: number;
+  avg_runs_per_team: number;
+  avg_total_per_game: number;
+  avg_pa_per_team: number | null;
+  home_win_rate: number;
+  wp_distribution: Record<string, number>;
 }
 
 export interface BatchJob {
-  id: string;
-  date: string;
-  status: string;
-  game_count: number;
+  id: number;
+  sport: string;
+  probability_mode: string;
   iterations: number;
-  created_at: string;
-  summary?: BatchSummary;
+  rolling_window: number;
+  date_start: string | null;
+  date_end: string | null;
+  status: string;
+  game_count: number | null;
+  error_message: string | null;
+  created_at: string | null;
+  completed_at: string | null;
+  batch_summary?: BatchSummary;
   warnings?: string[];
 }
 
 export interface PredictionOutcome {
-  date: string;
+  id: number;
+  game_id: number;
+  sport: string;
   home_team: string;
   away_team: string;
-  predicted_home_win_prob: number;
-  actual_home_win: boolean;
-  correct: boolean;
+  predicted_home_wp: number | null;
+  predicted_away_wp: number | null;
+  predicted_home_score: number | null;
+  predicted_away_score: number | null;
+  probability_mode: string;
+  game_date: string | null;
+  actual_home_score: number | null;
+  actual_away_score: number | null;
+  home_win_actual: boolean | null;
+  correct_winner: boolean | null;
+  brier_score: number | null;
+  outcome_recorded_at: string | null;
+  created_at: string | null;
 }
 
 // ─── Experiments Types ──────────────────────────────────────
