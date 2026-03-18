@@ -22,7 +22,6 @@ const BASKETBALL_GROUPS: StatGroup[] = [
   {
     title: "Overview",
     stats: [
-      { key: "pts", label: "PTS", aliases: ["points", "pts", "totalPoints"] },
       { key: "reb", label: "REB", aliases: ["rebounds", "reb", "totalRebounds", "total_rebounds"] },
       { key: "ast", label: "AST", aliases: ["assists", "ast"] },
       { key: "stl", label: "STL", aliases: ["steals", "stl"] },
@@ -61,7 +60,6 @@ const BASEBALL_GROUPS: StatGroup[] = [
   {
     title: "Batting",
     stats: [
-      { key: "runs", label: "Runs", aliases: ["runs", "r"] },
       { key: "hits", label: "Hits", aliases: ["hits", "h"] },
       { key: "hr", label: "HR", aliases: ["homeRuns", "hr", "home_runs"] },
       { key: "rbi", label: "RBI", aliases: ["rbi", "runs_batted_in"] },
@@ -89,8 +87,6 @@ const HOCKEY_GROUPS: StatGroup[] = [
     title: "Offense",
     stats: [
       { key: "sog", label: "SOG", aliases: ["shotsOnGoal", "sog", "shots_on_goal"] },
-      { key: "pts", label: "Points", aliases: ["points", "pts"] },
-      { key: "goals", label: "Goals", aliases: ["goals", "g"] },
       { key: "ast", label: "Assists", aliases: ["assists", "ast", "a"] },
       { key: "pp", label: "Power Play", aliases: ["powerPlayGoals", "pp_goals", "ppGoals"] },
     ],
@@ -160,6 +156,9 @@ const GROUP_DISPLAY_TITLES: Record<string, string> = {
 
 const GROUP_ORDER = ["scoring", "shooting", "rebounds", "playmaking", "defense"];
 
+/** Stat keys that duplicate the game score shown in the header — omit from team stats. */
+const SCORE_KEYS = new Set(["points"]);
+
 const LOWER_IS_BETTER_KEYS = new Set([
   "turnovers",
   "personal_fouls",
@@ -219,10 +218,8 @@ export function buildGroupsFromNormalized(
     );
     const awayVal = parseNormalizedValue(awayByKey.get(stat.key)?.value ?? null);
 
-    // Skip "points" if both are 0 (data not yet available)
-    if (stat.key === "points" && (homeVal ?? 0) === 0 && (awayVal ?? 0) === 0) {
-      continue;
-    }
+    // Skip stats that duplicate the game score (shown in header)
+    if (SCORE_KEYS.has(stat.key)) continue;
 
     // Skip rows where neither team has data
     if (homeVal == null && awayVal == null) continue;
