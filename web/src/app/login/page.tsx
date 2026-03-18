@@ -30,6 +30,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+  const [rememberMe, setRememberMe] = useState(true);
 
   const validate = useCallback(() => {
     const errs: Record<string, string> = {};
@@ -54,7 +55,7 @@ function LoginForm() {
 
       try {
         if (tab === "login") {
-          await login(email, password);
+          await login(email, password, rememberMe);
         } else {
           await signup(email, password);
         }
@@ -177,9 +178,18 @@ function LoginForm() {
           </div>
         )}
 
-        {/* Forgot password (login only) */}
+        {/* Forgot password + stay logged in (login only) */}
         {tab === "login" && (
-          <div className="text-right -mt-1">
+          <div className="flex items-center justify-between -mt-1">
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                className="accent-blue-500 w-3.5 h-3.5 rounded"
+              />
+              <span className="text-xs text-neutral-400">Stay logged in</span>
+            </label>
             <Link
               href="/forgot-password"
               className="text-xs text-blue-400 hover:text-blue-300"

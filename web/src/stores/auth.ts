@@ -11,11 +11,13 @@ interface AuthState {
   email: string | null;
   userId: number | null;
   isLoading: boolean;
+  rememberMe: boolean;
 
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   signup: (email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshMe: () => Promise<void>;
+  refreshToken: () => Promise<void>;
   updateEmail: (
     email: string,
     password: string,
@@ -69,17 +71,23 @@ export const useAuth = create<AuthState>()(
       email: null,
       userId: null,
       isLoading: false,
+      rememberMe: true,
 
-      login: async (email, password) => {
+      login: async (email, password, rememberMe) => {
         set({ isLoading: true });
         try {
+          if (rememberMe !== undefined) set({ rememberMe });
           const data = await authFetch<{
             access_token: string;
             role: string;
           }>("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({
+              email,
+              password,
+              remember_me: rememberMe ?? get().rememberMe,
+            }),
           });
           set({
             token: data.access_token,
@@ -144,6 +152,27 @@ export const useAuth = create<AuthState>()(
             // Token expired — clear auth state
             get().logout();
           }
+        }
+      },
+
+      refreshToken: async () => {
+        const { token, rememberMe } = get();
+        if (!token || !rememberMe) return;
+        try {
+          const data = await authFetch<{
+            access_token: string;
+            role: string;
+          }>("/api/auth/refresh", {
+            method: "POST",
+            headers: authedJson(token),
+          });
+          set({
+            token: data.access_token,
+            role: data.role as Role,
+          });
+        } catch {
+          // Refresh endpoint may not exist yet — silently ignore.
+          // Token will expire naturally; user re-logs in.
         }
       },
 
@@ -238,6 +267,7 @@ export const useAuth = create<AuthState>()(
         role: state.role,
         email: state.email,
         userId: state.userId,
+        rememberMe: state.rememberMe,
       }),
     },
   ),

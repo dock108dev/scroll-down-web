@@ -146,22 +146,9 @@ export default function FairBetPage() {
         {activeTab === "pregame" && <>
         {/* Loading state */}
         {hook.loading && (
-          <div className="py-12 space-y-4">
-            <div className="text-center text-sm text-neutral-500">
-              Loading bets...
-            </div>
-            {/* Indeterminate shimmer bar */}
-            <div className="mx-auto w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
-            {/* Skeleton cards */}
-            <div className="space-y-3 mt-4">
-              {Array.from({ length: 6 }, (_, i) => (
-                <div
-                  key={i}
-                  className="rounded-[14px] h-28 skeleton-shimmer"
-                  style={{ backgroundColor: "var(--fb-surface-secondary)" }}
-                />
-              ))}
-            </div>
+          <div className="py-20 flex flex-col items-center gap-3">
+            <div className="text-sm text-neutral-500">Loading bets…</div>
+            <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
           </div>
         )}
 
