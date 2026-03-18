@@ -281,7 +281,7 @@ export const useGameData = create<GameDataState>()((set, get) => ({
           coreUpdatedAt: Date.now(),
         });
       } else {
-        // Fix 3: Don't drop patches for unknown games — create minimal entry
+        // Don't drop patches for unknown games — create a minimal entry so the patch applies
         const minimalCore: GameCore = {
           id: gameId,
           leagueCode: "",
@@ -309,7 +309,7 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const entry = s.games.get(gameId);
       if (!entry?.detail) return s;
       const existing = entry.detail.response.plays;
-      // Fix 7: Prefer eventId for dedup, fallback to composite key
+      // Prefer eventId for dedup, fallback to composite key (playIndex|gameClock|playType|description)
       const existingKeys = new Set(existing.map(pbpKey));
       const deduped = newPlays.filter((p) => !existingKeys.has(pbpKey(p)));
       if (deduped.length === 0) return s;
@@ -339,7 +339,7 @@ export const useGameData = create<GameDataState>()((set, get) => ({
     });
   },
 
-  // Fix 5: Split seq check (read-only) from commit (mutate)
+  // Separate seq check (read-only) from commit (mutate) so dispatcher can check before applying
   checkSeq: (channel, seq) => {
     const last = get().seqByChannel.get(channel) ?? 0;
     if (seq <= last) return "duplicate";

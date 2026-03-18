@@ -5,6 +5,7 @@ import {
   fetchTeams,
   fetchRoster,
   runSimulation,
+  dedupeTeams,
 } from "@/features/analytics/services/SimulatorService";
 import type {
   SimulatorTeam,
@@ -36,17 +37,7 @@ function autoFillStarter(pitchers: RosterPitcher[]): PitcherSlot | null {
   return p ? { external_ref: p.external_ref, name: p.name, avg_ip: p.avg_ip } : null;
 }
 
-/** Deduplicate teams by abbreviation, keeping the entry with the most games_with_stats */
-function dedupeTeams(raw: SimulatorTeam[]): SimulatorTeam[] {
-  const map = new Map<string, SimulatorTeam>();
-  for (const t of raw) {
-    const existing = map.get(t.abbreviation);
-    if (!existing || t.games_with_stats > existing.games_with_stats) {
-      map.set(t.abbreviation, t);
-    }
-  }
-  return Array.from(map.values());
-}
+
 
 export default function MLBSimulatorPage() {
   // Teams

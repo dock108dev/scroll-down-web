@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { StatusBadge } from "@/features/analytics/components/StatusBadge";
 import {
   fetchExperiments,
   createExperiment,
@@ -16,22 +17,6 @@ import type {
   ExperimentVariant,
   ReplayJob,
 } from "@/features/analytics/types";
-
-function StatusBadge({ status }: { status: string }) {
-  const colors: Record<string, string> = {
-    completed: "bg-green-900/50 text-green-400",
-    running: "bg-blue-900/50 text-blue-400",
-    pending: "bg-yellow-900/50 text-yellow-400",
-    failed: "bg-red-900/50 text-red-400",
-    cancelled: "bg-neutral-800 text-neutral-500",
-    promoted: "bg-purple-900/50 text-purple-400",
-  };
-  return (
-    <span className={`text-xs px-2 py-0.5 rounded-full ${colors[status] ?? "bg-neutral-800 text-neutral-400"}`}>
-      {status}
-    </span>
-  );
-}
 
 export default function ExperimentsPage() {
   const [experiments, setExperiments] = useState<ExperimentSuite[]>([]);

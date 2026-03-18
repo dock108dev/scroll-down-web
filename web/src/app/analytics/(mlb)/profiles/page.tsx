@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { AuthGate } from "@/components/auth/AuthGate";
-import { fetchTeams } from "@/features/analytics/services/SimulatorService";
+import { fetchTeams, dedupeTeams } from "@/features/analytics/services/SimulatorService";
 import {
   fetchTeamProfile,
   fetchDataCoverage,
@@ -14,17 +14,6 @@ import type {
 } from "@/features/analytics/types";
 
 const WINDOWS = [7, 14, 30, 60] as const;
-
-function dedupeTeams(raw: SimulatorTeam[]): SimulatorTeam[] {
-  const map = new Map<string, SimulatorTeam>();
-  for (const t of raw) {
-    const existing = map.get(t.abbreviation);
-    if (!existing || t.games_with_stats > existing.games_with_stats) {
-      map.set(t.abbreviation, t);
-    }
-  }
-  return Array.from(map.values());
-}
 
 function MetricRow({ label, value, baseline }: { label: string; value: number; baseline?: number }) {
   return (

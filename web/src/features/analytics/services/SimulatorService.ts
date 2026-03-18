@@ -6,6 +6,20 @@ import type {
 } from "../types";
 import { fetchApi } from "@/lib/api";
 
+// ─── Helpers ────────────────────────────────────────────────
+
+/** Deduplicate teams by abbreviation, keeping the entry with the most games_with_stats */
+export function dedupeTeams(raw: SimulatorTeam[]): SimulatorTeam[] {
+  const map = new Map<string, SimulatorTeam>();
+  for (const t of raw) {
+    const existing = map.get(t.abbreviation);
+    if (!existing || t.games_with_stats > existing.games_with_stats) {
+      map.set(t.abbreviation, t);
+    }
+  }
+  return Array.from(map.values());
+}
+
 // ─── Teams ──────────────────────────────────────────────────
 
 let teamsCache: SimulatorTeam[] | null = null;
