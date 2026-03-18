@@ -37,6 +37,10 @@ npm run dev                         # http://localhost:3001
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
 | MLB PA Simulator (lineup-aware Monte Carlo, Statcast-powered) | Yes |
+| MLB Team Profiles with rolling windows | Yes |
+| Model management, training, and calibration (admin) | Yes |
+| Batch simulation and outcome tracking (admin) | Yes |
+| Experiment suites with variant comparison (admin) | Yes |
 | Server-synced user preferences (settings, pins, reveals) | Yes |
 | User authentication (login, signup, forgot password, profile) | Yes |
 | Role-based access (guest / user / admin) | Yes |
@@ -67,12 +71,18 @@ Browser (React)
 
 ## Documentation
 
+All detailed documentation lives in [`docs/`](docs/):
+
 | Document | Description |
 |----------|-------------|
 | [Architecture](docs/architecture.md) | System architecture, data flow, realtime layer, state management |
-| [Development](docs/development.md) | Local dev setup, debugging, QA checklist |
+| [Environment & Config](docs/env-and-config.md) | Environment variables, tunables, storage keys |
+| [Realtime System](docs/realtime.md) | WebSocket/SSE transport, event handling, recovery |
+| [State Management](docs/state-management.md) | Zustand stores, persistence, preference sync |
+| [Deployment](docs/deployment.md) | Docker, CI/CD pipeline, production setup |
+| [Testing](docs/testing.md) | Playwright E2E test setup and patterns |
 | [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
-| [CI/CD & Deployment](docs/ci-cd.md) | GitHub Actions, Docker, Hetzner deployment |
+| [Development](docs/development.md) | Local dev setup, debugging, QA checklist |
 
 ## Repository Layout
 
@@ -86,6 +96,7 @@ web/             # Next.js web application (active, deployed)
     stores/      # Zustand state stores
     realtime/    # WebSocket/SSE transport layer
     lib/         # Types, utilities, config
+  tests/         # Playwright E2E test suites
 docs/            # Documentation
 .github/         # CI/CD workflows
 ```

@@ -111,4 +111,6 @@ Components expose `data-testid` attributes for stable test selectors:
 
 ## Running in CI
 
-The CI workflow does **not** run Playwright tests (no live backend available in CI). Tests are run locally against the dev server. The CI pipeline validates lint, types, and build only.
+The CI pipeline runs Playwright smoke tests (`@smoke`-tagged) on every push via the `playwright-smoke` job in `.github/workflows/ci.yml`. A separate daily workflow (`.github/workflows/e2e-daily.yml`) runs the full Playwright suite at 6 AM UTC. Both produce `playwright-report` artifacts.
+
+The main `web` job validates lint, types, and build without running tests.
