@@ -214,7 +214,7 @@ export default function BatchPage() {
                         <StatusBadge status={job.status} />
                       </div>
                       <span className="text-xs text-neutral-500">
-                        {job.games_count} games &middot; {job.iterations.toLocaleString()} iter
+                        {job.game_count ?? 0} games &middot; {(job.iterations ?? 0).toLocaleString()} iter
                       </span>
                     </div>
                   </button>

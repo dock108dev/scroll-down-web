@@ -181,7 +181,7 @@ export interface BatchJob {
   id: string;
   date: string;
   status: string;
-  games_count: number;
+  game_count: number;
   iterations: number;
   created_at: string;
   summary?: BatchSummary;

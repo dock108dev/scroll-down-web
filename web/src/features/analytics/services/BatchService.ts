@@ -16,10 +16,10 @@ export async function startBatchSimulation(
 }
 
 export async function fetchBatchJobs(): Promise<BatchJob[]> {
-  const data = await fetchApi<{ jobs: BatchJob[] }>(
+  const data = await fetchApi<{ jobs?: BatchJob[] }>(
     "/api/analytics/batch-simulate-jobs",
   );
-  return data.jobs;
+  return data.jobs ?? [];
 }
 
 export async function recordOutcomes(): Promise<void> {
@@ -31,8 +31,8 @@ export async function recordOutcomes(): Promise<void> {
 }
 
 export async function fetchPredictionOutcomes(): Promise<PredictionOutcome[]> {
-  const data = await fetchApi<{ outcomes: PredictionOutcome[] }>(
+  const data = await fetchApi<{ outcomes?: PredictionOutcome[] }>(
     "/api/analytics/prediction-outcomes",
   );
-  return data.outcomes;
+  return data.outcomes ?? [];
 }

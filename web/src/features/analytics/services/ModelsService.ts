@@ -39,17 +39,17 @@ export async function cancelTrainingJob(jobId: string): Promise<void> {
 }
 
 export async function fetchTrainingJobs(): Promise<TrainingJob[]> {
-  const data = await fetchApi<{ jobs: TrainingJob[] }>(
+  const data = await fetchApi<{ jobs?: TrainingJob[] }>(
     "/api/analytics/training-jobs",
   );
-  return data.jobs;
+  return data.jobs ?? [];
 }
 
 export async function fetchModelsList(): Promise<RegisteredModel[]> {
-  const data = await fetchApi<{ models: RegisteredModel[] }>(
+  const data = await fetchApi<{ models?: RegisteredModel[] }>(
     "/api/analytics/models-list",
   );
-  return data.models;
+  return data.models ?? [];
 }
 
 export async function activateModel(
