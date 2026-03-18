@@ -165,6 +165,7 @@ export interface DegradationAlert {
 // ─── Batch Types ────────────────────────────────────────────
 
 export interface BatchSimRequest {
+  sport: string;
   date: string;
   model_id?: string;
   iterations: number;

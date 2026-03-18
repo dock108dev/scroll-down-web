@@ -52,11 +52,15 @@ export async function fetchModelsList(): Promise<RegisteredModel[]> {
   return data.models;
 }
 
-export async function activateModel(modelId: string): Promise<void> {
+export async function activateModel(
+  modelId: string,
+  sport = "mlb",
+  modelType = "plate_appearance",
+): Promise<void> {
   await fetchApi("/api/analytics/models-activate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model_id: modelId }),
+    body: JSON.stringify({ sport, model_type: modelType, model_id: modelId }),
   });
 }
 
