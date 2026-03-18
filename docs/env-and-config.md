@@ -81,4 +81,5 @@ All keys are prefixed with `sd-` to avoid collisions.
 | `sd-read-state` | `reveal.ts` | Revealed game IDs + score snapshots |
 | `sd-section-layout` | `section-layout.ts` | Expanded/collapsed sections per game |
 | `sd-reading-position` | `reading-position.ts` | Scroll position per game (play index) |
-| `sd-home-scroll` | `home-scroll.ts` | Home page scroll Y position |
+
+Note: `home-scroll` store is in-memory only (not persisted to localStorage).

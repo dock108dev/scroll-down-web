@@ -37,7 +37,7 @@ User preferences. All settings have sensible defaults and work without auth.
 | `preferredSportsbook` | `string` | `""` | Highlight a specific book in odds displays |
 | `autoResumePosition` | `boolean` | `true` | Scroll to last play on game detail revisit |
 | `homeExpandedSections` | `string[]` | `[]` | Which date sections are expanded on home |
-| `hideLimitedData` | `boolean` | `false` | Hide games with no stats/PBP |
+| `hideLimitedData` | `boolean` | `true` | Hide thin-market odds |
 | `timelineDefaultTiers` | `number[]` | `[1, 2, 3]` | Which play tiers to show in timeline |
 | `followingLive` | `boolean` | `false` | Following Live mode (continuous score updates) |
 | `followingLiveAt` | `number` | `0` | Timestamp when Following Live was activated |
@@ -67,11 +67,11 @@ Per-game scroll position tracking for timeline resume.
 
 ### `section-layout` (persisted: `sd-section-layout`)
 
-Per-game section expansion state (which collapsible sections are open/closed). Capped at 50 entries, pruned after 30 days.
+Per-game section expansion state (which collapsible sections are open/closed). Capped at 50 entries.
 
-### `home-scroll` (persisted: `sd-home-scroll`)
+### `home-scroll` (not persisted)
 
-Saves home page scroll Y position for restoration on back navigation.
+Saves home page scroll Y position for restoration on back navigation. In-memory only — resets on page reload.
 
 ### `ui` (not persisted)
 

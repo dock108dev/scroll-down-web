@@ -97,7 +97,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const needsListRefresh = useGameData((s) => s.needsListRefresh);
   const clearListRefresh = useGameData((s) => s.clearListRefresh);
 
-  // Fix 4: channels + listKeys aligned by league+date
+  // Align realtime channels with list cache keys by league+date pair
   const ranges = useMemo(() => getSectionDateRanges(), []);
 
   const channels = useMemo(() => {

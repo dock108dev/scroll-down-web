@@ -49,8 +49,9 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push/PR to `m
 ### Jobs
 
 1. **web** — lint, type check (`tsc --noEmit`), production build
-2. **docker** (main branch only, after web passes) — build Docker image, push to `ghcr.io`
-3. **deploy** (after docker) — SSH into Hetzner, pull latest image, restart container
+2. **playwright-smoke** — runs `@smoke`-tagged Playwright tests against a dev server
+3. **docker** (main branch only, after web passes) — build Docker image, push to `ghcr.io`
+4. **deploy** (after docker) — SSH into Hetzner, pull latest image, restart container
 
 ### Image Tags
 
@@ -67,10 +68,12 @@ Every main-branch push produces two tags:
 | `HETZNER_SSH_KEY` | SSH private key |
 | `GHCR_TOKEN` | GitHub Container Registry auth token |
 
-### Other CI
+### Other Workflows
 
-- **CodeQL** (`.github/workflows/codeql.yml`) — automated security scanning
-- **Dependabot** (`.github/dependabot.yml`) — dependency update PRs
+- **Playwright smoke** — runs `@smoke`-tagged E2E tests on every push (separate from the main web job)
+- **E2E daily** (`.github/workflows/e2e-daily.yml`) — runs all Playwright tests daily at 6 AM UTC
+- **CodeQL** (`.github/workflows/codeql.yml`) — weekly security scanning (JavaScript/TypeScript)
+- **Dependabot** (`.github/dependabot.yml`) — weekly dependency update PRs
 
 ## Local Development
 

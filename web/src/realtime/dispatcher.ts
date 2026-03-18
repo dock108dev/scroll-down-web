@@ -15,7 +15,7 @@ import { REALTIME } from "@/lib/config";
 
 let initialized = false;
 
-// Fix 6: Throttle recovery per channel
+// Throttle recovery per channel to prevent storms from rapid gap detections
 const lastRecoveryAt = new Map<string, number>();
 
 function canRecover(channel: string): boolean {
@@ -101,7 +101,7 @@ function handleEvent(event: RealtimeEvent): void {
     case "game_patch": {
       const gameId = parseGameId(event.gameId);
       if (gameId) {
-        // Fix 3: applyGamePatch now creates entry for unknown games
+        // applyGamePatch creates a minimal entry for games not yet in the store
         store.applyGamePatch(gameId, event.patch as Partial<GameCore>);
       }
       break;

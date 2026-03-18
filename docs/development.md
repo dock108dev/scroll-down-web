@@ -17,10 +17,10 @@ npm run dev                         # http://localhost:3001
 
 | Variable | Required | Purpose |
 |---|---|---|
-| `NEXT_PUBLIC_API_BASE_URL` | Yes | Backend API base URL (default: `https://sports-data-admin.dock108.ai`) |
-| `SPORTS_DATA_API_KEY` | Yes | API authentication. Server-side only — never exposed to browser. |
+| `SPORTS_DATA_API_KEY` | Yes | API authentication sent as `X-API-Key` header. Server-side only — never exposed to browser. |
+| `SPORTS_API_INTERNAL_URL` | No | Override backend URL for server-side fetches. Default: `https://sports-data-admin.dock108.ai` (hardcoded in `src/lib/config.ts`). |
 
-See `web/.env.local.example` for local development defaults.
+See `.env.local.example` for local development defaults.
 
 ## Commands
 
@@ -104,18 +104,23 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Mini scorebar appears when scrolling past header
 
 ### Analytics Landing (`/analytics`)
-- [ ] Sport cards render (MLB, NBA, NFL, NHL, NCAAB, NCAAF)
-- [ ] Non-MLB cards are greyed out with "Coming Soon" badge
-- [ ] MLB card navigates to `/analytics/mlb`
+- [ ] MLB card renders and navigates to `/analytics/simulator`
 - [ ] AuthGate blocks guests with signup prompt
 
-### MLB PA Simulator (`/analytics/mlb`)
+### Analytics Tab Navigation
+- [ ] Tab bar visible on all analytics sub-pages (Simulator, Profiles, Models, Batch, Experiments)
+- [ ] Active tab highlighted with blue underline
+- [ ] Non-admin users see only Simulator and Profiles tabs
+- [ ] Admin users see all 5 tabs
+- [ ] `/analytics/mlb` redirects to `/analytics/simulator`
+
+### MLB PA Simulator (`/analytics/simulator`)
 - [ ] Team dropdowns populate from API (no duplicate abbreviations across sports)
 - [ ] Selecting a team loads its roster (batters + pitchers)
 - [ ] LineupBuilder auto-fills top 9 batters and top pitcher per team
 - [ ] User can swap batters and reorder lineup
 - [ ] User can change starting pitcher
-- [ ] Starter innings slider works (4.0–9.0)
+- [ ] Starter innings hardcoded to 6 (no UI slider)
 - [ ] Simulation requires both 9-man lineups + both starters selected
 - [ ] Simulation runs and shows lineup mode badge
 - [ ] Win probability bars render with correct percentages
@@ -123,6 +128,40 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Most likely final scores display (top 5) as ranked cards
 - [ ] PA probability profiles show for both teams
 - [ ] AuthGate blocks guests with signup prompt
+
+### Team Profiles (`/analytics/profiles`)
+- [ ] Team selector populates from API
+- [ ] Rolling window selector works (7/14/30/60 days)
+- [ ] Profile metrics display with league baselines
+- [ ] Multiple teams can be compared side-by-side
+- [ ] Data coverage panel shows game count and date range
+- [ ] AuthGate blocks guests with signup prompt
+
+### Models (`/analytics/models`) — Admin
+- [ ] Feature loadouts section lists configs with active badge
+- [ ] Available features expandable detail works
+- [ ] Training section: start training, cancel running jobs
+- [ ] Training jobs poll for status updates
+- [ ] Model registry: list models, activate toggle
+- [ ] Performance: calibration report and degradation alerts
+- [ ] AuthGate blocks non-admin users
+
+### Batch Sims (`/analytics/batch`) — Admin
+- [ ] Launch form: date picker, optional model ID, iterations
+- [ ] Jobs list with expandable summary (avg win prob, total, duration)
+- [ ] Jobs poll for status updates while running
+- [ ] Record outcomes button works
+- [ ] Prediction outcomes table shows correct/incorrect tracking
+- [ ] AuthGate blocks non-admin users
+
+### Experiments (`/analytics/experiments`) — Admin
+- [ ] Create experiment with name and JSON parameter grid
+- [ ] Suites list with status badges and variant count
+- [ ] Expandable variant leaderboard sorted by accuracy
+- [ ] Promote and cancel actions work
+- [ ] Historical replay: start with date range, jobs list with progress
+- [ ] Replay jobs poll for status updates
+- [ ] AuthGate blocks non-admin users
 
 ### FairBet
 - [ ] Pre-Game tab: odds load with progressive pagination
@@ -187,7 +226,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 
 **API errors (500):**
 - Check `SPORTS_DATA_API_KEY` is set in `.env.local`
-- Check `NEXT_PUBLIC_API_BASE_URL` points to a running backend
+- Check backend is reachable (default: `https://sports-data-admin.dock108.ai`, override with `SPORTS_API_INTERNAL_URL`)
 - Check browser Network tab for the failing `/api/*` request
 
 **Stale data after code changes:**
