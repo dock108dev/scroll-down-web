@@ -16,7 +16,7 @@ const SPORTS: SportCard[] = [
     key: "mlb",
     label: "MLB",
     description: "Matchup Simulator",
-    href: "/analytics/mlb",
+    href: "/analytics/simulator",
     enabled: true,
   },
   {
