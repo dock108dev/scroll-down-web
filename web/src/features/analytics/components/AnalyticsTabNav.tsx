@@ -29,7 +29,7 @@ export function AnalyticsTabNav() {
   );
 
   return (
-    <nav className="flex gap-1 overflow-x-auto scrollbar-hide border-b border-neutral-800 pb-px">
+    <nav className="flex gap-1 overflow-x-auto scrollbar-none border-b border-neutral-800 pb-px">
       {visibleTabs.map((tab) => {
         const active = pathname === tab.href;
         return (

@@ -23,8 +23,14 @@ export async function POST(req: NextRequest) {
     const action = url.searchParams.get("action");
     const jobId = url.searchParams.get("job_id");
     const body = await req.json();
+
+    const params = new URLSearchParams();
+    if (action) params.set("action", action);
+    if (jobId) params.set("job_id", jobId);
+    const qs = params.toString();
+
     const data = await apiFetch(
-      `/api/analytics/training-jobs${action ? `?action=${action}` : ""}${jobId ? `&job_id=${encodeURIComponent(jobId)}` : ""}`,
+      `/api/analytics/training-jobs${qs ? `?${qs}` : ""}`,
       {
         method: "POST",
         body: JSON.stringify(body),
