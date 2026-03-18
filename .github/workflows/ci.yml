@@ -135,4 +135,4 @@ jobs:
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ghcr.io/${{ github.repository }}/web:latest
             docker compose up -d --no-deps --wait scrolldown-web
-            docker image prune -f
+            docker image prune -f || true
