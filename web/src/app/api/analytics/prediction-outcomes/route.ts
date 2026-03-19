@@ -3,7 +3,9 @@ import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
 
 export async function GET(req: NextRequest) {
   try {
-    const data = await apiFetch("/api/analytics/prediction-outcomes", {
+    const qs = req.nextUrl.searchParams.toString();
+    const path = `/api/analytics/prediction-outcomes${qs ? `?${qs}` : ""}`;
+    const data = await apiFetch(path, {
       headers: forwardAuth(req),
       revalidate: 0,
     });

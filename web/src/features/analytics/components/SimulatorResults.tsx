@@ -4,6 +4,7 @@
  * PA breakdown, and pitching profiles.
  */
 
+import { useMemo } from "react";
 import type { SimulatorResult } from "@/features/analytics/types";
 import { ProbabilityBar } from "./ProbabilityBar";
 import { ScoreCard } from "./ScoreCard";
@@ -25,6 +26,19 @@ export function SimulatorResults({
   homeColor,
   awayColor,
 }: SimulatorResultsProps) {
+  // Split scores into home-win vs away-win buckets.
+  // Score format is "away-home", so homeScore > awayScore = home win.
+  const { homeWinScores, awayWinScores } = useMemo(() => {
+    const hw: typeof result.most_common_scores = [];
+    const aw: typeof result.most_common_scores = [];
+    for (const s of result.most_common_scores) {
+      const [awayScore, homeScore] = s.score.split("-").map(Number);
+      if (homeScore > awayScore) hw.push(s);
+      else aw.push(s);
+    }
+    return { homeWinScores: hw.slice(0, 3), awayWinScores: aw.slice(0, 3) };
+  }, [result.most_common_scores]);
+
   return (
     <div className="space-y-5">
       {/* Lineup mode badge */}
@@ -88,29 +102,6 @@ export function SimulatorResults({
         </div>
       </div>
 
-      {/* Most Common Scores */}
-      {result.most_common_scores.length > 0 && (
-        <div className="space-y-3">
-          <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
-            Most Likely Final Scores
-          </h4>
-          <div className="space-y-2">
-            {result.most_common_scores.slice(0, 5).map((s, i) => (
-              <ScoreCard
-                key={s.score}
-                rank={i + 1}
-                score={s.score}
-                probability={s.probability}
-                awayTeam={awayName}
-                homeTeam={homeName}
-                awayColor={awayColor}
-                homeColor={homeColor}
-              />
-            ))}
-          </div>
-        </div>
-      )}
-
       {/* PA Probabilities */}
       {result.home_pa_probabilities && result.away_pa_probabilities && (
         <div className="space-y-3">
@@ -151,6 +142,51 @@ export function SimulatorResults({
                 bullpen={result.profile_meta.home_bullpen}
               />
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Most Common Scores — split by winner */}
+      {result.most_common_scores.length > 0 && (
+        <div className="space-y-3">
+          <h4 className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
+            Most Likely Final Scores
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <p className="text-xs text-neutral-400 font-medium">
+                If {homeName} wins
+              </p>
+              {homeWinScores.map((s, i) => (
+                <ScoreCard
+                  key={s.score}
+                  rank={i + 1}
+                  score={s.score}
+                  probability={s.probability}
+                  awayTeam={awayName}
+                  homeTeam={homeName}
+                  awayColor={awayColor}
+                  homeColor={homeColor}
+                />
+              ))}
+            </div>
+            <div className="space-y-2">
+              <p className="text-xs text-neutral-400 font-medium">
+                If {awayName} wins
+              </p>
+              {awayWinScores.map((s, i) => (
+                <ScoreCard
+                  key={s.score}
+                  rank={i + 1}
+                  score={s.score}
+                  probability={s.probability}
+                  awayTeam={awayName}
+                  homeTeam={homeName}
+                  awayColor={awayColor}
+                  homeColor={homeColor}
+                />
+              ))}
+            </div>
           </div>
         </div>
       )}

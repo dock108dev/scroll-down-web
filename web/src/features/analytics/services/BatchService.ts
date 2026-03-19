@@ -34,9 +34,10 @@ export async function recordOutcomes(): Promise<void> {
   });
 }
 
-export async function fetchPredictionOutcomes(): Promise<PredictionOutcome[]> {
+export async function fetchPredictionOutcomes(batchJobId?: number): Promise<PredictionOutcome[]> {
+  const qs = batchJobId != null ? `?batch_sim_job_id=${batchJobId}` : "";
   const data = await fetchApi<{ outcomes?: PredictionOutcome[] }>(
-    "/api/analytics/prediction-outcomes",
+    `/api/analytics/prediction-outcomes${qs}`,
   );
   return data.outcomes ?? [];
 }
