@@ -28,16 +28,17 @@ export function SimulatorResults({
 }: SimulatorResultsProps) {
   // Split scores into home-win vs away-win buckets.
   // Score format is "away-home", so homeScore > awayScore = home win.
+  const { most_common_scores } = result;
   const { homeWinScores, awayWinScores } = useMemo(() => {
-    const hw: typeof result.most_common_scores = [];
-    const aw: typeof result.most_common_scores = [];
-    for (const s of result.most_common_scores) {
+    const hw: typeof most_common_scores = [];
+    const aw: typeof most_common_scores = [];
+    for (const s of most_common_scores) {
       const [awayScore, homeScore] = s.score.split("-").map(Number);
       if (homeScore > awayScore) hw.push(s);
       else aw.push(s);
     }
     return { homeWinScores: hw.slice(0, 3), awayWinScores: aw.slice(0, 3) };
-  }, [result.most_common_scores]);
+  }, [most_common_scores]);
 
   return (
     <div className="space-y-5">
