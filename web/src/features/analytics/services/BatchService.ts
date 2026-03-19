@@ -22,6 +22,10 @@ export async function fetchBatchJobs(): Promise<BatchJob[]> {
   return data.jobs ?? [];
 }
 
+export async function fetchBatchJobDetail(jobId: number): Promise<BatchJob> {
+  return fetchApi<BatchJob>(`/api/analytics/batch-simulate-job/${jobId}`);
+}
+
 export async function recordOutcomes(): Promise<void> {
   await fetchApi("/api/analytics/record-outcomes", {
     method: "POST",

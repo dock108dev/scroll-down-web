@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
 
-export async function POST(req: NextRequest) {
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
   try {
-    const body = await req.json();
-    const data = await apiFetch("/api/analytics/replay", {
-      method: "POST",
-      body: JSON.stringify(body),
+    const { id } = await params;
+    const data = await apiFetch(`/api/analytics/batch-simulate-job/${id}`, {
       headers: forwardAuth(req),
       revalidate: 0,
     });
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const status = err instanceof ApiError ? err.status : 500;
     return NextResponse.json(
-      { error: "Failed to start replay" },
+      { error: "Failed to fetch batch job detail" },
       { status },
     );
   }

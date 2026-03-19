@@ -42,7 +42,7 @@ export interface SimulationRequest {
   home_team: string;
   away_team: string;
   iterations?: number;
-  probability_mode?: "rule_based" | "ml" | "ensemble";
+  probability_mode?: "rule_based" | "ml" | "ensemble" | "pitch_level";
   home_lineup?: LineupSlot[];
   away_lineup?: LineupSlot[];
   home_starter?: PitcherSlot;
@@ -101,26 +101,18 @@ export interface PitcherProfileInfo {
 
 // ─── Models Types ───────────────────────────────────────────
 
-export interface FeatureConfig {
-  id: string;
-  name: string;
-  features: string[];
-  feature_count: number;
-  is_active: boolean;
-  created_at: string;
-}
-
-export interface AvailableFeature {
-  name: string;
-  description?: string;
-  category?: string;
-}
-
 export interface TrainingJob {
-  id: string;
+  id: number;
+  sport: string;
+  model_type: string;
+  algorithm: string;
+  date_start: string;
+  date_end: string;
   status: string;
+  model_id: number | null;
+  error_message: string | null;
   created_at: string;
-  completed_at?: string;
+  completed_at: string | null;
   metrics?: {
     accuracy: number;
     brier_score?: number;
@@ -129,10 +121,15 @@ export interface TrainingJob {
 }
 
 export interface RegisteredModel {
-  id: string;
-  name: string;
-  version: string;
-  is_active: boolean;
+  model_id: number;
+  sport: string;
+  model_type: string;
+  algorithm: string;
+  version: number;
+  active: boolean;
+  artifact_status: string;
+  train_count: number;
+  test_count: number;
   created_at: string;
   metrics?: {
     accuracy: number;
@@ -141,18 +138,14 @@ export interface RegisteredModel {
   };
 }
 
-export interface CalibrationBucket {
-  range: string;
-  count: number;
-  actual_rate: number;
-  predicted_rate: number;
-}
-
 export interface CalibrationReport {
-  model_id: string;
-  buckets: CalibrationBucket[];
-  overall_brier: number;
-  created_at: string;
+  total_predictions: number;
+  resolved: number;
+  accuracy: number;
+  brier_score: number;
+  avg_home_score_error: number;
+  avg_away_score_error: number;
+  home_bias: number;
 }
 
 export interface DegradationAlert {
@@ -220,56 +213,27 @@ export interface PredictionOutcome {
   created_at: string | null;
 }
 
-// ─── Experiments Types ──────────────────────────────────────
-
-export interface ExperimentSuite {
-  id: string;
-  name: string;
-  status: string;
-  variant_count: number;
-  created_at: string;
-  parameter_grid?: Record<string, unknown>;
-}
-
-export interface ExperimentVariant {
-  id: string;
-  name: string;
-  status: string;
-  parameters: Record<string, unknown>;
-  metrics?: {
-    accuracy: number;
-    brier_score?: number;
-    log_loss?: number;
-  };
-}
-
-export interface ExperimentDetail extends ExperimentSuite {
-  variants?: ExperimentVariant[];
-}
-
-export interface ReplayJob {
-  id: string;
-  start_date: string;
-  end_date: string;
-  status: string;
-  games_processed: number;
-  games_total: number;
-  created_at: string;
-}
-
 // ─── Profiles Types ─────────────────────────────────────────
 
 export interface TeamProfile {
   team: string;
-  window_days: number;
-  games_in_window: number;
+  games_used: number;
+  date_range: [string, string];
   metrics: Record<string, number>;
-  league_baselines?: Record<string, number>;
+  baselines?: Record<string, number>;
+  season_breakdown?: Record<string, number>;
 }
 
 export interface DataCoverage {
-  teams_count: number;
-  games_count: number;
-  earliest_date: string;
-  latest_date: string;
+  advanced_data_coverage: {
+    pa: boolean;
+    pitch: boolean;
+    fielding: boolean;
+  };
+  counts: {
+    player_advanced_stats: number;
+    pitcher_game_stats: number;
+    team_advanced_stats: number;
+    fielding_stats: number;
+  };
 }

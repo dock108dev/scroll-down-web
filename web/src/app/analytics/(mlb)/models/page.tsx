@@ -4,8 +4,6 @@ import { useEffect, useState } from "react";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { StatusBadge } from "@/features/analytics/components/StatusBadge";
 import {
-  fetchFeatureConfigs,
-  fetchAvailableFeatures,
   fetchTrainingJobs,
   startTraining,
   cancelTrainingJob,
@@ -15,17 +13,24 @@ import {
   fetchDegradationAlerts,
 } from "@/features/analytics/services/ModelsService";
 import type {
-  FeatureConfig,
-  AvailableFeature,
   TrainingJob,
   RegisteredModel,
   CalibrationReport,
   DegradationAlert,
 } from "@/features/analytics/types";
 
+const MODEL_TYPES = [
+  { value: "pitch", label: "Pitch Outcome" },
+  { value: "batted_ball", label: "Batted Ball" },
+];
+
+const ALGORITHMS = [
+  { value: "random_forest", label: "Random Forest" },
+  { value: "gradient_boosting", label: "Gradient Boosting" },
+  { value: "xgboost", label: "XGBoost" },
+];
+
 export default function ModelsPage() {
-  const [featureConfigs, setFeatureConfigs] = useState<FeatureConfig[]>([]);
-  const [availableFeatures, setAvailableFeatures] = useState<AvailableFeature[]>([]);
   const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>([]);
   const [models, setModels] = useState<RegisteredModel[]>([]);
   const [calibration, setCalibration] = useState<CalibrationReport | null>(null);
@@ -34,30 +39,39 @@ export default function ModelsPage() {
   const [error, setError] = useState<string | null>(null);
   const [trainingInProgress, setTrainingInProgress] = useState(false);
 
+  // Training form state
+  const [modelType, setModelType] = useState("pitch");
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
+  const [algorithm, setAlgorithm] = useState("random_forest");
+
   useEffect(() => {
     let cancelled = false;
     async function load() {
       try {
-        const [fc, af, tj, ml, cr, da] = await Promise.all([
-          fetchFeatureConfigs(),
-          fetchAvailableFeatures(),
+        const [tj, ml] = await Promise.all([
           fetchTrainingJobs(),
           fetchModelsList(),
-          fetchCalibrationReport(),
-          fetchDegradationAlerts(),
         ]);
         if (cancelled) return;
-        setFeatureConfigs(fc);
-        setAvailableFeatures(af);
         setTrainingJobs(tj);
         setModels(ml);
-        setCalibration(cr);
-        setAlerts(da);
       } catch {
         if (!cancelled) setError("Failed to load models data.");
       } finally {
         if (!cancelled) setLoading(false);
       }
+
+      // Load these independently — don't let failures block the page
+      try {
+        const cr = await fetchCalibrationReport();
+        if (!cancelled) setCalibration(cr);
+      } catch { /* not available yet */ }
+
+      try {
+        const da = await fetchDegradationAlerts();
+        if (!cancelled) setAlerts(da);
+      } catch { /* not available yet */ }
     }
     load();
     return () => { cancelled = true; };
@@ -77,9 +91,23 @@ export default function ModelsPage() {
   }, [trainingJobs]);
 
   const handleStartTraining = async () => {
+    if (!dateStart || !dateEnd) return;
+    // Validate max ~6 months apart
+    const start = new Date(dateStart);
+    const end = new Date(dateEnd);
+    const diffDays = (end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24);
+    if (diffDays <= 0) {
+      setError("End date must be after start date.");
+      return;
+    }
+    if (diffDays > 185) {
+      setError("Date range cannot exceed approximately 6 months (one season).");
+      return;
+    }
     try {
       setTrainingInProgress(true);
-      await startTraining();
+      setError(null);
+      await startTraining({ model_type: modelType, date_start: dateStart, date_end: dateEnd, algorithm });
       const tj = await fetchTrainingJobs();
       setTrainingJobs(tj);
     } catch {
@@ -89,7 +117,7 @@ export default function ModelsPage() {
     }
   };
 
-  const handleCancelJob = async (jobId: string) => {
+  const handleCancelJob = async (jobId: number) => {
     try {
       await cancelTrainingJob(jobId);
       const tj = await fetchTrainingJobs();
@@ -97,9 +125,9 @@ export default function ModelsPage() {
     } catch { /* ignore */ }
   };
 
-  const handleActivateModel = async (modelId: string) => {
+  const handleActivateModel = async (model: RegisteredModel) => {
     try {
-      await activateModel(modelId);
+      await activateModel(model.model_id, model.sport, model.model_type);
       const ml = await fetchModelsList();
       setModels(ml);
     } catch { /* ignore */ }
@@ -121,7 +149,7 @@ export default function ModelsPage() {
         <div>
           <h1 className="text-xl font-bold text-neutral-50">Models</h1>
           <p className="text-xs text-neutral-500 mt-1">
-            Feature loadouts, training, model registry, and performance monitoring.
+            Training, model registry, and performance monitoring.
           </p>
         </div>
 
@@ -131,69 +159,72 @@ export default function ModelsPage() {
           </div>
         )}
 
-        {/* ── Feature Loadouts ──────────────────────────── */}
-        <section className="space-y-3">
-          <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
-            Feature Loadouts
-          </h2>
-          {featureConfigs.length === 0 ? (
-            <p className="text-sm text-neutral-500">No feature configs found.</p>
-          ) : (
-            <div className="space-y-2">
-              {featureConfigs.map((fc) => (
-                <div
-                  key={fc.id}
-                  className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-neutral-200">{fc.name}</span>
-                    {fc.is_active && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/50 text-green-400">
-                        active
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-neutral-500 mt-1">
-                    {fc.feature_count} features &middot; Created {new Date(fc.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {availableFeatures.length > 0 && (
-            <details className="text-sm">
-              <summary className="text-neutral-400 cursor-pointer hover:text-neutral-300">
-                Available features ({availableFeatures.length})
-              </summary>
-              <div className="mt-2 grid grid-cols-2 gap-1">
-                {availableFeatures.map((f) => (
-                  <span key={f.name} className="text-xs text-neutral-500 truncate">
-                    {f.name}
-                  </span>
-                ))}
-              </div>
-            </details>
-          )}
-        </section>
-
         {/* ── Training ──────────────────────────────────── */}
         <section className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
-              Training
-            </h2>
+          <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
+            Train New Model
+          </h2>
+          <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-neutral-500">Model Type</label>
+                <select
+                  value={modelType}
+                  onChange={(e) => setModelType(e.target.value)}
+                  className="w-full text-sm rounded-lg px-3 py-2 bg-neutral-950 text-neutral-200 border border-neutral-800 outline-none"
+                >
+                  {MODEL_TYPES.map((mt) => (
+                    <option key={mt.value} value={mt.value}>{mt.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-neutral-500">Algorithm</label>
+                <select
+                  value={algorithm}
+                  onChange={(e) => setAlgorithm(e.target.value)}
+                  className="w-full text-sm rounded-lg px-3 py-2 bg-neutral-950 text-neutral-200 border border-neutral-800 outline-none"
+                >
+                  {ALGORITHMS.map((a) => (
+                    <option key={a.value} value={a.value}>{a.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-neutral-500">Start Date</label>
+                <input
+                  type="date"
+                  value={dateStart}
+                  onChange={(e) => setDateStart(e.target.value)}
+                  className="w-full text-sm rounded-lg px-3 py-2 bg-neutral-950 text-neutral-200 border border-neutral-800 outline-none"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-neutral-500">End Date</label>
+                <input
+                  type="date"
+                  value={dateEnd}
+                  onChange={(e) => setDateEnd(e.target.value)}
+                  className="w-full text-sm rounded-lg px-3 py-2 bg-neutral-950 text-neutral-200 border border-neutral-800 outline-none"
+                />
+              </div>
+            </div>
+            <div className="text-xs text-neutral-500 bg-neutral-950 rounded-lg px-3 py-2">
+              Pitch-level simulation requires both a pitch and batted ball model trained and activated.
+            </div>
             <button
               onClick={handleStartTraining}
-              disabled={trainingInProgress}
-              className="text-xs font-medium px-3 py-1.5 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              disabled={!dateStart || !dateEnd || trainingInProgress}
+              className="text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               {trainingInProgress ? "Starting..." : "Start Training"}
             </button>
           </div>
-          {trainingJobs.length === 0 ? (
-            <p className="text-sm text-neutral-500">No training jobs.</p>
-          ) : (
+
+          {/* Training jobs list */}
+          {trainingJobs.length > 0 && (
             <div className="space-y-2">
               {trainingJobs.map((job) => (
                 <div
@@ -202,7 +233,8 @@ export default function ModelsPage() {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm text-neutral-200">{job.id}</span>
+                      <span className="text-sm text-neutral-200">{job.model_type}</span>
+                      <span className="text-xs text-neutral-500">{job.algorithm}</span>
                       <StatusBadge status={job.status} />
                     </div>
                     {(job.status === "running" || job.status === "pending") && (
@@ -215,9 +247,12 @@ export default function ModelsPage() {
                     )}
                   </div>
                   <p className="text-xs text-neutral-500 mt-1">
-                    Started {new Date(job.created_at).toLocaleString()}
+                    {job.date_start} – {job.date_end}
                     {job.metrics && ` · Accuracy: ${(job.metrics.accuracy * 100).toFixed(1)}%`}
                   </p>
+                  {job.error_message && (
+                    <p className="text-xs text-red-400 mt-1">{job.error_message}</p>
+                  )}
                 </div>
               ))}
             </div>
@@ -235,23 +270,24 @@ export default function ModelsPage() {
             <div className="space-y-2">
               {models.map((m) => (
                 <div
-                  key={m.id}
+                  key={m.model_id}
                   className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3"
                 >
                   <div className="flex items-center justify-between">
                     <div>
-                      <span className="text-sm font-medium text-neutral-200">{m.name}</span>
+                      <span className="text-sm font-medium text-neutral-200">{m.model_type}</span>
                       <span className="text-xs text-neutral-500 ml-2">v{m.version}</span>
+                      <span className="text-xs text-neutral-600 ml-2">{m.algorithm}</span>
                     </div>
                     <button
-                      onClick={() => handleActivateModel(m.id)}
+                      onClick={() => handleActivateModel(m)}
                       className={`text-xs px-2 py-1 rounded transition-colors ${
-                        m.is_active
+                        m.active
                           ? "bg-green-900/50 text-green-400"
                           : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
                       }`}
                     >
-                      {m.is_active ? "Active" : "Activate"}
+                      {m.active ? "Active" : "Activate"}
                     </button>
                   </div>
                   {m.metrics && (
@@ -275,14 +311,31 @@ export default function ModelsPage() {
           {calibration && (
             <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 space-y-2">
               <h3 className="text-sm font-medium text-neutral-200">Calibration Report</h3>
-              <div className="grid grid-cols-3 gap-2 text-xs">
-                {calibration.buckets.map((b) => (
-                  <div key={b.range} className="text-center">
-                    <div className="text-neutral-400">{b.range}</div>
-                    <div className="text-neutral-200 font-medium">{(b.actual_rate * 100).toFixed(1)}%</div>
-                    <div className="text-neutral-500">n={b.count}</div>
-                  </div>
-                ))}
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div>
+                  <span className="text-neutral-500">Total Predictions</span>
+                  <div className="text-neutral-200 font-medium">{calibration.total_predictions.toLocaleString()}</div>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Resolved</span>
+                  <div className="text-neutral-200 font-medium">{calibration.resolved.toLocaleString()}</div>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Accuracy</span>
+                  <div className="text-neutral-200 font-medium">{(calibration.accuracy * 100).toFixed(1)}%</div>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Brier Score</span>
+                  <div className="text-neutral-200 font-medium">{calibration.brier_score.toFixed(4)}</div>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Avg Home Score Error</span>
+                  <div className="text-neutral-200 font-medium">{calibration.avg_home_score_error.toFixed(2)}</div>
+                </div>
+                <div>
+                  <span className="text-neutral-500">Avg Away Score Error</span>
+                  <div className="text-neutral-200 font-medium">{calibration.avg_away_score_error.toFixed(2)}</div>
+                </div>
               </div>
             </div>
           )}

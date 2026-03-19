@@ -1,6 +1,4 @@
 import type {
-  FeatureConfig,
-  AvailableFeature,
   TrainingJob,
   RegisteredModel,
   CalibrationReport,
@@ -8,29 +6,20 @@ import type {
 } from "../types";
 import { fetchApi } from "@/lib/api";
 
-export async function fetchFeatureConfigs(): Promise<FeatureConfig[]> {
-  const data = await fetchApi<{ configs: FeatureConfig[] }>(
-    "/api/analytics/feature-configs",
-  );
-  return data.configs;
-}
-
-export async function fetchAvailableFeatures(): Promise<AvailableFeature[]> {
-  const data = await fetchApi<{ features: AvailableFeature[] }>(
-    "/api/analytics/available-features",
-  );
-  return data.features;
-}
-
-export async function startTraining(): Promise<void> {
+export async function startTraining(params: {
+  model_type: string;
+  date_start: string;
+  date_end: string;
+  algorithm: string;
+}): Promise<void> {
   await fetchApi("/api/analytics/train", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({}),
+    body: JSON.stringify(params),
   });
 }
 
-export async function cancelTrainingJob(jobId: string): Promise<void> {
+export async function cancelTrainingJob(jobId: number): Promise<void> {
   await fetchApi(`/api/analytics/training-jobs?action=cancel&job_id=${encodeURIComponent(jobId)}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -53,9 +42,9 @@ export async function fetchModelsList(): Promise<RegisteredModel[]> {
 }
 
 export async function activateModel(
-  modelId: string,
-  sport = "mlb",
-  modelType = "plate_appearance",
+  modelId: number,
+  sport: string,
+  modelType: string,
 ): Promise<void> {
   await fetchApi("/api/analytics/models-activate", {
     method: "POST",
@@ -64,13 +53,21 @@ export async function activateModel(
   });
 }
 
-export async function fetchCalibrationReport(): Promise<CalibrationReport> {
-  return fetchApi<CalibrationReport>("/api/analytics/calibration-report");
+export async function fetchCalibrationReport(): Promise<CalibrationReport | null> {
+  try {
+    return await fetchApi<CalibrationReport>("/api/analytics/calibration-report");
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchDegradationAlerts(): Promise<DegradationAlert[]> {
-  const data = await fetchApi<{ alerts: DegradationAlert[] }>(
-    "/api/analytics/degradation-alerts",
-  );
-  return data.alerts;
+  try {
+    const data = await fetchApi<{ alerts: DegradationAlert[] }>(
+      "/api/analytics/degradation-alerts",
+    );
+    return data.alerts;
+  } catch {
+    return [];
+  }
 }

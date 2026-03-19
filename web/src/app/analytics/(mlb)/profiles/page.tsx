@@ -211,11 +211,14 @@ export default function ProfilesPage() {
                           key={key}
                           label={key.replace(/_/g, " ")}
                           value={val}
-                          baseline={profile.league_baselines?.[key]}
+                          baseline={profile.baselines?.[key]}
                         />
                       ))}
                       <div className="mt-2 pt-2 border-t border-neutral-800 text-xs text-neutral-500">
-                        {profile.games_in_window} games in {window}-day window
+                        {profile.games_used} games used
+                        {profile.date_range && (
+                          <span className="ml-2">({profile.date_range[0]} – {profile.date_range[1]})</span>
+                        )}
                       </div>
                     </div>
                   )}
@@ -230,21 +233,43 @@ export default function ProfilesPage() {
               <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
                 Data Coverage
               </h2>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3">
+              <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 space-y-3">
                 <div className="grid grid-cols-3 gap-2 text-xs">
                   <div>
-                    <span className="text-neutral-500">Teams</span>
-                    <div className="text-neutral-200 font-medium">{coverage.teams_count}</div>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Games</span>
-                    <div className="text-neutral-200 font-medium">{coverage.games_count.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Date Range</span>
-                    <div className="text-neutral-200 font-medium">
-                      {coverage.earliest_date} – {coverage.latest_date}
+                    <span className="text-neutral-500">PA Data</span>
+                    <div className={`font-medium ${coverage.advanced_data_coverage.pa ? "text-green-400" : "text-neutral-500"}`}>
+                      {coverage.advanced_data_coverage.pa ? "Ready" : "Missing"}
                     </div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Pitch Data</span>
+                    <div className={`font-medium ${coverage.advanced_data_coverage.pitch ? "text-green-400" : "text-neutral-500"}`}>
+                      {coverage.advanced_data_coverage.pitch ? "Ready" : "Missing"}
+                    </div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Fielding Data</span>
+                    <div className={`font-medium ${coverage.advanced_data_coverage.fielding ? "text-green-400" : "text-neutral-500"}`}>
+                      {coverage.advanced_data_coverage.fielding ? "Ready" : "Missing"}
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-neutral-500">Player Advanced Stats</span>
+                    <div className="text-neutral-200 font-medium">{coverage.counts.player_advanced_stats.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Pitcher Game Stats</span>
+                    <div className="text-neutral-200 font-medium">{coverage.counts.pitcher_game_stats.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Team Advanced Stats</span>
+                    <div className="text-neutral-200 font-medium">{coverage.counts.team_advanced_stats.toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <span className="text-neutral-500">Fielding Stats</span>
+                    <div className="text-neutral-200 font-medium">{coverage.counts.fielding_stats.toLocaleString()}</div>
                   </div>
                 </div>
               </div>

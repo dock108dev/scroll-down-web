@@ -6,6 +6,7 @@ import { StatusBadge } from "@/features/analytics/components/StatusBadge";
 import {
   startBatchSimulation,
   fetchBatchJobs,
+  fetchBatchJobDetail,
   recordOutcomes,
   fetchPredictionOutcomes,
 } from "@/features/analytics/services/BatchService";
@@ -27,6 +28,7 @@ export default function BatchPage() {
   const [submitting, setSubmitting] = useState(false);
   const [recording, setRecording] = useState(false);
   const [expandedJob, setExpandedJob] = useState<number | null>(null);
+  const [jobDetails, setJobDetails] = useState<Record<number, BatchJob>>({});
 
   // Form state
   const [dateStart, setDateStart] = useState("");
@@ -73,11 +75,11 @@ export default function BatchPage() {
   }, [jobs]);
 
   // Build model options: active models + completed training jobs
-  const activeModel = models.find((m) => m.is_active);
+  const activeModel = models.find((m) => m.active);
   const completedTrainingModels = trainingJobs
-    .filter((t) => t.status === "completed" && t.id)
-    .map((t) => t.id);
-  const modelOptions = models.filter((m) => m.is_active || completedTrainingModels.includes(m.id));
+    .filter((t) => t.status === "completed" && t.model_id)
+    .map((t) => t.model_id);
+  const modelOptions = models.filter((m) => m.active || completedTrainingModels.includes(m.model_id));
   const availableModels = modelOptions.length > 0 ? modelOptions : models;
 
   const handleLaunch = async () => {
@@ -91,6 +93,7 @@ export default function BatchPage() {
         date_end: dateEnd,
         model_id: modelId || undefined,
         iterations: parseInt(iterations) || 5000,
+        probability_mode: "pitch_level",
       });
       const j = await fetchBatchJobs();
       setJobs(j);
@@ -101,6 +104,20 @@ export default function BatchPage() {
       setError("Failed to start batch simulation.");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleExpandJob = async (jobId: number) => {
+    if (expandedJob === jobId) {
+      setExpandedJob(null);
+      return;
+    }
+    setExpandedJob(jobId);
+    if (!jobDetails[jobId]) {
+      try {
+        const detail = await fetchBatchJobDetail(jobId);
+        setJobDetails((prev) => ({ ...prev, [jobId]: detail }));
+      } catch { /* ignore - fall back to list data */ }
     }
   };
 
@@ -177,10 +194,10 @@ export default function BatchPage() {
                   onChange={(e) => setModelId(e.target.value)}
                   className="w-full text-sm rounded-lg px-3 py-2 bg-neutral-950 text-neutral-200 border border-neutral-800 outline-none"
                 >
-                  <option value="">Active model{activeModel ? ` (${activeModel.name})` : ""}</option>
+                  <option value="">Active model{activeModel ? ` (${activeModel.model_type} v${activeModel.version})` : ""}</option>
                   {availableModels.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} v{m.version}{m.is_active ? " (active)" : ""}
+                    <option key={m.model_id} value={m.model_id}>
+                      {m.model_type} v{m.version}{m.active ? " (active)" : ""}
                     </option>
                   ))}
                 </select>
@@ -219,7 +236,7 @@ export default function BatchPage() {
                 return (
                   <div key={job.id} className="rounded-lg border border-neutral-800 bg-neutral-900">
                     <button
-                      onClick={() => setExpandedJob(expandedJob === job.id ? null : job.id)}
+                      onClick={() => handleExpandJob(job.id)}
                       className="w-full px-4 py-3 text-left"
                     >
                       <div className="flex items-center justify-between">
@@ -232,42 +249,45 @@ export default function BatchPage() {
                         </span>
                       </div>
                     </button>
-                    {expandedJob === job.id && (
+                    {expandedJob === job.id && (() => {
+                      const detail = jobDetails[job.id] ?? job;
+                      return (
                       <div className="px-4 pb-3 border-t border-neutral-800 pt-3 space-y-2">
-                        {job.error_message && (
-                          <p className="text-xs text-red-400">{job.error_message}</p>
+                        {detail.error_message && (
+                          <p className="text-xs text-red-400">{detail.error_message}</p>
                         )}
-                        {job.batch_summary && (
+                        {detail.batch_summary && (
                           <div className="grid grid-cols-3 gap-2 text-xs">
                             <div>
                               <span className="text-neutral-500">Home Win Rate</span>
                               <div className="text-neutral-200 font-medium">
-                                {fmtPct(job.batch_summary.home_win_rate)}
+                                {fmtPct(detail.batch_summary.home_win_rate)}
                               </div>
                             </div>
                             <div>
                               <span className="text-neutral-500">Avg Total</span>
                               <div className="text-neutral-200 font-medium">
-                                {job.batch_summary.avg_total_per_game?.toFixed(1) ?? "—"}
+                                {detail.batch_summary.avg_total_per_game?.toFixed(1) ?? "—"}
                               </div>
                             </div>
                             <div>
                               <span className="text-neutral-500">Avg Runs/Team</span>
                               <div className="text-neutral-200 font-medium">
-                                {job.batch_summary.avg_runs_per_team?.toFixed(1) ?? "—"}
+                                {detail.batch_summary.avg_runs_per_team?.toFixed(1) ?? "—"}
                               </div>
                             </div>
                           </div>
                         )}
-                        {job.warnings && job.warnings.length > 0 && (
+                        {detail.warnings && detail.warnings.length > 0 && (
                           <div className="text-xs text-amber-400 space-y-1">
-                            {job.warnings.map((w, i) => (
+                            {detail.warnings.map((w, i) => (
                               <p key={i}>{w}</p>
                             ))}
                           </div>
                         )}
                       </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 );
               })}

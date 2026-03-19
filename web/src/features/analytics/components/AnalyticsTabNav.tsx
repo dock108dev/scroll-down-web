@@ -15,7 +15,6 @@ const TABS: Tab[] = [
   { label: "Profiles", href: "/analytics/profiles", minRole: "user" },
   { label: "Models", href: "/analytics/models", minRole: "admin" },
   { label: "Batch Sims", href: "/analytics/batch", minRole: "admin" },
-  { label: "Experiments", href: "/analytics/experiments", minRole: "admin" },
 ];
 
 const ROLE_RANK = { guest: 0, user: 1, admin: 2 } as const;
