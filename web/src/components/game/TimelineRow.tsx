@@ -23,7 +23,8 @@ const BOLD_KEYWORDS = [
   // Basketball
   "MISS", "makes", "DUNK", "THREE", "FREE THROW", "BLOCK", "STEAL", "TURNOVER", "FOUL",
   // Hockey
-  "GOAL", "PENALTY",
+  "GOAL", "PENALTY", "Shot on goal", "Missed shot", "Blocked shot",
+  "Hit", "Giveaway", "Takeaway", "Faceoff", "Stoppage",
   // Football
   "TOUCHDOWN", "FIELD GOAL",
   // Baseball

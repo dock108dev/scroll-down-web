@@ -118,6 +118,8 @@ export interface GameDetailResponse {
   mlbAdvancedStats?: MLBAdvancedTeamStats[];
   mlbAdvancedPlayerStats?: MLBAdvancedPlayerStats[];
   dataHealth?: NHLDataHealth;
+  oddsTable?: OddsTableGroup[];
+  statAnnotations?: StatAnnotation[];
 }
 
 export interface Game {
@@ -322,6 +324,8 @@ export interface PlayEntry {
   scoreChanged?: boolean;
   scoringTeamAbbr?: string;
   pointsScored?: number;
+  homeScoreBefore?: number;
+  awayScoreBefore?: number;
   phase?: string;
 }
 
@@ -330,6 +334,21 @@ export interface ServerTieredPlayGroup {
   endIndex: number;
   playIndices: number[];
   summaryLabel: string;
+}
+
+export interface OddsTableGroup {
+  market: string;
+  rows: OddsTableRow[];
+}
+
+export interface OddsTableRow {
+  label: string;
+  cells: Record<string, { value: string; isBest?: boolean }>;
+}
+
+export interface StatAnnotation {
+  text: string;
+  category?: string;
 }
 
 // ─── Odds (from game detail — camelCase) ────────────────

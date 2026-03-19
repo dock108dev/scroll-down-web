@@ -25,8 +25,25 @@ function generateSummary(plays: PlayEntry[]): string {
     const desc = (play.description ?? "").toLowerCase();
     const type = play.playType?.toLowerCase() ?? "";
 
+    // Hockey
+    if (desc.includes("shot on goal") || type === "shot") {
+      counts["shot"] = (counts["shot"] ?? 0) + 1;
+    } else if (desc.includes("missed shot") || type === "miss") {
+      counts["missed shot"] = (counts["missed shot"] ?? 0) + 1;
+    } else if (desc.includes("blocked shot") || type === "block") {
+      counts["blocked shot"] = (counts["blocked shot"] ?? 0) + 1;
+    } else if (desc.startsWith("hit") || type === "hit") {
+      counts["hit"] = (counts["hit"] ?? 0) + 1;
+    } else if (desc.startsWith("giveaway") || type === "giveaway") {
+      counts["giveaway"] = (counts["giveaway"] ?? 0) + 1;
+    } else if (desc.startsWith("takeaway") || type === "takeaway") {
+      counts["takeaway"] = (counts["takeaway"] ?? 0) + 1;
+    } else if (desc.startsWith("faceoff") || type === "faceoff") {
+      counts["faceoff"] = (counts["faceoff"] ?? 0) + 1;
+    } else if (desc.startsWith("stoppage") || type === "stoppage") {
+      counts["stoppage"] = (counts["stoppage"] ?? 0) + 1;
     // Basketball
-    if (desc.includes("miss") || type.includes("miss")) {
+    } else if (desc.includes("miss") || type.includes("miss")) {
       counts["missed shot"] = (counts["missed shot"] ?? 0) + 1;
     } else if (desc.includes("rebound") || type.includes("rebound")) {
       counts["rebound"] = (counts["rebound"] ?? 0) + 1;
