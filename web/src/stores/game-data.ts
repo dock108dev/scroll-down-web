@@ -256,6 +256,17 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const existing = next.get(gameId);
       if (existing) {
         const merged = { ...existing.core, ...patch };
+        // PBP is the source of truth for scores. When we have PBP data,
+        // don't let a game_patch overwrite scores with potentially stale
+        // Game-object values — keep the PBP-derived scores instead.
+        if (existing.detail?.response.plays?.length) {
+          const plays = existing.detail.response.plays;
+          const lastPlay = plays[plays.length - 1];
+          if (lastPlay?.homeScore != null && lastPlay?.awayScore != null) {
+            merged.homeScore = lastPlay.homeScore;
+            merged.awayScore = lastPlay.awayScore;
+          }
+        }
         // Don't let a stale patch revert a terminal status back to live.
         if (TERMINAL_STATUSES.includes(existing.core.status) && !TERMINAL_STATUSES.includes(merged.status)) {
           merged.status = existing.core.status;
@@ -317,6 +328,11 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const lastPlay = allPlays[allPlays.length - 1];
       const clockFromPlay = lastPlay?.gameClock ?? lastPlay?.timeLabel;
       const periodFromPlay = lastPlay?.periodLabel;
+      // PBP is the source of truth for scores — sync from the latest play
+      const scoreFromPlay =
+        lastPlay?.homeScore != null && lastPlay?.awayScore != null
+          ? { homeScore: lastPlay.homeScore, awayScore: lastPlay.awayScore }
+          : {};
       const next = new Map(s.games);
       next.set(gameId, {
         ...entry,
@@ -326,6 +342,7 @@ export const useGameData = create<GameDataState>()((set, get) => ({
           // where the backend doesn't send a top-level gameClock)
           ...(clockFromPlay ? { gameClock: clockFromPlay } : {}),
           ...(periodFromPlay ? { currentPeriodLabel: periodFromPlay } : {}),
+          ...scoreFromPlay,
         },
         detail: {
           ...entry.detail,
