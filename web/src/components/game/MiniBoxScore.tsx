@@ -129,7 +129,7 @@ export function MiniBoxScore({
   const homePlayers = miniBox.home.players.slice(0, 2);
 
   return (
-    <div className="mt-3 pt-3 border-t border-neutral-800">
+    <div data-testid="mini-box-score" className="mt-3 pt-3 border-t border-neutral-800">
       {/* Away team row */}
       <div className="mb-2">
         <div className="flex items-center justify-between mb-1">

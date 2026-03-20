@@ -69,7 +69,7 @@ export function LiveOddsPanel() {
   const hasData = hook.gameData.length > 0;
 
   return (
-    <div className="space-y-3">
+    <div data-testid="live-odds-panel" className="space-y-3">
       {/* ── Filters ──────────────────────────────────────── */}
       <div className="space-y-2">
         {/* League pills + refresh */}

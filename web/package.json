@@ -10,7 +10,9 @@
     "test": "npx playwright test",
     "test:smoke": "npx playwright test --grep @smoke",
     "test:ui": "npx playwright test --ui",
-    "test:headed": "npx playwright test --headed"
+    "test:headed": "npx playwright test --headed",
+    "test:audit": "npx playwright test --project=audit",
+    "test:audit:report": "npx playwright test --project=audit --reporter=json > audit-results/test-results.json && ../scripts/generate-report.sh audit-results audit-results/reports/$(date +%Y-%m-%d).md"
   },
   "dependencies": {
     "next": "16.1.7",

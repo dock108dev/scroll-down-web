@@ -66,7 +66,7 @@ export function PlayerStatsSection({
   const awayPlayers = playerStats.filter((p) => p.team !== homeTeam);
 
   return (
-    <div className="px-4 space-y-4">
+    <div data-testid="stats-section" className="px-4 space-y-4">
       {/* NHL-specific: Skaters tables */}
       {isNHL && hasNHLSkaters && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

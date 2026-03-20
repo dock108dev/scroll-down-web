@@ -147,7 +147,7 @@ export function LoadingSkeleton({
 
   // Default: simple rectangles
   return (
-    <>
+    <div data-testid="loading-skeleton">
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
@@ -157,6 +157,6 @@ export function LoadingSkeleton({
           )}
         />
       ))}
-    </>
+    </div>
   );
 }

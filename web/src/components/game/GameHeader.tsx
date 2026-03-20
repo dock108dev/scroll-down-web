@@ -44,7 +44,7 @@ export function GameHeader({ game }: GameHeaderProps) {
   const homeStyle = teamColorStyle(game.homeTeamColorLight, game.homeTeamColorDark);
 
   return (
-    <div className="px-4 pt-6 pb-4">
+    <div data-testid="game-header" className="px-4 pt-6 pb-4">
       <div className="rounded-xl bg-neutral-800/30 border border-neutral-800/60 px-5 py-5">
         {/* League + date + status */}
         <div className="flex items-center justify-between mb-5">

@@ -33,6 +33,7 @@ export function TournamentCard({ tournament }: { tournament: GolfTournament }) {
   return (
     <Link
       href={`/golf/${tournament.event_id}`}
+      data-testid="tournament-card"
       className="block rounded-xl border border-neutral-800 bg-neutral-900/60 p-4 transition hover:border-neutral-700 hover:bg-neutral-900/80"
     >
       <div className="flex items-start justify-between gap-3">

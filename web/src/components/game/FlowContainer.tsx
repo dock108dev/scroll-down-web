@@ -160,7 +160,7 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
   }
 
   return (
-    <div className="px-4 space-y-0">
+    <div data-testid="flow-container" className="px-4 space-y-0">
       <div>
         <div className="space-y-4">
           {blocks.map((block, i) => (

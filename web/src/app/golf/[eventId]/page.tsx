@@ -39,7 +39,7 @@ export default function GolfEventPage({
     useGolfLeaderboard(eventId);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-6">
+    <main data-testid="page-golf-event" className="mx-auto max-w-4xl px-4 py-6">
       <Link
         href="/golf"
         className="mb-4 inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300 transition"

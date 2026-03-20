@@ -9,8 +9,9 @@ Browser ──► Next.js App (port 3001) ──► Backend API
               │                            │
               ├─ API proxy routes           ├─ Game data
               ├─ WebSocket / SSE           ├─ FairBet odds
-              ├─ Zustand stores            ├─ Auth
-              └─ localStorage              └─ Preference sync
+              ├─ Zustand stores            ├─ Golf data
+              └─ localStorage              ├─ Auth
+                                           └─ Preference sync
 ```
 
 ## API Proxy Layer
@@ -30,6 +31,14 @@ All backend calls go through Next.js API routes (`src/app/api/`). These inject t
 | `GET /api/realtime/sse` | `/v1/sse` | SSE proxy (EventSource can't set headers) |
 | `* /api/auth/[...path]` | `/auth/*` | Auth passthrough (login, signup, etc.) |
 
+### Golf Routes
+
+| Route | Backend Endpoint | Purpose |
+|-------|-----------------|---------|
+| `GET /api/golf/tournaments` | `/api/golf/tournaments` | Tournament list |
+| `GET /api/golf/tournaments/[eventId]` | `/api/golf/tournaments/:eventId` | Tournament detail |
+| `GET /api/golf/tournaments/[eventId]/leaderboard` | `/api/golf/tournaments/:eventId/leaderboard` | Leaderboard |
+
 ### Analytics Routes
 
 | Route | Backend Endpoint | Method | Purpose |
@@ -39,24 +48,23 @@ All backend calls go through Next.js API routes (`src/app/api/`). These inject t
 | `/api/analytics/simulate` | `/api/analytics/simulate` | POST | Run lineup-aware simulation |
 | `/api/analytics/team-profile` | `/api/analytics/team-profile` | GET | Team performance profile (1hr ISR cache) |
 | `/api/analytics/mlb-data-coverage` | `/api/analytics/mlb-data-coverage` | GET | Data coverage stats (1hr ISR cache) |
-| `/api/analytics/feature-configs` | `/api/analytics/feature-configs` | GET | Feature loadout configs (1hr ISR cache) |
-| `/api/analytics/available-features` | `/api/analytics/available-features` | GET | Available feature list (1hr ISR cache) |
 | `/api/analytics/train` | `/api/analytics/train` | POST | Start model training |
-| `/api/analytics/training-jobs` | `/api/analytics/training-jobs` | GET/POST | Training job list / cancel |
+| `/api/analytics/training-jobs` | `/api/analytics/training-jobs` | GET | Training job list |
 | `/api/analytics/models-list` | `/api/analytics/models` | GET | Registered models |
 | `/api/analytics/models-activate` | `/api/analytics/models/activate` | POST | Activate a model |
 | `/api/analytics/calibration-report` | `/api/analytics/calibration-report` | GET | Model calibration (1hr ISR cache) |
 | `/api/analytics/degradation-alerts` | `/api/analytics/degradation-alerts` | GET | Model degradation alerts |
 | `/api/analytics/batch-simulate` | `/api/analytics/batch-simulate` | POST | Start batch simulation |
 | `/api/analytics/batch-simulate-jobs` | `/api/analytics/batch-simulate-jobs` | GET | Batch job list |
+| `/api/analytics/batch-simulate-job/[id]` | `/api/analytics/batch-simulate-jobs/:id` | GET/POST | Job detail & operations |
 | `/api/analytics/record-outcomes` | `/api/analytics/record-outcomes` | POST | Record prediction outcomes |
 | `/api/analytics/prediction-outcomes` | `/api/analytics/prediction-outcomes` | GET | Prediction outcome history |
-| `/api/analytics/experiments` | `/api/analytics/experiments` | GET/POST | Experiment suites |
-| `/api/analytics/experiments/[id]` | `/api/analytics/experiments/:id` | GET | Experiment detail with variants |
-| `/api/analytics/experiments/[id]/promote/[variantId]` | Promote endpoint | POST | Promote experiment variant |
-| `/api/analytics/experiments/[id]/cancel` | Cancel endpoint | POST | Cancel experiment |
-| `/api/analytics/replay` | `/api/analytics/replay` | POST | Start historical replay |
-| `/api/analytics/replay-jobs` | `/api/analytics/replay-jobs` | GET | Replay job list |
+
+### Health
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/health` | Returns `{ status, timestamp, version }`. Pings backend — returns `"degraded"` if unreachable. |
 
 Server-side API configuration lives in `src/lib/api-server.ts`. Client-side fetch wrapper in `src/lib/api.ts`.
 
@@ -85,6 +93,12 @@ Server-side API configuration lives in `src/lib/api-server.ts`. Client-side fetc
 3. 3-minute cache TTL, 90-second fresh threshold (silent background refresh)
 4. Live odds (auth-gated) poll every 15 seconds
 
+### Golf
+
+1. `useGolfTournaments` fetches tournament list, groups by status (This Week / Upcoming / Recent)
+2. `useGolfLeaderboard` fetches leaderboard for a tournament with 60-second polling
+3. Tournament data refreshed every 5 minutes
+
 ### Score Reveal
 
 Two modes controlled by `scoreRevealMode` setting:
@@ -97,13 +111,14 @@ When Following Live mode is active, it overrides to "always" for continuous upda
 
 ```
 components/
-  auth/         # Login form, signup form, magic link, reset password
+  auth/         # AuthGate (role-based access control), AuthProvider
   fairbet/      # BetCard, ParlaySheet, LiveOddsPanel, ExplainerModal
   game/         # GameHeader, Timeline, TeamStats, PlayerStats, FlowSection, etc.
-  history/      # Historical game list
-  home/         # GameRow, PinnedBar, ScoreZone, LeagueFilter, SearchBar
+  golf/         # TournamentCard, Leaderboard, LeaderboardRow
+  history/      # DateNavigator
+  home/         # GameRow, PinnedBar, SearchBar
   layout/       # TopNav, BottomTabs, SettingsDrawer
-  settings/     # Preference controls
+  settings/     # SettingsContent
   shared/       # FormPrimitives, LoadingSkeleton, SectionHeader, CollapsibleSection
 ```
 
@@ -111,7 +126,7 @@ components/
 features/
   analytics/
     components/  # AnalyticsTabNav, ProbabilityBar, ScoreCard, PABreakdown, LineupBuilder, SimulatorResults, PitcherProfile
-    services/    # SimulatorService, ModelsService, BatchService, ExperimentsService, ProfilesService
+    services/    # SimulatorService, ModelsService, BatchService, ProfilesService
 ```
 
 ## Auth Model
@@ -124,7 +139,7 @@ features/
 
 ## Analytics
 
-The analytics section is organized under a `(mlb)` Next.js route group that shares a tab navigation bar across all 5 pages.
+The analytics section is organized under a `(mlb)` Next.js route group that shares a tab navigation bar across all 4 pages.
 
 ### Navigation
 
@@ -136,7 +151,6 @@ The analytics section is organized under a `(mlb)` Next.js route group that shar
 | Profiles | `/analytics/profiles` | user |
 | Models | `/analytics/models` | admin |
 | Batch Sims | `/analytics/batch` | admin |
-| Experiments | `/analytics/experiments` | admin |
 
 `/analytics/mlb` redirects to `/analytics/simulator` for backward compatibility.
 
@@ -146,11 +160,9 @@ The analytics section is organized under a `(mlb)` Next.js route group that shar
 
 **Profiles** — Team performance profiles with rolling window selection (7/14/30/60 days). Metrics displayed with league baselines for comparison. Supports multi-team side-by-side comparison. Data coverage panel shows available game count and date range.
 
-**Models** (admin) — Feature loadout management, training job monitoring with status polling, model registry with activation toggle, calibration reports, and degradation alerts.
+**Models** (admin) — Training job monitoring with status polling, model registry with activation toggle, calibration reports, and degradation alerts.
 
 **Batch Sims** (admin) — Launch batch simulations by date with configurable iterations. Jobs table with expandable summaries. Prediction outcome tracking with correct/incorrect classification.
-
-**Experiments** (admin) — Create experiment suites with JSON parameter grids. Variant leaderboard sorted by accuracy with promote/cancel actions. Historical replay with date range selection and job progress tracking.
 
 ### Service Layer
 
@@ -158,6 +170,6 @@ Each analytics page has a corresponding service in `src/features/analytics/servi
 
 ## Sports Supported
 
-NBA, NCAAB, NFL, NCAAF, MLB, NHL.
+NBA, NCAAB, NFL, NCAAF, MLB, NHL, PGA Tour (Golf).
 
 Sport-specific stat groups are defined in `src/lib/team-stats-config.ts`. The stat display system supports two paths: a normalized path using `buildGroupsFromNormalized()` when the API provides `normalizedStats`, and a legacy fallback using hardcoded stat group definitions when normalized data is unavailable.

@@ -269,7 +269,7 @@ export function PlayerStatsTable({
   const activeColumns = detectActiveColumns(sportColumns, players);
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
+    <div data-testid="player-stats-table" className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
       {/* Table header with team name */}
       <div className="px-3 py-2 text-sm font-semibold text-neutral-300 bg-neutral-800/50">
         {title}

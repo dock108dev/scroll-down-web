@@ -69,7 +69,7 @@ export function BookFilters({
   onRefresh,
 }: BookFiltersProps) {
   return (
-    <div className="space-y-3">
+    <div data-testid="book-filters" className="space-y-3">
       {/* League filter row */}
       <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
         <FilterPill

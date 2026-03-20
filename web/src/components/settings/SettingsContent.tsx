@@ -41,7 +41,7 @@ export function SettingsContent() {
   const { token, email: authEmail, role, logout } = useAuth();
 
   return (
-    <div className="space-y-6">
+    <div data-testid="settings-content" className="space-y-6">
       {/* ─── Account ──────────────────────────────────────── */}
       <Section title="Account">
         {token ? (

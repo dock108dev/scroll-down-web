@@ -264,7 +264,7 @@ export function TimelineSection({
   );
 
   return (
-    <div className="px-4 space-y-2">
+    <div data-testid="timeline-section" className="px-4 space-y-2">
       {/* Tier filter pills */}
       <div className="flex items-center gap-1.5">
         {TIER_FILTERS.map(({ tier, label }) => {

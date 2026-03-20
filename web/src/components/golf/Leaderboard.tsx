@@ -19,7 +19,7 @@ export function Leaderboard({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div data-testid="leaderboard" className="overflow-x-auto">
       <table className="w-full min-w-[420px] text-left">
         <thead>
           <tr className="border-b border-neutral-700 text-[11px] uppercase tracking-wider text-neutral-500">

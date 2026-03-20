@@ -58,7 +58,7 @@ export default function FairBetPage() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div data-testid="page-fairbet" className="mx-auto max-w-5xl">
       <div className="px-4 py-4 space-y-4">
         {/* ── Header ── */}
         <div className="flex items-center justify-between">

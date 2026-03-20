@@ -124,7 +124,7 @@ function HistoryPageInner() {
   }, [hasMore, loadingMore, loading, loadMore]);
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div data-testid="page-history" className="mx-auto max-w-2xl">
       {/* Sticky toolbar */}
       <div className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
         <DateNavigator startDate={startDate} endDate={endDate} onChange={handleDateChange} />

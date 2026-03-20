@@ -9,7 +9,7 @@ interface PregameBuzzSectionProps {
 
 export function PregameBuzzSection({ data }: PregameBuzzSectionProps) {
   return (
-    <div className="px-4">
+    <div data-testid="pregame-buzz-section" className="px-4">
       <SocialSection posts={data.socialPosts} phase="pregame" outcomeRevealed={false} />
     </div>
   );

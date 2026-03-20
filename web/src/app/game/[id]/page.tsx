@@ -276,7 +276,7 @@ export default function GameDetailPage({
   const awayColor = resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark);
 
   return (
-    <div className="mx-auto max-w-5xl">
+    <div data-testid="page-game-detail" className="mx-auto max-w-5xl">
       <div ref={headerRef}>
         <GameHeader game={game} />
       </div>
