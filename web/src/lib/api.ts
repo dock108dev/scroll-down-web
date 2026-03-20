@@ -6,6 +6,11 @@ import type {
   FairbetLiveResponse,
   LiveGameInfo,
 } from "./types";
+import type {
+  GolfTournamentListResponse,
+  GolfTournament,
+  GolfLeaderboardResponse,
+} from "./golf-types";
 import { useAuth } from "@/stores/auth";
 
 export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
@@ -54,4 +59,14 @@ export const api = {
     if (sortBy) params.set("sort_by", sortBy);
     return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
   },
+  golfTournaments: (params?: URLSearchParams) =>
+    fetchApi<GolfTournamentListResponse>(
+      `/api/golf/tournaments${params ? `?${params}` : ""}`,
+    ),
+  golfTournament: (eventId: string) =>
+    fetchApi<GolfTournament>(`/api/golf/tournaments/${eventId}`),
+  golfLeaderboard: (eventId: string) =>
+    fetchApi<GolfLeaderboardResponse>(
+      `/api/golf/tournaments/${eventId}/leaderboard`,
+    ),
 };

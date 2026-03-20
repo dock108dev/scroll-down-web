@@ -27,6 +27,8 @@ export const POLLING = {
   FOLLOWING_LIVE_TTL_MS: 120 * 60_000, // 2 hours of inactivity before auto-disabling
   FOLLOWING_LIVE_CHECK_MS: 60_000, // how often to check for inactivity expiry
   TOKEN_REFRESH_MS: 10 * 60_000, // silently refresh JWT every 10 min
+  GOLF_LEADERBOARD_REFRESH_MS: 60_000,
+  GOLF_TOURNAMENTS_REFRESH_MS: 5 * 60_000,
 };
 
 export const API = {

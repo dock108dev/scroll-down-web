@@ -58,8 +58,20 @@ function SettingsIcon({ className }: { className?: string }) {
   );
 }
 
+function GolfIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 3v13" />
+      <path d="M12 3l7 4-7 4" />
+      <circle cx="12" cy="20" r="2" />
+      <path d="M7 20a5 5 0 0 1 5-4" />
+    </svg>
+  );
+}
+
 const TABS = [
   { href: "/", label: "Games", Icon: GamesIcon, adminOnly: false },
+  { href: "/golf", label: "Golf", Icon: GolfIcon, adminOnly: false },
   { href: "/fairbet", label: "FairBet", Icon: FairBetIcon, adminOnly: false },
   { href: "/analytics", label: "Analytics", Icon: AnalyticsIcon, adminOnly: false },
   { href: "/history", label: "History", Icon: HistoryIcon, adminOnly: true },
