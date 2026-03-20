@@ -18,6 +18,10 @@ interface GameRowProps {
 }
 
 function hasNoData(game: GameCore): boolean {
+  // Pregame games naturally lack PBP/flow/social — don't grey them out
+  // just because odds haven't arrived yet. Users should always be able
+  // to navigate to a game and see at least the overview card.
+  if (isPregame(game.status, game) || isLive(game.status, game)) return false;
   return !game.hasOdds && !game.hasPbp && !game.hasSocial && !game.hasFlow;
 }
 
