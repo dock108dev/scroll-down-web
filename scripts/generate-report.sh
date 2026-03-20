@@ -85,10 +85,11 @@ fi
 # ─── Test Suite Results ───────────────────────────────────
 TEST_FILE="$RESULTS_DIR/test-results.json"
 if [ -f "$TEST_FILE" ]; then
-  TOTAL_TESTS=$(jq '.stats.expected // 0' "$TEST_FILE" 2>/dev/null || echo "0")
   PASSED_TESTS=$(jq '.stats.expected // 0' "$TEST_FILE" 2>/dev/null || echo "0")
   FAILED_TESTS=$(jq '.stats.unexpected // 0' "$TEST_FILE" 2>/dev/null || echo "0")
+  FLAKY_TESTS=$(jq '.stats.flaky // 0' "$TEST_FILE" 2>/dev/null || echo "0")
   SKIPPED_TESTS=$(jq '.stats.skipped // 0' "$TEST_FILE" 2>/dev/null || echo "0")
+  TOTAL_TESTS=$((PASSED_TESTS + FAILED_TESTS + FLAKY_TESTS + SKIPPED_TESTS))
 
   cat >> "$OUTPUT_FILE" <<EOF
 ### Test Suite Summary

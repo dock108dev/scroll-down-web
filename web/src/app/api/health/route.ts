@@ -8,7 +8,7 @@ export async function GET() {
 
   try {
     // Ping backend with a lightweight endpoint
-    await apiFetch("/games", { revalidate: 0 });
+    await apiFetch("/api/admin/sports/games?limit=1", { revalidate: 0 });
   } catch {
     backendStatus = "degraded";
   }

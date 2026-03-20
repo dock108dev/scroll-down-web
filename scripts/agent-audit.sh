@@ -44,7 +44,12 @@ npx playwright install chromium --with-deps 2>/dev/null || true
 if [ "$SKIP_HEALTH" = false ]; then
   echo "→ Running health check..."
   HEALTH_URL="http://localhost:3001/api/health"
-  HEALTH_RESPONSE=$(curl -sf "$HEALTH_URL" 2>/dev/null || echo '{"status":"unreachable"}')
+  HTTP_CODE=$(curl -s -o /tmp/sd-health-response.json -w "%{http_code}" "$HEALTH_URL" 2>/dev/null || echo "000")
+  if [ "$HTTP_CODE" = "000" ]; then
+    HEALTH_RESPONSE='{"status":"unreachable"}'
+  else
+    HEALTH_RESPONSE=$(cat /tmp/sd-health-response.json 2>/dev/null || echo '{"status":"unreachable"}')
+  fi
   HEALTH_STATUS=$(echo "$HEALTH_RESPONSE" | grep -o '"status":"[^"]*"' | head -1 | cut -d'"' -f4)
 
   if [ "$HEALTH_STATUS" = "unreachable" ]; then

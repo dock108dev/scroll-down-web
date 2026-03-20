@@ -94,7 +94,6 @@ The `scripts/` directory contains orchestration for continuous AI-driven auditin
 | `scripts/agent-audit.sh` | Main orchestrator: deps check, health gate, run audit suite, generate report, file issues |
 | `scripts/generate-report.sh` | Reads JSON test results, produces markdown report |
 | `scripts/file-github-issue.sh` | Files GitHub issues via `gh` CLI with deduplication |
-| `scripts/audit-config.env` | Configuration (base URL, thresholds, labels) |
 
 Audit results are written to `web/audit-results/` (gitignored). Reports are saved to `web/audit-results/reports/{date}.md`.
 

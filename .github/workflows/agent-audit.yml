@@ -40,18 +40,25 @@ jobs:
       - name: Wait for app
         run: |
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:3001/api/health >/dev/null 2>&1; then
-              echo "App is ready"
-              break
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/health 2>/dev/null || echo "000")
+            if [ "$HTTP_CODE" = "200" ] || [ "$HTTP_CODE" = "503" ]; then
+              echo "App is ready (HTTP $HTTP_CODE)"
+              exit 0
             fi
+            echo "Attempt $i: HTTP $HTTP_CODE, retrying..."
             sleep 2
           done
+          echo "App failed to start after 60 seconds"
+          exit 1
 
       - name: Run audit suite
         working-directory: web
-        run: npx playwright test --project=audit --reporter=json > audit-results/test-results.json || true
+        run: |
+          mkdir -p audit-results
+          npx playwright test --project=audit --reporter=json > audit-results/test-results.json
 
       - name: Generate report
+        if: always()
         run: ./scripts/generate-report.sh web/audit-results web/audit-results/reports/$(date +%Y-%m-%d).md
 
       - name: Upload audit results
@@ -63,7 +70,7 @@ jobs:
           retention-days: 30
 
       - name: File issues for failures
-        if: github.event_name == 'schedule'
+        if: failure() && github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

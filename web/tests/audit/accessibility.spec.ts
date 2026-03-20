@@ -62,12 +62,6 @@ test.describe("Audit: Accessibility", () => {
       });
 
       // Allow some tolerance for icon-only buttons that use title attributes
-      if (inaccessible.length > 0) {
-        console.log(
-          `[${pg.name}] Elements without accessible names:`,
-          inaccessible,
-        );
-      }
       expect(inaccessible.length).toBeLessThanOrEqual(3);
     });
 

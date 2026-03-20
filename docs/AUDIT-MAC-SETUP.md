@@ -291,15 +291,6 @@ SPORTS_DATA_API_KEY=your_api_key_here
 The default backend URL is `https://sports-data-admin.dock108.ai`.
 Override with `SPORTS_API_INTERNAL_URL` if you have a local backend.
 
-### 6c. Audit Config
-
-Edit `scripts/audit-config.env`:
-
-```bash
-AUDIT_BASE_URL=http://localhost:3001
-AUDIT_GITHUB_REPO=YOUR_ORG/scroll-down-web
-```
-
 ---
 
 ## 7. Running the App
