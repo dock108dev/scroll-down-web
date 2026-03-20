@@ -42,6 +42,16 @@ SPORTS_DATA_API_KEY=<real-api-key>
 # SPORTS_API_INTERNAL_URL=http://backend:8000
 ```
 
+### Health Check
+
+The app exposes `GET /api/health` which returns:
+
+```json
+{ "status": "ok", "timestamp": "...", "version": "0.1.0" }
+```
+
+Returns `"degraded"` with a 503 status if the backend API is unreachable. The app still serves pages in degraded mode; only API-dependent data will be missing.
+
 ## CI/CD Pipeline
 
 GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
@@ -70,10 +80,25 @@ Every main-branch push produces two tags:
 
 ### Other Workflows
 
-- **Playwright smoke** — runs `@smoke`-tagged E2E tests on every push (separate from the main web job)
 - **E2E daily** (`.github/workflows/e2e-daily.yml`) — runs all Playwright tests daily at 6 AM UTC
+- **Agent audit** (`.github/workflows/agent-audit.yml`) — runs the audit project weekly on Mondays at 6 AM UTC (also `workflow_dispatch`). Builds the app, runs audit tests, generates a report, and files GitHub issues for failures.
 - **CodeQL** (`.github/workflows/codeql.yml`) — weekly security scanning (JavaScript/TypeScript)
 - **Dependabot** (`.github/dependabot.yml`) — weekly dependency update PRs
+
+## Audit Infrastructure
+
+The `scripts/` directory contains orchestration for continuous AI-driven auditing:
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/agent-audit.sh` | Main orchestrator: deps check, health gate, run audit suite, generate report, file issues |
+| `scripts/generate-report.sh` | Reads JSON test results, produces markdown report |
+| `scripts/file-github-issue.sh` | Files GitHub issues via `gh` CLI with deduplication |
+| `scripts/audit-config.env` | Configuration (base URL, thresholds, labels) |
+
+Audit results are written to `web/audit-results/` (gitignored). Reports are saved to `web/audit-results/reports/{date}.md`.
+
+See [Audit Mac Setup](AUDIT-MAC-SETUP.md) for running the audit suite continuously on a dedicated Mac.
 
 ## Local Development
 

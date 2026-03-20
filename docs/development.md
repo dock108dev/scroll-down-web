@@ -31,6 +31,8 @@ See `.env.local.example` for local development defaults.
 | `npm start` | Start production server |
 | `npm run lint` | ESLint check |
 | `npx tsc --noEmit` | TypeScript type check |
+| `npm run test:audit` | Run audit test suite |
+| `npm run test:audit:report` | Audit tests + markdown report |
 
 ## Docker (Local)
 
@@ -108,10 +110,10 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] AuthGate blocks guests with signup prompt
 
 ### Analytics Tab Navigation
-- [ ] Tab bar visible on all analytics sub-pages (Simulator, Profiles, Models, Batch, Experiments)
+- [ ] Tab bar visible on all analytics sub-pages (Simulator, Profiles, Models, Batch Sims)
 - [ ] Active tab highlighted with blue underline
 - [ ] Non-admin users see only Simulator and Profiles tabs
-- [ ] Admin users see all 5 tabs
+- [ ] Admin users see all 4 tabs
 - [ ] `/analytics/mlb` redirects to `/analytics/simulator`
 
 ### MLB PA Simulator (`/analytics/simulator`)
@@ -138,8 +140,6 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] AuthGate blocks guests with signup prompt
 
 ### Models (`/analytics/models`) — Admin
-- [ ] Feature loadouts section lists configs with active badge
-- [ ] Available features expandable detail works
 - [ ] Training section: start training, cancel running jobs
 - [ ] Training jobs poll for status updates
 - [ ] Model registry: list models, activate toggle
@@ -154,14 +154,13 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Prediction outcomes table shows correct/incorrect tracking
 - [ ] AuthGate blocks non-admin users
 
-### Experiments (`/analytics/experiments`) — Admin
-- [ ] Create experiment with name and JSON parameter grid
-- [ ] Suites list with status badges and variant count
-- [ ] Expandable variant leaderboard sorted by accuracy
-- [ ] Promote and cancel actions work
-- [ ] Historical replay: start with date range, jobs list with progress
-- [ ] Replay jobs poll for status updates
-- [ ] AuthGate blocks non-admin users
+### Golf (`/golf`)
+- [ ] Tournament list loads with cards grouped by status (This Week, Upcoming, Recent Results)
+- [ ] Tournament cards show name, course, dates, purse, status badge
+- [ ] Clicking a tournament navigates to `/golf/[eventId]`
+- [ ] Event page shows tournament details and leaderboard
+- [ ] Leaderboard rows show position, player name, total score, today score, thru, round scores
+- [ ] Leaderboard polls for updates (60s interval)
 
 ### FairBet
 - [ ] Pre-Game tab: odds load with progressive pagination

@@ -33,6 +33,7 @@ npm run dev                         # http://localhost:3001
 | Flow-based narrative timeline | Yes |
 | Tiered play-by-play | Yes |
 | Cross-book odds table | Yes |
+| PGA Tour golf tournaments and leaderboards | Yes |
 | FairBet odds comparison with EV (Pre-Game) | Yes |
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
@@ -40,7 +41,6 @@ npm run dev                         # http://localhost:3001
 | MLB Team Profiles with rolling windows | Yes |
 | Model management, training, and calibration (admin) | Yes |
 | Batch simulation and outcome tracking (admin) | Yes |
-| Experiment suites with variant comparison (admin) | Yes |
 | Server-synced user preferences (settings, pins, reveals) | Yes |
 | User authentication (login, signup, forgot password, profile) | Yes |
 | Role-based access (guest / user / admin) | Yes |
@@ -50,6 +50,7 @@ npm run dev                         # http://localhost:3001
 | Realtime updates (WebSocket primary, SSE fallback) | Yes |
 | NHL skater / goalie stats | Yes |
 | Pinned games (up to 10, mini scores in header) | Yes |
+| AI agent audit infrastructure (Playwright + scripts) | Yes |
 
 ## Architecture
 
@@ -80,9 +81,10 @@ All detailed documentation lives in [`docs/`](docs/):
 | [Realtime System](docs/realtime.md) | WebSocket/SSE transport, event handling, recovery |
 | [State Management](docs/state-management.md) | Zustand stores, persistence, preference sync |
 | [Deployment](docs/deployment.md) | Docker, CI/CD pipeline, production setup |
-| [Testing](docs/testing.md) | Playwright E2E test setup and patterns |
+| [Testing](docs/testing.md) | Playwright E2E test setup, audit suite, and patterns |
 | [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
 | [Development](docs/development.md) | Local dev setup, debugging, QA checklist |
+| [Audit Mac Setup](docs/AUDIT-MAC-SETUP.md) | Headless Mac setup for continuous AI-driven auditing |
 
 ## Repository Layout
 
@@ -97,6 +99,7 @@ web/             # Next.js web application (active, deployed)
     realtime/    # WebSocket/SSE transport layer
     lib/         # Types, utilities, config
   tests/         # Playwright E2E test suites
+scripts/         # Audit orchestration scripts
 docs/            # Documentation
 .github/         # CI/CD workflows
 ```

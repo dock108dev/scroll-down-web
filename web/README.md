@@ -1,6 +1,6 @@
 # Scroll Down Sports — Web
 
-Next.js frontend for Scroll Down Sports. Displays live game scores, play-by-play timelines, betting odds analysis (FairBet), and MLB analytics tools. Connects to a backend API for all data; this repo contains no database or scraping logic.
+Next.js frontend for Scroll Down Sports. Displays live game scores, play-by-play timelines, betting odds analysis (FairBet), PGA Tour golf leaderboards, and MLB analytics tools. Connects to a backend API for all data; this repo contains no database or scraping logic.
 
 ## Stack
 
@@ -10,7 +10,7 @@ Next.js frontend for Scroll Down Sports. Displays live game scores, play-by-play
 | UI | React 19, Tailwind CSS 4 |
 | State | Zustand 5 with localStorage persistence |
 | Realtime | WebSocket primary, SSE fallback |
-| Testing | Playwright (Chromium + mobile viewport) |
+| Testing | Playwright (Chromium + mobile viewport + audit project) |
 | Deploy | Docker (Node 22 Alpine) on Hetzner, CI via GitHub Actions |
 
 ## Quickstart
@@ -37,9 +37,12 @@ Open [http://localhost:3001](http://localhost:3001).
 | `npm run build` | Production build |
 | `npm start` | Start production server |
 | `npm run lint` | ESLint |
-| `npm test` | Playwright E2E tests |
+| `npm test` | Playwright E2E tests (all projects) |
+| `npm run test:smoke` | Smoke tests only (`@smoke` tag) |
 | `npm run test:ui` | Playwright UI mode |
 | `npm run test:headed` | Tests in visible browser |
+| `npm run test:audit` | AI audit test suite |
+| `npm run test:audit:report` | Audit tests + markdown report generation |
 
 ## Project Structure
 
@@ -61,13 +64,14 @@ tests/            # Playwright E2E test suites
 |-------|------------|--------|
 | `/` | Game list (today + yesterday) with scores, pins, filters | Public |
 | `/game/[id]` | Game detail: timeline, stats, odds, flow narrative | Public |
+| `/golf` | PGA Tour tournament list | Public |
+| `/golf/[eventId]` | Tournament detail with leaderboard | Public |
 | `/fairbet` | Betting odds analysis with EV calculations | Pre-game public, live auth-gated |
 | `/analytics` | Sports analytics hub | Auth required |
 | `/analytics/simulator` | MLB Monte Carlo lineup simulator | Auth required |
 | `/analytics/profiles` | Team performance profiles with rolling windows | Auth required |
 | `/analytics/models` | Model management, training, and calibration | Admin only |
 | `/analytics/batch` | Batch simulations and prediction outcomes | Admin only |
-| `/analytics/experiments` | Experiment suites with variant comparison | Admin only |
 | `/history` | Historical games browser | Admin only |
 | `/profile` | Account management | Auth required |
 | `/login` | Login / signup / magic link | Public |
@@ -81,6 +85,7 @@ Detailed docs live in [`/docs`](../docs/):
 - [Realtime System](../docs/realtime.md) — WebSocket/SSE transport, event handling, recovery
 - [State Management](../docs/state-management.md) — Zustand stores, persistence, preference sync
 - [Deployment](../docs/deployment.md) — Docker, CI/CD pipeline, production setup
-- [Testing](../docs/testing.md) — Playwright E2E test setup and patterns
+- [Testing](../docs/testing.md) — Playwright E2E test setup, audit suite, and patterns
 - [Client-Side Logic](../docs/client-logic.md) — what intentionally stays in-browser
 - [Development](../docs/development.md) — local dev setup, debugging, QA checklist
+- [Audit Mac Setup](../docs/AUDIT-MAC-SETUP.md) — headless Mac for continuous AI-driven auditing
