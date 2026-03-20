@@ -36,7 +36,7 @@ export function SectionNav({ sections, active, onSelect }: SectionNavProps) {
   };
 
   return (
-    <div className="border-b border-neutral-800">
+    <div data-testid="section-nav" className="border-b border-neutral-800">
       <div
         ref={navRef}
         className="flex overflow-x-auto scrollbar-none px-4 gap-1"

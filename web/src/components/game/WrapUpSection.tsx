@@ -163,7 +163,7 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
   }
 
   return (
-    <div className="px-4 space-y-4">
+    <div data-testid="wrap-up-section" className="px-4 space-y-4">
       {/* Primary: structured bet outcomes from derivedMetrics */}
       {betOutcomes.length > 0 && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">

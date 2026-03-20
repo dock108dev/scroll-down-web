@@ -45,6 +45,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
 
   return (
     <div
+      data-testid="mini-scorebar"
       className="grid transition-[grid-template-rows,opacity] duration-300 ease-in-out"
       style={{
         gridTemplateRows: visible ? "1fr" : "0fr",

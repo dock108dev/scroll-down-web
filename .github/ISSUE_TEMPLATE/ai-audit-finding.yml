@@ -1,0 +1,61 @@
+name: AI Audit Finding
+description: Report an issue found by the AI agent audit system
+title: "[AI Audit] "
+labels: ["ai-audit"]
+body:
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - critical
+        - high
+        - medium
+        - low
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Page / URL
+      placeholder: e.g., /golf, /game/123
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Finding Type
+      options:
+        - visual bug
+        - data mismatch
+        - performance
+        - console error
+        - broken image
+        - accessibility
+        - API error
+        - overflow / layout
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What was found?
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Reproduction Steps
+      description: How to reproduce the issue
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot
+      description: Attach or paste a screenshot if available
+  - type: textarea
+    id: metrics
+    attributes:
+      label: Performance Metrics
+      description: Relevant timing or performance data

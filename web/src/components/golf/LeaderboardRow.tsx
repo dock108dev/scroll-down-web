@@ -20,7 +20,7 @@ export function LeaderboardRow({ entry, showRounds }: { entry: GolfLeaderboardEn
   const isCut = entry.status === "CUT" || entry.status === "WD" || entry.status === "DQ";
 
   return (
-    <tr className={cn("border-b border-neutral-800/50", isCut && "opacity-50")}>
+    <tr data-testid="leaderboard-row" className={cn("border-b border-neutral-800/50", isCut && "opacity-50")}>
       <td className="whitespace-nowrap py-2 pl-3 pr-2 text-xs font-medium text-neutral-400">
         {entry.position}
       </td>

@@ -38,7 +38,7 @@ export function FlowBlockCard({
   const roleLabel = ROLE_LABELS[block.role] ?? "";
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+    <div data-testid="flow-block-card" className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
       {/* Period label + role badge row */}
       <div className="flex items-center gap-2 mb-2">
         {periodLabel && (

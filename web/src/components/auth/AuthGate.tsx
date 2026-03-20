@@ -29,7 +29,7 @@ export function AuthGate({
   }
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-6 text-center space-y-3">
+    <div data-testid="auth-gate" className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-6 text-center space-y-3">
       <p className="text-sm text-neutral-400">{message}</p>
       <Link
         href="/login?tab=signup"

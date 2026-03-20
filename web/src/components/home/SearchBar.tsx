@@ -13,6 +13,7 @@ export function SearchBar({
 }: SearchBarProps) {
   return (
     <input
+      data-testid="search-bar"
       type="text"
       value={value}
       onChange={(e) => onChange(e.target.value)}

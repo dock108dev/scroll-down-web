@@ -45,6 +45,19 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
+
+    // Audit project — always captures screenshots/video, no retries
+    {
+      name: "audit",
+      testMatch: /audit\/.+\.spec\.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        screenshot: "on",
+        video: "on",
+      },
+      retries: 0,
+      dependencies: ["setup"],
+    },
   ],
 
   webServer: {

@@ -1,5 +1,6 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import path from "path";
+import fs from "fs";
 
 // Persistent auth state file (written by global-setup, loaded by tests)
 export const AUTH_STATE_PATH = path.join(
@@ -115,4 +116,51 @@ export async function measureMs(fn: () => Promise<void>): Promise<number> {
   const start = Date.now();
   await fn();
   return Date.now() - start;
+}
+
+// ---------------------------------------------------------------------------
+// Audit helpers
+// ---------------------------------------------------------------------------
+
+const AUDIT_RESULTS_DIR = path.join(__dirname, "..", "audit-results");
+const SCREENSHOTS_DIR = path.join(AUDIT_RESULTS_DIR, "screenshots");
+
+/** Hit /api/health and assert the app is healthy. */
+export async function waitForHealthy(page: Page): Promise<void> {
+  const response = await page.request.get("/api/health");
+  const body = await response.json();
+  if (body.status !== "ok" && body.status !== "degraded") {
+    throw new Error(`App not healthy: ${JSON.stringify(body)}`);
+  }
+}
+
+/** Take a full-page screenshot saved to audit-results/screenshots/. */
+export async function screenshotPage(
+  page: Page,
+  name: string,
+): Promise<string> {
+  fs.mkdirSync(SCREENSHOTS_DIR, { recursive: true });
+  const filePath = path.join(SCREENSHOTS_DIR, `${name}.png`);
+  await page.screenshot({ path: filePath, fullPage: true });
+  return filePath;
+}
+
+/** Collect Navigation Timing performance metrics from the page. */
+export async function collectPerformanceMetrics(page: Page): Promise<{
+  domContentLoaded: number;
+  loadComplete: number;
+  firstByte: number;
+  domInteractive: number;
+}> {
+  return page.evaluate(() => {
+    const nav = performance.getEntriesByType(
+      "navigation",
+    )[0] as PerformanceNavigationTiming;
+    return {
+      domContentLoaded: Math.round(nav.domContentLoadedEventEnd - nav.startTime),
+      loadComplete: Math.round(nav.loadEventEnd - nav.startTime),
+      firstByte: Math.round(nav.responseStart - nav.startTime),
+      domInteractive: Math.round(nav.domInteractive - nav.startTime),
+    };
+  });
 }

@@ -230,7 +230,7 @@ export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
   }
 
   return (
-    <div className="px-4 space-y-3">
+    <div data-testid="odds-section" className="px-4 space-y-3">
       {/* Category tabs */}
       {categories.length > 1 && (
         <div className="flex gap-2 overflow-x-auto scrollbar-none pb-1">

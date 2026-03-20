@@ -40,7 +40,7 @@ export function TopNav() {
   }, [hasPins]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
+    <header data-testid="top-nav" className="sticky top-0 z-50 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur">
       <nav className="mx-auto flex h-14 max-w-7xl items-center px-4 xl:px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <Image

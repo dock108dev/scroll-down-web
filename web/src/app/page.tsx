@@ -211,7 +211,7 @@ export default function HomePage() {
   const stickyTop = `calc(var(--header-h) + ${toolbarHeight}px)`;
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div data-testid="page-home" className="mx-auto max-w-2xl">
       {/* Sticky toolbar */}
       <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
         <SearchBar value={search} onChange={setSearch} />

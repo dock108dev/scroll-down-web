@@ -1,0 +1,77 @@
+name: Agent Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 6 * * 1" # Weekly on Monday at 6 AM UTC
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: web
+        run: npx playwright install chromium --with-deps
+
+      - name: Build app
+        working-directory: web
+        run: npm run build
+
+      - name: Start app
+        working-directory: web
+        run: npm run start &
+        env:
+          PORT: 3001
+
+      - name: Wait for app
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3001/api/health >/dev/null 2>&1; then
+              echo "App is ready"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Run audit suite
+        working-directory: web
+        run: npx playwright test --project=audit --reporter=json > audit-results/test-results.json || true
+
+      - name: Generate report
+        run: ./scripts/generate-report.sh web/audit-results web/audit-results/reports/$(date +%Y-%m-%d).md
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-results-${{ github.run_number }}
+          path: web/audit-results/
+          retention-days: 30
+
+      - name: File issues for failures
+        if: github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          FAILURES=$(jq -r '.suites[]?.specs[]? | select(.ok == false) | .title' \
+            web/audit-results/test-results.json 2>/dev/null || echo "")
+          if [ -n "$FAILURES" ]; then
+            while IFS= read -r title; do
+              [ -z "$title" ] && continue
+              ./scripts/file-github-issue.sh "$title" "Audit failure in CI" || true
+            done <<< "$FAILURES"
+          fi
