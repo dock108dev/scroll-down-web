@@ -158,6 +158,46 @@ export async function waitForHealthy(page: Page): Promise<void> {
   }
 }
 
+/**
+ * Check if the backend API is reachable (health status "ok").
+ * Returns false when degraded (backend unreachable) or on error.
+ */
+export async function isBackendAvailable(
+  request: { get: (url: string) => Promise<{ status: () => number; json: () => Promise<Record<string, unknown>> }> },
+): Promise<boolean> {
+  try {
+    const res = await request.get("/api/health");
+    if (res.status() >= 500) return false;
+    const body = await res.json();
+    return body.status === "ok";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if the saved auth state contains a real token.
+ * Returns false when global-setup couldn't authenticate (backend was down).
+ */
+export function hasValidAuthState(): boolean {
+  try {
+    const raw = fs.readFileSync(AUTH_STATE_PATH, "utf-8");
+    const state = JSON.parse(raw);
+    const origins = state?.origins ?? [];
+    for (const origin of origins) {
+      for (const entry of origin?.localStorage ?? []) {
+        if (entry.name === "sd-auth") {
+          const parsed = JSON.parse(entry.value);
+          return !!parsed?.state?.token;
+        }
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 /** Take a full-page screenshot saved to audit-results/screenshots/. */
 export async function screenshotPage(
   page: Page,

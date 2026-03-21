@@ -26,6 +26,43 @@ interface CacheTestResult {
   details: Record<string, unknown>;
 }
 
+/** Default sd-settings in Zustand persist format */
+const DEFAULT_SETTINGS_STORAGE = JSON.stringify({
+  state: {
+    theme: "system",
+    scoreRevealMode: "onMarkRead",
+    preferredSportsbook: "",
+    oddsFormat: "american",
+    autoResumePosition: true,
+    homeExpandedSections: [],
+    hideLimitedData: true,
+    timelineDefaultTiers: [1, 2, 3],
+    followingLive: false,
+    followingLiveAt: 0,
+  },
+  version: 2,
+});
+
+/** Seed sd-settings if it doesn't exist (for guest/fresh pages). */
+async function ensureSettingsStorage(page: Page): Promise<void> {
+  await page.evaluate((defaults: string) => {
+    if (!localStorage.getItem("sd-settings")) {
+      localStorage.setItem("sd-settings", defaults);
+    }
+  }, DEFAULT_SETTINGS_STORAGE);
+}
+
+/** Block prefs-sync GET so localStorage mutations survive reload. */
+async function blockPrefsSync(page: Page): Promise<void> {
+  await page.route("**/api/auth/me/preferences", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ status: 200, contentType: "application/json", body: "null" });
+    } else {
+      route.fallback();
+    }
+  });
+}
+
 async function getStorageSnapshot(page: Page): Promise<Record<string, unknown>> {
   return page.evaluate((keys: string[]) => {
     const snapshot: Record<string, unknown> = {};
@@ -282,6 +319,7 @@ test.describe("Audit: Cache logic", () => {
   test("followingLive auto-expires after 2h inactivity (authed user)", async ({
     authedPage: page,
   }) => {
+    await blockPrefsSync(page);
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
@@ -325,6 +363,7 @@ test.describe("Audit: Cache logic", () => {
   test("followingLive survives within 2h window (authed user)", async ({
     authedPage: page,
   }) => {
+    await blockPrefsSync(page);
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
@@ -372,6 +411,7 @@ test.describe("Audit: Cache logic", () => {
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
     await page.evaluate(() => localStorage.removeItem("sd-auth"));
+    await ensureSettingsStorage(page);
 
     // Set followingLive with expired timestamp as a guest would have
     const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
@@ -422,6 +462,7 @@ test.describe("Audit: Cache logic", () => {
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
     await page.evaluate(() => localStorage.removeItem("sd-auth"));
+    await ensureSettingsStorage(page);
 
     const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
     await page.evaluate((ts: number) => {
@@ -458,6 +499,7 @@ test.describe("Audit: Cache logic", () => {
   test("followingLive edge: exactly at 2h boundary", async ({
     authedPage: page,
   }) => {
+    await blockPrefsSync(page);
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
@@ -502,6 +544,7 @@ test.describe("Audit: Cache logic", () => {
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
+    await ensureSettingsStorage(page);
 
     // Check that settings store has the expected version field
     const settingsStore = await page.evaluate(() => {

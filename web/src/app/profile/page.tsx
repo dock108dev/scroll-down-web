@@ -15,13 +15,22 @@ import {
 export default function ProfilePage() {
   const router = useRouter();
   const { token, role, email, logout } = useAuth();
+  const [hydrated, setHydrated] = useState(false);
 
-  // Redirect guests to login
   useEffect(() => {
-    if (!token) router.replace("/login");
-  }, [token, router]);
+    if (useAuth.persist.hasHydrated()) {
+      setHydrated(true);
+    }
+    const unsub = useAuth.persist.onFinishHydration(() => setHydrated(true));
+    return unsub;
+  }, []);
 
-  if (!token) return null;
+  // Redirect guests to login — only after hydration so we don't flash-redirect
+  useEffect(() => {
+    if (hydrated && !token) router.replace("/login");
+  }, [hydrated, token, router]);
+
+  if (!hydrated || !token) return null;
 
   return (
     <div className="mx-auto max-w-lg px-4 py-6 space-y-6">

@@ -1,5 +1,5 @@
 import { test as base, expect } from "@playwright/test";
-import { clearAppState, waitForLoad, AUTH_STATE_PATH } from "../helpers";
+import { clearAppState, waitForLoad, AUTH_STATE_PATH, hasValidAuthState, isBackendAvailable } from "../helpers";
 import type { Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
@@ -124,6 +124,10 @@ test.describe("Audit: User type behavior", () => {
   test("authenticated user has token and role in storage", async ({
     authedPage: page,
   }) => {
+    if (!hasValidAuthState()) {
+      test.skip(true, "No valid auth state — backend was unavailable during setup");
+      return;
+    }
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
@@ -155,6 +159,10 @@ test.describe("Audit: User type behavior", () => {
   test("authenticated user can access profile page", async ({
     authedPage: page,
   }) => {
+    if (!hasValidAuthState()) {
+      test.skip(true, "No valid auth state — backend was unavailable during setup");
+      return;
+    }
     await page.goto("/profile");
     await page.waitForLoadState("load");
     await page.waitForTimeout(3_000);
@@ -186,7 +194,12 @@ test.describe("Audit: User type behavior", () => {
 
   test("authenticated user can access FairBet live odds", async ({
     authedPage: page,
+    request,
   }) => {
+    if (!hasValidAuthState()) {
+      test.skip(true, "No valid auth state — backend was unavailable during setup");
+      return;
+    }
     // FairBet live odds are auth-gated
     const response = await page.request.get("/api/fairbet/live/games");
 
@@ -196,6 +209,12 @@ test.describe("Audit: User type behavior", () => {
       passed: response.status() < 500,
       details: { status: response.status() },
     });
+
+    // Skip if backend is down
+    if (response.status() >= 502 && !(await isBackendAvailable(request))) {
+      test.skip(true, "Backend unavailable — fairbet live returned " + response.status());
+      return;
+    }
 
     // Should not get a 500 (may get 401 if token isn't forwarded via request context)
     expect(response.status()).toBeLessThan(500);
