@@ -15,13 +15,15 @@ import {
 export default function ProfilePage() {
   const router = useRouter();
   const { token, role, email, logout } = useAuth();
-  const [hydrated, setHydrated] = useState(() => useAuth.persist.hasHydrated());
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    if (hydrated) return;
     const unsub = useAuth.persist.onFinishHydration(() => setHydrated(true));
+    // If already hydrated before subscription, the callback won't fire —
+    // re-check after subscribing.
+    if (useAuth.persist.hasHydrated()) setHydrated(true); // eslint-disable-line react-hooks/set-state-in-effect
     return unsub;
-  }, [hydrated]);
+  }, []);
 
   // Redirect guests to login — only after hydration so we don't flash-redirect
   useEffect(() => {
