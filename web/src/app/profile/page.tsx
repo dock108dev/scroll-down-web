@@ -15,15 +15,13 @@ import {
 export default function ProfilePage() {
   const router = useRouter();
   const { token, role, email, logout } = useAuth();
-  const [hydrated, setHydrated] = useState(false);
+  const [hydrated, setHydrated] = useState(() => useAuth.persist.hasHydrated());
 
   useEffect(() => {
-    if (useAuth.persist.hasHydrated()) {
-      setHydrated(true);
-    }
+    if (hydrated) return;
     const unsub = useAuth.persist.onFinishHydration(() => setHydrated(true));
     return unsub;
-  }, []);
+  }, [hydrated]);
 
   // Redirect guests to login — only after hydration so we don't flash-redirect
   useEffect(() => {
