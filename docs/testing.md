@@ -69,7 +69,7 @@ npm test
 | `waitForLoad(page)` | Waits for skeleton loaders to disappear |
 | `waitForGameData(page, timeout?)` | Waits for game rows to appear; returns `false` if API unavailable |
 | `waitForHealthy(page)` | Hits `/api/health`, asserts app is responding |
-| `screenshotPage(page, name)` | Full-page screenshot to `audit-results/screenshots/` |
+| `screenshotPage(page, name)` | Full-page screenshot to `docs/audit-results/screenshots/` |
 | `collectPerformanceMetrics(page)` | Navigation Timing API metrics (TTFB, DCL, load, interactive) |
 | `measureMs(fn)` | Times an async operation in milliseconds |
 | `loginViaUI(page, email, password)` | Fills login form and submits |
@@ -108,11 +108,11 @@ The audit project (`tests/audit/`) runs separately with `npm run test:audit`. Al
 | `api-validation.spec.ts` | Validates 15+ API endpoints for status, JSON shape, and response time |
 | `data-accuracy.spec.ts` | Cross-references API data with UI rendering (scores, team names, tournament names) |
 | `error-scenarios.spec.ts` | 404 pages, nonexistent IDs, network failures via route interception |
-| `performance-benchmarks.spec.ts` | LCP, CLS via PerformanceObserver, outputs JSON to `audit-results/` |
+| `performance-benchmarks.spec.ts` | LCP, CLS via PerformanceObserver, outputs JSON to `docs/audit-results/` |
 | `visual-regression.spec.ts` | Desktop + mobile screenshot comparison with 0.2% pixel diff tolerance |
 | `accessibility.spec.ts` | Alt text, accessible names, focus order |
 
-Audit results are written to `web/audit-results/` (gitignored).
+Audit results are written to `docs/audit-results/` (gitignored).
 
 ## Resilience Patterns
 

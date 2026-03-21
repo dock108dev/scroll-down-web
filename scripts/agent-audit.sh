@@ -8,7 +8,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 WEB_DIR="$PROJECT_DIR/web"
-RESULTS_DIR="$WEB_DIR/audit-results"
+RESULTS_DIR="$PROJECT_DIR/docs/audit-results"
 REPORTS_DIR="$RESULTS_DIR/reports"
 DATE=$(date +%Y-%m-%d)
 

@@ -122,8 +122,32 @@ export async function measureMs(fn: () => Promise<void>): Promise<number> {
 // Audit helpers
 // ---------------------------------------------------------------------------
 
-const AUDIT_RESULTS_DIR = path.join(__dirname, "..", "audit-results");
+const AUDIT_RESULTS_DIR = path.join(__dirname, "..", "..", "docs", "audit-results");
 const SCREENSHOTS_DIR = path.join(AUDIT_RESULTS_DIR, "screenshots");
+
+/**
+ * Navigate to a page and wait for it to be ready.
+ * Uses "domcontentloaded" instead of "networkidle" because pages with
+ * persistent connections (SSE/realtime) prevent networkidle from resolving.
+ * Optionally waits for a specific element to appear.
+ */
+export async function gotoAndWait(
+  page: Page,
+  url: string,
+  opts?: { waitFor?: string; timeout?: number },
+): Promise<void> {
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: opts?.timeout ?? 30_000 });
+  if (opts?.waitFor) {
+    await page.locator(opts.waitFor).first().waitFor({
+      state: "visible",
+      timeout: opts?.timeout ?? 15_000,
+    });
+  } else {
+    // Fallback: wait for load event + skeletons to clear
+    await page.waitForLoadState("load");
+    await waitForLoad(page);
+  }
+}
 
 /** Hit /api/health and assert the app is healthy. */
 export async function waitForHealthy(page: Page): Promise<void> {

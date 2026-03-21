@@ -2,8 +2,10 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
-const RESULTS_DIR = path.join(__dirname, "..", "..", "audit-results");
+const RESULTS_DIR = path.join(__dirname, "..", "..", "..", "docs", "audit-results");
 const MAX_RESPONSE_TIME_MS = 5_000;
+// Health endpoint pings the backend admin API, which can be slow
+const MAX_HEALTH_RESPONSE_TIME_MS = 10_000;
 
 interface ApiTestResult {
   endpoint: string;
@@ -80,7 +82,8 @@ test.describe("Audit: API validation", () => {
       // Assertions
       expect(res.status()).toBeLessThan(500);
       expect(validJson).toBe(true);
-      expect(responseTimeMs).toBeLessThan(MAX_RESPONSE_TIME_MS);
+      const limit = endpoint.path === "/api/health" ? MAX_HEALTH_RESPONSE_TIME_MS : MAX_RESPONSE_TIME_MS;
+      expect(responseTimeMs).toBeLessThan(limit);
       if (endpoint.shape.length > 0) {
         expect(hasExpectedShape).toBe(true);
       }

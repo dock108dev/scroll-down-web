@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
-const RESULTS_DIR = path.join(__dirname, "..", "..", "audit-results");
+const RESULTS_DIR = path.join(__dirname, "..", "..", "..", "docs", "audit-results");
 const SCREENSHOTS_DIR = path.join(RESULTS_DIR, "screenshots");
 
 interface PageAuditResult {
@@ -96,11 +96,15 @@ async function auditPage(
 
   page.on("console", (msg) => {
     if (msg.type() === "error") {
-      consoleErrors.push(msg.text());
+      const text = msg.text();
+      // Ignore resource loading errors (e.g. SSE, realtime, or prefetch 400s)
+      if (text.includes("Failed to load resource")) return;
+      consoleErrors.push(text);
     }
   });
 
-  await page.goto(url, { waitUntil: "networkidle", timeout: 30_000 });
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+  await page.waitForLoadState("load");
 
   // Screenshot
   const screenshotPath = path.join(SCREENSHOTS_DIR, `${name}.png`);

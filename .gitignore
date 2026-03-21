@@ -40,3 +40,6 @@ next-env.d.ts
 # Keys and secrets
 secrets.json
 secrets/
+
+# Audit results (generated data, not source)
+docs/audit-results/

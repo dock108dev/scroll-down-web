@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
-const RESULTS_DIR = path.join(__dirname, "..", "..", "audit-results");
+const RESULTS_DIR = path.join(__dirname, "..", "..", "..", "docs", "audit-results");
 const SCREENSHOTS_DIR = path.join(RESULTS_DIR, "screenshots");
 
 const PAGES = [
@@ -44,7 +44,7 @@ test.describe("Audit: Visual regression — Desktop", () => {
   for (const pg of PAGES) {
     test(`desktop screenshot: ${pg.name}`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 720 });
-      await page.goto(pg.url, { waitUntil: "networkidle" });
+      await page.goto(pg.url, { waitUntil: "load" });
       await page.waitForTimeout(1_000);
 
       await compareOrCreateBaseline(page, `${pg.name}-desktop`);
@@ -56,7 +56,7 @@ test.describe("Audit: Visual regression — Mobile", () => {
   for (const pg of PAGES) {
     test(`mobile screenshot: ${pg.name}`, async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 });
-      await page.goto(pg.url, { waitUntil: "networkidle" });
+      await page.goto(pg.url, { waitUntil: "load" });
       await page.waitForTimeout(1_000);
 
       await compareOrCreateBaseline(page, `${pg.name}-mobile`);

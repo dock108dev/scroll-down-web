@@ -95,7 +95,7 @@ The `scripts/` directory contains orchestration for continuous AI-driven auditin
 | `scripts/generate-report.sh` | Reads JSON test results, produces markdown report |
 | `scripts/file-github-issue.sh` | Files GitHub issues via `gh` CLI with deduplication |
 
-Audit results are written to `web/audit-results/` (gitignored). Reports are saved to `web/audit-results/reports/{date}.md`.
+Audit results are written to `docs/audit-results/` (gitignored). Reports are saved to `docs/audit-results/reports/{date}.md`.
 
 See [Audit Agent Guide](audit-agent.md) for running the audit suite continuously on a dedicated Mac.
 
