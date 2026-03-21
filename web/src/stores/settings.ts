@@ -2,6 +2,8 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { STORAGE_KEYS, DEFAULTS, POLLING } from "@/lib/config";
 
+/* global window, localStorage */
+
 interface SettingsState {
   theme: "system" | "light" | "dark";
   scoreRevealMode: "always" | "onMarkRead";
@@ -105,6 +107,51 @@ export const useSettings = create<SettingsState>()(
         }
         return state as never;
       },
+      merge: (persisted, current) => {
+        const merged = {
+          ...current,
+          ...(persisted as Partial<SettingsState>),
+        };
+        // Auto-expire stale followingLive on every hydration (migrate only
+        // runs on version mismatch, so this covers the same-version case).
+        if (
+          merged.followingLive &&
+          typeof merged.followingLiveAt === "number" &&
+          merged.followingLiveAt > 0 &&
+          Date.now() - merged.followingLiveAt >= POLLING.FOLLOWING_LIVE_TTL_MS
+        ) {
+          merged.followingLive = false;
+          merged.followingLiveAt = 0;
+          // Persist the correction back to localStorage immediately — Zustand
+          // persist skips writing during rehydration, so we do it manually.
+          try {
+            const key = STORAGE_KEYS.SETTINGS;
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const stored = JSON.parse(raw);
+              stored.state.followingLive = false;
+              stored.state.followingLiveAt = 0;
+              localStorage.setItem(key, JSON.stringify(stored));
+            }
+          } catch {
+            // storage access denied — ignore
+          }
+        }
+        return merged;
+      },
     },
   ),
 );
+
+// Force-persist defaults on first client hydration so sd-settings is always
+// present in localStorage (enables cross-tab sync, debugging, and tests).
+if (typeof window !== "undefined") {
+  useSettings.persist.onFinishHydration(() => {
+    try {
+      // setState({}) triggers a persist write without changing values
+      useSettings.setState({});
+    } catch {
+      // SSR or storage access denied — ignore
+    }
+  });
+}

@@ -98,13 +98,17 @@ test.describe("Audit: Data accuracy", () => {
       return;
     }
 
-    // Check first tournament name appears in UI
-    const firstTournament = tournaments[0];
+    // Check that at least one API tournament name appears in UI
     const cards = page.locator("[data-testid='tournament-card']");
     const count = await cards.count();
     expect(count).toBeGreaterThan(0);
 
-    const pageText = await page.locator("[data-testid='page-golf']").textContent();
-    expect(pageText).toContain(firstTournament.event_name);
+    const pageText = await page.locator("[data-testid='page-golf']").textContent() ?? "";
+    // The UI filters by section (thisWeek/upcoming/recent), so the first API
+    // tournament may not appear. Verify at least one rendered tournament matches.
+    const anyMatch = tournaments.some((t: { event_name: string }) =>
+      pageText.includes(t.event_name),
+    );
+    expect(anyMatch).toBe(true);
   });
 });

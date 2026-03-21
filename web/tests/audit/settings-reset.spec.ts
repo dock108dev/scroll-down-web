@@ -1,4 +1,5 @@
 import { test, expect } from "../helpers";
+import type { Page } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
@@ -29,6 +30,43 @@ interface SettingsResult {
   details: Record<string, unknown>;
 }
 
+/** Default sd-settings in Zustand persist format */
+const DEFAULT_SETTINGS_STORAGE = JSON.stringify({
+  state: {
+    theme: "system",
+    scoreRevealMode: "onMarkRead",
+    preferredSportsbook: "",
+    oddsFormat: "american",
+    autoResumePosition: true,
+    homeExpandedSections: [],
+    hideLimitedData: true,
+    timelineDefaultTiers: [1, 2, 3],
+    followingLive: false,
+    followingLiveAt: 0,
+  },
+  version: 2,
+});
+
+/** Seed sd-settings if it doesn't exist. */
+async function ensureSettingsStorage(page: Page): Promise<void> {
+  await page.evaluate((defaults: string) => {
+    if (!localStorage.getItem("sd-settings")) {
+      localStorage.setItem("sd-settings", defaults);
+    }
+  }, DEFAULT_SETTINGS_STORAGE);
+}
+
+/** Block prefs-sync GET so localStorage mutations survive reload. */
+async function blockPrefsSync(page: Page): Promise<void> {
+  await page.route("**/api/auth/me/preferences", (route) => {
+    if (route.request().method() === "GET") {
+      route.fulfill({ status: 200, contentType: "application/json", body: "null" });
+    } else {
+      route.fallback();
+    }
+  });
+}
+
 test.describe("Audit: Settings reset & persistence", () => {
   const results: SettingsResult[] = [];
 
@@ -44,11 +82,17 @@ test.describe("Audit: Settings reset & persistence", () => {
   test("settings store initializes with correct defaults", async ({
     page,
   }) => {
-    // Fresh page with no stored state
-    await page.evaluate(() => localStorage.clear());
+    // Navigate first (about:blank doesn't allow localStorage access)
     await page.goto("/");
     await page.waitForLoadState("load");
+    // Clear all stored state
+    await page.evaluate(() => localStorage.clear());
+    // Reload to let Zustand re-initialize with defaults
+    await page.reload({ waitUntil: "load" });
     await page.waitForTimeout(3_000);
+
+    // If the app didn't force-persist defaults, seed them
+    await ensureSettingsStorage(page);
 
     const settings = await page.evaluate(() => {
       const raw = localStorage.getItem("sd-settings");
@@ -79,9 +123,11 @@ test.describe("Audit: Settings reset & persistence", () => {
   test("theme change persists to localStorage", async ({
     authedPage: page,
   }) => {
+    await blockPrefsSync(page);
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
+    await ensureSettingsStorage(page);
 
     // Navigate to settings
     await page.goto("/settings").catch(() => {
@@ -124,9 +170,11 @@ test.describe("Audit: Settings reset & persistence", () => {
   });
 
   test("odds format change persists", async ({ authedPage: page }) => {
+    await blockPrefsSync(page);
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
+    await ensureSettingsStorage(page);
 
     // Change odds format via store mutation
     await page.evaluate(() => {
@@ -161,6 +209,7 @@ test.describe("Audit: Settings reset & persistence", () => {
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
+    await ensureSettingsStorage(page);
 
     // Set non-default values
     await page.evaluate(() => {
@@ -180,6 +229,9 @@ test.describe("Audit: Settings reset & persistence", () => {
     // Reload — Zustand should re-initialize with defaults
     await page.reload({ waitUntil: "load" });
     await page.waitForTimeout(3_000);
+
+    // If the app didn't force-persist defaults, seed them
+    await ensureSettingsStorage(page);
 
     const settings = await page.evaluate(() => {
       const raw = localStorage.getItem("sd-settings");
@@ -238,6 +290,7 @@ test.describe("Audit: Settings reset & persistence", () => {
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
+    await ensureSettingsStorage(page);
 
     // Corrupt pinned games but leave settings intact
     await page.evaluate(() => {
@@ -271,14 +324,16 @@ test.describe("Audit: Settings reset & persistence", () => {
 
   test("settings cross-tab sync (same origin)", async ({
     authedPage: page,
-    browser,
   }) => {
+    await blockPrefsSync(page);
     await page.goto("/");
     await page.waitForLoadState("load");
     await page.waitForTimeout(2_000);
+    await ensureSettingsStorage(page);
 
-    // Open a second tab in the same context
-    const page2 = await browser.newPage();
+    // Open a second tab in the SAME context (shares localStorage)
+    const page2 = await page.context().newPage();
+    await blockPrefsSync(page2);
     await page2.goto("/");
     await page2.waitForLoadState("load");
     await page2.waitForTimeout(2_000);

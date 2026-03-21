@@ -24,6 +24,31 @@ setup("create test account and save auth state", async ({ page }) => {
     console.warn("[global-setup] Backend unavailable — saving empty auth state");
   }
 
+  // Ensure sd-settings is in localStorage (Zustand persist doesn't write
+  // defaults until a set() call, so seed explicitly for test fixtures).
+  await page.evaluate(() => {
+    if (!localStorage.getItem("sd-settings")) {
+      localStorage.setItem(
+        "sd-settings",
+        JSON.stringify({
+          state: {
+            theme: "system",
+            scoreRevealMode: "onMarkRead",
+            preferredSportsbook: "",
+            oddsFormat: "american",
+            autoResumePosition: true,
+            homeExpandedSections: [],
+            hideLimitedData: true,
+            timelineDefaultTiers: [1, 2, 3],
+            followingLive: false,
+            followingLiveAt: 0,
+          },
+          version: 2,
+        }),
+      );
+    }
+  });
+
   // Save authenticated state (cookies + localStorage)
   await page.context().storageState({ path: AUTH_STATE_PATH });
 });
