@@ -68,7 +68,7 @@ cd /Users/dock108/scroll-down-web
 This will:
 1. Verify npm dependencies and Playwright browsers are present
 2. Health-check the app at `localhost:3001`
-3. Run all 7 audit test suites via Playwright
+3. Run the full audit project via Playwright
 4. Generate a markdown report at `docs/audit-results/reports/YYYY-MM-DD.md`
 5. File GitHub issues for any failures (requires `gh auth`)
 
