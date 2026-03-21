@@ -13,11 +13,12 @@ import { useVisibilityRefresh } from "./useVisibilityRefresh";
 
 // ── Section date ranges ────────────────────────────────────
 
-export type SectionKey = "Yesterday" | "Today";
+export type SectionKey = "Yesterday" | "Today" | "Upcoming";
 
 export const SECTION_ORDER: SectionKey[] = [
   "Yesterday",
   "Today",
+  "Upcoming",
 ];
 
 interface DateRange {
@@ -35,6 +36,10 @@ function getSectionDateRanges(): Record<SectionKey, DateRange> {
     Today: {
       startDate: fmtDate(today),
       endDate: fmtDate(today),
+    },
+    Upcoming: {
+      startDate: fmtDate(addDays(today, 1)),
+      endDate: fmtDate(addDays(today, 2)),
     },
   };
 }
@@ -115,7 +120,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   // Track section keys per league (Yesterday/Today game IDs).
   const [sectionIds, setSectionIds] = useState<Record<SectionKey, number[]>>(
     () => {
-      const result: Record<SectionKey, number[]> = { Yesterday: [], Today: [] };
+      const result: Record<SectionKey, number[]> = { Yesterday: [], Today: [], Upcoming: [] };
       for (const key of SECTION_ORDER) {
         const lk = gameListChannel(leagueKey, ranges[key].startDate);
         const meta = listFetches.get(lk);
@@ -152,17 +157,19 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     setError(null);
 
     try {
-      const [yesterday, today] = await Promise.all([
+      const [yesterday, today, upcoming] = await Promise.all([
         fetchSection(ranges.Yesterday, league),
         fetchSection(ranges.Today, league),
+        fetchSection(ranges.Upcoming, league),
       ]);
 
       // Upsert per section with aligned listKeys
       const sections: [SectionKey, GameSummary[]][] = [
         ["Yesterday", yesterday],
         ["Today", today],
+        ["Upcoming", upcoming],
       ];
-      const buckets: Record<SectionKey, number[]> = { Yesterday: [], Today: [] };
+      const buckets: Record<SectionKey, number[]> = { Yesterday: [], Today: [], Upcoming: [] };
 
       for (const [key, summaries] of sections) {
         const lk = gameListChannel(leagueKey, ranges[key].startDate);

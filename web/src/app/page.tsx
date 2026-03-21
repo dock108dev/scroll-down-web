@@ -102,8 +102,15 @@ export default function HomePage() {
     }
   }, [allGames, pruneStale]);
 
-  // Derive league pills from all fetched games
-  const availableLeagues = useMemo(() => deriveLeagues(allGames), [allGames]);
+  // Derive league pills from all fetched games — persist across filter changes
+  const leaguesRef = useRef<string[]>([]);
+  const availableLeagues = useMemo(() => {
+    // Only update the full list when unfiltered (no league selected)
+    if (!league) {
+      leaguesRef.current = deriveLeagues(allGames);
+    }
+    return leaguesRef.current;
+  }, [allGames, league]);
 
   // Sorted sections
   const sortedSections = useMemo(

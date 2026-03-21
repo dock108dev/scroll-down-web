@@ -7,7 +7,7 @@ import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
-import { cn, cardDisplayName, formatTimeET, teamColorStyle } from "@/lib/utils";
+import { cn, cardDisplayName, formatTimeET, resolveTeamColor } from "@/lib/utils";
 import { LeagueBadge } from "@/components/fairbet/LeagueBadge";
 import { APP_TIMEZONE } from "@/lib/date-utils";
 import { pickSnapshot } from "@/lib/score-display";
@@ -291,17 +291,17 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       {/* Center: matchup */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5 truncate">
         <span
-          className="text-[15px] font-bold tracking-tight"
-          style={teamColorStyle(game.awayTeamColorLight, game.awayTeamColorDark)}
+          className="text-[15px] font-semibold truncate"
+          style={{ color: resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark) }}
         >
-          {game.awayTeamAbbr ?? cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}
+          {cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}
         </span>
-        <span className="text-neutral-600 text-xs font-medium">@</span>
+        <span className="text-neutral-600 text-xs font-medium shrink-0">@</span>
         <span
-          className="text-[15px] font-bold tracking-tight"
-          style={teamColorStyle(game.homeTeamColorLight, game.homeTeamColorDark)}
+          className="text-[15px] font-semibold truncate"
+          style={{ color: resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark) }}
         >
-          {game.homeTeamAbbr ?? cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}
+          {cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}
         </span>
       </div>
 
