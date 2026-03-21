@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 import fs from "fs";
 import path from "path";
 
-const RESULTS_DIR = path.join(__dirname, "..", "..", "audit-results");
+const RESULTS_DIR = path.join(__dirname, "..", "..", "..", "docs", "audit-results");
 const MAX_LCP_MS = 4_000;
 const MAX_CLS = 0.25;
 
@@ -64,10 +64,10 @@ test.describe("Audit: Performance benchmarks", () => {
         }).observe({ type: "layout-shift", buffered: true });
       });
 
-      await page.goto(pg.url, { waitUntil: "networkidle", timeout: 30_000 });
+      await page.goto(pg.url, { waitUntil: "load", timeout: 30_000 });
 
-      // Wait a bit for LCP to settle
-      await page.waitForTimeout(2_000);
+      // Wait for LCP to settle
+      await page.waitForTimeout(3_000);
 
       const metrics = await page.evaluate(() => {
         const nav = performance.getEntriesByType(

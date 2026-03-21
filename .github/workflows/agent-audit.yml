@@ -54,19 +54,19 @@ jobs:
       - name: Run audit suite
         working-directory: web
         run: |
-          mkdir -p audit-results
-          npx playwright test --project=audit --reporter=json > audit-results/test-results.json
+          mkdir -p ../docs/audit-results
+          npx playwright test --project=audit --reporter=json > ../docs/audit-results/test-results.json
 
       - name: Generate report
         if: always()
-        run: ./scripts/generate-report.sh web/audit-results web/audit-results/reports/$(date +%Y-%m-%d).md
+        run: ./scripts/generate-report.sh docs/audit-results docs/audit-results/reports/$(date +%Y-%m-%d).md
 
       - name: Upload audit results
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: audit-results-${{ github.run_number }}
-          path: web/audit-results/
+          path: docs/audit-results/
           retention-days: 30
 
       - name: File issues for failures
@@ -75,7 +75,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           FAILURES=$(jq -r '.suites[]?.specs[]? | select(.ok == false) | .title' \
-            web/audit-results/test-results.json 2>/dev/null || echo "")
+            docs/audit-results/test-results.json 2>/dev/null || echo "")
           if [ -n "$FAILURES" ]; then
             while IFS= read -r title; do
               [ -z "$title" ] && continue

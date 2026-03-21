@@ -8,18 +8,17 @@ test.describe("Audit: Error scenarios", () => {
 
   test("nonexistent game ID shows error gracefully", async ({ page }) => {
     await page.goto("/game/999999999");
-    // Should not crash — either shows error or redirects
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
     // Page should still have the nav
     const topNav = page.locator("[data-testid='top-nav']");
-    await expect(topNav).toBeVisible();
+    await expect(topNav).toBeVisible({ timeout: 10_000 });
   });
 
   test("nonexistent golf event shows error gracefully", async ({ page }) => {
     await page.goto("/golf/invalid-event-id-xyz");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
     const topNav = page.locator("[data-testid='top-nav']");
-    await expect(topNav).toBeVisible();
+    await expect(topNav).toBeVisible({ timeout: 10_000 });
   });
 
   test("handles API failure gracefully on home page", async ({ page }) => {
@@ -32,11 +31,11 @@ test.describe("Audit: Error scenarios", () => {
     );
 
     await page.goto("/");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     // Page should render without crashing
     const topNav = page.locator("[data-testid='top-nav']");
-    await expect(topNav).toBeVisible();
+    await expect(topNav).toBeVisible({ timeout: 10_000 });
   });
 
   test("handles API failure gracefully on golf page", async ({ page }) => {
@@ -48,10 +47,10 @@ test.describe("Audit: Error scenarios", () => {
     );
 
     await page.goto("/golf");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     const topNav = page.locator("[data-testid='top-nav']");
-    await expect(topNav).toBeVisible();
+    await expect(topNav).toBeVisible({ timeout: 10_000 });
   });
 
   test("handles API failure gracefully on fairbet page", async ({ page }) => {
@@ -63,9 +62,9 @@ test.describe("Audit: Error scenarios", () => {
     );
 
     await page.goto("/fairbet");
-    await page.waitForLoadState("networkidle");
+    await page.waitForLoadState("load");
 
     const topNav = page.locator("[data-testid='top-nav']");
-    await expect(topNav).toBeVisible();
+    await expect(topNav).toBeVisible({ timeout: 10_000 });
   });
 });

@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { gotoAndWait } from "../helpers";
 
 const PAGES = [
   { name: "home", url: "/" },
@@ -10,7 +11,7 @@ const PAGES = [
 test.describe("Audit: Accessibility", () => {
   for (const pg of PAGES) {
     test(`${pg.name}: images have alt text`, async ({ page }) => {
-      await page.goto(pg.url, { waitUntil: "networkidle" });
+      await gotoAndWait(page, pg.url);
 
       const imagesWithoutAlt = await page.evaluate(() => {
         const imgs = document.querySelectorAll("img");
@@ -33,7 +34,7 @@ test.describe("Audit: Accessibility", () => {
     test(`${pg.name}: buttons and links have accessible names`, async ({
       page,
     }) => {
-      await page.goto(pg.url, { waitUntil: "networkidle" });
+      await gotoAndWait(page, pg.url);
 
       const inaccessible = await page.evaluate(() => {
         const elements = document.querySelectorAll("button, a, [role='button']");
@@ -66,7 +67,7 @@ test.describe("Audit: Accessibility", () => {
     });
 
     test(`${pg.name}: focus order is logical`, async ({ page }) => {
-      await page.goto(pg.url, { waitUntil: "networkidle" });
+      await gotoAndWait(page, pg.url);
 
       // Tab through first 10 focusable elements and verify they're visible
       for (let i = 0; i < 10; i++) {

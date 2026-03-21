@@ -42,8 +42,8 @@ Scroll Down Sports web app using Playwright and reports failures.
 | `/Users/dock108/scroll-down-web/` | Project root |
 | `web/` | Next.js app source |
 | `web/.env.local` | API keys and local config |
-| `web/audit-results/` | Test output JSON files |
-| `web/audit-results/reports/` | Daily markdown reports |
+| `docs/audit-results/` | Test output JSON files |
+| `docs/audit-results/reports/` | Daily markdown reports |
 | `scripts/` | Audit orchestration scripts |
 | `/tmp/scrolldown-web.stdout.log` | App stdout |
 | `/tmp/scrolldown-web.stderr.log` | App stderr |
@@ -68,8 +68,8 @@ cd /Users/dock108/scroll-down-web
 This will:
 1. Verify npm dependencies and Playwright browsers are present
 2. Health-check the app at `localhost:3001`
-3. Run all 7 audit test suites via Playwright
-4. Generate a markdown report at `web/audit-results/reports/YYYY-MM-DD.md`
+3. Run the full audit project via Playwright
+4. Generate a markdown report at `docs/audit-results/reports/YYYY-MM-DD.md`
 5. File GitHub issues for any failures (requires `gh auth`)
 
 ### Audit without filing issues
@@ -127,7 +127,7 @@ The audit project is configured in `web/playwright.config.ts` with:
 Reports are saved daily at:
 
 ```
-web/audit-results/reports/YYYY-MM-DD.md
+docs/audit-results/reports/YYYY-MM-DD.md
 ```
 
 Each report includes:
@@ -137,7 +137,7 @@ Each report includes:
 - **Performance Metrics** — LCP, CLS, TTI, DOM content loaded, full load per page
 - **Test Suite Summary** — total/passed/failed/skipped counts
 
-Raw JSON data is also available in `web/audit-results/`:
+Raw JSON data is also available in `docs/audit-results/`:
 
 | File | Source |
 |------|--------|
@@ -149,13 +149,13 @@ Raw JSON data is also available in `web/audit-results/`:
 ### View today's report
 
 ```bash
-cat web/audit-results/reports/$(date +%Y-%m-%d).md
+cat docs/audit-results/reports/$(date +%Y-%m-%d).md
 ```
 
 ### List all reports
 
 ```bash
-ls web/audit-results/reports/
+ls docs/audit-results/reports/
 ```
 
 ---
@@ -208,29 +208,33 @@ gh auth status
 
 ### How it runs autonomously
 
-The audit LaunchAgent (`com.scrolldown.audit`) fires every 6 hours and invokes:
+The audit LaunchAgent (`com.scrolldown.audit`) fires every 6 hours and runs
+`scripts/agent-cycle.sh`, which executes a 3-phase cycle using Claude Code:
 
-```bash
-claude -p "<audit prompt>" --dangerously-skip-permissions --max-turns 30
-```
+**Phase 1 — Audit:** Pull latest code, rebuild if changed, run the audit suite,
+investigate failures, file GitHub issues for real bugs, summarize findings.
 
-This uses your Claude Max subscription (authenticated via OAuth, credentials
-stored in macOS Keychain as `Claude Code-credentials`). No API key is needed.
+**Phase 2 — Review & Plan:** Read all failures, classify each as test-fix /
+app-fix / upstream / skip. Pick the top 5–10 fixable issues by importance.
+Document upstream observations in `docs/upstream-api-observations.md`.
+Output a specific fix plan.
 
-The `--dangerously-skip-permissions` flag lets Claude Code run shell commands,
-edit files, and use all tools without interactive approval. The `--max-turns 30`
-cap prevents runaway sessions.
+**Phase 3 — Execute & Verify (up to 5 attempts):** Implement fixes, rebuild,
+re-run the audit. If failures remain, loop back and try again. Stop after 5
+attempts and log a warning.
 
-Each cycle, the agent will:
-1. `git pull origin main` and rebuild if there are changes
-2. Verify the app is healthy at `localhost:3001`
-3. Run `./scripts/agent-audit.sh --no-issues`
-4. Read the generated report
-5. Investigate each failure by reading test code and screenshots
-6. File GitHub issues for real bugs via `./scripts/file-github-issue.sh`
-7. Summarize findings
+All phases use `claude -p --dangerously-skip-permissions` with your Claude Max
+subscription (OAuth credentials in macOS Keychain). No API key needed.
 
-Output goes to `/tmp/audit-agent.log`.
+Logs go to `/tmp/audit-agent-logs/agent-YYYY-MM-DD_HH-MM-SS.log`.
+
+### Scripts
+
+| Script | Purpose |
+|--------|---------|
+| `scripts/agent-cycle.sh` | Single 3-phase cycle (used by LaunchAgent) |
+| `scripts/agent-loop.sh` | Infinite loop running cycles every N hours (for tmux) |
+| `scripts/agent-audit.sh` | Just the Playwright tests + report generation |
 
 ### Interactive session (manual)
 
@@ -243,12 +247,11 @@ claude
 
 Then give the audit prompt, or just run the audit scripts directly.
 
-### One-off headless run
+### One-off headless cycle
 
 ```bash
 cd /Users/dock108/scroll-down-web
-claude -p "Read docs/audit-agent.md. Run an audit cycle and summarize." \
-  --dangerously-skip-permissions --max-turns 30
+./scripts/agent-cycle.sh
 ```
 
 ### Continuous loop via tmux
@@ -257,12 +260,9 @@ For more frequent cycles or custom intervals:
 
 ```bash
 tmux new -s audit
-/Users/dock108/scroll-down-web/scripts/agent-loop.sh
+AUDIT_INTERVAL=3600 ./scripts/agent-loop.sh   # every 1 hour
 # Ctrl+B, D to detach
 ```
-
-The loop script (`scripts/agent-loop.sh`) runs `claude -p` with the full audit
-prompt every 6 hours (configurable via `AUDIT_INTERVAL` env var in seconds).
 
 Reattach later: `tmux attach -t audit`
 
@@ -298,7 +298,8 @@ npm run test:headed      # Run tests with visible browser
 ./scripts/agent-audit.sh --skip-health  # Skip health check gate
 ./scripts/generate-report.sh <results-dir> <output-file>  # Generate report from JSON
 ./scripts/file-github-issue.sh "title" "desc" [severity] [page]  # File issue
-./scripts/agent-loop.sh                 # Continuous 6-hour audit loop
+./scripts/agent-cycle.sh                # Single 3-phase audit→review→fix cycle
+./scripts/agent-loop.sh                 # Continuous audit loop (for tmux)
 ```
 
 ### Health & diagnostics
@@ -395,13 +396,13 @@ ls -lt /tmp/audit-agent-logs/              # tmux agent loop logs
 ### Recent reports
 
 ```bash
-ls -lt web/audit-results/reports/ | head -10
+ls -lt docs/audit-results/reports/ | head -10
 ```
 
 ### Disk cleanup (reports older than 30 days)
 
 ```bash
-find web/audit-results -type f -mtime +30 -delete
+find docs/audit-results -type f -mtime +30 -delete
 ```
 
 ---
