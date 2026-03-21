@@ -7,7 +7,8 @@ import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
-import { cn, cardDisplayName, formatTimeET } from "@/lib/utils";
+import { cn, cardDisplayName, formatTimeET, teamColorStyle } from "@/lib/utils";
+import { LeagueBadge } from "@/components/fairbet/LeagueBadge";
 import { APP_TIMEZONE } from "@/lib/date-utils";
 import { pickSnapshot } from "@/lib/score-display";
 
@@ -233,17 +234,17 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
           )}
         >
           {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
-          <span className="text-base font-semibold tabular-nums text-neutral-200">{display?.awayScore ?? game.awayScore} {"\u2013"} {display?.homeScore ?? game.homeScore}</span>
+          <span className="text-lg font-bold tabular-nums text-neutral-200">{display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}</span>
         </button>
       );
     }
 
     return (
       <span className={cn(
-        "shrink-0 text-base font-semibold tabular-nums text-neutral-200 pl-3 text-right min-w-[96px]",
+        "shrink-0 text-lg font-bold tabular-nums text-neutral-200 pl-3 text-right min-w-[96px]",
         scoreFlash && "score-flash",
       )}>
-        {display?.awayScore ?? game.awayScore} {"\u2013"} {display?.homeScore ?? game.homeScore}
+        {display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}
       </span>
     );
   })();
@@ -253,18 +254,17 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       data-testid="game-row"
       onClick={handleNavigate}
       className={cn(
-        "flex items-center min-h-[52px] px-4 py-3 border-b border-neutral-800/40 transition select-none",
+        "flex items-center min-h-[52px] px-4 py-3 rounded-[var(--ds-radius-game-card)] bg-neutral-800/20 border border-neutral-800/40 transition select-none",
         noData && "opacity-40 pointer-events-none",
         !isHistory && read && final && "opacity-70",
-        !noData && "cursor-pointer hover:bg-neutral-800/40 active:bg-neutral-800/50",
+        live && "border-l-2 border-l-green-400",
+        !noData && "cursor-pointer hover:bg-neutral-800/30 active:bg-neutral-800/40",
       )}
     >
       {/* Left: league + pin + status */}
       <div className="shrink-0 w-[88px] flex flex-col gap-0.5">
         <span className="inline-flex items-center gap-1">
-          <span className="uppercase font-medium text-neutral-500 text-xs">
-            {game.leagueCode}
-          </span>
+          <LeagueBadge league={game.leagueCode} />
           {showPin && (pinned || pinnedCount < 10) && (
             <button
               onClick={(e) => {
@@ -289,10 +289,20 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       </div>
 
       {/* Center: matchup */}
-      <div className="flex-1 min-w-0 text-[15px] font-medium text-neutral-200 truncate leading-snug">
-        {cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}
-        {" @ "}
-        {cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}
+      <div className="flex-1 min-w-0 flex items-center gap-1.5 truncate">
+        <span
+          className="text-[15px] font-bold tracking-tight"
+          style={teamColorStyle(game.awayTeamColorLight, game.awayTeamColorDark)}
+        >
+          {game.awayTeamAbbr ?? cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}
+        </span>
+        <span className="text-neutral-600 text-xs font-medium">@</span>
+        <span
+          className="text-[15px] font-bold tracking-tight"
+          style={teamColorStyle(game.homeTeamColorLight, game.homeTeamColorDark)}
+        >
+          {game.homeTeamAbbr ?? cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}
+        </span>
       </div>
 
       {/* Right: score zone or history date/time */}

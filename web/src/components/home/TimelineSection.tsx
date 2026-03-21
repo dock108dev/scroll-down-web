@@ -80,7 +80,7 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
               </svg>
             </button>
             {pinnedOpen && (
-              <div className="max-h-[40vh] overflow-y-auto overscroll-contain">
+              <div className="max-h-[40vh] overflow-y-auto overscroll-contain space-y-1.5 px-3 py-1.5">
                 {pinned.map((game) => (
                   <GameRow key={game.id} game={game} />
                 ))}
@@ -91,10 +91,13 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
       </div>
 
       {/* All games (pinned appear here too, in their normal position) */}
-      {expanded &&
-        games.map((game) => (
-          <GameRow key={game.id} game={game} />
-        ))}
+      {expanded && (
+        <div className="space-y-1.5 px-3 py-1.5">
+          {games.map((game) => (
+            <GameRow key={game.id} game={game} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
