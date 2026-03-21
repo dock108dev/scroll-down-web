@@ -97,7 +97,7 @@ The `scripts/` directory contains orchestration for continuous AI-driven auditin
 
 Audit results are written to `web/audit-results/` (gitignored). Reports are saved to `web/audit-results/reports/{date}.md`.
 
-See [Audit Mac Setup](AUDIT-MAC-SETUP.md) for running the audit suite continuously on a dedicated Mac.
+See [Audit Agent Guide](audit-agent.md) for running the audit suite continuously on a dedicated Mac.
 
 ## Local Development
 

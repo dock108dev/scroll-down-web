@@ -88,4 +88,4 @@ Detailed docs live in [`/docs`](../docs/):
 - [Testing](../docs/testing.md) — Playwright E2E test setup, audit suite, and patterns
 - [Client-Side Logic](../docs/client-logic.md) — what intentionally stays in-browser
 - [Development](../docs/development.md) — local dev setup, debugging, QA checklist
-- [Audit Mac Setup](../docs/AUDIT-MAC-SETUP.md) — headless Mac for continuous AI-driven auditing
+- [Audit Agent Guide](../docs/audit-agent.md) — agent guide for the headless audit Mac
