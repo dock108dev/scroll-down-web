@@ -279,6 +279,223 @@ test.describe("Audit: Cache logic", () => {
     expect(totalBytes).toBeLessThan(5_000_000);
   });
 
+  test("followingLive auto-expires after 2h inactivity (authed user)", async ({
+    authedPage: page,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2_000);
+
+    // Activate followingLive with a timestamp 3 hours in the past (already expired)
+    const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
+    await page.evaluate((ts: number) => {
+      const raw = localStorage.getItem("sd-settings");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.state.followingLive = true;
+        parsed.state.followingLiveAt = ts;
+        localStorage.setItem("sd-settings", JSON.stringify(parsed));
+      }
+    }, threeHoursAgo);
+
+    // Reload — Zustand migrate should detect stale followingLive and reset it
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3_000);
+
+    const settings = await page.evaluate(() => {
+      const raw = localStorage.getItem("sd-settings");
+      return raw ? JSON.parse(raw)?.state : null;
+    });
+
+    results.push({
+      test: "followingLive-2h-expiry-authed",
+      passed: settings?.followingLive === false,
+      details: {
+        followingLive: settings?.followingLive,
+        followingLiveAt: settings?.followingLiveAt,
+        injectedTimestamp: threeHoursAgo,
+      },
+    });
+
+    // Should have been auto-expired by the migrate function
+    expect(settings?.followingLive).toBe(false);
+    expect(settings?.followingLiveAt).toBe(0);
+  });
+
+  test("followingLive survives within 2h window (authed user)", async ({
+    authedPage: page,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2_000);
+
+    // Activate followingLive with a timestamp 30 minutes ago (still fresh)
+    const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
+    await page.evaluate((ts: number) => {
+      const raw = localStorage.getItem("sd-settings");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.state.followingLive = true;
+        parsed.state.followingLiveAt = ts;
+        localStorage.setItem("sd-settings", JSON.stringify(parsed));
+      }
+    }, thirtyMinAgo);
+
+    // Reload — should survive migrate since < 2h
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3_000);
+
+    const settings = await page.evaluate(() => {
+      const raw = localStorage.getItem("sd-settings");
+      return raw ? JSON.parse(raw)?.state : null;
+    });
+
+    results.push({
+      test: "followingLive-within-2h-authed",
+      passed: settings?.followingLive === true,
+      details: {
+        followingLive: settings?.followingLive,
+        followingLiveAt: settings?.followingLiveAt,
+        injectedTimestamp: thirtyMinAgo,
+      },
+    });
+
+    // Should still be active — 30 min < 2h TTL
+    expect(settings?.followingLive).toBe(true);
+  });
+
+  test("followingLive 2h expiry works for guest (no auth token)", async ({
+    page,
+  }) => {
+    // Fresh page, clear everything — this is a guest
+    await page.goto("/");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2_000);
+    await page.evaluate(() => localStorage.removeItem("sd-auth"));
+
+    // Set followingLive with expired timestamp as a guest would have
+    const threeHoursAgo = Date.now() - 3 * 60 * 60 * 1000;
+    await page.evaluate((ts: number) => {
+      const raw = localStorage.getItem("sd-settings");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.state.followingLive = true;
+        parsed.state.followingLiveAt = ts;
+        localStorage.setItem("sd-settings", JSON.stringify(parsed));
+      }
+    }, threeHoursAgo);
+
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3_000);
+
+    const settings = await page.evaluate(() => {
+      const raw = localStorage.getItem("sd-settings");
+      return raw ? JSON.parse(raw)?.state : null;
+    });
+
+    // Verify this is actually a guest
+    const auth = await page.evaluate(() => {
+      const raw = localStorage.getItem("sd-auth");
+      return raw ? JSON.parse(raw)?.state : null;
+    });
+
+    results.push({
+      test: "followingLive-2h-expiry-guest",
+      passed: settings?.followingLive === false,
+      details: {
+        followingLive: settings?.followingLive,
+        followingLiveAt: settings?.followingLiveAt,
+        role: auth?.role ?? "guest (no auth)",
+        injectedTimestamp: threeHoursAgo,
+      },
+    });
+
+    // Guest should also have expired followingLive — it's in the settings store,
+    // not gated by auth
+    expect(settings?.followingLive).toBe(false);
+  });
+
+  test("followingLive within-2h survives for guest too", async ({
+    page,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2_000);
+    await page.evaluate(() => localStorage.removeItem("sd-auth"));
+
+    const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
+    await page.evaluate((ts: number) => {
+      const raw = localStorage.getItem("sd-settings");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.state.followingLive = true;
+        parsed.state.followingLiveAt = ts;
+        localStorage.setItem("sd-settings", JSON.stringify(parsed));
+      }
+    }, thirtyMinAgo);
+
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3_000);
+
+    const settings = await page.evaluate(() => {
+      const raw = localStorage.getItem("sd-settings");
+      return raw ? JSON.parse(raw)?.state : null;
+    });
+
+    results.push({
+      test: "followingLive-within-2h-guest",
+      passed: settings?.followingLive === true,
+      details: {
+        followingLive: settings?.followingLive,
+        followingLiveAt: settings?.followingLiveAt,
+        injectedTimestamp: thirtyMinAgo,
+      },
+    });
+
+    expect(settings?.followingLive).toBe(true);
+  });
+
+  test("followingLive edge: exactly at 2h boundary", async ({
+    authedPage: page,
+  }) => {
+    await page.goto("/");
+    await page.waitForLoadState("load");
+    await page.waitForTimeout(2_000);
+
+    // Set to exactly 2 hours ago (120 minutes — the FOLLOWING_LIVE_TTL_MS boundary)
+    const exactlyTwoHours = Date.now() - 120 * 60 * 1000;
+    await page.evaluate((ts: number) => {
+      const raw = localStorage.getItem("sd-settings");
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        parsed.state.followingLive = true;
+        parsed.state.followingLiveAt = ts;
+        localStorage.setItem("sd-settings", JSON.stringify(parsed));
+      }
+    }, exactlyTwoHours);
+
+    await page.reload({ waitUntil: "load" });
+    await page.waitForTimeout(3_000);
+
+    const settings = await page.evaluate(() => {
+      const raw = localStorage.getItem("sd-settings");
+      return raw ? JSON.parse(raw)?.state : null;
+    });
+
+    results.push({
+      test: "followingLive-2h-boundary",
+      passed: settings?.followingLive === false,
+      details: {
+        followingLive: settings?.followingLive,
+        followingLiveAt: settings?.followingLiveAt,
+        note: "At exactly 2h, migrate uses >= so this should expire",
+      },
+    });
+
+    // The migrate check is `>=` so exactly 2h should expire
+    expect(settings?.followingLive).toBe(false);
+  });
+
   test("Zustand store version migration doesn't lose data", async ({
     authedPage: page,
   }) => {
