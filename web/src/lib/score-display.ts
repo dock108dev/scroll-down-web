@@ -72,15 +72,19 @@ export function computeScoreDisplay(
   }
 
   // mode=onMarkRead, not revealed → hidden
+  // For live games with score data, signal hasUpdate so the UI shows the
+  // amber UPD indicator instead of green LIVE — lets the user know scores
+  // are available to reveal.
   if (!revealed) {
+    const liveWithScores = live && hasScoreData;
     return {
       visible: false,
       homeScore: null,
       awayScore: null,
       frozen: false,
-      hasUpdate: false,
+      hasUpdate: liveWithScores,
       canToggle,
-      statusCategory: live ? "live" : final ? "final" : pregame ? "pregame" : "other",
+      statusCategory: live ? (liveWithScores ? "live-updated" : "live") : final ? "final" : pregame ? "pregame" : "other",
     };
   }
 

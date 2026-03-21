@@ -200,6 +200,26 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   useEffect(() => {
     const isLeagueChange = prevLeagueRef.current !== league;
     prevLeagueRef.current = league;
+    if (isLeagueChange) {
+      // Reset section IDs immediately so counts don't show stale numbers
+      // while the new fetch is in flight. Try to seed from cache first.
+      const store = useGameData.getState();
+      const seeded: Record<SectionKey, number[]> = { Yesterday: [], Today: [], Upcoming: [] };
+      for (const key of SECTION_ORDER) {
+        const lk = gameListChannel(leagueKey, ranges[key].startDate);
+        const meta = store.listFetches.get(lk);
+        if (!meta) continue;
+        for (const id of meta.gameIds) {
+          const entry = store.games.get(id);
+          if (!entry) continue;
+          const d = toEasternDateStr(entry.core.gameDate);
+          if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
+            seeded[key].push(id);
+          }
+        }
+      }
+      setSectionIds(seeded);
+    }
     fetchAll(isLeagueChange || loading);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAll]);
