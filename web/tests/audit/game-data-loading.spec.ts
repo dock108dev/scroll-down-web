@@ -1,4 +1,5 @@
 import { test as base, expect } from "@playwright/test";
+import type { Page } from "@playwright/test";
 import { waitForGameData, AUTH_STATE_PATH } from "../helpers";
 import fs from "fs";
 import path from "path";
@@ -19,7 +20,7 @@ interface GameDataResult {
   details: Record<string, unknown>;
 }
 
-const test = base.extend({
+const test = base.extend<{ authedPage: Page }>({
   authedPage: async ({ browser }, use) => {
     const ctx = await browser.newContext({ storageState: AUTH_STATE_PATH });
     const page = await ctx.newPage();
