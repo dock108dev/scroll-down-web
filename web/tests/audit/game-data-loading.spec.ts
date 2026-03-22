@@ -45,14 +45,15 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("games list API returns valid structure", async ({ request }) => {
     const res = await fetchWithRetry(request, "/api/games");
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
+    const bodyGames = body.games as Record<string, unknown>[] | undefined;
 
-    const hasGames = Array.isArray(body.games);
-    const gameCount = body.games?.length ?? 0;
+    const hasGames = Array.isArray(bodyGames);
+    const gameCount = bodyGames?.length ?? 0;
 
     // Validate first game structure if available
     let firstGameValid = false;
-    const firstGame = body.games?.[0];
+    const firstGame = bodyGames?.[0];
     if (firstGame) {
       firstGameValid = !!(
         firstGame.id &&
@@ -88,8 +89,9 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("game detail API returns full data", async ({ request }) => {
     const listRes = await fetchWithRetry(request, "/api/games");
-    const listData = await listRes.json();
-    const gameId = listData.games?.[0]?.id;
+    const listData = (await listRes.json()) as Record<string, unknown>;
+    const listGames = listData.games as Record<string, unknown>[] | undefined;
+    const gameId = listGames?.[0]?.id;
 
     if (!gameId) {
       test.skip(true, "No games available");
@@ -111,8 +113,8 @@ test.describe("Audit: Game data loading & integrity", () => {
       return;
     }
 
-    const body = await res.json();
-    const game = body.game;
+    const body = (await res.json()) as Record<string, unknown>;
+    const game = body.game as Record<string, unknown> | undefined;
 
     const requiredFields = [
       "id",
@@ -151,14 +153,15 @@ test.describe("Audit: Game data loading & integrity", () => {
       test.skip(true, "Rate-limited by upstream API");
       return;
     }
-    const listData = await listRes.json();
+    const listData = (await listRes.json()) as Record<string, unknown>;
+    const listDataGames = listData.games as Record<string, unknown>[] | undefined;
 
     // Look for a completed game that likely has flow data
-    const completedGame = listData.games?.find(
-      (g: { status: string }) =>
+    const completedGame = listDataGames?.find(
+      (g) =>
         g.status === "final" || g.status === "completed",
     );
-    const gameId = completedGame?.id ?? listData.games?.[0]?.id;
+    const gameId = completedGame?.id ?? listDataGames?.[0]?.id;
 
     if (!gameId) {
       test.skip(true, "No games available");
@@ -190,7 +193,8 @@ test.describe("Audit: Game data loading & integrity", () => {
       return;
     }
 
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
+    const blocks = body.blocks as Record<string, unknown>[] | undefined;
 
     results.push({
       test: "game-flow-structure",
@@ -198,9 +202,9 @@ test.describe("Audit: Game data loading & integrity", () => {
       details: {
         gameId,
         status: res.status(),
-        hasBlocks: Array.isArray(body.blocks),
-        blockCount: body.blocks?.length ?? 0,
-        blockRoles: body.blocks?.map((b: { role: string }) => b.role) ?? [],
+        hasBlocks: Array.isArray(blocks),
+        blockCount: blocks?.length ?? 0,
+        blockRoles: blocks?.map((b) => b.role) ?? [],
       },
     });
 
@@ -217,9 +221,9 @@ test.describe("Audit: Game data loading & integrity", () => {
       // Small delay between calls to avoid rate-limiting
       await new Promise((r) => setTimeout(r, 500));
       const res = await fetchWithRetry(request, `/api/games?league=${league}`, 1, 2_000);
-      const body = await res.json();
+      const body = (await res.json()) as Record<string, unknown>;
       leagueResults[league] = {
-        count: body.games?.length ?? 0,
+        count: (body.games as unknown[] | undefined)?.length ?? 0,
         status: res.status(),
       };
     }
@@ -292,11 +296,12 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("golf tournaments API returns valid data", async ({ request }) => {
     const res = await fetchWithRetry(request, "/api/golf/tournaments");
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
+    const tournaments = body.tournaments as Record<string, unknown>[] | undefined;
 
-    const hasTournaments = Array.isArray(body.tournaments);
-    const count = body.tournaments?.length ?? 0;
-    const firstTournament = body.tournaments?.[0];
+    const hasTournaments = Array.isArray(tournaments);
+    const count = tournaments?.length ?? 0;
+    const firstTournament = tournaments?.[0];
 
     results.push({
       test: "golf-tournaments-structure",
@@ -321,11 +326,12 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("fairbet odds API returns structured bet data", async ({ request }) => {
     const res = await fetchWithRetry(request, "/api/fairbet/odds");
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
+    const bets = body.bets as Record<string, unknown>[] | undefined;
 
-    const hasBets = Array.isArray(body.bets);
-    const count = body.bets?.length ?? 0;
-    const firstBet = body.bets?.[0];
+    const hasBets = Array.isArray(bets);
+    const count = bets?.length ?? 0;
+    const firstBet = bets?.[0];
 
     // Validate bet structure
     let betValid = false;
@@ -355,7 +361,7 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("game statuses are valid enum values", async ({ request }) => {
     const res = await fetchWithRetry(request, "/api/games");
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
 
     const validStatuses = [
       "scheduled",
@@ -369,9 +375,9 @@ test.describe("Audit: Game data loading & integrity", () => {
       "canceled",
     ];
 
-    const games = body.games ?? [];
+    const games = (body.games as { status: string; id: number }[]) ?? [];
     const invalidGames = games.filter(
-      (g: { status: string; id: number }) => !validStatuses.includes(g.status),
+      (g) => !validStatuses.includes(g.status),
     );
 
     results.push({
@@ -380,12 +386,12 @@ test.describe("Audit: Game data loading & integrity", () => {
       details: {
         totalGames: games.length,
         invalidCount: invalidGames.length,
-        invalidIds: invalidGames.map((g: { id: number; status: string }) => ({
+        invalidIds: invalidGames.map((g) => ({
           id: g.id,
           status: g.status,
         })),
         statusDistribution: games.reduce(
-          (acc: Record<string, number>, g: { status: string }) => {
+          (acc: Record<string, number>, g) => {
             acc[g.status] = (acc[g.status] ?? 0) + 1;
             return acc;
           },
@@ -399,15 +405,15 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("game times are valid ISO dates", async ({ request }) => {
     const res = await fetchWithRetry(request, "/api/games");
-    const body = await res.json();
-    const games = body.games ?? [];
+    const body = (await res.json()) as Record<string, unknown>;
+    const games = (body.games as { start_time: string | null; id: number }[]) ?? [];
 
     // Filter out games with null/missing start_time — those are valid (e.g. TBD games)
     const gamesWithTime = games.filter(
-      (g: { start_time: string | null }) => g.start_time != null && g.start_time !== "",
+      (g) => g.start_time != null && g.start_time !== "",
     );
-    const invalidDates = gamesWithTime.filter((g: { start_time: string; id: number }) => {
-      const d = new Date(g.start_time);
+    const invalidDates = gamesWithTime.filter((g) => {
+      const d = new Date(g.start_time!);
       return isNaN(d.getTime());
     });
 
@@ -422,7 +428,7 @@ test.describe("Audit: Game data loading & integrity", () => {
         gamesWithTime: gamesWithTime.length,
         nullTimeGames: nullTimeCount,
         invalidCount: invalidDates.length,
-        invalidIds: invalidDates.map((g: { id: number }) => g.id),
+        invalidIds: invalidDates.map((g) => g.id),
       },
     });
 

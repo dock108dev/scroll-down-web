@@ -123,7 +123,7 @@ test.describe("Audit: API validation", () => {
       return;
     }
 
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
     const result: ApiTestResult = {
       endpoint: `/api/games/${firstGame.id}`,
       method: "GET",
@@ -162,7 +162,7 @@ test.describe("Audit: API validation", () => {
       return;
     }
 
-    const body = await res.json();
+    const body = (await res.json()) as Record<string, unknown>;
     const result: ApiTestResult = {
       endpoint: `/api/golf/tournaments/${firstTour.event_id}/leaderboard`,
       method: "GET",

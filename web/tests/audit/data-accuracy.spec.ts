@@ -9,8 +9,8 @@ test.describe("Audit: Data accuracy", () => {
       return;
     }
 
-    const gamesData = await gamesRes.json();
-    const games = gamesData.games ?? [];
+    const gamesData = (await gamesRes.json()) as Record<string, unknown>;
+    const games = (gamesData.games as unknown[]) ?? [];
     if (games.length === 0) {
       test.skip(true, "No games available");
       return;
@@ -41,8 +41,8 @@ test.describe("Audit: Data accuracy", () => {
       return;
     }
 
-    const gamesData = await gamesRes.json();
-    const game = gamesData.games?.[0];
+    const gamesData = (await gamesRes.json()) as Record<string, unknown>;
+    const game = (gamesData.games as { id: string }[] | undefined)?.[0];
     if (!game) {
       test.skip(true, "No games available");
       return;
@@ -54,8 +54,8 @@ test.describe("Audit: Data accuracy", () => {
       test.skip(true, "Game detail API unavailable");
       return;
     }
-    const detail = await detailRes.json();
-    const apiGame = detail.game;
+    const detail = (await detailRes.json()) as Record<string, unknown>;
+    const apiGame = detail.game as Record<string, string> | undefined;
 
     // Navigate to game detail page
     await page.goto(`/game/${game.id}`);
@@ -66,8 +66,8 @@ test.describe("Audit: Data accuracy", () => {
 
     // Verify team names are present in the header
     const headerText = await header.textContent();
-    const awayAbbr = apiGame.awayTeamAbbr ?? apiGame.awayTeam;
-    const homeAbbr = apiGame.homeTeamAbbr ?? apiGame.homeTeam;
+    const awayAbbr = apiGame?.awayTeamAbbr ?? apiGame?.awayTeam;
+    const homeAbbr = apiGame?.homeTeamAbbr ?? apiGame?.homeTeam;
     expect(headerText).toContain(awayAbbr);
     expect(headerText).toContain(homeAbbr);
   });
@@ -79,8 +79,8 @@ test.describe("Audit: Data accuracy", () => {
       return;
     }
 
-    const tourData = await tourRes.json();
-    const tournaments = tourData.tournaments ?? [];
+    const tourData = (await tourRes.json()) as Record<string, unknown>;
+    const tournaments = (tourData.tournaments as { event_name: string }[]) ?? [];
     if (tournaments.length === 0) {
       test.skip(true, "No tournaments available");
       return;
