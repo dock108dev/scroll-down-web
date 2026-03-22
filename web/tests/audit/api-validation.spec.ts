@@ -48,15 +48,30 @@ test.describe("Audit: API validation", () => {
   for (const endpoint of GET_ENDPOINTS) {
     test(`GET ${endpoint.path} returns valid response`, async ({ request }) => {
       const start = Date.now();
-      const res = await request.get(endpoint.path);
+      const res = await fetchWithRetry(request, endpoint.path);
       const responseTimeMs = Date.now() - start;
+
+      // Skip when rate-limited even after retries
+      if (res.status() === 429) {
+        results.push({
+          endpoint: endpoint.path,
+          method: "GET",
+          status: 429,
+          responseTimeMs,
+          validJson: false,
+          hasExpectedShape: false,
+          error: "Rate-limited (429) after retries",
+        });
+        test.skip(true, `Rate-limited — ${endpoint.path} returned 429`);
+        return;
+      }
 
       let body: Record<string, unknown> | null = null;
       let validJson = false;
       let hasExpectedShape = true;
 
       try {
-        body = await res.json();
+        body = (await res.json()) as Record<string, unknown>;
         validJson = true;
       } catch {
         validJson = false;

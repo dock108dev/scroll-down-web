@@ -111,16 +111,17 @@ export async function waitForGameData(page: Page, timeout = 15_000): Promise<boo
   }
 }
 
-/** Fetch with automatic retry on 429 rate-limit responses. */
+/** Fetch with automatic retry on 429 rate-limit responses using exponential backoff. */
 export async function fetchWithRetry(
   request: { get: (url: string) => Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> },
   url: string,
-  retries = 2,
-  delayMs = 3_000,
+  retries = 3,
+  baseDelayMs = 2_000,
 ): Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> {
   let res = await request.get(url);
   for (let i = 0; i < retries && res.status() === 429; i++) {
-    await new Promise((r) => setTimeout(r, delayMs));
+    const delay = baseDelayMs * Math.pow(2, i); // 2s, 4s, 8s
+    await new Promise((r) => setTimeout(r, delay));
     res = await request.get(url);
   }
   return res;
@@ -167,7 +168,7 @@ export async function gotoAndWait(
 /** Hit /api/health and assert the app is healthy. */
 export async function waitForHealthy(page: Page): Promise<void> {
   const response = await page.request.get("/api/health");
-  const body = await response.json();
+  const body = (await response.json()) as Record<string, unknown>;
   if (body.status !== "ok" && body.status !== "degraded") {
     throw new Error(`App not healthy: ${JSON.stringify(body)}`);
   }
