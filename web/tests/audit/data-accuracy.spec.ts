@@ -1,9 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { waitForGameData, waitForLoad } from "../helpers";
+import { waitForGameData, waitForLoad, fetchWithRetry } from "../helpers";
 
 test.describe("Audit: Data accuracy", () => {
   test("game scores in UI match API data", async ({ page, request }) => {
-    const gamesRes = await request.get("/api/games");
+    const gamesRes = await fetchWithRetry(request, "/api/games");
     if (!gamesRes.ok()) {
       test.skip(true, "Games API unavailable");
       return;
@@ -35,7 +35,7 @@ test.describe("Audit: Data accuracy", () => {
   });
 
   test("game detail team names match API", async ({ page, request }) => {
-    const gamesRes = await request.get("/api/games");
+    const gamesRes = await fetchWithRetry(request, "/api/games");
     if (!gamesRes.ok()) {
       test.skip(true, "Games API unavailable");
       return;
@@ -49,7 +49,7 @@ test.describe("Audit: Data accuracy", () => {
     }
 
     // Fetch detail from API
-    const detailRes = await request.get(`/api/games/${game.id}`);
+    const detailRes = await fetchWithRetry(request, `/api/games/${game.id}`);
     if (!detailRes.ok()) {
       test.skip(true, "Game detail API unavailable");
       return;
@@ -73,7 +73,7 @@ test.describe("Audit: Data accuracy", () => {
   });
 
   test("golf tournament names match API", async ({ page, request }) => {
-    const tourRes = await request.get("/api/golf/tournaments");
+    const tourRes = await fetchWithRetry(request, "/api/golf/tournaments");
     if (!tourRes.ok()) {
       test.skip(true, "Golf API unavailable");
       return;

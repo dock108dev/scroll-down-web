@@ -111,6 +111,21 @@ export async function waitForGameData(page: Page, timeout = 15_000): Promise<boo
   }
 }
 
+/** Fetch with automatic retry on 429 rate-limit responses. */
+export async function fetchWithRetry(
+  request: { get: (url: string) => Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> },
+  url: string,
+  retries = 2,
+  delayMs = 3_000,
+): Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> {
+  let res = await request.get(url);
+  for (let i = 0; i < retries && res.status() === 429; i++) {
+    await new Promise((r) => setTimeout(r, delayMs));
+    res = await request.get(url);
+  }
+  return res;
+}
+
 /** Measure how long a navigation or action takes. */
 export async function measureMs(fn: () => Promise<void>): Promise<number> {
   const start = Date.now();

@@ -1,6 +1,6 @@
 import { test as base, expect } from "@playwright/test";
 import type { Page } from "@playwright/test";
-import { waitForGameData, AUTH_STATE_PATH, isBackendAvailable } from "../helpers";
+import { waitForGameData, AUTH_STATE_PATH, isBackendAvailable, fetchWithRetry } from "../helpers";
 import fs from "fs";
 import path from "path";
 
@@ -44,7 +44,7 @@ test.describe("Audit: Game data loading & integrity", () => {
   });
 
   test("games list API returns valid structure", async ({ request }) => {
-    const res = await request.get("/api/games");
+    const res = await fetchWithRetry(request, "/api/games");
     const body = await res.json();
 
     const hasGames = Array.isArray(body.games);
@@ -87,7 +87,7 @@ test.describe("Audit: Game data loading & integrity", () => {
   });
 
   test("game detail API returns full data", async ({ request }) => {
-    const listRes = await request.get("/api/games");
+    const listRes = await fetchWithRetry(request, "/api/games");
     const listData = await listRes.json();
     const gameId = listData.games?.[0]?.id;
 
@@ -99,7 +99,7 @@ test.describe("Audit: Game data loading & integrity", () => {
     // Pause to avoid rate-limiting
     await new Promise((r) => setTimeout(r, 2_000));
 
-    const res = await request.get(`/api/games/${gameId}`);
+    const res = await fetchWithRetry(request, `/api/games/${gameId}`);
 
     if (res.status() === 429) {
       results.push({
@@ -146,7 +146,7 @@ test.describe("Audit: Game data loading & integrity", () => {
   });
 
   test("game flow API returns narrative blocks", async ({ request }) => {
-    const listRes = await request.get("/api/games");
+    const listRes = await fetchWithRetry(request, "/api/games");
     if (listRes.status() === 429) {
       test.skip(true, "Rate-limited by upstream API");
       return;
@@ -168,7 +168,7 @@ test.describe("Audit: Game data loading & integrity", () => {
     // Pause to avoid rate-limiting from prior tests
     await new Promise((r) => setTimeout(r, 2_000));
 
-    const res = await request.get(`/api/games/${gameId}/flow`);
+    const res = await fetchWithRetry(request, `/api/games/${gameId}/flow`);
 
     if (res.status() === 429) {
       results.push({
@@ -216,7 +216,7 @@ test.describe("Audit: Game data loading & integrity", () => {
     for (const league of leagues) {
       // Small delay between calls to avoid rate-limiting
       await new Promise((r) => setTimeout(r, 500));
-      const res = await request.get(`/api/games?league=${league}`);
+      const res = await fetchWithRetry(request, `/api/games?league=${league}`, 1, 2_000);
       const body = await res.json();
       leagueResults[league] = {
         count: body.games?.length ?? 0,
@@ -291,7 +291,7 @@ test.describe("Audit: Game data loading & integrity", () => {
   });
 
   test("golf tournaments API returns valid data", async ({ request }) => {
-    const res = await request.get("/api/golf/tournaments");
+    const res = await fetchWithRetry(request, "/api/golf/tournaments");
     const body = await res.json();
 
     const hasTournaments = Array.isArray(body.tournaments);
@@ -320,7 +320,7 @@ test.describe("Audit: Game data loading & integrity", () => {
   });
 
   test("fairbet odds API returns structured bet data", async ({ request }) => {
-    const res = await request.get("/api/fairbet/odds");
+    const res = await fetchWithRetry(request, "/api/fairbet/odds");
     const body = await res.json();
 
     const hasBets = Array.isArray(body.bets);
@@ -354,7 +354,7 @@ test.describe("Audit: Game data loading & integrity", () => {
   });
 
   test("game statuses are valid enum values", async ({ request }) => {
-    const res = await request.get("/api/games");
+    const res = await fetchWithRetry(request, "/api/games");
     const body = await res.json();
 
     const validStatuses = [
@@ -398,7 +398,7 @@ test.describe("Audit: Game data loading & integrity", () => {
   });
 
   test("game times are valid ISO dates", async ({ request }) => {
-    const res = await request.get("/api/games");
+    const res = await fetchWithRetry(request, "/api/games");
     const body = await res.json();
     const games = body.games ?? [];
 

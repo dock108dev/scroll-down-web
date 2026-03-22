@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { fetchWithRetry } from "../helpers";
 import fs from "fs";
 import path from "path";
 
@@ -53,12 +54,12 @@ test.describe("Audit: Crawl all pages", () => {
 
   test("audit dynamic game pages", async ({ page: p, request }) => {
     // Get valid game IDs from API
-    const gamesRes = await request.get("/api/games");
+    const gamesRes = await fetchWithRetry(request, "/api/games");
     if (!gamesRes.ok()) {
       test.skip(true, "Games API unavailable");
       return;
     }
-    const gamesData = await gamesRes.json();
+    const gamesData = await gamesRes.json() as { games?: { id: string | number }[] };
     const gameIds: string[] = (gamesData.games ?? [])
       .slice(0, 3)
       .map((g: { id: string | number }) => String(g.id));
@@ -70,12 +71,12 @@ test.describe("Audit: Crawl all pages", () => {
   });
 
   test("audit dynamic golf event pages", async ({ page: p, request }) => {
-    const tourRes = await request.get("/api/golf/tournaments");
+    const tourRes = await fetchWithRetry(request, "/api/golf/tournaments");
     if (!tourRes.ok()) {
       test.skip(true, "Golf API unavailable");
       return;
     }
-    const tourData = await tourRes.json();
+    const tourData = await tourRes.json() as { tournaments?: { event_id: string }[] };
     const eventIds: string[] = (tourData.tournaments ?? [])
       .slice(0, 2)
       .map((t: { event_id: string }) => t.event_id);

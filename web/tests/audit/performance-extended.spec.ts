@@ -80,8 +80,8 @@ test.describe("Audit: Extended performance metrics", () => {
 
     results.push({ test: "api-response-profile", details: profile });
 
-    // Health pings the upstream backend which can be slow — allow up to 10s at p95
-    expect(profile["/api/health"].p95).toBeLessThan(10_000);
+    // Health pings the upstream backend which can be slow — allow up to 15s at p95
+    expect(profile["/api/health"].p95).toBeLessThan(15_000);
     // Games proxies through upstream API which can be slow / rate-limited
     expect(profile["/api/games"].p95).toBeLessThan(30_000);
   });

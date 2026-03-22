@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { isBackendAvailable } from "../helpers";
+import { isBackendAvailable, fetchWithRetry } from "../helpers";
 import fs from "fs";
 import path from "path";
 
@@ -101,21 +101,21 @@ test.describe("Audit: API validation", () => {
   }
 
   test("dynamic game detail endpoint", async ({ request }) => {
-    const gamesRes = await request.get("/api/games");
+    const gamesRes = await fetchWithRetry(request, "/api/games");
     if (!gamesRes.ok()) {
       test.skip(true, "Games API unavailable");
       return;
     }
 
     const gamesData = await gamesRes.json();
-    const firstGame = gamesData.games?.[0];
+    const firstGame = (gamesData as { games?: { id: string }[] }).games?.[0];
     if (!firstGame) {
       test.skip(true, "No games available");
       return;
     }
 
     const start = Date.now();
-    const res = await request.get(`/api/games/${firstGame.id}`);
+    const res = await fetchWithRetry(request, `/api/games/${firstGame.id}`);
     const responseTimeMs = Date.now() - start;
 
     if (res.status() === 429) {
@@ -140,23 +140,21 @@ test.describe("Audit: API validation", () => {
   });
 
   test("dynamic golf leaderboard endpoint", async ({ request }) => {
-    const tourRes = await request.get("/api/golf/tournaments");
+    const tourRes = await fetchWithRetry(request, "/api/golf/tournaments");
     if (!tourRes.ok()) {
       test.skip(true, "Golf API unavailable");
       return;
     }
 
     const tourData = await tourRes.json();
-    const firstTour = tourData.tournaments?.[0];
+    const firstTour = (tourData as { tournaments?: { event_id: string }[] }).tournaments?.[0];
     if (!firstTour) {
       test.skip(true, "No tournaments available");
       return;
     }
 
     const start = Date.now();
-    const res = await request.get(
-      `/api/golf/tournaments/${firstTour.event_id}/leaderboard`,
-    );
+    const res = await fetchWithRetry(request, `/api/golf/tournaments/${firstTour.event_id}/leaderboard`);
     const responseTimeMs = Date.now() - start;
 
     if (res.status() === 429) {
