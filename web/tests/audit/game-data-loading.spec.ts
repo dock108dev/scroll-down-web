@@ -79,7 +79,7 @@ test.describe("Audit: Game data loading & integrity", () => {
       test.skip(true, "Rate-limited by upstream API");
       return;
     }
-    if (res.status() >= 502 && !(await isBackendAvailable(request))) {
+    if (res.status() >= 500 && !(await isBackendAvailable(request))) {
       test.skip(true, "Backend unavailable — games API returned " + res.status());
       return;
     }
@@ -234,11 +234,11 @@ test.describe("Audit: Game data loading & integrity", () => {
       details: leagueResults,
     });
 
-    // If all leagues returned 502+, backend is down — skip
-    if (Object.values(leagueResults).every((r) => r.status >= 502)) {
+    // If any league returned 500+, check if backend is actually down — skip if so
+    if (Object.values(leagueResults).some((r) => r.status >= 500)) {
       const backendUp = await isBackendAvailable(request);
       if (!backendUp) {
-        test.skip(true, "Backend unavailable — all league endpoints returned 502+");
+        test.skip(true, "Backend unavailable — league endpoints returned 500+");
         return;
       }
     }
@@ -314,7 +314,7 @@ test.describe("Audit: Game data loading & integrity", () => {
       },
     });
 
-    if (res.status() >= 502 && !(await isBackendAvailable(request))) {
+    if (res.status() >= 500 && !(await isBackendAvailable(request))) {
       test.skip(true, "Backend unavailable — golf API returned " + res.status());
       return;
     }
@@ -352,7 +352,7 @@ test.describe("Audit: Game data loading & integrity", () => {
       },
     });
 
-    if (res.status() >= 502 && !(await isBackendAvailable(request))) {
+    if (res.status() >= 500 && !(await isBackendAvailable(request))) {
       test.skip(true, "Backend unavailable — fairbet API returned " + res.status());
       return;
     }

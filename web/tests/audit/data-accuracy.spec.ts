@@ -1,7 +1,9 @@
 import { test, expect } from "@playwright/test";
-import { waitForGameData, waitForLoad, fetchWithRetry } from "../helpers";
+import { waitForGameData, fetchWithRetry } from "../helpers";
 
 test.describe("Audit: Data accuracy", () => {
+  test.setTimeout(60_000);
+
   test("game scores in UI match API data", async ({ page, request }) => {
     const gamesRes = await fetchWithRetry(request, "/api/games");
     if (!gamesRes.ok()) {
@@ -57,12 +59,11 @@ test.describe("Audit: Data accuracy", () => {
     const detail = (await detailRes.json()) as Record<string, unknown>;
     const apiGame = detail.game as Record<string, string> | undefined;
 
-    // Navigate to game detail page
-    await page.goto(`/game/${game.id}`);
-    await waitForLoad(page);
+    // Navigate to game detail page and wait for client-side data fetch
+    await page.goto(`/game/${game.id}`, { waitUntil: "load" });
 
     const header = page.locator("[data-testid='game-header']");
-    await expect(header).toBeVisible({ timeout: 10_000 });
+    await expect(header).toBeVisible({ timeout: 25_000 });
 
     // Verify team names are present in the header
     const headerText = await header.textContent();

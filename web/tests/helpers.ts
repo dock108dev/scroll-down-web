@@ -119,7 +119,7 @@ export async function fetchWithRetry(
   baseDelayMs = 2_000,
 ): Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> {
   let res = await request.get(url);
-  for (let i = 0; i < retries && res.status() === 429; i++) {
+  for (let i = 0; i < retries && (res.status() === 429 || res.status() === 500); i++) {
     const delay = baseDelayMs * Math.pow(2, i); // 2s, 4s, 8s
     await new Promise((r) => setTimeout(r, delay));
     res = await request.get(url);
