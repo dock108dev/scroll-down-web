@@ -32,7 +32,7 @@ interface ScoreData {
 }
 
 test.describe("Audit: Third-party data comparison", () => {
-  test.setTimeout(90_000);
+  test.setTimeout(180_000);
   const results: ComparisonResult[] = [];
 
   test.afterAll(() => {
@@ -49,7 +49,7 @@ test.describe("Audit: Third-party data comparison", () => {
     browser,
   }) => {
     // Get our data first
-    const sdRes = await request.get("/api/games");
+    const sdRes = await request.get("/api/games", { timeout: 30_000 });
     const sdData = await sdRes.json();
     const sdGames = sdData.games ?? [];
 
@@ -116,7 +116,7 @@ test.describe("Audit: Third-party data comparison", () => {
     request,
     browser,
   }) => {
-    const sdRes = await request.get("/api/games");
+    const sdRes = await request.get("/api/games", { timeout: 30_000 });
     const sdData = await sdRes.json();
     const sdGames = sdData.games ?? [];
 
@@ -172,7 +172,7 @@ test.describe("Audit: Third-party data comparison", () => {
     let espnError: string | null = null;
 
     try {
-      const espnRes = await request.get(espnUrl);
+      const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
         const espnData = await espnRes.json();
         const events = espnData.events ?? [];
@@ -211,7 +211,7 @@ test.describe("Audit: Third-party data comparison", () => {
     }
 
     // Get our games
-    const sdRes = await request.get("/api/games");
+    const sdRes = await request.get("/api/games", { timeout: 30_000 });
     const sdData = await sdRes.json();
     const sdNba = (sdData.games ?? []).filter(
       (g: { league: string }) => g.league?.toUpperCase() === "NBA",
@@ -292,7 +292,7 @@ test.describe("Audit: Third-party data comparison", () => {
     let espnError: string | null = null;
 
     try {
-      const espnRes = await request.get(espnUrl);
+      const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
         const data = await espnRes.json();
         espnCount = data.events?.length ?? 0;
@@ -301,7 +301,7 @@ test.describe("Audit: Third-party data comparison", () => {
       espnError = err instanceof Error ? err.message : String(err);
     }
 
-    const sdRes = await request.get("/api/games");
+    const sdRes = await request.get("/api/games", { timeout: 30_000 });
     const sdData = await sdRes.json();
     const sdNfl = (sdData.games ?? []).filter(
       (g: { league: string }) => g.league?.toUpperCase() === "NFL",
@@ -329,7 +329,7 @@ test.describe("Audit: Third-party data comparison", () => {
     let espnError: string | null = null;
 
     try {
-      const espnRes = await request.get(espnUrl);
+      const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
         const data = await espnRes.json();
         espnCount = data.events?.length ?? 0;
@@ -338,7 +338,7 @@ test.describe("Audit: Third-party data comparison", () => {
       espnError = err instanceof Error ? err.message : String(err);
     }
 
-    const sdRes = await request.get("/api/games");
+    const sdRes = await request.get("/api/games", { timeout: 30_000 });
     const sdData = await sdRes.json();
     const sdMlb = (sdData.games ?? []).filter(
       (g: { league: string }) => g.league?.toUpperCase() === "MLB",
@@ -366,7 +366,7 @@ test.describe("Audit: Third-party data comparison", () => {
     let espnError: string | null = null;
 
     try {
-      const espnRes = await request.get(espnUrl);
+      const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
         const data = await espnRes.json();
         espnCount = data.events?.length ?? 0;
@@ -375,7 +375,7 @@ test.describe("Audit: Third-party data comparison", () => {
       espnError = err instanceof Error ? err.message : String(err);
     }
 
-    const sdRes = await request.get("/api/games");
+    const sdRes = await request.get("/api/games", { timeout: 30_000 });
     const sdData = await sdRes.json();
     const sdNhl = (sdData.games ?? []).filter(
       (g: { league: string }) => g.league?.toUpperCase() === "NHL",
@@ -399,7 +399,7 @@ test.describe("Audit: Third-party data comparison", () => {
     request,
   }) => {
     const startSd = Date.now();
-    const sdRes = await request.get("/api/games");
+    const sdRes = await request.get("/api/games", { timeout: 30_000 });
     const sdLatency = Date.now() - startSd;
 
     const today = new Date().toISOString().split("T")[0].replace(/-/g, "");
@@ -410,6 +410,7 @@ test.describe("Audit: Third-party data comparison", () => {
     try {
       await request.get(
         `https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard?dates=${today}`,
+        { timeout: 30_000 },
       );
       espnLatency = Date.now() - startEspn;
     } catch (err) {
@@ -424,6 +425,7 @@ test.describe("Audit: Third-party data comparison", () => {
     try {
       await request.get(
         "https://www.cbssports.com/nba/scoreboard/",
+        { timeout: 30_000 },
       );
       cbsLatency = Date.now() - startCbs;
     } catch (err) {

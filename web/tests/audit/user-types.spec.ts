@@ -196,12 +196,13 @@ test.describe("Audit: User type behavior", () => {
     authedPage: page,
     request,
   }) => {
+    test.setTimeout(60_000);
     if (!hasValidAuthState()) {
       test.skip(true, "No valid auth state — backend was unavailable during setup");
       return;
     }
     // FairBet live odds are auth-gated
-    const response = await page.request.get("/api/fairbet/live/games");
+    const response = await page.request.get("/api/fairbet/live/games", { timeout: 30_000 });
 
     results.push({
       test: "authed-fairbet-live",

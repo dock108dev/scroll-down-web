@@ -53,6 +53,7 @@ test.describe("Audit: Crawl all pages", () => {
   }
 
   test("audit dynamic game pages", async ({ page: p, request }) => {
+    test.setTimeout(60_000);
     // Get valid game IDs from API
     const gamesRes = await fetchWithRetry(request, "/api/games");
     if (!gamesRes.ok()) {

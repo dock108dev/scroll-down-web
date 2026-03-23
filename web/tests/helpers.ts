@@ -113,16 +113,16 @@ export async function waitForGameData(page: Page, timeout = 15_000): Promise<boo
 
 /** Fetch with automatic retry on 429 rate-limit responses using exponential backoff. */
 export async function fetchWithRetry(
-  request: { get: (url: string) => Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> },
+  request: { get: (url: string, opts?: { timeout?: number }) => Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> },
   url: string,
-  retries = 3,
-  baseDelayMs = 2_000,
+  retries = 2,
+  baseDelayMs = 1_500,
 ): Promise<{ status: () => number; json: () => Promise<unknown>; ok: () => boolean; text: () => Promise<string> }> {
-  let res = await request.get(url);
+  let res = await request.get(url, { timeout: 30_000 });
   for (let i = 0; i < retries && (res.status() === 429 || res.status() === 500); i++) {
-    const delay = baseDelayMs * Math.pow(2, i); // 2s, 4s, 8s
+    const delay = baseDelayMs * Math.pow(2, i); // 1.5s, 3s
     await new Promise((r) => setTimeout(r, delay));
-    res = await request.get(url);
+    res = await request.get(url, { timeout: 30_000 });
   }
   return res;
 }

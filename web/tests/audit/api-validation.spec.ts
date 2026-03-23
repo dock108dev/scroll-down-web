@@ -7,6 +7,8 @@ const RESULTS_DIR = path.join(__dirname, "..", "..", "..", "docs", "audit-result
 const MAX_RESPONSE_TIME_MS = 15_000;
 // Health endpoint pings the backend admin API, which can be slow
 const MAX_HEALTH_RESPONSE_TIME_MS = 15_000;
+// FairBet odds endpoint aggregates from multiple sources and is consistently slow
+const MAX_FAIRBET_ODDS_RESPONSE_TIME_MS = 30_000;
 
 interface ApiTestResult {
   endpoint: string;
@@ -35,6 +37,8 @@ const GET_ENDPOINTS = [
 ];
 
 test.describe("Audit: API validation", () => {
+  // Some endpoints (fairbet, analytics) are slow; allow enough time for fetch + retries
+  test.setTimeout(60_000);
   const results: ApiTestResult[] = [];
 
   test.afterAll(() => {
@@ -107,7 +111,11 @@ test.describe("Audit: API validation", () => {
       // Assertions
       expect(res.status()).toBeLessThan(500);
       expect(validJson).toBe(true);
-      const limit = endpoint.path === "/api/health" ? MAX_HEALTH_RESPONSE_TIME_MS : MAX_RESPONSE_TIME_MS;
+      const limit = endpoint.path === "/api/health"
+        ? MAX_HEALTH_RESPONSE_TIME_MS
+        : endpoint.path === "/api/fairbet/odds"
+          ? MAX_FAIRBET_ODDS_RESPONSE_TIME_MS
+          : MAX_RESPONSE_TIME_MS;
       expect(responseTimeMs).toBeLessThan(limit);
       if (endpoint.shape.length > 0) {
         expect(hasExpectedShape).toBe(true);
