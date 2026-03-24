@@ -72,6 +72,7 @@ test.describe("Audit: Crawl all pages", () => {
   });
 
   test("audit dynamic golf event pages", async ({ page: p, request }) => {
+    test.setTimeout(90_000);
     const tourRes = await fetchWithRetry(request, "/api/golf/tournaments");
     if (!tourRes.ok()) {
       test.skip(true, "Golf API unavailable");

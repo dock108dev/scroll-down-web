@@ -49,6 +49,8 @@ export function TopNav() {
             width={32}
             height={32}
             className="rounded-lg"
+            unoptimized
+            priority
           />
           <span className="text-lg font-bold tracking-tight">
             Scroll Down Sports

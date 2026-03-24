@@ -7,48 +7,83 @@ import path from "path";
  * Global setup — creates a test account and saves its auth state
  * so all other tests can load it without re-logging-in each time.
  */
-setup("create test account and save auth state", async ({ page }) => {
+setup("create test account and save auth state", async ({ page, request }) => {
+  setup.setTimeout(120_000);
   // Ensure .auth directory exists
   const dir = path.dirname(AUTH_STATE_PATH);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 
-  const email = `e2e-${Date.now()}@test.scrolldown.dev`;
-  const password = "Test1234!secure";
-
-  // Sign up a fresh account. If the backend is unreachable, save empty
-  // auth state so dependent tests can still run (they'll detect the
-  // missing session and skip).
-  try {
-    await signupViaUI(page, email, password);
-  } catch {
-    console.warn("[global-setup] Backend unavailable — saving empty auth state");
-  }
-
-  // Ensure sd-settings is in localStorage (Zustand persist doesn't write
-  // defaults until a set() call, so seed explicitly for test fixtures).
-  await page.evaluate(() => {
-    if (!localStorage.getItem("sd-settings")) {
-      localStorage.setItem(
-        "sd-settings",
-        JSON.stringify({
-          state: {
-            theme: "system",
-            scoreRevealMode: "onMarkRead",
-            preferredSportsbook: "",
-            oddsFormat: "american",
-            autoResumePosition: true,
-            homeExpandedSections: [],
-            hideLimitedData: true,
-            timelineDefaultTiers: [1, 2, 3],
-            followingLive: false,
-            followingLiveAt: 0,
-          },
-          version: 2,
-        }),
-      );
-    }
+  const DEFAULT_SETTINGS = JSON.stringify({
+    state: {
+      theme: "system",
+      scoreRevealMode: "onMarkRead",
+      preferredSportsbook: "",
+      oddsFormat: "american",
+      autoResumePosition: true,
+      homeExpandedSections: [],
+      hideLimitedData: true,
+      timelineDefaultTiers: [1, 2, 3],
+      followingLive: false,
+      followingLiveAt: 0,
+    },
+    version: 2,
   });
 
-  // Save authenticated state (cookies + localStorage)
-  await page.context().storageState({ path: AUTH_STATE_PATH });
+  // Check if backend is reachable before attempting signup
+  let backendUp = false;
+  try {
+    const healthRes = await request.get("/api/health", { timeout: 15_000 });
+    if (healthRes.ok()) {
+      const body = await healthRes.json();
+      backendUp = body.status === "ok";
+    }
+  } catch {
+    // health endpoint unreachable
+  }
+
+  if (backendUp) {
+    const email = `e2e-${Date.now()}@test.scrolldown.dev`;
+    const password = "Test1234!secure";
+
+    try {
+      await signupViaUI(page, email, password);
+    } catch {
+      console.warn("[global-setup] Signup failed — saving empty auth state");
+    }
+
+    // Navigate to app so localStorage is accessible for seeding
+    await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 }).catch(() => {});
+
+    try {
+      await page.evaluate((settings: string) => {
+        if (!localStorage.getItem("sd-settings")) {
+          localStorage.setItem("sd-settings", settings);
+        }
+      }, DEFAULT_SETTINGS);
+    } catch {
+      console.warn("[global-setup] Could not seed localStorage via page.evaluate");
+    }
+
+    // Save authenticated state (cookies + localStorage)
+    try {
+      await page.context().storageState({ path: AUTH_STATE_PATH });
+    } catch {
+      fs.writeFileSync(AUTH_STATE_PATH, JSON.stringify({ cookies: [], origins: [] }));
+    }
+  } else {
+    console.warn("[global-setup] Backend unavailable — saving empty auth state");
+    // Write auth state with seeded settings directly — no page navigation needed
+    fs.writeFileSync(
+      AUTH_STATE_PATH,
+      JSON.stringify({
+        cookies: [],
+        origins: [
+          {
+            origin: "http://localhost:3001",
+            localStorage: [{ name: "sd-settings", value: DEFAULT_SETTINGS }],
+          },
+        ],
+      }),
+    );
+  }
 });

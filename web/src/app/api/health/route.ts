@@ -7,8 +7,8 @@ export async function GET() {
   let backendStatus: "ok" | "degraded" = "ok";
 
   try {
-    // Ping backend with a lightweight endpoint
-    await apiFetch("/api/admin/sports/games?limit=1", { revalidate: 0 });
+    // Ping backend with a lightweight endpoint; short timeout so health never hangs
+    await apiFetch("/api/admin/sports/games?limit=1", { revalidate: 0, timeoutMs: 4_000 });
   } catch {
     backendStatus = "degraded";
   }

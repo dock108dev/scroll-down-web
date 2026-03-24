@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { waitForLoad, collectPerformanceMetrics, AUTH_STATE_PATH } from "../helpers";
+import { waitForLoad, collectPerformanceMetrics, AUTH_STATE_PATH, isBackendAvailable } from "../helpers";
 import fs from "fs";
 import path from "path";
 
@@ -79,6 +79,12 @@ test.describe("Audit: Extended performance metrics", () => {
     }
 
     results.push({ test: "api-response-profile", details: profile });
+
+    // Skip timing assertions when backend is down — latencies are meaningless
+    if (!(await isBackendAvailable(request))) {
+      test.skip(true, "Backend unavailable — skipping API response time assertions");
+      return;
+    }
 
     // Health pings the upstream backend which can be slow — allow up to 15s at p95
     expect(profile["/api/health"].p95).toBeLessThan(15_000);
