@@ -62,7 +62,7 @@ jobs:
         run: ./scripts/generate-report.sh docs/audit-results docs/audit-results/reports/$(date +%Y-%m-%d).md
 
       - name: Upload audit results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: audit-results-${{ github.run_number }}
