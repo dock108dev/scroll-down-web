@@ -60,25 +60,33 @@ export function forwardAuth(
 
 export async function apiFetch<T>(
   path: string,
-  options?: RequestInit & { revalidate?: number },
+  options?: RequestInit & { revalidate?: number; timeoutMs?: number },
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "X-API-Key": API_KEY,
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    next:
-      options?.revalidate !== undefined
-        ? { revalidate: options.revalidate }
-        : undefined,
-  });
+  const timeoutMs = options?.timeoutMs ?? 15_000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+      headers: {
+        "X-API-Key": API_KEY,
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+      next:
+        options?.revalidate !== undefined
+          ? { revalidate: options.revalidate }
+          : undefined,
+    });
 
-  if (!res.ok) {
-    throw new ApiError(res.status, await res.text());
+    if (!res.ok) {
+      throw new ApiError(res.status, await res.text());
+    }
+    const data: T = await res.json();
+    return deepFixStrings(data);
+  } finally {
+    clearTimeout(timer);
   }
-  const data: T = await res.json();
-  return deepFixStrings(data);
 }

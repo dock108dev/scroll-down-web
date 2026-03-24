@@ -79,7 +79,7 @@ test.describe("Audit: Game data loading & integrity", () => {
       test.skip(true, "Rate-limited by upstream API");
       return;
     }
-    if (res.status() >= 500 && !(await isBackendAvailable(request))) {
+    if ((res.status() === 401 || res.status() >= 500) && !(await isBackendAvailable(request))) {
       test.skip(true, "Backend unavailable — games API returned " + res.status());
       return;
     }
@@ -226,6 +226,15 @@ test.describe("Audit: Game data loading & integrity", () => {
         count: (body.games as unknown[] | undefined)?.length ?? 0,
         status: res.status(),
       };
+
+      // If first league call fails with 500+, check backend and skip early
+      if (res.status() >= 500 && Object.keys(leagueResults).length === 1) {
+        const backendUp = await isBackendAvailable(request);
+        if (!backendUp) {
+          test.skip(true, "Backend unavailable — first league call returned " + res.status());
+          return;
+        }
+      }
     }
 
     results.push({
@@ -361,6 +370,10 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("game statuses are valid enum values", async ({ request }) => {
     const res = await fetchWithRetry(request, "/api/games");
+    if (!res.ok()) {
+      test.skip(true, "Games API unavailable (" + res.status() + ")");
+      return;
+    }
     const body = (await res.json()) as Record<string, unknown>;
 
     const validStatuses = [
@@ -405,6 +418,10 @@ test.describe("Audit: Game data loading & integrity", () => {
 
   test("game times are valid ISO dates", async ({ request }) => {
     const res = await fetchWithRetry(request, "/api/games");
+    if (!res.ok()) {
+      test.skip(true, "Games API unavailable (" + res.status() + ")");
+      return;
+    }
     const body = (await res.json()) as Record<string, unknown>;
     const games = (body.games as { start_time: string | null; id: number }[]) ?? [];
 

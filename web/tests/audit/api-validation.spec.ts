@@ -99,8 +99,8 @@ test.describe("Audit: API validation", () => {
       };
       results.push(result);
 
-      // Skip when backend is unreachable (502/503 from proxy)
-      if (res.status() >= 502 && res.status() <= 504) {
+      // Skip when backend is unreachable (4xx auth errors or 5xx from proxy/upstream)
+      if (res.status() >= 400) {
         const backendUp = await isBackendAvailable(request);
         if (!backendUp) {
           test.skip(true, `Backend unavailable — ${endpoint.path} returned ${res.status()}`);

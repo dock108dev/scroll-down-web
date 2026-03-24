@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3001 --webpack",
-    "build": "next build",
-    "start": "next start --port 3001",
+    "build": "next build && cp -r public .next/standalone/public && cp -r .next/static .next/standalone/.next/static",
+    "start": "PORT=3001 node .next/standalone/server.js",
     "lint": "eslint",
     "test": "npx playwright test",
     "test:smoke": "npx playwright test --grep @smoke",
