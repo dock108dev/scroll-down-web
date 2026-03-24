@@ -55,13 +55,13 @@ test.describe("Audit: Third-party data comparison", () => {
       test.skip(true, "Games API unavailable (" + sdRes.status() + ")");
       return;
     }
-    const sdData = await sdRes.json();
-    const sdGames = sdData.games ?? [];
+    const sdData = (await sdRes.json()) as Record<string, unknown>;
+    const sdGames = (sdData.games ?? []) as Record<string, unknown>[];
 
     // Count games by league from our API
     const sdByLeague: Record<string, number> = {};
     for (const g of sdGames) {
-      const league = (g.league ?? "unknown").toUpperCase();
+      const league = (((g.league as string) ?? "unknown")).toUpperCase();
       sdByLeague[league] = (sdByLeague[league] ?? 0) + 1;
     }
 
@@ -126,8 +126,8 @@ test.describe("Audit: Third-party data comparison", () => {
       test.skip(true, "Games API unavailable (" + sdRes.status() + ")");
       return;
     }
-    const sdData = await sdRes.json();
-    const sdGames = sdData.games ?? [];
+    const sdData = (await sdRes.json()) as Record<string, unknown>;
+    const sdGames = (sdData.games ?? []) as Record<string, unknown>[];
 
     let cbsGameCount = 0;
     let cbsError: string | null = null;
@@ -162,7 +162,7 @@ test.describe("Audit: Third-party data comparison", () => {
       passed: true,
       details: {
         scrollDownNbaGames: sdGames.filter(
-          (g: { league: string }) => g.league?.toUpperCase() === "NBA",
+          (g) => (g.league as string)?.toUpperCase() === "NBA",
         ).length,
         cbsNbaGames: cbsGameCount,
         cbsError,
@@ -183,25 +183,25 @@ test.describe("Audit: Third-party data comparison", () => {
     try {
       const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
-        const espnData = await espnRes.json();
-        const events = espnData.events ?? [];
-        espnGames = events.map(
-          (e: {
-            competitions: Array<{
-              competitors: Array<{
-                team: { abbreviation: string };
-                score: string;
-                homeAway: string;
-              }>;
-              status: { type: { name: string } };
+        const espnData = (await espnRes.json()) as Record<string, unknown>;
+        const events = (espnData.events ?? []) as Record<string, unknown>[];
+        interface EspnEvent {
+          competitions?: Array<{
+            competitors?: Array<{
+              team?: { abbreviation?: string };
+              score?: string;
+              homeAway?: string;
             }>;
-          }) => {
+            status?: { type?: { name?: string } };
+          }>;
+        }
+        espnGames = (events as unknown as EspnEvent[]).map((e) => {
             const comp = e.competitions?.[0];
             const away = comp?.competitors?.find(
-              (c: { homeAway: string }) => c.homeAway === "away",
+              (c) => c.homeAway === "away",
             );
             const home = comp?.competitors?.find(
-              (c: { homeAway: string }) => c.homeAway === "home",
+              (c) => c.homeAway === "home",
             );
             return {
               away: away?.team?.abbreviation ?? "?",
@@ -225,9 +225,16 @@ test.describe("Audit: Third-party data comparison", () => {
       test.skip(true, "Games API unavailable (" + sdRes.status() + ")");
       return;
     }
-    const sdData = await sdRes.json();
-    const sdNba = (sdData.games ?? []).filter(
-      (g: { league: string }) => g.league?.toUpperCase() === "NBA",
+    const sdData = (await sdRes.json()) as Record<string, unknown>;
+    interface SdGame {
+      league?: string;
+      away_team?: { abbreviation?: string };
+      home_team?: { abbreviation?: string };
+      away_score?: number | null;
+      home_score?: number | null;
+    }
+    const sdNba = ((sdData.games ?? []) as unknown as SdGame[]).filter(
+      (g) => g.league?.toUpperCase() === "NBA",
     );
 
     // Compare
@@ -239,7 +246,7 @@ test.describe("Audit: Third-party data comparison", () => {
 
     for (const eg of espnGames) {
       const match = sdNba.find(
-        (sg: { away_team: { abbreviation: string }; home_team: { abbreviation: string } }) =>
+        (sg) =>
           sg.away_team?.abbreviation === eg.away &&
           sg.home_team?.abbreviation === eg.home,
       );
@@ -248,8 +255,8 @@ test.describe("Audit: Third-party data comparison", () => {
         espn: eg,
         sd: match
           ? {
-              away: match.away_team?.abbreviation,
-              home: match.home_team?.abbreviation,
+              away: match.away_team?.abbreviation ?? "?",
+              home: match.home_team?.abbreviation ?? "?",
               awayScore: match.away_score ?? null,
               homeScore: match.home_score ?? null,
             }
@@ -307,8 +314,8 @@ test.describe("Audit: Third-party data comparison", () => {
     try {
       const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
-        const data = await espnRes.json();
-        espnCount = data.events?.length ?? 0;
+        const data = (await espnRes.json()) as Record<string, unknown>;
+        espnCount = (data.events as unknown[] | undefined)?.length ?? 0;
       }
     } catch (err) {
       espnError = err instanceof Error ? err.message : String(err);
@@ -319,9 +326,9 @@ test.describe("Audit: Third-party data comparison", () => {
       test.skip(true, "Games API unavailable (" + sdRes.status() + ")");
       return;
     }
-    const sdData = await sdRes.json();
-    const sdNfl = (sdData.games ?? []).filter(
-      (g: { league: string }) => g.league?.toUpperCase() === "NFL",
+    const sdData = (await sdRes.json()) as Record<string, unknown>;
+    const sdNfl = ((sdData.games ?? []) as Record<string, unknown>[]).filter(
+      (g) => (g.league as string | undefined)?.toUpperCase() === "NFL",
     );
 
     results.push({
@@ -348,8 +355,8 @@ test.describe("Audit: Third-party data comparison", () => {
     try {
       const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
-        const data = await espnRes.json();
-        espnCount = data.events?.length ?? 0;
+        const data = (await espnRes.json()) as Record<string, unknown>;
+        espnCount = (data.events as unknown[] | undefined)?.length ?? 0;
       }
     } catch (err) {
       espnError = err instanceof Error ? err.message : String(err);
@@ -360,9 +367,9 @@ test.describe("Audit: Third-party data comparison", () => {
       test.skip(true, "Games API unavailable (" + sdRes.status() + ")");
       return;
     }
-    const sdData = await sdRes.json();
-    const sdMlb = (sdData.games ?? []).filter(
-      (g: { league: string }) => g.league?.toUpperCase() === "MLB",
+    const sdData = (await sdRes.json()) as Record<string, unknown>;
+    const sdMlb = ((sdData.games ?? []) as Record<string, unknown>[]).filter(
+      (g) => (g.league as string | undefined)?.toUpperCase() === "MLB",
     );
 
     results.push({
@@ -389,8 +396,8 @@ test.describe("Audit: Third-party data comparison", () => {
     try {
       const espnRes = await request.get(espnUrl, { timeout: 30_000 });
       if (espnRes.ok()) {
-        const data = await espnRes.json();
-        espnCount = data.events?.length ?? 0;
+        const data = (await espnRes.json()) as Record<string, unknown>;
+        espnCount = (data.events as unknown[] | undefined)?.length ?? 0;
       }
     } catch (err) {
       espnError = err instanceof Error ? err.message : String(err);
@@ -401,9 +408,9 @@ test.describe("Audit: Third-party data comparison", () => {
       test.skip(true, "Games API unavailable (" + sdRes.status() + ")");
       return;
     }
-    const sdData = await sdRes.json();
-    const sdNhl = (sdData.games ?? []).filter(
-      (g: { league: string }) => g.league?.toUpperCase() === "NHL",
+    const sdData = (await sdRes.json()) as Record<string, unknown>;
+    const sdNhl = ((sdData.games ?? []) as Record<string, unknown>[]).filter(
+      (g) => (g.league as string | undefined)?.toUpperCase() === "NHL",
     );
 
     results.push({
