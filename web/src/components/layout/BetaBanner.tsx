@@ -1,30 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 
 const DISMISSED_KEY = "sd-beta-banner-dismissed";
 
-function wasNotDismissed(): boolean {
+function subscribe(cb: () => void) {
+  window.addEventListener("storage", cb);
+  return () => window.removeEventListener("storage", cb);
+}
+
+function getSnapshot(): boolean {
   try {
     return !sessionStorage.getItem(DISMISSED_KEY);
   } catch {
-    return false; // SSR or storage unavailable
+    return false;
   }
 }
 
+function getServerSnapshot(): boolean {
+  return false;
+}
+
 export function BetaBanner() {
-  const [visible, setVisible] = useState(wasNotDismissed);
+  const shouldShow = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const [dismissed, setDismissed] = useState(false);
+  const visible = shouldShow && !dismissed;
 
-  if (!visible) return null;
-
-  const dismiss = () => {
-    setVisible(false);
+  const dismiss = useCallback(() => {
+    setDismissed(true);
     try {
       sessionStorage.setItem(DISMISSED_KEY, "1");
     } catch {
       // ignore
     }
-  };
+  }, []);
+
+  if (!visible) return null;
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 md:bottom-4 md:left-auto md:right-4 md:max-w-sm pointer-events-none">
