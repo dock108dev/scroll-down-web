@@ -86,7 +86,6 @@ All detailed documentation lives in [`docs/`](docs/):
 | [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
 | [Development](docs/development.md) | Local dev setup, debugging, QA checklist |
 | [Audit Agent Guide](docs/audit-agent.md) | Agent guide for the headless audit Mac |
-| [Error Suppression Audit](docs/error-suppression-audit.md) | Inventory of catch/fallback/resilience patterns |
 
 ## Repository Layout
 

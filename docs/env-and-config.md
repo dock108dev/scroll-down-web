@@ -14,10 +14,6 @@
 |----------|---------|---------|
 | `SPORTS_API_INTERNAL_URL` | `https://sports-data-admin.dock108.ai` | Server-side backend URL. Use this in Docker to hit the backend via internal network instead of public DNS. |
 
-### Not Used (Legacy)
-
-The `.env.example` files reference `NEXT_PUBLIC_API_BASE_URL`, but this variable is **not consumed anywhere in the source code**. The backend URL is hardcoded in `src/lib/config.ts` as `BACKEND_BASE_URL`. Changing the backend URL requires editing `config.ts`.
-
 ### Build-time
 
 | Variable | Set By | Purpose |

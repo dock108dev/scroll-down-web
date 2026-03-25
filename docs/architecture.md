@@ -29,7 +29,7 @@ All backend calls go through Next.js API routes (`src/app/api/`). These inject t
 | `GET /api/fairbet/live/games` | `/api/fairbet/live/games` | Live game discovery |
 | `GET /api/fairbet/live` | `/api/fairbet/live` | Live game odds |
 | `GET /api/realtime/sse` | `/v1/sse` | SSE proxy (EventSource can't set headers) |
-| `* /api/auth/[...path]` | `/auth/*` | Auth passthrough (login, signup, etc.) |
+| `* /api/auth/[...path]` | `/auth/*` | Auth proxy with path whitelist and rate limiting (see below) |
 
 ### Golf Routes
 
@@ -60,11 +60,24 @@ All backend calls go through Next.js API routes (`src/app/api/`). These inject t
 | `/api/analytics/record-outcomes` | `/api/analytics/record-outcomes` | POST | Record prediction outcomes |
 | `/api/analytics/prediction-outcomes` | `/api/analytics/prediction-outcomes` | GET | Prediction outcome history |
 
+### Simulator Routes
+
+| Route | Backend Endpoint | Method | Purpose |
+|-------|-----------------|--------|---------|
+| `/api/simulator/[sport]/teams` | `/api/simulator/:sport/teams` | GET | Team list for sport (1hr ISR cache). Sport whitelist: `mlb`, `nba`, `nhl`, `ncaab`. |
+| `/api/simulator/[sport]` | `/api/simulator/:sport` | POST | Run Monte Carlo simulation for any supported sport |
+
+### Tracking
+
+| Route | Purpose |
+|-------|---------|
+| `POST /api/analytics-event` | Self-hosted analytics. Receives pageview/custom events via sendBeacon. Logs structured JSON to stdout (Docker captures). IPs anonymized (last octet zeroed). |
+
 ### Health
 
 | Route | Purpose |
 |-------|---------|
-| `GET /api/health` | Returns `{ status, timestamp, version }`. Pings backend — returns `"degraded"` if unreachable. |
+| `GET /api/health` | Returns `{ status, timestamp }`. Pings backend — returns `"degraded"` if unreachable. |
 
 Server-side API configuration lives in `src/lib/api-server.ts`. Client-side fetch wrapper in `src/lib/api.ts`.
 
@@ -117,7 +130,7 @@ components/
   golf/         # TournamentCard, Leaderboard, LeaderboardRow
   history/      # DateNavigator
   home/         # GameRow, PinnedBar, SearchBar
-  layout/       # TopNav, BottomTabs, SettingsDrawer
+  layout/       # TopNav, BottomTabs, Footer, SettingsDrawer, BetaBanner, AnalyticsProvider
   settings/     # SettingsContent
   shared/       # FormPrimitives, LoadingSkeleton, SectionHeader, CollapsibleSection
 ```
@@ -126,7 +139,7 @@ components/
 features/
   analytics/
     components/  # AnalyticsTabNav, ProbabilityBar, ScoreCard, PABreakdown, LineupBuilder, SimulatorResults, PitcherProfile
-    services/    # SimulatorService, ModelsService, BatchService, ProfilesService
+    services/    # SimulatorService, PublicSimulatorService, ModelsService, BatchService, ProfilesService
 ```
 
 ## Auth Model
@@ -136,6 +149,26 @@ features/
 - Token validated on app load via `GET /api/auth/me`; invalid token triggers auto-logout
 - Preference sync starts after successful login, stops on logout
 - Auth state forwarded to backend via `Authorization` header on proxied requests
+
+### Auth Proxy Security
+
+The auth proxy (`/api/auth/[...path]`) has two hardening layers:
+
+**Path whitelist** — only these backend paths are forwarded. All others return 404 before reaching the backend:
+
+```
+login, signup, me, me/email, me/password, me/preferences,
+refresh, forgot-password, reset-password, magic-link, magic-link/verify
+```
+
+**Rate limiting** — in-memory sliding-window limiter per client IP, keyed by path:
+
+| Tier | Limit | Paths |
+|------|-------|-------|
+| Strict | 8 req/min | `login`, `signup`, `forgot-password`, `reset-password`, `magic-link`, `magic-link/verify` |
+| Standard | 30 req/min | `me`, `me/email`, `me/password`, `me/preferences`, `refresh` |
+
+Returns `429 Too Many Requests` with `Retry-After` header when exceeded. Implementation in `src/lib/rate-limit.ts`.
 
 ## Analytics
 
@@ -154,7 +187,11 @@ The analytics section is organized under a `(mlb)` Next.js route group that shar
 
 `/analytics/mlb` redirects to `/analytics/simulator` for backward compatibility.
 
-### Pages
+### Multi-Sport Simulators
+
+In addition to the MLB lineup-aware simulator, generic simulators are available for NBA, NHL, and NCAAB at `/analytics/nba`, `/analytics/nhl`, `/analytics/ncaab`. These use the public simulator API endpoints (`/api/simulator/{sport}`) and offer a simpler team-picker interface without lineup configuration. Service layer: `PublicSimulatorService.ts`.
+
+### MLB Pages
 
 **Simulator** — Lineup-aware Monte Carlo plate appearance simulator. Users select home/away teams, customize 9-man batting orders and starting pitchers, then run 10,000-iteration simulations. Results show win probabilities, expected scores, likely final scores, and PA profiles.
 
@@ -167,6 +204,40 @@ The analytics section is organized under a `(mlb)` Next.js route group that shar
 ### Service Layer
 
 Each analytics page has a corresponding service in `src/features/analytics/services/` following the pattern from `SimulatorService.ts`: client-side functions calling `fetchApi()` to hit the proxy API routes.
+
+## Web Hardening
+
+### Security Headers
+
+Configured in `next.config.ts` via the `headers()` export:
+
+| Header | Value | Purpose |
+|--------|-------|---------|
+| `X-Content-Type-Options` | `nosniff` | Prevent MIME-type sniffing |
+| `X-Frame-Options` | `DENY` | Prevent clickjacking via iframes |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | Control referrer leakage |
+| `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Restrict browser APIs |
+| `Cache-Control` | `no-store` (API routes only) | Prevent caching of user-specific API responses |
+
+### SEO & Discoverability
+
+- `robots.ts` — blocks `/api/`, `/auth/`, `/profile`, `/settings`, `/history`, admin analytics routes
+- `sitemap.ts` — lists public pages with priority and change frequency
+- `manifest.ts` — PWA web manifest (installable, standalone display)
+- Per-page metadata via layout files — unique titles, descriptions, canonical URLs
+- Root layout includes OpenGraph, Twitter card, and JSON-LD WebApplication schema
+- Private/admin pages have `robots: { index: false }` metadata
+
+### Error Handling
+
+- `error.tsx` — global error boundary with retry button
+- `not-found.tsx` — custom 404 page
+- Auth proxy returns generic errors for backend 5xx responses (prevents detail leakage)
+- SSE proxy returns generic error message on upstream failure
+
+### Analytics
+
+Self-hosted pageview and event tracking (`src/lib/analytics.ts`). No third-party services, no cookies. Events sent via `navigator.sendBeacon` to `/api/analytics-event`, which logs structured JSON to stdout (captured by Docker). IPs are anonymized before logging. Key events tracked: pageviews (automatic), signup gate clicks, simulation runs, login/signup success, token refresh errors.
 
 ## Sports Supported
 
