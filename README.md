@@ -38,6 +38,7 @@ npm run dev                         # http://localhost:3001
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
 | MLB PA Simulator (lineup-aware Monte Carlo, Statcast-powered) | Yes |
+| NBA, NHL, NCAAB Matchup Simulators (Monte Carlo) | Yes |
 | MLB Team Profiles with rolling windows | Yes |
 | Model management, training, and calibration (admin) | Yes |
 | Batch simulation and outcome tracking (admin) | Yes |
@@ -85,6 +86,7 @@ All detailed documentation lives in [`docs/`](docs/):
 | [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
 | [Development](docs/development.md) | Local dev setup, debugging, QA checklist |
 | [Audit Agent Guide](docs/audit-agent.md) | Agent guide for the headless audit Mac |
+| [Error Suppression Audit](docs/error-suppression-audit.md) | Inventory of catch/fallback/resilience patterns |
 
 ## Repository Layout
 

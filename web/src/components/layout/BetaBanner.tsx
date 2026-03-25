@@ -1,21 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 const DISMISSED_KEY = "sd-beta-banner-dismissed";
 
-export function BetaBanner() {
-  const [visible, setVisible] = useState(false);
+function wasNotDismissed(): boolean {
+  try {
+    return !sessionStorage.getItem(DISMISSED_KEY);
+  } catch {
+    return false; // SSR or storage unavailable
+  }
+}
 
-  useEffect(() => {
-    try {
-      if (!sessionStorage.getItem(DISMISSED_KEY)) {
-        setVisible(true);
-      }
-    } catch {
-      // SSR or storage unavailable
-    }
-  }, []);
+export function BetaBanner() {
+  const [visible, setVisible] = useState(wasNotDismissed);
 
   if (!visible) return null;
 

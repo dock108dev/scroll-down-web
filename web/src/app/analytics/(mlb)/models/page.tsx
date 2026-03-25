@@ -38,6 +38,7 @@ export default function ModelsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [trainingInProgress, setTrainingInProgress] = useState(false);
+  const [pollFailing, setPollFailing] = useState(false);
 
   // Training form state
   const [modelType, setModelType] = useState("pitch");
@@ -81,13 +82,24 @@ export default function ModelsPage() {
   useEffect(() => {
     const hasRunning = trainingJobs.some((j) => j.status === "running" || j.status === "pending");
     if (!hasRunning) return;
+    let failures = 0;
     const interval = setInterval(async () => {
       try {
         const tj = await fetchTrainingJobs();
         setTrainingJobs(tj);
-      } catch { /* ignore */ }
+        if (failures > 0) {
+          failures = 0;
+          setPollFailing(false);
+        }
+      } catch {
+        failures++;
+        if (failures >= 3) setPollFailing(true);
+      }
     }, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      setPollFailing(false);
+    };
   }, [trainingJobs]);
 
   const handleStartTraining = async () => {
@@ -156,6 +168,13 @@ export default function ModelsPage() {
         {error && (
           <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-4 py-3">
             {error}
+          </div>
+        )}
+
+        {pollFailing && (
+          <div className="text-xs text-amber-400 bg-amber-900/15 border border-amber-800/40 rounded-lg px-4 py-2.5 flex items-center gap-2">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Live polling interrupted — status may be stale
           </div>
         )}
 

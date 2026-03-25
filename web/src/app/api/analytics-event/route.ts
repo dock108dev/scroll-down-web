@@ -20,16 +20,25 @@ interface AnalyticsEvent {
   timestamp?: number;
 }
 
+/** Drop last octet (IPv4) or last 4 groups (IPv6) for privacy. */
+function anonymizeIp(header: string | null): string | null {
+  const raw = header?.split(",")[0]?.trim();
+  if (!raw) return null;
+  const v4 = raw.split(".");
+  if (v4.length === 4) return `${v4[0]}.${v4[1]}.${v4[2]}.0`;
+  const v6 = raw.split(":");
+  if (v6.length > 4) return v6.slice(0, 4).join(":") + "::";
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body: AnalyticsEvent = await req.json();
 
-    // Basic validation
     if (!body.type || !body.url) {
       return NextResponse.json({ ok: false }, { status: 400 });
     }
 
-    // Structured log — Docker/journald captures stdout
     const entry = {
       _analytics: true,
       type: body.type,
@@ -39,21 +48,10 @@ export async function POST(req: NextRequest) {
       props: body.props || null,
       screen: body.screen || null,
       ts: body.timestamp || Date.now(),
-      // IP anonymized: drop last octet for privacy (e.g. 192.168.1.100 → 192.168.1.0)
-      ip: (() => {
-        const raw = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
-        if (!raw) return null;
-        const parts = raw.split(".");
-        if (parts.length === 4) return `${parts[0]}.${parts[1]}.${parts[2]}.0`;
-        // IPv6: truncate last 4 groups
-        const v6 = raw.split(":");
-        if (v6.length > 4) return v6.slice(0, 4).join(":") + "::";
-        return null;
-      })(),
+      ip: anonymizeIp(req.headers.get("x-forwarded-for")),
       ua: req.headers.get("user-agent") || null,
     };
 
-    // eslint-disable-next-line no-console
     console.log(JSON.stringify(entry));
 
     return NextResponse.json({ ok: true });
