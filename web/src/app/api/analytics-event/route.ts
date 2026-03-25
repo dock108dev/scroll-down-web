@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createRateLimiter } from "@/lib/rate-limit";
 
 /**
  * Lightweight self-hosted analytics endpoint.
@@ -7,8 +8,13 @@ import { NextRequest, NextResponse } from "next/server";
  * Currently logs to stdout (captured by Docker). To persist long-term,
  * forward these events to your backend or a time-series store.
  *
- * No cookies, no PII, no third-party services.
+ * No cookies. No third-party services. Collects anonymized IP (last octet
+ * zeroed) and user-agent for traffic analysis — no raw IPs are stored.
  */
+
+// 60 events per minute per client — generous for normal browsing,
+// stops automated abuse from filling logs.
+const limiter = createRateLimiter({ window: 60_000, max: 60 });
 
 interface AnalyticsEvent {
   type: "pageview" | "event";
@@ -32,6 +38,15 @@ function anonymizeIp(header: string | null): string | null {
 }
 
 export async function POST(req: NextRequest) {
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+    req.headers.get("x-real-ip") ||
+    "unknown";
+  const limit = limiter.check(ip);
+  if (!limit.ok) {
+    return NextResponse.json({ ok: false }, { status: 429 });
+  }
+
   try {
     const body: AnalyticsEvent = await req.json();
 

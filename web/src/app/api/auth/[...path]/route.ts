@@ -40,7 +40,9 @@ function getClientIp(req: NextRequest): string {
   return (
     req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
     req.headers.get("x-real-ip") ||
-    "unknown"
+    // No forwarding headers (local dev or misconfigured proxy). Use UA as a
+    // rough discriminator so all headerless requests don't share one bucket.
+    `no-ip:${req.headers.get("user-agent")?.slice(0, 64) ?? "unknown"}`
   );
 }
 

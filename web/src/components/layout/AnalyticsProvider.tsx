@@ -14,12 +14,14 @@ function AnalyticsTracker() {
   const isFirst = useRef(true);
 
   useEffect(() => {
+    const qs = searchParams.toString();
+    const url = qs ? `${pathname}?${qs}` : pathname;
     if (isFirst.current) {
       isFirst.current = false;
-      trackPageview(pathname);
+      trackPageview(url);
       return;
     }
-    trackPageview(pathname);
+    trackPageview(url);
   }, [pathname, searchParams]);
 
   return null;
