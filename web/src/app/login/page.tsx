@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
 import { VALIDATION } from "@/lib/config";
 import { cn } from "@/lib/utils";
+import { trackEvent } from "@/lib/analytics";
 
 type Tab = "login" | "signup";
 
@@ -56,8 +57,10 @@ function LoginForm() {
       try {
         if (tab === "login") {
           await login(email, password, rememberMe);
+          trackEvent("login_success");
         } else {
           await signup(email, password);
+          trackEvent("signup_success");
         }
         router.push("/");
       } catch (err) {

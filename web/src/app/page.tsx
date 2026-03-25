@@ -219,6 +219,19 @@ export default function HomePage() {
 
   return (
     <div data-testid="page-home" className="mx-auto max-w-2xl">
+      {/* SEO-visible hero — visible only when no games loaded yet */}
+      {!hasAnyGames && !loading && !error && (
+        <div className="px-4 pt-6 pb-2">
+          <h1 className="text-xl font-bold text-neutral-50">
+            Live Scores &amp; Spoiler-Free Recaps
+          </h1>
+          <p className="mt-1 text-sm text-neutral-400 leading-relaxed">
+            Follow MLB, NBA, NHL, and NCAAB games on your schedule. Scores are
+            hidden by default so you can catch up without spoilers.
+          </p>
+        </div>
+      )}
+
       {/* Sticky toolbar */}
       <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
         <SearchBar value={search} onChange={setSearch} />
@@ -290,6 +303,7 @@ export default function HomePage() {
               onClick={() => refetch()}
               className="p-1.5 rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
               title="Refresh"
+              aria-label="Refresh games"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="23 4 23 10 17 10" />

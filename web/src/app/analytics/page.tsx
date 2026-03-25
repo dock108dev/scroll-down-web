@@ -11,21 +11,21 @@ interface SportCard {
 }
 
 const SPORTS: SportCard[] = [
-  {
-    key: "mlb",
-    label: "MLB",
-    description: "Matchup Simulator",
-    href: "/analytics/simulator",
-  },
+  { key: "mlb", label: "MLB", description: "Matchup Simulator", href: "/analytics/simulator" },
+  { key: "nba", label: "NBA", description: "Matchup Simulator", href: "/analytics/nba" },
+  { key: "nhl", label: "NHL", description: "Matchup Simulator", href: "/analytics/nhl" },
+  { key: "ncaab", label: "NCAAB", description: "Matchup Simulator", href: "/analytics/ncaab" },
 ];
 
 export default function AnalyticsPage() {
   return (
     <div className="mx-auto max-w-2xl px-4 py-6 space-y-5">
       <div>
-        <h1 className="text-xl font-bold text-neutral-50">Analytics</h1>
-        <p className="text-xs text-neutral-500 mt-1">
-          Monte Carlo matchup simulators powered by real-time data.
+        <h1 className="text-xl font-bold text-neutral-50">Matchup Simulators</h1>
+        <p className="text-xs text-neutral-500 mt-1 leading-relaxed">
+          Run Monte Carlo simulations on any matchup. Pick two teams, simulate
+          thousands of games, and get win probabilities, expected scores, and the
+          most likely final outcomes — powered by real-time team performance data.
         </p>
       </div>
 

@@ -19,7 +19,6 @@ export async function GET() {
     {
       status,
       timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version ?? "0.1.0",
     },
     { status: status === "ok" ? 200 : 503 },
   );
