@@ -18,8 +18,8 @@ export async function GET(req: NextRequest) {
   });
 
   if (!upstream.ok || !upstream.body) {
-    return new Response(upstream.body ?? "SSE upstream error", {
-      status: upstream.status,
+    return new Response("SSE connection failed", {
+      status: upstream.status >= 400 && upstream.status < 600 ? upstream.status : 502,
     });
   }
 

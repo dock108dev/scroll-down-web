@@ -31,6 +31,7 @@ export default function BatchPage() {
   const [jobOutcomes, setJobOutcomes] = useState<Record<number, PredictionOutcome[]>>({});
   const [outcomesLoading, setOutcomesLoading] = useState<Record<number, boolean>>({});
   const [expandedOutcome, setExpandedOutcome] = useState<number | null>(null);
+  const [pollFailing, setPollFailing] = useState(false);
 
   // Form state
   const [dateStart, setDateStart] = useState("");
@@ -65,13 +66,24 @@ export default function BatchPage() {
   useEffect(() => {
     const hasRunning = jobs.some((j) => ["running", "pending", "queued"].includes(j.status));
     if (!hasRunning) return;
+    let failures = 0;
     const interval = setInterval(async () => {
       try {
         const j = await fetchBatchJobs();
         setJobs(j);
-      } catch { /* ignore */ }
+        if (failures > 0) {
+          failures = 0;
+          setPollFailing(false);
+        }
+      } catch {
+        failures++;
+        if (failures >= 3) setPollFailing(true);
+      }
     }, 5000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      setPollFailing(false);
+    };
   }, [jobs]);
 
   // Build model options: active models + completed training jobs
@@ -172,6 +184,13 @@ export default function BatchPage() {
         {error && (
           <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-4 py-3">
             {error}
+          </div>
+        )}
+
+        {pollFailing && (
+          <div className="text-xs text-amber-400 bg-amber-900/15 border border-amber-800/40 rounded-lg px-4 py-2.5 flex items-center gap-2">
+            <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+            Live polling interrupted — status may be stale
           </div>
         )}
 

@@ -354,7 +354,8 @@ export default function FairBetPage() {
                 either.
               </p>
               <p className="text-xs text-neutral-500 leading-relaxed">
-                Tracking and odds comps for p2p coming soon... maybe &#128064;&#129300;&#10071;
+                Peer-to-peer exchange tracking and odds comparison tools are on
+                the roadmap.
               </p>
             </div>
           </div>

@@ -37,6 +37,14 @@ export interface PitcherSlot {
   avg_ip?: number;
 }
 
+export interface PublicSimulationRequest {
+  home_team: string;
+  away_team: string;
+  iterations?: number;
+  rolling_window?: number;
+  seed?: number;
+}
+
 export interface SimulationRequest {
   sport: string;
   home_team: string;

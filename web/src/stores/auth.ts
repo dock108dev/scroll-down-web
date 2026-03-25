@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { STORAGE_KEYS } from "@/lib/config";
 import { stopPreferenceSync } from "@/lib/preferences-sync";
+import { trackEvent } from "@/lib/analytics";
 
 export type Role = "guest" | "user" | "admin";
 
@@ -93,8 +94,14 @@ export const useAuth = create<AuthState>()(
             token: data.access_token,
             role: data.role as Role,
           });
-          // Populate email/userId from /auth/me
-          await get().refreshMe();
+          // Populate email/userId — non-fatal if this fails since we
+          // already have a valid token. Profile will hydrate on next
+          // refreshMe() or page load.
+          try {
+            await get().refreshMe();
+          } catch {
+            trackEvent("profile_hydrate_error", { flow: "login" });
+          }
         } finally {
           set({ isLoading: false });
         }
@@ -115,7 +122,11 @@ export const useAuth = create<AuthState>()(
             token: data.access_token,
             role: data.role as Role,
           });
-          await get().refreshMe();
+          try {
+            await get().refreshMe();
+          } catch {
+            trackEvent("profile_hydrate_error", { flow: "signup" });
+          }
         } finally {
           set({ isLoading: false });
         }
@@ -170,9 +181,14 @@ export const useAuth = create<AuthState>()(
             token: data.access_token,
             role: data.role as Role,
           });
-        } catch {
-          // Refresh endpoint may not exist yet — silently ignore.
-          // Token will expire naturally; user re-logs in.
+        } catch (err) {
+          // 404 = refresh endpoint not deployed yet — acceptable, token
+          // expires naturally and user re-logs in.
+          // Any other error is unexpected and worth tracking.
+          if (err instanceof AuthError && err.status === 404) return;
+          trackEvent("token_refresh_error", {
+            status: err instanceof AuthError ? err.status : 0,
+          });
         }
       },
 
@@ -245,7 +261,11 @@ export const useAuth = create<AuthState>()(
             token: data.access_token,
             role: data.role as Role,
           });
-          await get().refreshMe();
+          try {
+            await get().refreshMe();
+          } catch {
+            trackEvent("profile_hydrate_error", { flow: "magic_link" });
+          }
         } finally {
           set({ isLoading: false });
         }

@@ -38,6 +38,7 @@ npm run dev                         # http://localhost:3001
 | FairBet live odds with closing line + movement history | Yes |
 | Parlay builder with client-side evaluation | Yes |
 | MLB PA Simulator (lineup-aware Monte Carlo, Statcast-powered) | Yes |
+| NBA, NHL, NCAAB Matchup Simulators (Monte Carlo) | Yes |
 | MLB Team Profiles with rolling windows | Yes |
 | Model management, training, and calibration (admin) | Yes |
 | Batch simulation and outcome tracking (admin) | Yes |

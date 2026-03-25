@@ -47,10 +47,14 @@ SPORTS_DATA_API_KEY=<real-api-key>
 The app exposes `GET /api/health` which returns:
 
 ```json
-{ "status": "ok", "timestamp": "...", "version": "0.1.0" }
+{ "status": "ok", "timestamp": "2026-03-25T12:00:00.000Z" }
 ```
 
 Returns `"degraded"` with a 503 status if the backend API is unreachable. The app still serves pages in degraded mode; only API-dependent data will be missing.
+
+### Security Headers
+
+`next.config.ts` sets security headers on all responses: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (restricts camera/mic/geo). API routes also get `Cache-Control: no-store`.
 
 ## CI/CD Pipeline
 

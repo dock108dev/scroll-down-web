@@ -68,7 +68,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - Centralized dispatcher routes events by type (game patches, PBP appends, FairBet refreshes)
 - Sequence-numbered events with gap detection and recovery
 - Visibility-driven refresh when tab regains focus: triggers if hidden >5 seconds *or* if realtime is offline (via `useVisibilityRefresh` hook)
-- Enable debug logging: set `REALTIME.DEBUG = true` in `lib/config.ts`
+- Check browser console for WebSocket/SSE connection events
 
 ### FairBet Loading
 - Pre-Game tab: first 100 bets render immediately, remaining pages load in background (3 concurrent fetches)
@@ -106,7 +106,15 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Mini scorebar appears when scrolling past header
 
 ### Analytics Landing (`/analytics`)
-- [ ] MLB card renders and navigates to `/analytics/simulator`
+- [ ] Four sport cards render (MLB, NBA, NHL, NCAAB)
+- [ ] MLB card navigates to `/analytics/simulator`
+- [ ] NBA/NHL/NCAAB cards navigate to `/analytics/{sport}`
+- [ ] AuthGate blocks guests with signup prompt
+
+### Multi-Sport Simulators (`/analytics/nba`, `/analytics/nhl`, `/analytics/ncaab`)
+- [ ] Team dropdowns populate from API
+- [ ] Selecting two different teams enables "Run Simulation"
+- [ ] Simulation runs and shows win probabilities, expected scores, most likely scores
 - [ ] AuthGate blocks guests with signup prompt
 
 ### Analytics Tab Navigation
@@ -250,5 +258,5 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 **Realtime not connecting:**
 - Check browser console for WebSocket connection errors
 - Verify backend is running and `/v1/ws` endpoint is accessible
-- Enable debug logging: set `REALTIME.DEBUG = true` in `lib/config.ts`
+- Check browser console for WebSocket/SSE connection events
 - Check the green/gray dot on the FairBet page for connection status

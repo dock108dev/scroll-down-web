@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useAuth, type Role } from "@/stores/auth";
+import { trackEvent } from "@/lib/analytics";
 
 /**
  * Soft gate — renders children if the user has the required role,
@@ -33,6 +34,7 @@ export function AuthGate({
       <p className="text-sm text-neutral-400">{message}</p>
       <Link
         href="/login?tab=signup"
+        onClick={() => trackEvent("signup_gate_click", { message })}
         className="inline-block text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
       >
         Sign Up Free
