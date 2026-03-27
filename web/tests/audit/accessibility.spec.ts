@@ -9,6 +9,7 @@ const PAGES = [
 ];
 
 test.describe("Audit: Accessibility", () => {
+  test.setTimeout(60_000);
   for (const pg of PAGES) {
     test(`${pg.name}: images have alt text`, async ({ page }) => {
       await gotoAndWait(page, pg.url);

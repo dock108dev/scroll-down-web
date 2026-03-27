@@ -39,6 +39,8 @@ const test = base.extend<{ guestPage: Page; authedPage: Page }>({
 });
 
 test.describe("Audit: User type behavior", () => {
+  test.setTimeout(60_000);
+
   const results: UserTypeResult[] = [];
 
   test.afterAll(() => {

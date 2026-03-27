@@ -81,6 +81,9 @@ async function getStorageSnapshot(page: Page): Promise<Record<string, unknown>> 
 }
 
 test.describe("Audit: Cache logic", () => {
+  // Cache tests involve multiple page loads and waitForTimeout calls — need headroom
+  test.setTimeout(60_000);
+
   const results: CacheTestResult[] = [];
 
   test.afterAll(() => {

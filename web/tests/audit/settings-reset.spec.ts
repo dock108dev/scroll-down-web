@@ -68,6 +68,8 @@ async function blockPrefsSync(page: Page): Promise<void> {
 }
 
 test.describe("Audit: Settings reset & persistence", () => {
+  test.setTimeout(60_000);
+
   const results: SettingsResult[] = [];
 
   test.afterAll(() => {

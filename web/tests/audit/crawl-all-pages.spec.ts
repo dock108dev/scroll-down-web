@@ -32,6 +32,9 @@ const STATIC_PAGES = [
 ];
 
 test.describe("Audit: Crawl all pages", () => {
+  // Static pages can be slow when the backend is degraded — give extra headroom
+  test.setTimeout(60_000);
+
   const results: PageAuditResult[] = [];
 
   test.beforeAll(() => {

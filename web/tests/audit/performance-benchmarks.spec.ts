@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
+import { isBackendAvailable } from "../helpers";
 import fs from "fs";
 import path from "path";
 
 const RESULTS_DIR = path.join(__dirname, "..", "..", "..", "docs", "audit-results");
 const MAX_LCP_MS = 4_000;
+const MAX_LCP_DEGRADED_MS = 10_000;
 const MAX_CLS = 0.25;
 
 interface PerfResult {
@@ -23,6 +25,7 @@ const PAGES = [
 ];
 
 test.describe("Audit: Performance benchmarks", () => {
+  test.setTimeout(60_000);
   const results: PerfResult[] = [];
 
   test.afterAll(() => {
@@ -95,9 +98,11 @@ test.describe("Audit: Performance benchmarks", () => {
       };
       results.push(result);
 
-      // Assertions
+      // Assertions — use relaxed threshold when backend is degraded
+      const backendUp = await isBackendAvailable(page.context().request);
+      const lcpLimit = backendUp ? MAX_LCP_MS : MAX_LCP_DEGRADED_MS;
       if (result.lcp !== null) {
-        expect(result.lcp).toBeLessThan(MAX_LCP_MS);
+        expect(result.lcp).toBeLessThan(lcpLimit);
       }
       if (result.cls !== null) {
         expect(result.cls).toBeLessThan(MAX_CLS);

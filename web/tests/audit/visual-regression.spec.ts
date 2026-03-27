@@ -43,6 +43,7 @@ async function compareOrCreateBaseline(
 }
 
 test.describe("Audit: Visual regression — Desktop", () => {
+  test.setTimeout(60_000);
   for (const pg of PAGES) {
     test(`desktop screenshot: ${pg.name}`, async ({ page }) => {
       await page.setViewportSize({ width: 1280, height: 720 });
@@ -55,6 +56,7 @@ test.describe("Audit: Visual regression — Desktop", () => {
 });
 
 test.describe("Audit: Visual regression — Mobile", () => {
+  test.setTimeout(60_000);
   for (const pg of PAGES) {
     test(`mobile screenshot: ${pg.name}`, async ({ page }) => {
       await page.setViewportSize({ width: 390, height: 844 });

@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
 
 test.describe("Audit: Error scenarios", () => {
+  // Pages load slowly when backend is degraded
+  test.setTimeout(60_000);
   test("404 page for nonexistent route", async ({ page }) => {
     const res = await page.goto("/this-page-does-not-exist");
     expect(res?.status()).toBe(404);
