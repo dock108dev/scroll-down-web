@@ -84,7 +84,7 @@ function luminance(r: number, g: number, b: number): number {
 function ensureMinLuminance(hex: string, minLum: number): string {
   const rgb = parseHex(hex);
   if (!rgb) return hex;
-  let [r, g, b] = rgb;
+  const [r, g, b] = rgb;
   if (luminance(r, g, b) >= minLum) return hex;
   // Iteratively mix towards white
   for (let t = 0.05; t <= 0.95; t += 0.05) {
