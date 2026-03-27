@@ -54,8 +54,53 @@ function isDarkMode(): boolean {
   return document.documentElement.classList.contains("dark");
 }
 
+/** Parse a hex color (#RGB or #RRGGBB) into [r, g, b] (0-255). */
+function parseHex(hex: string): [number, number, number] | null {
+  const m = hex.match(/^#([0-9a-f]{3,8})$/i);
+  if (!m) return null;
+  const h = m[1];
+  if (h.length === 3) {
+    return [parseInt(h[0] + h[0], 16), parseInt(h[1] + h[1], 16), parseInt(h[2] + h[2], 16)];
+  }
+  if (h.length >= 6) {
+    return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+  }
+  return null;
+}
+
+/** Relative luminance (0-1) per WCAG. */
+function luminance(r: number, g: number, b: number): number {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
+    const s = c / 255;
+    return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
+}
+
+/**
+ * Lighten a hex color so it meets a minimum luminance threshold.
+ * Mixes towards white until the target is reached.
+ */
+function ensureMinLuminance(hex: string, minLum: number): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return hex;
+  let [r, g, b] = rgb;
+  if (luminance(r, g, b) >= minLum) return hex;
+  // Iteratively mix towards white
+  for (let t = 0.05; t <= 0.95; t += 0.05) {
+    const mr = Math.round(r + (255 - r) * t);
+    const mg = Math.round(g + (255 - g) * t);
+    const mb = Math.round(b + (255 - b) * t);
+    if (luminance(mr, mg, mb) >= minLum) {
+      return `#${mr.toString(16).padStart(2, "0")}${mg.toString(16).padStart(2, "0")}${mb.toString(16).padStart(2, "0")}`;
+    }
+  }
+  return hex;
+}
+
 /**
  * Pick the correct team color for the current theme.
+ * In dark mode, ensures the color is light enough to read against dark backgrounds.
  * Falls back to `fallback` if no color is available.
  */
 export function resolveTeamColor(
@@ -65,7 +110,10 @@ export function resolveTeamColor(
 ): string {
   const dark = isDarkMode();
   const color = dark ? colorDark : colorLight;
-  return color || fallback;
+  const resolved = color || fallback;
+  // In dark mode, ensure minimum luminance so colors aren't invisible
+  if (dark) return ensureMinLuminance(resolved, 0.15);
+  return resolved;
 }
 
 /**
