@@ -18,13 +18,6 @@ interface GameRowProps {
   variant?: "home" | "history";
 }
 
-function hasNoData(game: GameCore): boolean {
-  // Pregame games naturally lack PBP/flow/social — don't grey them out
-  // just because odds haven't arrived yet. Users should always be able
-  // to navigate to a game and see at least the overview card.
-  if (isPregame(game.status, game) || isLive(game.status, game)) return false;
-  return !game.hasOdds && !game.hasPbp && !game.hasSocial && !game.hasFlow;
-}
 
 function formatHistoryDateTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -55,7 +48,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   const final = isFinal(game.status, game);
   const live = isLive(game.status, game);
   const pregame = isPregame(game.status, game);
-  const noData = hasNoData(game);
 
   const hasScoreData = game.homeScore != null && game.awayScore != null;
   const canToggle = display?.canToggle ?? false;
@@ -103,9 +95,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   }, [updatePulse]);
 
   const handleNavigate = () => {
-    if (!noData) {
-      router.push(`/game/${game.id}`);
-    }
+    router.push(`/game/${game.id}`);
   };
 
   const handleReveal = (e: React.MouseEvent) => {
@@ -255,10 +245,9 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       onClick={handleNavigate}
       className={cn(
         "flex items-center min-h-[52px] px-4 py-3 rounded-[var(--ds-radius-game-card)] bg-neutral-800/20 border border-neutral-800/40 transition select-none",
-        noData && "opacity-40 pointer-events-none",
         !isHistory && read && final && "opacity-70",
         live && "border-l-2 border-l-green-400",
-        !noData && "cursor-pointer hover:bg-neutral-800/30 active:bg-neutral-800/40",
+        "cursor-pointer hover:bg-neutral-800/30 active:bg-neutral-800/40",
       )}
     >
       {/* Left: league + pin + status */}
@@ -288,20 +277,22 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
         {statusContent}
       </div>
 
-      {/* Center: matchup */}
+      {/* Center: matchup — abbreviations on small screens, display names on sm+ */}
       <div className="flex-1 min-w-0 flex items-center gap-1.5 truncate">
         <span
           className="text-[15px] font-semibold truncate"
           style={{ color: resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark) }}
         >
-          {cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}
+          <span className="sm:hidden">{game.awayTeamAbbr ?? cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}</span>
+          <span className="hidden sm:inline">{cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}</span>
         </span>
         <span className="text-neutral-600 text-xs font-medium shrink-0">@</span>
         <span
           className="text-[15px] font-semibold truncate"
           style={{ color: resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark) }}
         >
-          {cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}
+          <span className="sm:hidden">{game.homeTeamAbbr ?? cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}</span>
+          <span className="hidden sm:inline">{cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}</span>
         </span>
       </div>
 

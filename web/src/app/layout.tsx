@@ -90,6 +90,7 @@ export default function RootLayout({
           <RealtimeProvider />
           <AnalyticsProvider />
           <div className="min-h-screen flex flex-col">
+            <BetaBanner />
             <TopNav />
             <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
               <div className="scroll-fade-top" />
@@ -99,7 +100,6 @@ export default function RootLayout({
             <Footer />
             <BottomTabs />
             <SettingsDrawer />
-            <BetaBanner />
           </div>
         </ThemeProvider>
       </body>
