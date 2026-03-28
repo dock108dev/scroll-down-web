@@ -137,7 +137,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                   {(game.currentPeriodLabel || game.gameClock) && (
                     <span className="text-xs font-medium text-neutral-300 tabular-nums">
                       {game.currentPeriodLabel ?? ""}
-                      {game.gameClock ? ` · ${game.gameClock}` : ""}
+                      {game.gameClock && game.gameClock !== game.currentPeriodLabel ? ` · ${game.gameClock}` : ""}
                     </span>
                   )}
                   <span className="flex items-center gap-1">

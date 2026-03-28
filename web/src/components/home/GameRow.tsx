@@ -100,7 +100,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
 
   const handleReveal = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (hasNewData) {
+    // Always use reveal() for first-time reveals so the game is added to
+    // revealedIds.  acceptUpdate() only updates the snapshot without marking
+    // the game as revealed, which caused the button to appear broken for
+    // live games (especially MLB where scores start at 0-0).
+    if (read && hasNewData) {
       acceptUpdate(game.id, pickSnapshot(game));
     } else {
       reveal(game.id, pickSnapshot(game));
@@ -116,8 +120,10 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       return `${snapshot.periodLabel}${snapshot.clock ? ` ${snapshot.clock}` : ""}`;
     }
     if (!showClock) return "";
-    return (game.currentPeriodLabel || game.gameClock)
-      ? `${game.currentPeriodLabel ?? ""}${game.gameClock ? ` ${game.gameClock}` : ""}`
+    // Deduplicate: MLB puts the inning label in both fields
+    const clock = game.gameClock && game.gameClock !== game.currentPeriodLabel ? game.gameClock : "";
+    return (game.currentPeriodLabel || clock)
+      ? `${game.currentPeriodLabel ?? ""}${clock ? ` ${clock}` : ""}`
       : "";
   })();
 

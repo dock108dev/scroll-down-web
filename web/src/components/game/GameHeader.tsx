@@ -31,8 +31,10 @@ export function GameHeader({ game }: GameHeaderProps) {
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
-    // Pending update: accept it (scores unfreeze to current core)
-    if (hasScoreUpdate) {
+    // Only use acceptUpdate when already revealed and there's a pending update.
+    // For first-time reveals, always use reveal() so the game is added to
+    // revealedIds (acceptUpdate only updates the snapshot).
+    if (read && hasScoreUpdate) {
       acceptUpdate(game.id, pickSnapshot(game as GameCore));
       return;
     }
@@ -81,7 +83,7 @@ export function GameHeader({ game }: GameHeaderProps) {
               <span className="text-green-400">LIVE</span>
               {(game.currentPeriodLabel || game.gameClock) && (
                 <span className="text-neutral-500 font-normal">
-                  {game.currentPeriodLabel ?? ""}{game.gameClock ? ` ${game.gameClock}` : ""}
+                  {game.currentPeriodLabel ?? ""}{game.gameClock && game.gameClock !== game.currentPeriodLabel ? ` ${game.gameClock}` : ""}
                 </span>
               )}
             </span>
