@@ -7,6 +7,10 @@ import type { GameSummary, Game, PlayEntry } from "@/lib/types";
 import type { GameCore } from "./game-data";
 
 export function coreFromSummary(g: GameSummary): GameCore {
+  const periodLabel = g.liveSnapshot?.periodLabel ?? g.currentPeriodLabel;
+  const rawClock = g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? g.gameClock;
+  // MLB has no running clock — timeLabel duplicates the inning label, so suppress it
+  const gameClock = rawClock && rawClock === periodLabel ? undefined : rawClock;
   return {
     id: g.id,
     leagueCode: g.leagueCode,
@@ -17,8 +21,8 @@ export function coreFromSummary(g: GameSummary): GameCore {
     homeScore: g.homeScore ?? g.liveSnapshot?.homeScore ?? null,
     awayScore: g.awayScore ?? g.liveSnapshot?.awayScore ?? null,
     currentPeriod: g.currentPeriod,
-    gameClock: g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? g.gameClock,
-    currentPeriodLabel: g.liveSnapshot?.periodLabel ?? g.currentPeriodLabel,
+    gameClock,
+    currentPeriodLabel: periodLabel,
     homeTeamAbbr: g.homeTeamAbbr,
     awayTeamAbbr: g.awayTeamAbbr,
     homeTeamColorLight: g.homeTeamColorLight,
@@ -52,6 +56,10 @@ export function coreFromGame(
   const lastPlay = plays?.length ? plays[plays.length - 1] : null;
   const clockFromPlay = lastPlay?.gameClock ?? lastPlay?.timeLabel;
   const periodFromPlay = lastPlay?.periodLabel;
+  const periodLabel = g.liveSnapshot?.periodLabel ?? periodFromPlay ?? g.currentPeriodLabel;
+  const rawClock = g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? clockFromPlay ?? g.gameClock;
+  // MLB has no running clock — timeLabel duplicates the inning label, so suppress it
+  const gameClock = rawClock && rawClock === periodLabel ? undefined : rawClock;
   return {
     id: g.id,
     leagueCode: g.leagueCode,
@@ -62,8 +70,8 @@ export function coreFromGame(
     homeScore: lastPlay?.homeScore ?? g.homeScore ?? null,
     awayScore: lastPlay?.awayScore ?? g.awayScore ?? null,
     currentPeriod: g.currentPeriod,
-    gameClock: g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? clockFromPlay ?? g.gameClock,
-    currentPeriodLabel: g.liveSnapshot?.periodLabel ?? periodFromPlay ?? g.currentPeriodLabel,
+    gameClock,
+    currentPeriodLabel: periodLabel,
     homeTeamAbbr: g.homeTeamAbbr,
     awayTeamAbbr: g.awayTeamAbbr,
     homeTeamColorLight: g.homeTeamColorLight,

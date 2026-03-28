@@ -33,11 +33,13 @@ export function differs(
 // ─── pickSnapshot — create a snapshot from core data ──────────────
 
 export function pickSnapshot(core: GameCore): RevealSnapshot {
+  // Suppress clock when it duplicates the period label (MLB innings)
+  const clock = core.gameClock && core.gameClock !== core.currentPeriodLabel ? core.gameClock : undefined;
   return {
     homeScore: core.homeScore ?? 0,
     awayScore: core.awayScore ?? 0,
     status: core.status,
-    clock: core.gameClock,
+    clock,
     period: core.currentPeriod,
     periodLabel: core.currentPeriodLabel,
     snapshotAt: new Date().toISOString(),

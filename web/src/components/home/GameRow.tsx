@@ -117,7 +117,8 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     const showClock = scoresVisible;
     const snapshot = useReveal.getState().getSnapshot(game.id);
     if (display?.frozen && snapshot?.periodLabel) {
-      return `${snapshot.periodLabel}${snapshot.clock ? ` ${snapshot.clock}` : ""}`;
+      const snapClock = snapshot.clock && snapshot.clock !== snapshot.periodLabel ? snapshot.clock : "";
+      return `${snapshot.periodLabel}${snapClock ? ` ${snapClock}` : ""}`;
     }
     if (!showClock) return "";
     // Deduplicate: MLB puts the inning label in both fields
