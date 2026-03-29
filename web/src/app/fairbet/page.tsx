@@ -7,7 +7,6 @@ import { BookFilters } from "@/components/fairbet/BookFilters";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
 import { LiveOddsPanel } from "@/components/fairbet/LiveOddsPanel";
-import { AuthGate } from "@/components/auth/AuthGate";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
@@ -135,14 +134,7 @@ export default function FairBetPage() {
 
       {/* ── Content ── */}
       <div className="px-4 pb-4 space-y-3">
-        {activeTab === "live" && (
-          <AuthGate
-            minRole="user"
-            message="Sign up for free to access live odds"
-          >
-            <LiveOddsPanel />
-          </AuthGate>
-        )}
+        {activeTab === "live" && <LiveOddsPanel />}
 
         {activeTab === "pregame" && <>
         {/* Loading state */}
@@ -276,7 +268,7 @@ export default function FairBetPage() {
               <h2 className="text-lg font-semibold text-neutral-50">How FairBet Works</h2>
               <button
                 onClick={() => setShowHowItWorks(false)}
-                className="text-neutral-500 hover:text-neutral-50 text-sm"
+                className="text-neutral-500 hover:text-neutral-50 text-sm min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 Close
               </button>

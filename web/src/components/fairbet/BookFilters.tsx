@@ -72,7 +72,7 @@ export function BookFilters({
   disabled = false,
 }: BookFiltersProps) {
   return (
-    <div data-testid="book-filters" className={cn("space-y-3", disabled && "opacity-50 pointer-events-none")}>
+    <div data-testid="book-filters" className={cn("space-y-3", disabled && "opacity-40 pointer-events-none cursor-not-allowed select-none")}>
       {/* League filter row */}
       <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
         <FilterPill

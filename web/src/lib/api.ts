@@ -13,6 +13,8 @@ import type {
 } from "./golf-types";
 import { useAuth } from "@/stores/auth";
 
+const FETCH_TIMEOUT_MS = 3_000;
+
 export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = useAuth.getState().token;
   // Normalize any HeadersInit form (Headers, [k,v][], or object) into a plain record
@@ -28,7 +30,9 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
   }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(path, { ...init, headers });
+  // Abort after 3s unless the caller already provides a signal
+  const timeout = !init?.signal ? AbortSignal.timeout(FETCH_TIMEOUT_MS) : undefined;
+  const res = await fetch(path, { ...init, headers, signal: timeout ?? init?.signal });
 
   if (res.status === 401) {
     // Token expired — clear auth state

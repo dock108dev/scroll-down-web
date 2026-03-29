@@ -237,7 +237,7 @@ function HistoryPageInner() {
 
 export default function HistoryPage() {
   return (
-    <AuthGate minRole="admin" message="Game history is coming soon! This feature is currently in early testing." showSignup={false}>
+    <AuthGate minRole="admin" message="Game History is coming soon — browse past scores, search by team, and review completed matchups. We're finishing up testing now." showSignup={false}>
       <Suspense>
         <HistoryPageInner />
       </Suspense>
