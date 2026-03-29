@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # ─── Single Audit Cycle ─────────────────────────────────
-# Runs one complete audit → review → fix → explore cycle using Claude Code.
-# Called by the LaunchAgent every 6 hours, or manually.
+# Runs one complete audit → review → fix → explore → fix → PR cycle
+# using Claude Code. Called by the LaunchAgent every 6 hours, or manually.
 #
 # Usage: ./scripts/agent-cycle.sh
 
@@ -13,7 +13,11 @@ WEB_DIR="$REPO_DIR/web"
 LOG_DIR="/tmp/audit-agent-logs"
 MAX_FIX_ATTEMPTS=5
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+REVIEW_DATE=$(date +%Y-%m-%d)
 LOG_FILE="$LOG_DIR/agent-$TIMESTAMP.log"
+CURRENT_BRANCH=$(git -C "$REPO_DIR" rev-parse --abbrev-ref HEAD)
+HAS_GH=false
+command -v gh &>/dev/null && HAS_GH=true
 
 mkdir -p "$LOG_DIR"
 
@@ -24,6 +28,30 @@ export NVM_DIR="$HOME/.nvm"
 cd "$REPO_DIR"
 
 echo "[$TIMESTAMP] ═══ Starting audit cycle ═══" | tee "$LOG_FILE"
+echo "[$TIMESTAMP] Branch: $CURRENT_BRANCH" | tee -a "$LOG_FILE"
+
+# ── Issue triage: check open ai-audit issues ──
+if [ "$HAS_GH" = true ]; then
+  echo "[$TIMESTAMP] Triaging open ai-audit issues..." | tee -a "$LOG_FILE"
+  claude -p "You are running on the audit Mac. Check the open GitHub issues labeled 'ai-audit'.
+
+1. Run: gh issue list --label ai-audit --state open --json number,title,body,createdAt --limit 50
+2. For each open issue, determine if it is still valid:
+   - Read the relevant source code or test to see if the issue has already been fixed
+   - If the app is running at localhost:3001, quickly verify by curling or checking the page
+3. For issues that are already fixed:
+   - Close them with a comment explaining what fixed it:
+     gh issue close <number> --comment 'Verified fixed in audit cycle $TIMESTAMP. <brief explanation>'
+4. For issues that are still open and valid:
+   - Add a comment noting they were checked and are still reproducible:
+     gh issue comment <number> --body 'Still reproducible as of audit cycle $TIMESTAMP.'
+   - Only comment if the issue has NOT been commented on in the last 24 hours (check updatedAt)
+5. Summarize: how many open, how many closed, how many still valid" \
+    --dangerously-skip-permissions \
+    --max-turns 20 \
+    --output-format text \
+    >> "$LOG_FILE" 2>&1 || true
+fi
 
 # ── Pull & rebuild (production mode, matching CI) ──
 echo "[$TIMESTAMP] Pulling latest code..." | tee -a "$LOG_FILE"
@@ -104,8 +132,7 @@ if [ "$FAILURES" -gt 0 ]; then
 
   if [ "$ATTEMPT" -gt "$MAX_FIX_ATTEMPTS" ]; then
     echo "[$TIMESTAMP] WARNING: Unable to resolve all failures after $MAX_FIX_ATTEMPTS attempts" | tee -a "$LOG_FILE"
-    # Escalate: file a GitHub issue so a human knows the agent is stuck
-    if command -v gh &>/dev/null; then
+    if [ "$HAS_GH" = true ]; then
       "$SCRIPT_DIR/file-github-issue.sh" \
         "Agent stuck: $NEW_FAILURES failures after $MAX_FIX_ATTEMPTS fix attempts" \
         "The autonomous audit agent was unable to resolve all test failures after $MAX_FIX_ATTEMPTS attempts on $TIMESTAMP. $NEW_FAILURES failures remain. Check logs at /tmp/audit-agent-logs/agent-$TIMESTAMP.log" \
@@ -119,7 +146,6 @@ fi
 
 # ── Phase 4: Exploratory UX Review (always runs) ──
 echo "[$TIMESTAMP] Phase 4: Exploratory UX review..." | tee -a "$LOG_FILE"
-REVIEW_DATE=$(date +%Y-%m-%d)
 claude -p "Read docs/audit-agent.md for context. You are running on the audit Mac.
 The automated test suite has finished. Now you are acting as an exploratory QA
 engineer and product reviewer. Your job is to browse the live app at
@@ -202,5 +228,67 @@ After implementing all fixes:
   --max-turns 60 \
   --output-format text \
   >> "$LOG_FILE" 2>&1 || true
+
+# ── Phase 6: Commit, PR, and issue cleanup ──
+echo "[$TIMESTAMP] Phase 6: Committing changes and managing PR..." | tee -a "$LOG_FILE"
+
+# Check if there are any code changes to commit (ignore docs/audit-results which is gitignored)
+CHANGES=$(git diff --name-only HEAD 2>/dev/null || echo "")
+UNTRACKED=$(git ls-files --others --exclude-standard 2>/dev/null || echo "")
+
+if [ -n "$CHANGES" ] || [ -n "$UNTRACKED" ]; then
+  echo "[$TIMESTAMP] Code changes detected — committing..." | tee -a "$LOG_FILE"
+
+  claude -p "You are running on the audit Mac. The audit cycle just finished and there
+are uncommitted code changes from the fixes you made. Your job is to commit them
+properly and create or update a pull request.
+
+Current branch: $CURRENT_BRANCH
+
+Steps:
+1. Run git status and git diff to see all changes.
+2. Stage all code changes (source files, test files, configs, scripts, snapshots).
+   Do NOT stage .env files or anything in docs/audit-results/ (that dir is gitignored).
+3. Write a clear commit message summarizing what was fixed. Use this format:
+   fix: <one-line summary of main changes>
+
+   - bullet point for each notable fix
+   - reference any GitHub issues fixed with 'Fixes #N' or 'Closes #N'
+
+   Co-Authored-By: Claude Code Audit Agent <noreply@anthropic.com>
+4. Push the branch to origin:
+   git push origin $CURRENT_BRANCH
+5. Check if a PR already exists from $CURRENT_BRANCH to main:
+   gh pr list --head $CURRENT_BRANCH --state open --json number --jq '.[0].number'
+6. If a PR exists, update it with a comment summarizing this cycle's changes:
+   gh pr comment <number> --body '## Audit Cycle $TIMESTAMP\n\n<summary of changes>'
+7. If no PR exists AND $CURRENT_BRANCH is not 'main', create one:
+   gh pr create --title 'fix: audit agent fixes ($REVIEW_DATE)' \\
+     --body '<PR body with summary, list of fixes, and test results>'
+8. For each GitHub issue that was fixed by the changes in this cycle, close it
+   with a comment referencing the PR:
+   gh issue close <number> --comment 'Fixed in PR #<pr_number> (audit cycle $TIMESTAMP)'
+
+Report: what was committed, PR number, and which issues were closed." \
+    --dangerously-skip-permissions \
+    --max-turns 20 \
+    --output-format text \
+    >> "$LOG_FILE" 2>&1 || true
+else
+  echo "[$TIMESTAMP] No code changes to commit" | tee -a "$LOG_FILE"
+fi
+
+# ── Final issue triage ──
+if [ "$HAS_GH" = true ]; then
+  echo "[$TIMESTAMP] Final issue cleanup..." | tee -a "$LOG_FILE"
+  # Quick pass: close any ai-audit issues that are now fixed
+  OPEN_ISSUES=$(gh issue list --label ai-audit --state open --json number,title --jq '.[] | "\(.number)\t\(.title)"' 2>/dev/null || echo "")
+  if [ -n "$OPEN_ISSUES" ]; then
+    echo "[$TIMESTAMP] Open ai-audit issues remaining:" | tee -a "$LOG_FILE"
+    echo "$OPEN_ISSUES" | tee -a "$LOG_FILE"
+  else
+    echo "[$TIMESTAMP] No open ai-audit issues" | tee -a "$LOG_FILE"
+  fi
+fi
 
 echo "[$TIMESTAMP] ═══ Cycle complete ═══" | tee -a "$LOG_FILE"

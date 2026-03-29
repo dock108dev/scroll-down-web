@@ -225,9 +225,13 @@ gh auth status
 The audit LaunchAgent (`com.scrolldown.audit`) fires every 6 hours and runs
 `scripts/agent-cycle.sh`, which executes a 3-phase cycle using Claude Code:
 
-**Pre-phase — Pull & Build:** The script pulls latest code and runs a production
-build (`npm run build` + `npm start`) if changes are detected or no build exists.
-This matches the CI environment. The app is restarted via `launchctl kickstart`.
+**Issue Triage:** Check all open `ai-audit` GitHub issues. Verify if each is
+still reproducible. Close issues that have been fixed with a comment. Add a
+status comment to issues that are still valid.
+
+**Pull & Build:** Pull latest code and run a production build (`npm run build` +
+`npm start`) if changes are detected or no build exists. This matches the CI
+environment. The app is restarted via `launchctl kickstart`.
 
 **Phase 1 — Audit:** Run the audit suite, investigate failures, file GitHub
 issues for real bugs, summarize findings.
@@ -254,6 +258,12 @@ confusing UX, and small/medium feature requests. After fixing, it rebuilds,
 restarts, re-verifies with screenshots, and re-runs the audit suite to confirm
 nothing broke.
 
+**Phase 6 — Commit, PR & Issue Cleanup (20 turns):** If any code was changed
+during the cycle, Claude commits it on the current branch, pushes, and either
+updates an existing PR or creates a new one. It closes any `ai-audit` GitHub
+issues that were resolved by the changes, referencing the PR. A final triage
+pass lists any remaining open issues.
+
 All phases use `claude -p --dangerously-skip-permissions` with your Claude Max
 subscription (OAuth credentials in macOS Keychain). No API key needed.
 
@@ -263,8 +273,8 @@ Logs go to `/tmp/audit-agent-logs/agent-YYYY-MM-DD_HH-MM-SS.log`.
 
 | Script | Purpose |
 |--------|---------|
-| `scripts/agent-cycle.sh` | Single 3-phase cycle (used by LaunchAgent) |
-| `scripts/agent-loop.sh` | Infinite loop running cycles every N hours (for tmux) |
+| `scripts/agent-cycle.sh` | Single 6-phase cycle: triage → audit → fix → explore → fix → PR (used by LaunchAgent) |
+| `scripts/agent-loop.sh` | Thin wrapper that runs `agent-cycle.sh` every N hours (for tmux) |
 | `scripts/agent-audit.sh` | Just the Playwright tests + report generation |
 
 ### Interactive session (manual)
