@@ -29,6 +29,18 @@ setup("create test account and save auth state", async ({ page, request }) => {
     version: 2,
   });
 
+  // Seed auth state so role-gated UI (analytics tabs, etc.) is visible in tests
+  const DEFAULT_AUTH = JSON.stringify({
+    state: {
+      token: "e2e-fake-token",
+      role: "user",
+      email: "e2e@test.scrolldown.dev",
+      userId: null,
+      isLoading: false,
+    },
+    version: 0,
+  });
+
   // Check if backend is reachable before attempting signup
   let backendUp = false;
   try {
@@ -55,11 +67,14 @@ setup("create test account and save auth state", async ({ page, request }) => {
     await page.goto("/", { waitUntil: "domcontentloaded", timeout: 30_000 }).catch(() => {});
 
     try {
-      await page.evaluate((settings: string) => {
+      await page.evaluate(({ settings, auth }: { settings: string; auth: string }) => {
         if (!localStorage.getItem("sd-settings")) {
           localStorage.setItem("sd-settings", settings);
         }
-      }, DEFAULT_SETTINGS);
+        if (!localStorage.getItem("sd-auth")) {
+          localStorage.setItem("sd-auth", auth);
+        }
+      }, { settings: DEFAULT_SETTINGS, auth: DEFAULT_AUTH });
     } catch {
       console.warn("[global-setup] Could not seed localStorage via page.evaluate");
     }
@@ -72,7 +87,7 @@ setup("create test account and save auth state", async ({ page, request }) => {
     }
   } else {
     console.warn("[global-setup] Backend unavailable — saving empty auth state");
-    // Write auth state with seeded settings directly — no page navigation needed
+    // Write auth state with seeded settings + auth directly — no page navigation needed
     fs.writeFileSync(
       AUTH_STATE_PATH,
       JSON.stringify({
@@ -80,7 +95,10 @@ setup("create test account and save auth state", async ({ page, request }) => {
         origins: [
           {
             origin: "http://localhost:3001",
-            localStorage: [{ name: "sd-settings", value: DEFAULT_SETTINGS }],
+            localStorage: [
+              { name: "sd-settings", value: DEFAULT_SETTINGS },
+              { name: "sd-auth", value: DEFAULT_AUTH },
+            ],
           },
         ],
       }),
