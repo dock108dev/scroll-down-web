@@ -31,8 +31,8 @@ Scroll Down Sports web app using Playwright and reports failures.
 
 | Service | How | What it does |
 |---------|-----|--------------|
-| Next.js app | LaunchAgent (`com.scrolldown.web`) | Serves the app at `http://localhost:3001`, auto-restarts on crash |
-| Audit agent | LaunchAgent (`com.scrolldown.audit`) | Runs Claude Code as an autonomous agent every 6 hours — pulls code, audits, investigates failures, files issues |
+| Next.js app | LaunchAgent (`com.scrolldown.web`) | Serves the **production build** at `http://localhost:3001` via `npm start`, auto-restarts on crash |
+| Audit agent | LaunchAgent (`com.scrolldown.audit`) | Runs Claude Code as an autonomous agent every 6 hours — pulls code, rebuilds, audits, investigates failures, files issues |
 | Sleep prevention | LaunchDaemon (`com.scrolldown.disablesleep`) | Keeps the Mac awake with lid closed |
 
 **Key paths:**
@@ -101,8 +101,10 @@ npm run test:audit:report
 
 ## 3. Audit Test Suite
 
-The audit project runs 7 test files covering different aspects of the app.
+The audit project runs 14 test files covering different aspects of the app.
 All tests live in `web/tests/audit/`.
+
+### Core tests (run in the `audit` project)
 
 | Test File | What It Checks |
 |-----------|----------------|
@@ -110,9 +112,21 @@ All tests live in `web/tests/audit/`.
 | `api-validation.spec.ts` | Hits every API endpoint. Validates status codes, JSON structure, and expected response shapes. |
 | `data-accuracy.spec.ts` | Compares rendered data against API responses to catch display bugs or stale caches. |
 | `performance-benchmarks.spec.ts` | Measures LCP, CLS, TTI, DOM content loaded, and full load time per page. |
+| `performance-extended.spec.ts` | Extended metrics: p95/p99 latency, memory usage, third-party resource impact. |
 | `accessibility.spec.ts` | Checks for a11y violations (contrast, labels, ARIA, focus management). |
 | `error-scenarios.spec.ts` | Tests error handling: bad routes, invalid IDs, network failures, edge cases. |
 | `visual-regression.spec.ts` | Captures screenshots for visual diff comparison against baselines. |
+| `cache-logic.spec.ts` | localStorage persistence, TTL expiry behavior, Zustand store migration. |
+| `game-data-loading.spec.ts` | API structure validation, field integrity, UI-vs-API data cross-check. |
+| `settings-reset.spec.ts` | Settings persistence, corruption recovery, cross-tab sync. |
+| `third-party-comparison.spec.ts` | ESPN/CBS data accuracy comparison (180s timeout). |
+| `user-types.spec.ts` | Guest vs authenticated behavior, role-based feature gating. |
+
+### Stress tests (run in the `audit-stress` project, after core)
+
+| Test File | What It Checks |
+|-----------|----------------|
+| `api-stress.spec.ts` | Concurrent load testing, rate-limit resilience. Runs separately to avoid rate-limiting other tests. |
 
 The audit project is configured in `web/playwright.config.ts` with:
 - Always-on screenshots and video capture
@@ -211,8 +225,12 @@ gh auth status
 The audit LaunchAgent (`com.scrolldown.audit`) fires every 6 hours and runs
 `scripts/agent-cycle.sh`, which executes a 3-phase cycle using Claude Code:
 
-**Phase 1 — Audit:** Pull latest code, rebuild if changed, run the audit suite,
-investigate failures, file GitHub issues for real bugs, summarize findings.
+**Pre-phase — Pull & Build:** The script pulls latest code and runs a production
+build (`npm run build` + `npm start`) if changes are detected or no build exists.
+This matches the CI environment. The app is restarted via `launchctl kickstart`.
+
+**Phase 1 — Audit:** Run the audit suite, investigate failures, file GitHub
+issues for real bugs, summarize findings.
 
 **Phase 2 — Review & Plan:** Read all failures, classify each as test-fix /
 app-fix / upstream / skip. Pick the top 5–10 fixable issues by importance.
@@ -221,7 +239,7 @@ Output a specific fix plan.
 
 **Phase 3 — Execute & Verify (up to 5 attempts):** Implement fixes, rebuild,
 re-run the audit. If failures remain, loop back and try again. Stop after 5
-attempts and log a warning.
+attempts and **auto-file a GitHub issue** to escalate to a human.
 
 All phases use `claude -p --dangerously-skip-permissions` with your Claude Max
 subscription (OAuth credentials in macOS Keychain). No API key needed.

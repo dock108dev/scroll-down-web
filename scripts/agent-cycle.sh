@@ -9,6 +9,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SCRIPT_DIR")"
+WEB_DIR="$REPO_DIR/web"
 LOG_DIR="/tmp/audit-agent-logs"
 MAX_FIX_ATTEMPTS=5
 TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
@@ -24,17 +25,30 @@ cd "$REPO_DIR"
 
 echo "[$TIMESTAMP] ═══ Starting audit cycle ═══" | tee "$LOG_FILE"
 
+# ── Pull & rebuild (production mode, matching CI) ──
+echo "[$TIMESTAMP] Pulling latest code..." | tee -a "$LOG_FILE"
+BEFORE=$(git rev-parse HEAD)
+git pull origin main >> "$LOG_FILE" 2>&1 || true
+AFTER=$(git rev-parse HEAD)
+
+if [ "$BEFORE" != "$AFTER" ] || [ ! -d "$WEB_DIR/.next/standalone" ]; then
+  echo "[$TIMESTAMP] Changes detected or no build — rebuilding..." | tee -a "$LOG_FILE"
+  cd "$WEB_DIR" && npm ci --silent >> "$LOG_FILE" 2>&1 && npm run build >> "$LOG_FILE" 2>&1
+  cd "$REPO_DIR"
+  # Restart the app to pick up the new production build
+  launchctl kickstart -k "gui/$(id -u)/com.scrolldown.web" >> "$LOG_FILE" 2>&1 || true
+  sleep 5  # give the app a moment to start
+fi
+
 # ── Phase 1: Audit ──
 echo "[$TIMESTAMP] Phase 1: Running audit..." | tee -a "$LOG_FILE"
 claude -p 'Read docs/audit-agent.md for context. You are running on the audit Mac.
-1. Pull latest code: git pull origin main
-2. If there are changes, run: cd web && npm ci && npm run build
-3. Verify the app is healthy: curl -s http://localhost:3001/api/health
-4. Run the audit: ./scripts/agent-audit.sh --no-issues
-5. Read the generated report in docs/audit-results/reports/
-6. For each failure, investigate by reading the test code and screenshots
-7. For real bugs, file a GitHub issue via ./scripts/file-github-issue.sh
-8. Summarize: how many passed/failed, which failures are new, any issues filed' \
+1. Verify the app is healthy: curl -s http://localhost:3001/api/health
+2. Run the audit: ./scripts/agent-audit.sh --no-issues
+3. Read the generated report in docs/audit-results/reports/
+4. For each failure, investigate by reading the test code and screenshots
+5. For real bugs, file a GitHub issue via ./scripts/file-github-issue.sh
+6. Summarize: how many passed/failed, which failures are new, any issues filed' \
   --dangerously-skip-permissions \
   --max-turns 30 \
   --output-format text \
@@ -95,6 +109,14 @@ done
 
 if [ "$ATTEMPT" -gt "$MAX_FIX_ATTEMPTS" ]; then
   echo "[$TIMESTAMP] WARNING: Unable to resolve all failures after $MAX_FIX_ATTEMPTS attempts" | tee -a "$LOG_FILE"
+  # Escalate: file a GitHub issue so a human knows the agent is stuck
+  if command -v gh &>/dev/null; then
+    "$SCRIPT_DIR/file-github-issue.sh" \
+      "Agent stuck: $NEW_FAILURES failures after $MAX_FIX_ATTEMPTS fix attempts" \
+      "The autonomous audit agent was unable to resolve all test failures after $MAX_FIX_ATTEMPTS attempts on $TIMESTAMP. $NEW_FAILURES failures remain. Check logs at /tmp/audit-agent-logs/agent-$TIMESTAMP.log" \
+      high \
+      "agent-cycle" || true
+  fi
 fi
 
 echo "[$TIMESTAMP] ═══ Cycle complete ═══" | tee -a "$LOG_FILE"

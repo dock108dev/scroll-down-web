@@ -12,9 +12,11 @@ set -euo pipefail
 #   # Ctrl+B, D to detach
 
 REPO_DIR="$HOME/scroll-down-web"
+WEB_DIR="$REPO_DIR/web"
 LOG_DIR="/tmp/audit-agent-logs"
 WAIT_SECONDS="${AUDIT_INTERVAL:-21600}"  # default 6 hours
 MAX_FIX_ATTEMPTS=5
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 mkdir -p "$LOG_DIR"
 
@@ -24,16 +26,16 @@ export NVM_DIR="$HOME/.nvm"
 
 # ── Phase 1: Audit ──────────────────────────────────────
 AUDIT_PROMPT='Read docs/audit-agent.md for context. You are running on the audit Mac.
+The app runs as a production build (npm start). Code pull and rebuild are handled
+before this phase — do NOT run git pull or npm ci yourself.
 
-1. Pull latest code: git pull origin main
-2. If there are changes, run: cd web && npm ci && npm run build
-3. Verify the app is healthy: curl -s http://localhost:3001/api/health
-4. Run the audit: ./scripts/agent-audit.sh --no-issues
-5. Read the generated report in docs/audit-results/reports/
-6. For each failure, investigate by reading the test code and any screenshots in docs/audit-results/screenshots/
-7. For real bugs (not flaky tests or transient network errors), file a GitHub issue:
+1. Verify the app is healthy: curl -s http://localhost:3001/api/health
+2. Run the audit: ./scripts/agent-audit.sh --no-issues
+3. Read the generated report in docs/audit-results/reports/
+4. For each failure, investigate by reading the test code and any screenshots in docs/audit-results/screenshots/
+5. For real bugs (not flaky tests or transient network errors), file a GitHub issue:
    ./scripts/file-github-issue.sh "title" "description" severity page
-8. Summarize what you found: how many passed/failed, which failures are new, any issues filed'
+6. Summarize what you found: how many passed/failed, which failures are new, any issues filed'
 
 # ── Phase 2: Review & Plan ──────────────────────────────
 REVIEW_PROMPT='Read docs/audit-agent.md for context. You just completed an audit cycle.
@@ -55,6 +57,7 @@ REVIEW_PROMPT='Read docs/audit-agent.md for context. You just completed an audit
 
 # ── Phase 3: Execute Fixes ──────────────────────────────
 EXECUTE_PROMPT='Read docs/audit-agent.md for context. You are executing a fix plan.
+The app runs as a production build (npm start via LaunchAgent).
 
 1. Read the latest report in docs/audit-results/reports/ and test-results.json to understand current failures.
 2. Implement fixes for all failures you can address — both test issues and app bugs.
@@ -63,8 +66,8 @@ EXECUTE_PROMPT='Read docs/audit-agent.md for context. You are executing a fix pl
    - For visual regression: update baselines with --update-snapshots after making changes
    - For app bugs: fix the source code
    - For upstream issues: document observations in docs/upstream-api-observations.md
-3. After implementing fixes, rebuild if needed: cd web && npm run build
-4. Restart the app if rebuilt: launchctl kickstart -k gui/$(id -u)/com.scrolldown.web
+3. After implementing fixes, rebuild: cd web && npm run build
+4. Restart the app after rebuild: launchctl kickstart -k gui/$(id -u)/com.scrolldown.web
 5. Run the audit again: ./scripts/agent-audit.sh --no-issues
 6. Read the new report. Output: "FAILURES_REMAINING: N" where N is the failure count.
    If N is 0, output "ALL_CLEAR" instead.'
@@ -76,6 +79,21 @@ while true; do
   echo "[$TIMESTAMP] ═══ Starting audit cycle ═══" | tee "$LOG_FILE"
 
   cd "$REPO_DIR"
+
+  # ── Pull & rebuild (production mode, matching CI) ──
+  echo "[$TIMESTAMP] Pulling latest code..." | tee -a "$LOG_FILE"
+  BEFORE=$(git rev-parse HEAD)
+  git pull origin main >> "$LOG_FILE" 2>&1 || true
+  AFTER=$(git rev-parse HEAD)
+
+  if [ "$BEFORE" != "$AFTER" ] || [ ! -d "$WEB_DIR/.next/standalone" ]; then
+    echo "[$TIMESTAMP] Changes detected or no build — rebuilding..." | tee -a "$LOG_FILE"
+    cd "$WEB_DIR" && npm ci --silent >> "$LOG_FILE" 2>&1 && npm run build >> "$LOG_FILE" 2>&1
+    cd "$REPO_DIR"
+    # Restart the app to pick up the new production build
+    launchctl kickstart -k "gui/$(id -u)/com.scrolldown.web" >> "$LOG_FILE" 2>&1 || true
+    sleep 5  # give the app a moment to start
+  fi
 
   # ── Phase 1: Run the audit ──
   echo "[$TIMESTAMP] Phase 1: Running audit..." | tee -a "$LOG_FILE"
@@ -127,6 +145,14 @@ while true; do
     if [ "$ATTEMPT" -gt "$MAX_FIX_ATTEMPTS" ]; then
       echo "[$TIMESTAMP] WARNING: Unable to resolve all failures after $MAX_FIX_ATTEMPTS attempts" | tee -a "$LOG_FILE"
       echo "[$TIMESTAMP] Remaining failures: $NEW_FAILURES" | tee -a "$LOG_FILE"
+      # Escalate: file a GitHub issue so a human knows the agent is stuck
+      if command -v gh &>/dev/null; then
+        "$SCRIPT_DIR/file-github-issue.sh" \
+          "Agent stuck: $NEW_FAILURES failures after $MAX_FIX_ATTEMPTS fix attempts" \
+          "The autonomous audit agent was unable to resolve all test failures after $MAX_FIX_ATTEMPTS attempts on $TIMESTAMP. $NEW_FAILURES failures remain. Check logs at /tmp/audit-agent-logs/agent-$TIMESTAMP.log" \
+          high \
+          "agent-loop" || true
+      fi
     fi
   fi
 

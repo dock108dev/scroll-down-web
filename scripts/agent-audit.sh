@@ -84,8 +84,11 @@ echo "  ✓ Report saved to audit-results/reports/$DATE.md"
 if [ "$NO_ISSUES" = false ] && command -v gh &>/dev/null; then
   echo ""
   echo "→ Filing GitHub issues for failures..."
-  FAILURES=$(jq -r '.suites[]?.specs[]? | select(.ok == false) | .title' \
-    "$RESULTS_DIR/test-results.json" 2>/dev/null || echo "")
+  # Playwright JSON nests suites — recurse to find all specs
+  FAILURES=$(jq -r '
+    [recurse(.suites[]?) | .specs[]? | select(.ok == false) | .title]
+    | unique[]
+  ' "$RESULTS_DIR/test-results.json" 2>/dev/null || echo "")
 
   if [ -n "$FAILURES" ]; then
     while IFS= read -r title; do

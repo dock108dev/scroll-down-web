@@ -102,6 +102,51 @@ if [ -f "$TEST_FILE" ]; then
 EOF
 fi
 
+# ─── Visual Regression Baseline Staleness ────────────────
+SNAPSHOTS_DIR="$RESULTS_DIR/../web/tests/audit/visual-regression.spec.ts-snapshots"
+# Normalize to absolute path — snapshots may also be relative to repo root
+if [ ! -d "$SNAPSHOTS_DIR" ]; then
+  SNAPSHOTS_DIR="$(dirname "$RESULTS_DIR")/web/tests/audit/visual-regression.spec.ts-snapshots"
+fi
+
+if [ -d "$SNAPSHOTS_DIR" ]; then
+  # Components that affect visual snapshots
+  COMPONENT_DIRS="$(dirname "$RESULTS_DIR")/web/src/components $(dirname "$RESULTS_DIR")/web/src/app"
+  LATEST_COMPONENT_CHANGE=$(git -C "$(dirname "$RESULTS_DIR")" log -1 --format=%ct -- $COMPONENT_DIRS 2>/dev/null || echo "0")
+  STALE_BASELINES=""
+
+  for snapshot in "$SNAPSHOTS_DIR"/*.png; do
+    [ -f "$snapshot" ] || continue
+    SNAP_NAME=$(basename "$snapshot")
+    # Get file modification time as epoch (portable for macOS + Linux)
+    if stat -f %m "$snapshot" &>/dev/null; then
+      SNAP_TIME=$(stat -f %m "$snapshot")  # macOS
+    else
+      SNAP_TIME=$(stat -c %Y "$snapshot")  # Linux
+    fi
+    if [ "$SNAP_TIME" -lt "$LATEST_COMPONENT_CHANGE" ]; then
+      STALE_BASELINES="${STALE_BASELINES}\n| ${SNAP_NAME} | $(date -r "$SNAP_TIME" +%Y-%m-%d 2>/dev/null || date -d @"$SNAP_TIME" +%Y-%m-%d 2>/dev/null) |"
+    fi
+  done
+
+  if [ -n "$STALE_BASELINES" ]; then
+    cat >> "$OUTPUT_FILE" <<EOF
+### Stale Visual Regression Baselines
+
+The following baselines are older than the latest component change and may
+cause false failures. Regenerate with:
+\`\`\`
+npx playwright test --project=audit -g "screenshot" --update-snapshots
+\`\`\`
+
+| Baseline | Last Updated |
+|----------|-------------|
+$(echo -e "$STALE_BASELINES")
+
+EOF
+  fi
+fi
+
 cat >> "$OUTPUT_FILE" <<EOF
 ---
 

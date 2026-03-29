@@ -74,8 +74,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          FAILURES=$(jq -r '.suites[]?.specs[]? | select(.ok == false) | .title' \
-            docs/audit-results/test-results.json 2>/dev/null || echo "")
+          # Playwright JSON nests suites — recurse to find all specs
+          FAILURES=$(jq -r '
+            [recurse(.suites[]?) | .specs[]? | select(.ok == false) | .title]
+            | unique[]
+          ' docs/audit-results/test-results.json 2>/dev/null || echo "")
           if [ -n "$FAILURES" ]; then
             while IFS= read -r title; do
               [ -z "$title" ] && continue
