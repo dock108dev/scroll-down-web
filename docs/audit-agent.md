@@ -241,6 +241,13 @@ Output a specific fix plan.
 re-run the audit. If failures remain, loop back and try again. Stop after 5
 attempts and **auto-file a GitHub issue** to escalate to a human.
 
+**Phase 4 — Exploratory UX Review (50 turns):** After all tests pass (or fixes
+are exhausted), Claude opens a real browser via Playwright and browses the app
+like a sports fan. It evaluates UX, data quality, feature gaps, visual/design
+issues, and performance. Takes screenshots and saves a detailed report to
+`docs/audit-results/reports/exploratory-YYYY-MM-DD.md`. Files GitHub issues for
+any real bugs discovered.
+
 All phases use `claude -p --dangerously-skip-permissions` with your Claude Max
 subscription (OAuth credentials in macOS Keychain). No API key needed.
 

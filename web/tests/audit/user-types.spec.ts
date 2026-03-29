@@ -125,9 +125,10 @@ test.describe("Audit: User type behavior", () => {
 
   test("authenticated user has token and role in storage", async ({
     authedPage: page,
+    request,
   }) => {
-    if (!hasValidAuthState()) {
-      test.skip(true, "No valid auth state — backend was unavailable during setup");
+    if (!hasValidAuthState() || !(await isBackendAvailable(request))) {
+      test.skip(true, "No valid auth state or backend unavailable");
       return;
     }
     await page.goto("/");
@@ -160,9 +161,10 @@ test.describe("Audit: User type behavior", () => {
 
   test("authenticated user can access profile page", async ({
     authedPage: page,
+    request,
   }) => {
-    if (!hasValidAuthState()) {
-      test.skip(true, "No valid auth state — backend was unavailable during setup");
+    if (!hasValidAuthState() || !(await isBackendAvailable(request))) {
+      test.skip(true, "No valid auth state or backend unavailable");
       return;
     }
     await page.goto("/profile");
@@ -199,8 +201,8 @@ test.describe("Audit: User type behavior", () => {
     request,
   }) => {
     test.setTimeout(60_000);
-    if (!hasValidAuthState()) {
-      test.skip(true, "No valid auth state — backend was unavailable during setup");
+    if (!hasValidAuthState() || !(await isBackendAvailable(request))) {
+      test.skip(true, "No valid auth state or backend unavailable");
       return;
     }
     // FairBet live odds are auth-gated

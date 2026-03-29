@@ -156,6 +156,55 @@ while true; do
     fi
   fi
 
+  # ── Phase 4: Exploratory UX Review ──
+  REVIEW_DATE=$(date +%Y-%m-%d)
+  EXPLORE_PROMPT="Read docs/audit-agent.md for context. You are running on the audit Mac.
+The automated test suite has finished. Now you are acting as an exploratory QA
+engineer and product reviewer. Your job is to browse the live app at
+http://localhost:3001 like a real sports fan would and write an honest review.
+
+Use Playwright to automate a real browser session. Write a small inline script
+(npx playwright test --config=playwright.config.ts is already set up, or use the
+Playwright API directly via a Node script). You MUST actually load pages, click
+around, and take screenshots — do not just curl endpoints.
+
+What to do:
+1. Visit every section: home page, individual game detail pages, golf, fairbet,
+   login, settings/profile. Try both desktop (1280x720) and mobile (390x844).
+2. Interact like a user: expand games, reveal scores, toggle settings, navigate
+   back and forth, scroll through lists.
+3. Take screenshots of anything noteworthy and save them to
+   docs/audit-results/screenshots/explore-*.png
+4. Evaluate:
+   - **Bugs**: broken layouts, dead clicks, console errors, missing data
+   - **UX issues**: confusing flows, missing loading states, poor feedback
+   - **Feature gaps**: what would a power sports fan expect that is missing?
+   - **Data quality**: wrong scores, stale statuses, missing teams/leagues
+   - **Visual/design**: dark mode issues, mobile overflow, inconsistent spacing
+   - **Performance**: slow page transitions, janky animations
+
+5. Save your full report to docs/audit-results/reports/exploratory-$REVIEW_DATE.md
+   using this structure:
+   # Exploratory Review — $REVIEW_DATE
+   ## Bugs Found
+   ## UX Issues
+   ## Feature Recommendations
+   ## Data Quality Observations
+   ## Visual & Design Notes
+   ## Screenshots
+
+6. For any real bugs found, file a GitHub issue:
+   ./scripts/file-github-issue.sh \"title\" \"description\" severity page
+
+Be thorough and opinionated — this is the part that finds things automated tests miss."
+
+  echo "[$TIMESTAMP] Phase 4: Exploratory UX review..." | tee -a "$LOG_FILE"
+  claude -p "$EXPLORE_PROMPT" \
+    --dangerously-skip-permissions \
+    --max-turns 50 \
+    --output-format text \
+    >> "$LOG_FILE" 2>&1 || true
+
   echo "" >> "$LOG_FILE"
   echo "[$TIMESTAMP] ═══ Cycle complete ═══" | tee -a "$LOG_FILE"
   echo "[$TIMESTAMP] Next cycle in $((WAIT_SECONDS / 3600)) hours..."
