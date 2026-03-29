@@ -21,12 +21,13 @@ export function differs(
   core: { homeScore: number | null; awayScore: number | null; status: GameStatus; gameClock?: string; currentPeriod?: number },
   snap: RevealSnapshot,
 ): boolean {
+  // Only flag meaningful changes (scores, status).  Clock and period drift
+  // between data sources (summary → detail fetch) caused false "Update"
+  // indicators; the live period/clock is shown from core data anyway.
   return (
     (core.homeScore ?? -1) !== snap.homeScore ||
     (core.awayScore ?? -1) !== snap.awayScore ||
-    core.status !== snap.status ||
-    (core.gameClock ?? "") !== (snap.clock ?? "") ||
-    (core.currentPeriod ?? -1) !== (snap.period ?? -1)
+    core.status !== snap.status
   );
 }
 
