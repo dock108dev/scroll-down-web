@@ -49,6 +49,28 @@ function LoginForm() {
     return Object.keys(errs).length === 0;
   }, [email, password, confirmPassword, tab]);
 
+  const validateField = useCallback((field: "email" | "password" | "confirmPassword") => {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (field === "email" && email && !VALIDATION.EMAIL_RE.test(email)) {
+        next.email = "Enter a valid email address";
+      } else if (field === "email") {
+        delete next.email;
+      }
+      if (field === "password" && password.length > 0 && password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+        next.password = "Password must be at least 8 characters";
+      } else if (field === "password") {
+        delete next.password;
+      }
+      if (field === "confirmPassword" && confirmPassword && password !== confirmPassword) {
+        next.confirmPassword = "Passwords don't match";
+      } else if (field === "confirmPassword") {
+        delete next.confirmPassword;
+      }
+      return next;
+    });
+  }, [email, password, confirmPassword]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
@@ -140,6 +162,7 @@ function LoginForm() {
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _, ...rest } = prev; return rest; }); }}
+            onBlur={() => validateField("email")}
             autoComplete="email"
             aria-invalid={!!fieldErrors.email}
             className={cn(
@@ -162,6 +185,7 @@ function LoginForm() {
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _, ...rest } = prev; return rest; }); }}
+            onBlur={() => validateField("password")}
             autoComplete={tab === "login" ? "current-password" : "new-password"}
             aria-invalid={!!fieldErrors.password}
             className={cn(
@@ -185,6 +209,7 @@ function LoginForm() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onBlur={() => validateField("confirmPassword")}
               autoComplete="new-password"
               className="w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none focus:border-neutral-600 transition"
               placeholder="Re-enter password"
