@@ -135,7 +135,7 @@ function HistoryPageInner() {
           <button
             onClick={() => setLeague("")}
             className={cn(
-              "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition",
+              "shrink-0 rounded-full px-3 py-2 min-h-[44px] text-xs font-medium transition",
               league === ""
                 ? "bg-neutral-50 text-neutral-950"
                 : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
@@ -148,7 +148,7 @@ function HistoryPageInner() {
               key={code}
               onClick={() => setLeague(code)}
               className={cn(
-                "shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition uppercase",
+                "shrink-0 rounded-full px-3 py-2 min-h-[44px] text-xs font-medium transition uppercase",
                 league === code
                   ? "bg-neutral-50 text-neutral-950"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
@@ -168,7 +168,7 @@ function HistoryPageInner() {
               key={opt.value}
               onClick={() => setSortMode(opt.value)}
               className={cn(
-                "shrink-0 rounded-full px-2.5 py-1.5 text-xs font-medium transition",
+                "shrink-0 rounded-full px-2.5 py-2 min-h-[44px] text-xs font-medium transition",
                 sortMode === opt.value
                   ? "bg-blue-600 text-white"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
@@ -189,11 +189,11 @@ function HistoryPageInner() {
 
       {/* Error state */}
       {error && (
-        <div className="px-4 py-8 text-center text-sm space-y-3">
-          <p className="text-red-500">{error}</p>
+        <div className="px-4 py-12 text-center text-sm space-y-4">
+          <p className="text-neutral-400">We&apos;re having trouble loading history right now.</p>
           <button
             onClick={() => window.location.reload()}
-            className="text-xs font-medium px-4 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-neutral-50 border border-neutral-700 transition"
+            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition"
           >
             Retry
           </button>

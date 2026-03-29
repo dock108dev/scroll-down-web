@@ -80,7 +80,7 @@ export default function FairBetPage() {
           </div>
           <button
             onClick={() => setShowHowItWorks(true)}
-            className="text-xs font-medium rounded-full px-3 py-1 transition"
+            className="text-xs font-medium rounded-full px-3 py-2 min-h-[44px] transition"
             style={{
               backgroundColor: "var(--fb-info-soft)",
               color: "var(--fb-info)",
@@ -97,7 +97,7 @@ export default function FairBetPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
-              className="flex-1 text-xs font-semibold py-1.5 rounded-md transition-colors capitalize"
+              className="flex-1 text-xs font-semibold py-2.5 min-h-[44px] rounded-md transition-colors capitalize"
               style={{
                 backgroundColor: activeTab === tab ? "var(--fb-card-bg)" : "transparent",
                 color: activeTab === tab ? "var(--ds-text-primary)" : "var(--ds-text-tertiary)",
@@ -154,13 +154,11 @@ export default function FairBetPage() {
 
         {/* Error state */}
         {hook.error && (
-          <div className="py-12 text-center space-y-3">
-            <div className="text-sm" style={{ color: FairBetTheme.negative }}>
-              {hook.error}
-            </div>
+          <div className="py-12 text-center space-y-4">
+            <p className="text-sm text-neutral-400">We&apos;re having trouble loading odds right now.</p>
             <button
               onClick={hook.refetch}
-              className="text-xs font-medium px-4 py-1.5 rounded-lg text-neutral-400"
+              className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200"
               style={{
                 backgroundColor: "var(--fb-surface-secondary)",
                 border: "1px solid var(--fb-border-subtle)",
@@ -168,6 +166,7 @@ export default function FairBetPage() {
             >
               Retry
             </button>
+            <p className="text-xs text-neutral-600">Odds data updates every few minutes.</p>
           </div>
         )}
 

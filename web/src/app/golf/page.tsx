@@ -34,14 +34,15 @@ export default function GolfPage() {
       )}
 
       {error && (
-        <div className="py-12 text-center space-y-3">
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="py-12 text-center space-y-4">
+          <p className="text-sm text-neutral-400">We&apos;re having trouble loading tournament data right now.</p>
           <button
             onClick={() => refetch()}
-            className="text-xs font-medium px-4 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-neutral-50 border border-neutral-700 transition"
+            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition"
           >
             Retry
           </button>
+          <p className="text-xs text-neutral-600">Check back shortly — tournament data updates regularly.</p>
         </div>
       )}
 

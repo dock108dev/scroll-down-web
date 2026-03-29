@@ -74,7 +74,7 @@ export function TopNav() {
           <button
             onClick={toggleLive}
             className={cn(
-              "flex items-center gap-2 mr-3 px-3 py-1.5 rounded-full text-xs font-medium transition",
+              "flex items-center gap-2 mr-3 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium transition",
               followingLive
                 ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
                 : "bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
@@ -108,7 +108,7 @@ export function TopNav() {
         ) : (
           <Link
             href="/login"
-            className="hidden md:flex text-sm text-neutral-400 hover:text-neutral-50 mr-3 transition"
+            className="hidden md:flex items-center text-sm text-neutral-400 hover:text-neutral-50 mr-3 min-h-[44px] px-2 transition"
           >
             Log In
           </Link>

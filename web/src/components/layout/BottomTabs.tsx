@@ -95,12 +95,15 @@ export function BottomTabs() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 text-xs transition min-w-[44px] min-h-[44px] px-1",
+                "relative flex flex-col items-center justify-center gap-1 text-xs transition min-w-[44px] min-h-[44px] px-1",
                 isActive ? "text-neutral-50" : "text-neutral-500",
               )}
             >
               <tab.Icon />
               {tab.label}
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-5 rounded-full bg-blue-500" />
+              )}
             </Link>
           );
         })}

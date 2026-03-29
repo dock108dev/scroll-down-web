@@ -130,7 +130,7 @@ function LoginForm() {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4">
         {/* Email */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
@@ -141,6 +141,7 @@ function LoginForm() {
             value={email}
             onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _, ...rest } = prev; return rest; }); }}
             autoComplete="email"
+            aria-invalid={!!fieldErrors.email}
             className={cn(
               "w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
               fieldErrors.email ? "border-red-500 focus:border-red-400" : "border-neutral-800 focus:border-neutral-600",
@@ -148,7 +149,7 @@ function LoginForm() {
             placeholder="you@example.com"
           />
           {fieldErrors.email && (
-            <p className="text-xs text-red-400">{fieldErrors.email}</p>
+            <p role="alert" className="text-xs text-red-400">{fieldErrors.email}</p>
           )}
         </div>
 
@@ -162,6 +163,7 @@ function LoginForm() {
             value={password}
             onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _, ...rest } = prev; return rest; }); }}
             autoComplete={tab === "login" ? "current-password" : "new-password"}
+            aria-invalid={!!fieldErrors.password}
             className={cn(
               "w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
               fieldErrors.password ? "border-red-500 focus:border-red-400" : "border-neutral-800 focus:border-neutral-600",
@@ -169,7 +171,7 @@ function LoginForm() {
             placeholder="Min 8 characters"
           />
           {fieldErrors.password && (
-            <p className="text-xs text-red-400">{fieldErrors.password}</p>
+            <p role="alert" className="text-xs text-red-400">{fieldErrors.password}</p>
           )}
         </div>
 
@@ -218,7 +220,7 @@ function LoginForm() {
 
         {/* API error */}
         {error && (
-          <p className="text-xs text-red-400 text-center">{error}</p>
+          <p role="alert" className="text-xs text-red-400 text-center">{error}</p>
         )}
 
         {/* Submit */}

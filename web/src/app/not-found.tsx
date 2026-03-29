@@ -9,7 +9,7 @@ export default function NotFound() {
       </p>
       <Link
         href="/"
-        className="mt-6 inline-block text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
+        className="mt-6 inline-flex items-center justify-center text-sm font-medium text-blue-400 hover:text-blue-300 min-h-[44px] px-4 transition-colors"
       >
         Back to Games
       </Link>

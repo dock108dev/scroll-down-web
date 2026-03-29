@@ -61,9 +61,9 @@ export function SettingsDrawer() {
           </button>
         </div>
 
-        {/* Scrollable content */}
+        {/* Scrollable content — only mount when open to avoid duplicate DOM nodes with /settings page */}
         <div className="overflow-y-auto h-[calc(100%-57px)] px-4 py-6 pb-24">
-          <SettingsContent />
+          {settingsOpen && <SettingsContent />}
         </div>
       </div>
     </>

@@ -238,7 +238,7 @@ export default function HomePage() {
 
       {/* Sticky toolbar */}
       <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
-        <SearchBar value={search} onChange={setSearch} />
+        <SearchBar value={search} onChange={setSearch} disabled={!!error && !hasAnyGames} />
 
         {/* League pills + batch actions + refresh */}
         <div className="flex items-center gap-2">
@@ -327,21 +327,25 @@ export default function HomePage() {
 
       {/* Error state */}
       {error && (
-        <div className="px-4 py-8 text-center space-y-3">
-          <p className="text-sm text-red-500">{error}</p>
+        <div className="px-4 py-12 text-center space-y-4">
+          <p className="text-sm text-neutral-400">We&apos;re having trouble loading games right now.</p>
           <button
             onClick={() => refetch()}
-            className="text-xs font-medium px-4 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-neutral-50 border border-neutral-700 transition"
+            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition"
           >
             Retry
           </button>
+          <p className="text-xs text-neutral-600">Check back shortly — data updates every few minutes.</p>
         </div>
       )}
 
       {/* Empty state */}
       {!loading && !error && !hasAnyGames && (
-        <div className="px-4 py-8 text-center text-neutral-500 text-sm">
-          No games found
+        <div className="px-4 py-12 text-center space-y-2">
+          <p className="text-sm text-neutral-400">No games found</p>
+          <p className="text-xs text-neutral-600">
+            {search ? "Try a different search term." : "Games will appear here once the schedule is available."}
+          </p>
         </div>
       )}
 
