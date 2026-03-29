@@ -39,12 +39,16 @@ function sortByStatusThenTime(games: GameCore[], finalsAlpha = false): GameCore[
 
 // ── Derive available leagues from all games ────────────────
 
+/** Static fallback so league pills always appear, even when the API is down */
+const STATIC_LEAGUES = ["mlb", "nba", "ncaab", "nhl"];
+
 function deriveLeagues(games: GameCore[]): string[] {
   const set = new Set<string>();
   for (const g of games) {
     if (g.leagueCode) set.add(g.leagueCode.toLowerCase());
   }
-  return Array.from(set).sort();
+  const derived = Array.from(set).sort();
+  return derived.length > 0 ? derived : STATIC_LEAGUES;
 }
 
 // ── Page component ─────────────────────────────────────────

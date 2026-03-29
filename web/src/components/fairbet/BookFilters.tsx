@@ -116,7 +116,7 @@ export function BookFilters({
             placeholder="Search teams, players..."
             value={searchText}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full rounded-lg px-3 py-1.5 text-xs text-neutral-200 placeholder-neutral-500 outline-none"
+            className="w-full rounded-lg px-3 py-2.5 min-h-[44px] text-xs text-neutral-200 placeholder-neutral-500 outline-none"
             style={{
               backgroundColor: "var(--fb-surface-secondary)",
               border: "1px solid var(--fb-border-subtle)",
@@ -136,7 +136,7 @@ export function BookFilters({
         <select
           value={sort}
           onChange={(e) => onSortChange(e.target.value as SortMode)}
-          className="rounded-lg px-2 py-1.5 text-xs text-neutral-200 outline-none cursor-pointer appearance-none"
+          className="rounded-lg px-2 py-2.5 min-h-[44px] text-xs text-neutral-200 outline-none cursor-pointer appearance-none"
           style={{
             backgroundColor: "var(--fb-surface-secondary)",
             border: "1px solid var(--fb-border-subtle)",
@@ -214,7 +214,7 @@ function FilterPill({
     <button
       onClick={onClick}
       className={cn(
-        "shrink-0 rounded-full px-3 py-1 text-xs font-medium transition whitespace-nowrap",
+        "shrink-0 rounded-full px-3 py-2 min-h-[44px] flex items-center text-xs font-medium transition whitespace-nowrap",
       )}
       style={
         active
@@ -246,7 +246,7 @@ function TogglePill({
   return (
     <button
       onClick={onClick}
-      className="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition"
+      className="shrink-0 rounded-full px-3 py-2 min-h-[44px] flex items-center text-xs font-medium transition"
       style={
         active
           ? {

@@ -237,7 +237,7 @@ function HistoryPageInner() {
 
 export default function HistoryPage() {
   return (
-    <AuthGate minRole="admin" message="Game history is coming soon! This feature is currently in early testing.">
+    <AuthGate minRole="admin" message="Game history is coming soon! This feature is currently in early testing." showSignup={false}>
       <Suspense>
         <HistoryPageInner />
       </Suspense>

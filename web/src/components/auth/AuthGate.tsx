@@ -11,10 +11,12 @@ import { trackEvent } from "@/lib/analytics";
 export function AuthGate({
   minRole = "user",
   message = "Sign up for free to access this feature",
+  showSignup = true,
   children,
 }: {
   minRole?: Role;
   message?: string;
+  showSignup?: boolean;
   children: React.ReactNode;
 }) {
   const role = useAuth((s) => s.role);
@@ -32,13 +34,15 @@ export function AuthGate({
   return (
     <div data-testid="auth-gate" className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-6 text-center space-y-3">
       <p className="text-sm text-neutral-400">{message}</p>
-      <Link
-        href="/login?tab=signup"
-        onClick={() => trackEvent("signup_gate_click", { message })}
-        className="inline-block text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
-      >
-        Sign Up Free
-      </Link>
+      {showSignup && (
+        <Link
+          href="/login?tab=signup"
+          onClick={() => trackEvent("signup_gate_click", { message })}
+          className="inline-block text-sm font-medium px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+        >
+          Sign Up Free
+        </Link>
+      )}
     </div>
   );
 }

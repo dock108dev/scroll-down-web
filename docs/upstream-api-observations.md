@@ -71,5 +71,27 @@ is a web-side issue, not upstream.
 
 ---
 
+## 6. Complete Backend Outage (2026-03-29)
+
+**Observation:** During the 2026-03-29 audit run, the backend at
+`sports-data-admin.dock108.ai` was completely unreachable. The global-setup
+health check failed, resulting in fake auth state being used. All 15 API
+validation tests were skipped, along with 21 additional tests that depend on
+live backend data (36 skips total). The 4 API endpoints that were probed
+returned HTTP 401 (Unauthorized).
+
+**Impact:** 36 of 104 audit tests were skipped (35%). No API, data accuracy,
+game loading, third-party comparison, or authenticated user tests could run.
+Only static page crawls, accessibility, performance, cache, settings, and
+visual regression tests executed.
+
+**What it looks like:** Either a full backend outage, expired API credentials
+in `web/.env.local`, or a DNS/network issue on the audit Mac. The 401 status
+on all endpoints suggests an auth/credential issue rather than a full outage.
+Worth checking if the API key has expired or if the backend auth service was
+down.
+
+---
+
 *This document is generated from audit observations and updated as new patterns
-emerge. Last updated: 2026-03-20.*
+emerge. Last updated: 2026-03-29.*

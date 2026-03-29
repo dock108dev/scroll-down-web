@@ -296,6 +296,8 @@ function SettingsToggle({
     <div className="flex items-center justify-between px-4 py-3">
       <span className="text-sm text-neutral-200">{label}</span>
       <button
+        role="switch"
+        aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
           "relative inline-flex h-6 w-11 items-center rounded-full transition",

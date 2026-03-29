@@ -139,9 +139,12 @@ function LoginForm() {
           <input
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _, ...rest } = prev; return rest; }); }}
             autoComplete="email"
-            className="w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none focus:border-neutral-600 transition"
+            className={cn(
+              "w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
+              fieldErrors.email ? "border-red-500 focus:border-red-400" : "border-neutral-800 focus:border-neutral-600",
+            )}
             placeholder="you@example.com"
           />
           {fieldErrors.email && (
@@ -157,9 +160,12 @@ function LoginForm() {
           <input
             type="password"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _, ...rest } = prev; return rest; }); }}
             autoComplete={tab === "login" ? "current-password" : "new-password"}
-            className="w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none focus:border-neutral-600 transition"
+            className={cn(
+              "w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
+              fieldErrors.password ? "border-red-500 focus:border-red-400" : "border-neutral-800 focus:border-neutral-600",
+            )}
             placeholder="Min 8 characters"
           />
           {fieldErrors.password && (
@@ -192,18 +198,18 @@ function LoginForm() {
         {/* Forgot password + stay logged in (login only) */}
         {tab === "login" && (
           <div className="flex items-center justify-between -mt-1">
-            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <label className="flex items-center gap-2 cursor-pointer select-none min-h-[44px] py-2">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="accent-blue-500 w-3.5 h-3.5 rounded"
+                className="accent-blue-500 w-5 h-5 rounded"
               />
               <span className="text-xs text-neutral-400">Stay logged in</span>
             </label>
             <Link
               href="/forgot-password"
-              className="text-xs text-blue-400 hover:text-blue-300"
+              className="text-xs text-blue-400 hover:text-blue-300 min-h-[44px] flex items-center px-2"
             >
               Forgot password?
             </Link>
