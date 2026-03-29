@@ -189,12 +189,14 @@ function HistoryPageInner() {
 
       {/* Error state */}
       {error && (
-        <div className="px-4 py-8 text-center text-sm">
-          {error.includes("403") ? (
-            <p className="text-neutral-400">This feature requires elevated access</p>
-          ) : (
-            <p className="text-red-500">{error}</p>
-          )}
+        <div className="px-4 py-8 text-center text-sm space-y-3">
+          <p className="text-red-500">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-xs font-medium px-4 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-neutral-50 border border-neutral-700 transition"
+          >
+            Retry
+          </button>
         </div>
       )}
 
@@ -235,7 +237,7 @@ function HistoryPageInner() {
 
 export default function HistoryPage() {
   return (
-    <AuthGate minRole="admin" message="This feature is restricted to admin users">
+    <AuthGate minRole="admin" message="Game history is coming soon! This feature is currently in early testing.">
       <Suspense>
         <HistoryPageInner />
       </Suspense>

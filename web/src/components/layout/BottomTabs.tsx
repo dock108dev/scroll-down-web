@@ -95,7 +95,7 @@ export function BottomTabs() {
               key={tab.href}
               href={tab.href}
               className={cn(
-                "flex flex-col items-center gap-1 text-xs transition",
+                "flex flex-col items-center justify-center gap-1 text-xs transition min-w-[44px] min-h-[44px] px-1",
                 isActive ? "text-neutral-50" : "text-neutral-500",
               )}
             >
@@ -106,7 +106,7 @@ export function BottomTabs() {
         })}
         <button
           onClick={openSettings}
-          className="flex flex-col items-center gap-1 text-xs text-neutral-500 transition"
+          className="flex flex-col items-center justify-center gap-1 text-xs text-neutral-500 transition min-w-[44px] min-h-[44px] px-1"
         >
           <SettingsIcon />
           Settings
