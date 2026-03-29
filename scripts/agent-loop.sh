@@ -205,6 +205,47 @@ Be thorough and opinionated — this is the part that finds things automated tes
     --output-format text \
     >> "$LOG_FILE" 2>&1 || true
 
+  # ── Phase 5: Fix exploratory findings ──
+  EXPLORE_FIX_PROMPT="Read docs/audit-agent.md for context. You are running on the audit Mac.
+The app runs as a production build (npm start via LaunchAgent).
+
+Read the exploratory review at docs/audit-results/reports/exploratory-$REVIEW_DATE.md
+and look at the screenshots in docs/audit-results/screenshots/explore-*.png.
+
+Your job is to FIX every bug and UX issue listed in that report. Do not just plan —
+actually edit the source code. For each finding:
+
+1. Read the relevant source files to understand the current implementation.
+2. Implement the fix. Be surgical — fix the issue without breaking anything else.
+3. For feature recommendations that are small/medium effort, implement them too.
+   Skip only large features that would take more than ~30 minutes of work.
+
+Common fixes you should handle:
+- CSS overflow issues: add overflow-hidden, fix widths, use max-w-full
+- Missing pages: create simple placeholder pages (privacy, terms, etc.)
+- Empty states: add helpful messaging, show next-available times
+- Touch target sizes: increase to minimum 44px
+- Confusing UX: add labels, redirects with messages, auto-expand defaults
+- Console errors: fix broken endpoints or remove dead references
+
+After implementing all fixes:
+1. Rebuild: cd web && npm run build
+2. Restart the app: launchctl kickstart -k gui/\$(id -u)/com.scrolldown.web
+3. Re-run the exploratory checks — revisit the pages you fixed and take new
+   screenshots to confirm the fixes (save as explore-fixed-*.png).
+4. Update the exploratory report with a '## Fixes Applied' section listing
+   what you changed and the before/after.
+5. Run the audit suite to make sure nothing broke: ./scripts/agent-audit.sh --no-issues
+6. If the audit has failures, fix those too.
+7. Report what you fixed and what remains."
+
+  echo "[$TIMESTAMP] Phase 5: Fixing exploratory findings..." | tee -a "$LOG_FILE"
+  claude -p "$EXPLORE_FIX_PROMPT" \
+    --dangerously-skip-permissions \
+    --max-turns 60 \
+    --output-format text \
+    >> "$LOG_FILE" 2>&1 || true
+
   echo "" >> "$LOG_FILE"
   echo "[$TIMESTAMP] ═══ Cycle complete ═══" | tee -a "$LOG_FILE"
   echo "[$TIMESTAMP] Next cycle in $((WAIT_SECONDS / 3600)) hours..."
