@@ -246,28 +246,33 @@ properly and create or update a pull request.
 Current branch: $CURRENT_BRANCH
 
 Steps:
-1. Run git status and git diff to see all changes.
-2. Stage all code changes (source files, test files, configs, scripts, snapshots).
+1. CLEANUP FIRST: Delete any debug/scratch/tmp test files you created during this
+   cycle (e.g. debug-*.spec.ts, tmp-*.spec.ts, scratch-*.spec.ts). These are for
+   investigation only and must never be committed.
+2. Run git status and git diff to see all changes.
+3. Run lint to catch issues before committing: cd web && npm run lint
+   If lint fails, fix the errors before proceeding.
+4. Stage all code changes (source files, test files, configs, scripts, snapshots).
    Do NOT stage .env files or anything in docs/audit-results/ (that dir is gitignored).
-3. Write a clear commit message summarizing what was fixed. Use this format:
+5. Write a clear commit message summarizing what was fixed. Use this format:
    fix: <one-line summary of main changes>
 
    - bullet point for each notable fix
    - reference any GitHub issues fixed with 'Fixes #N' or 'Closes #N'
 
    Co-Authored-By: Claude Code Audit Agent <noreply@anthropic.com>
-4. Push the branch to origin:
+6. Push the branch to origin:
    git push origin $CURRENT_BRANCH
-5. Check if a PR already exists from $CURRENT_BRANCH to main:
+7. Check if a PR already exists from $CURRENT_BRANCH to main:
    gh pr list --head $CURRENT_BRANCH --state open --json number --jq '.[0].number'
-6. If a PR exists, update it with a comment summarizing this cycle's changes:
+8. If a PR exists, update it with a comment summarizing this cycle's changes:
    gh pr comment <number> --body '## Audit Cycle $TIMESTAMP\n\n<summary of changes>'
-7. If no PR exists AND $CURRENT_BRANCH is not 'main', create one:
+9. If no PR exists AND $CURRENT_BRANCH is not 'main', create one:
    gh pr create --title 'fix: audit agent fixes ($REVIEW_DATE)' \\
      --body '<PR body with summary, list of fixes, and test results>'
-8. For each GitHub issue that was fixed by the changes in this cycle, close it
-   with a comment referencing the PR:
-   gh issue close <number> --comment 'Fixed in PR #<pr_number> (audit cycle $TIMESTAMP)'
+10. For each GitHub issue that was fixed by the changes in this cycle, close it
+    with a comment referencing the PR:
+    gh issue close <number> --comment 'Fixed in PR #<pr_number> (audit cycle $TIMESTAMP)'
 
 Report: what was committed, PR number, and which issues were closed." \
     --dangerously-skip-permissions \

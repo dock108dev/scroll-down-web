@@ -51,3 +51,13 @@ node_modules/
 # Playwright auth state
 tests/.auth/
 
+# Playwright trace files and video recordings
+traces/
+*.webm
+*.zip
+
+# Agent debug/scratch files (created during audit cycles, should never be committed)
+tests/**/debug-*.spec.ts
+tests/**/tmp-*.spec.ts
+tests/**/scratch-*.spec.ts
+

@@ -43,3 +43,8 @@ secrets/
 
 # Audit results (generated data, not source)
 docs/audit-results/
+
+# Playwright artifacts that may land at repo root
+test-results/
+playwright-report/
+blob-report/
