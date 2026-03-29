@@ -34,7 +34,14 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
     // Token expired — clear auth state
     useAuth.getState().logout();
   }
-  if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+  if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      throw new Error("We're having trouble loading data right now. Please try again later.");
+    } else if (res.status >= 500) {
+      throw new Error("Something went wrong on our end. Please try again later.");
+    }
+    throw new Error("Unable to load data. Please check your connection and try again.");
+  }
   return res.json();
 }
 

@@ -27,7 +27,7 @@ export default function ProfilePage() {
 
   // Redirect guests to login — only after hydration so we don't flash-redirect
   useEffect(() => {
-    if (hydrated && !token) router.replace("/login");
+    if (hydrated && !token) router.replace("/login?reason=profile");
   }, [hydrated, token, router]);
 
   if (!hydrated || !token) return null;

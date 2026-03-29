@@ -7,7 +7,7 @@ import type { SortMode } from "@/hooks/useFairBetOdds";
 // ── Market filter definitions ──────────────────────────────────────
 
 const MARKET_FILTERS = [
-  { key: "", label: "All" },
+  { key: "", label: "All Markets" },
   { key: "moneyline", label: "Moneyline" },
   { key: "spread", label: "Spread" },
   { key: "total", label: "Total" },

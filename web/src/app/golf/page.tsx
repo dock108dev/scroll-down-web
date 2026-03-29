@@ -21,7 +21,7 @@ function Section({ title, tournaments }: { title: string; tournaments: GolfTourn
 }
 
 export default function GolfPage() {
-  const { sections, loading, error } = useGolfTournaments();
+  const { sections, loading, error, refetch } = useGolfTournaments();
 
   return (
     <main data-testid="page-golf" className="mx-auto max-w-3xl px-4 py-6">
@@ -34,7 +34,15 @@ export default function GolfPage() {
       )}
 
       {error && (
-        <p className="py-12 text-center text-sm text-red-400">{error}</p>
+        <div className="py-12 text-center space-y-3">
+          <p className="text-sm text-red-400">{error}</p>
+          <button
+            onClick={() => refetch()}
+            className="text-xs font-medium px-4 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-neutral-50 border border-neutral-700 transition"
+          >
+            Retry
+          </button>
+        </div>
       )}
 
       {!loading && !error && (

@@ -243,7 +243,7 @@ export default function HomePage() {
             <button
               onClick={() => setLeague("")}
               className={cn(
-                "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition",
+                "shrink-0 rounded-full px-3 py-2 min-h-[44px] min-w-[44px] text-xs font-medium transition",
                 league === ""
                   ? "bg-neutral-50 text-neutral-950"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
@@ -256,7 +256,7 @@ export default function HomePage() {
                 key={code}
                 onClick={() => setLeague(code)}
                 className={cn(
-                  "shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition uppercase",
+                  "shrink-0 rounded-full px-3 py-2 min-h-[44px] min-w-[44px] text-xs font-medium transition uppercase",
                   league === code
                     ? "bg-neutral-50 text-neutral-950"
                     : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
@@ -323,8 +323,14 @@ export default function HomePage() {
 
       {/* Error state */}
       {error && (
-        <div className="px-4 py-8 text-center text-red-500 text-sm">
-          {error}
+        <div className="px-4 py-8 text-center space-y-3">
+          <p className="text-sm text-red-500">{error}</p>
+          <button
+            onClick={() => refetch()}
+            className="text-xs font-medium px-4 py-1.5 rounded-lg bg-neutral-800 text-neutral-400 hover:text-neutral-50 border border-neutral-700 transition"
+          >
+            Retry
+          </button>
         </div>
       )}
 

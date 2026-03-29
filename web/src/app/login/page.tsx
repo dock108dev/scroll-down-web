@@ -24,6 +24,7 @@ function LoginForm() {
   const { login, signup, requestMagicLink, isLoading } = useAuth();
 
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "login";
+  const reason = searchParams.get("reason");
   const [tab, setTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -99,6 +100,13 @@ function LoginForm() {
       <h1 className="text-xl font-bold text-neutral-100 text-center mb-6">
         {tab === "login" ? "Welcome back" : "Create an account"}
       </h1>
+
+      {/* Redirect reason message */}
+      {reason === "profile" && (
+        <p className="text-xs text-neutral-400 text-center mb-4 bg-neutral-800/50 rounded-lg px-3 py-2">
+          Please log in to view your profile.
+        </p>
+      )}
 
       {/* Tabs */}
       <div className="flex rounded-lg bg-neutral-800 p-0.5 mb-6">
