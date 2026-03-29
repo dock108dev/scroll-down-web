@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useHistoricalGames } from "@/hooks/useHistoricalGames";
 import type { GameCore } from "@/stores/game-data";
 
@@ -237,7 +238,7 @@ function HistoryPageInner() {
 
 export default function HistoryPage() {
   return (
-    <AuthGate minRole="admin" message="Game History is coming soon — browse past scores, search by team, and review completed matchups. In the meantime, check today's scores on the Games page." showSignup={false}>
+    <AuthGate minRole="admin" message={<>Game History is coming soon — browse past scores, search by team, and review completed matchups. In the meantime, <Link href="/" className="text-blue-400 hover:text-blue-300 underline">check today&apos;s scores on the Games page</Link>.</>} showSignup={false}>
       <Suspense>
         <HistoryPageInner />
       </Suspense>

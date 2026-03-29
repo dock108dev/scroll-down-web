@@ -151,13 +151,14 @@ export default function FairBetPage() {
             <p className="text-sm text-neutral-400">We&apos;re having trouble loading odds right now.</p>
             <button
               onClick={hook.refetch}
-              className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200"
+              disabled={hook.loading}
+              className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200 disabled:opacity-50"
               style={{
                 backgroundColor: "var(--fb-surface-secondary)",
                 border: "1px solid var(--fb-border-subtle)",
               }}
             >
-              Retry
+              {hook.loading ? "Retrying…" : "Retry"}
             </button>
             <p className="text-xs text-neutral-600">Odds data updates every few minutes.</p>
           </div>

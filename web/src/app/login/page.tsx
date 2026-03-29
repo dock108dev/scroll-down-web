@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
@@ -25,12 +25,14 @@ function LoginForm() {
 
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const reason = searchParams.get("reason");
+  const redirectTo = searchParams.get("redirect");
   const [tab, setTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -71,10 +73,27 @@ function LoginForm() {
     });
   }, [email, password, confirmPassword]);
 
+  // Re-validate on every change after first failed submit
+  useEffect(() => {
+    if (!submitted) return;
+    const errs: Record<string, string> = {};
+    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+      errs.email = "Enter a valid email address";
+    }
+    if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+      errs.password = "Password must be at least 8 characters";
+    }
+    if (tab === "signup" && password !== confirmPassword) {
+      errs.confirmPassword = "Passwords don't match";
+    }
+    setFieldErrors(errs); // eslint-disable-line react-hooks/set-state-in-effect -- re-validate form fields as user types after first submit
+  }, [submitted, email, password, confirmPassword, tab]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setError(null);
+      setSubmitted(true);
       if (!validate()) return;
 
       try {
@@ -85,7 +104,7 @@ function LoginForm() {
           await signup(email, password);
           trackEvent("signup_success");
         }
-        router.push("/");
+        router.push(redirectTo || "/");
       } catch (err) {
         if (err instanceof AuthError) {
           if (err.status === 409) {
@@ -100,7 +119,7 @@ function LoginForm() {
         }
       }
     },
-    [tab, email, password, rememberMe, validate, login, signup, router],
+    [tab, email, password, rememberMe, validate, login, signup, router, redirectTo],
   );
 
   const handleMagicLink = useCallback(async () => {

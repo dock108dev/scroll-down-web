@@ -212,13 +212,14 @@ export function LiveOddsPanel() {
           <p className="text-sm text-neutral-400">We&apos;re having trouble loading in-game odds right now.</p>
           <button
             onClick={hook.refetch}
-            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200"
+            disabled={hook.loading || hook.gamesLoading}
+            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200 disabled:opacity-50"
             style={{
               backgroundColor: "var(--fb-surface-secondary)",
               border: "1px solid var(--fb-border-subtle)",
             }}
           >
-            Retry
+            {hook.loading || hook.gamesLoading ? "Retrying…" : "Retry"}
           </button>
           <p className="text-xs text-neutral-600">In-game odds are available when live games are in progress.</p>
         </div>
