@@ -47,6 +47,8 @@ interface BookFiltersProps {
   onParlayClick: () => void;
   // Refresh
   onRefresh: () => void;
+  // Disabled state (no data loaded)
+  disabled?: boolean;
 }
 
 export function BookFilters({
@@ -67,9 +69,10 @@ export function BookFilters({
   parlayCount,
   onParlayClick,
   onRefresh,
+  disabled = false,
 }: BookFiltersProps) {
   return (
-    <div data-testid="book-filters" className="space-y-3">
+    <div data-testid="book-filters" className={cn("space-y-3", disabled && "opacity-50 pointer-events-none")}>
       {/* League filter row */}
       <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
         <FilterPill

@@ -55,9 +55,13 @@ export default function GolfPage() {
           {sections.thisWeek.length === 0 &&
             sections.upcoming.length === 0 &&
             sections.recent.length === 0 && (
-              <p className="py-12 text-center text-sm text-neutral-500">
-                No tournaments available right now.
-              </p>
+              <div className="py-12 text-center space-y-3">
+                <p className="text-sm text-neutral-400">No tournaments available right now</p>
+                <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
+                  The PGA Tour typically runs Thursday through Sunday. Check back
+                  when the next event is underway for live leaderboards and results.
+                </p>
+              </div>
             )}
         </div>
       )}

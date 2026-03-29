@@ -37,12 +37,12 @@ export function Footer() {
             <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
               Product
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {PRODUCT_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
+                    className="inline-flex items-center min-h-[44px] text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -56,12 +56,12 @@ export function Footer() {
             <p className="text-xs font-medium text-neutral-400 uppercase tracking-wider mb-3">
               Support
             </p>
-            <ul className="space-y-2">
+            <ul className="space-y-1">
               {LEGAL_LINKS.map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
+                    className="inline-flex items-center min-h-[44px] text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -70,7 +70,7 @@ export function Footer() {
               <li>
                 <a
                   href="mailto:support@scrolldownsports.dev"
-                  className="text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
+                  className="inline-flex items-center min-h-[44px] text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
                 >
                   Contact
                 </a>

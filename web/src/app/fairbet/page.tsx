@@ -104,7 +104,7 @@ export default function FairBetPage() {
                 boxShadow: activeTab === tab ? "var(--ds-shadow-subtle)" : "none",
               }}
             >
-              {tab === "pregame" ? "Pre-Game" : "Live"}
+              {tab === "pregame" ? "Pre-Game" : "In-Game"}
             </button>
           ))}
         </div>
@@ -128,6 +128,7 @@ export default function FairBetPage() {
           parlayCount={hook.parlayCount}
           onParlayClick={() => setShowParlay(true)}
           onRefresh={hook.refetch}
+          disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
         />}
 
       </div>
@@ -172,10 +173,25 @@ export default function FairBetPage() {
 
         {/* Empty state */}
         {!hook.loading && !hook.error && hook.filteredBets.length === 0 && (
-          <div className="py-12 text-center text-sm text-neutral-500">
-            {hook.filters.evOnly
-              ? "No +EV bets found with current filters. Try disabling the +EV filter."
-              : "No bets available right now. Try refreshing or changing filters."}
+          <div className="py-12 text-center space-y-3">
+            <p className="text-sm text-neutral-400">
+              {hook.filters.evOnly
+                ? "No +EV bets found with current filters"
+                : "No bets available right now"}
+            </p>
+            <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
+              {hook.filters.evOnly
+                ? "Try disabling the +EV filter to see all available odds."
+                : "FairBet compares odds across sportsbooks to find bets where the price is better than the true probability. Odds update every few minutes when games are on the schedule."}
+            </p>
+            {hook.filters.evOnly && (
+              <button
+                onClick={() => hook.setEvOnly(false)}
+                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+              >
+                Show all bets
+              </button>
+            )}
           </div>
         )}
 

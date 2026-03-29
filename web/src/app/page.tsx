@@ -341,11 +341,23 @@ export default function HomePage() {
 
       {/* Empty state */}
       {!loading && !error && !hasAnyGames && (
-        <div className="px-4 py-12 text-center space-y-2">
-          <p className="text-sm text-neutral-400">No games found</p>
-          <p className="text-xs text-neutral-600">
-            {search ? "Try a different search term." : "Games will appear here once the schedule is available."}
+        <div className="px-4 py-12 text-center space-y-3">
+          <p className="text-sm text-neutral-400">
+            {search ? "No games match your search" : "No games scheduled right now"}
           </p>
+          <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
+            {search
+              ? "Try a different search term or clear your filter."
+              : "Check back when MLB, NBA, NHL, or NCAAB games are on the schedule. Games typically start in the afternoon and evening."}
+          </p>
+          {search && (
+            <button
+              onClick={() => setSearch("")}
+              className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Clear search
+            </button>
+          )}
         </div>
       )}
 

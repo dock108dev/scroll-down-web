@@ -52,7 +52,7 @@ export function SettingsDrawer() {
       >
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-neutral-800">
-          <h1 className="text-lg font-bold text-neutral-100">Settings</h1>
+          <h2 className="text-lg font-bold text-neutral-100">Settings</h2>
           <button
             onClick={closeSettings}
             className="text-neutral-500 hover:text-neutral-200 transition-colors text-xl leading-none p-1"

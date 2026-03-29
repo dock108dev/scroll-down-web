@@ -207,6 +207,7 @@ export function SettingsContent() {
         </Row>
         <SettingsToggle
           label="Hide Thin Markets"
+          hint="Markets with only 1–2 sportsbooks"
           checked={hideLimitedData}
           onChange={setHideLimitedData}
         />
@@ -285,16 +286,21 @@ export function SettingsContent() {
 
 function SettingsToggle({
   label,
+  hint,
   checked,
   onChange,
 }: {
   label: string;
+  hint?: string;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
     <div className="flex items-center justify-between px-4 py-3">
-      <span className="text-sm text-neutral-200">{label}</span>
+      <div>
+        <span className="text-sm text-neutral-200">{label}</span>
+        {hint && <p className="text-xs text-neutral-500">{hint}</p>}
+      </div>
       <button
         role="switch"
         aria-checked={checked}

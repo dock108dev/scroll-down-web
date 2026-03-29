@@ -12,11 +12,13 @@ export function AuthGate({
   minRole = "user",
   message = "Sign up for free to access this feature",
   showSignup = true,
+  preview,
   children,
 }: {
   minRole?: Role;
   message?: string;
   showSignup?: boolean;
+  preview?: React.ReactNode;
   children: React.ReactNode;
 }) {
   const role = useAuth((s) => s.role);
@@ -32,18 +34,21 @@ export function AuthGate({
   }
 
   return (
-    <div data-testid="auth-gate" className="mx-auto max-w-md px-4 py-16 text-center space-y-4">
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-6 py-8 space-y-4">
-        <p className="text-sm text-neutral-400">{message}</p>
-        {showSignup && (
-          <Link
-            href="/login?tab=signup"
-            onClick={() => trackEvent("signup_gate_click", { message })}
-            className="inline-block text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
-          >
-            Sign Up Free
-          </Link>
-        )}
+    <div data-testid="auth-gate" className="relative">
+      {preview && <div aria-hidden="true">{preview}</div>}
+      <div className={`${preview ? "absolute inset-0 flex items-center justify-center" : ""} mx-auto max-w-md px-4 py-16 text-center space-y-4`}>
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-6 py-8 space-y-4">
+          <p className="text-sm text-neutral-400">{message}</p>
+          {showSignup && (
+            <Link
+              href="/login?tab=signup"
+              onClick={() => trackEvent("signup_gate_click", { message })}
+              className="inline-block text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
+            >
+              Sign Up Free
+            </Link>
+          )}
+        </div>
       </div>
     </div>
   );

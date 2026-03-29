@@ -63,7 +63,7 @@ export async function apiFetch<T>(
   options?: RequestInit & { revalidate?: number; timeoutMs?: number },
 ): Promise<T> {
   const url = `${BASE_URL}${path}`;
-  const timeoutMs = options?.timeoutMs ?? 15_000;
+  const timeoutMs = options?.timeoutMs ?? 5_000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {

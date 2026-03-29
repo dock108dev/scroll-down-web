@@ -32,6 +32,23 @@ export default function AnalyticsPage() {
       <AuthGate
         minRole="user"
         message="Sign up for free to access analytics tools"
+        preview={
+          <div className="grid grid-cols-2 gap-3 select-none pointer-events-none blur-[2px] opacity-60">
+            {SPORTS.map((sport) => (
+              <div
+                key={sport.key}
+                className="flex flex-col items-center justify-center rounded-xl border border-neutral-800 bg-neutral-900 px-4 py-6"
+              >
+                <span className="text-lg font-bold text-neutral-50">
+                  {sport.label}
+                </span>
+                <span className="text-xs text-neutral-400 mt-1">
+                  {sport.description}
+                </span>
+              </div>
+            ))}
+          </div>
+        }
       >
         <div className="grid grid-cols-2 gap-3">
           {SPORTS.map((sport) => (
