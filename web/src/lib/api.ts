@@ -50,8 +50,8 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export const api = {
-  games: (params?: URLSearchParams) =>
-    fetchApi<GameListResponse>(`/api/games${params ? `?${params}` : ""}`),
+  games: (params?: URLSearchParams, init?: RequestInit) =>
+    fetchApi<GameListResponse>(`/api/games${params ? `?${params}` : ""}`, init),
   game: (id: number) => fetchApi<GameDetailResponse>(`/api/games/${id}`),
   flow: (id: number) => fetchApi<GameFlowResponse>(`/api/games/${id}/flow`),
   fairbetOdds: (params?: URLSearchParams) =>
@@ -70,9 +70,10 @@ export const api = {
     if (sortBy) params.set("sort_by", sortBy);
     return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
   },
-  golfTournaments: (params?: URLSearchParams) =>
+  golfTournaments: (params?: URLSearchParams, init?: RequestInit) =>
     fetchApi<GolfTournamentListResponse>(
       `/api/golf/tournaments${params ? `?${params}` : ""}`,
+      init,
     ),
   golfTournament: (eventId: string) =>
     fetchApi<GolfTournament>(`/api/golf/tournaments/${eventId}`),

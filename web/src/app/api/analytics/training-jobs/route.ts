@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     });
     return NextResponse.json(data);
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
+    const status = err instanceof ApiError ? err.proxyStatus : 502;
     return NextResponse.json(
       { error: "Failed to fetch training jobs" },
       { status },
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     );
     return NextResponse.json(data);
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
+    const status = err instanceof ApiError ? err.proxyStatus : 502;
     return NextResponse.json(
       { error: "Failed to update training job" },
       { status },

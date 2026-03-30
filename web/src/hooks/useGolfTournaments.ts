@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { GolfTournament } from "@/lib/golf-types";
 import { POLLING } from "@/lib/config";
@@ -15,24 +15,34 @@ export function useGolfTournaments() {
   const [tournaments, setTournaments] = useState<GolfTournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchTournaments = useCallback(async (opts?: { silent?: boolean }) => {
+    // Abort any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     if (!opts?.silent) setLoading(true);
     setError(null);
     try {
-      const data = await api.golfTournaments();
-      setTournaments(data.tournaments);
+      const data = await api.golfTournaments(undefined, { signal: controller.signal });
+      if (!controller.signal.aborted) {
+        setTournaments(data.tournaments);
+      }
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(
         err instanceof Error ? err.message : "Failed to fetch tournaments",
       );
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
     fetchTournaments();
+    return () => { abortRef.current?.abort(); };
   }, [fetchTournaments]);
 
   // Poll for updates

@@ -113,7 +113,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Recaps — Default Expanded ──────────────────── */}
-      <Section title="Recaps — Default Expanded">
+      <Section title="Recaps — Default Expanded" collapsible>
         {HOME_SECTIONS.map((section) => (
           <SettingsCheckRow
             key={section}
@@ -125,7 +125,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Timeline — Default Tiers ────────────────────── */}
-      <Section title="Timeline — Default Tiers">
+      <Section title="Timeline — Default Tiers" collapsible>
         {([
           { tier: 1, label: "Key Plays", desc: "Scoring, turnovers, big moments" },
           { tier: 2, label: "Secondary", desc: "Fouls, rebounds, stoppages" },
@@ -154,7 +154,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Score Display ──────────────────────────────── */}
-      <Section title="Score Display">
+      <Section title="Score Display" collapsible>
         <Row label="Score visibility">
           <DarkSelect
             value={scoreRevealMode}
@@ -179,7 +179,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
-      <Section title="Odds">
+      <Section title="Odds" collapsible>
         <Row label="Default Book">
           <DarkSelect
             value={preferredSportsbook}

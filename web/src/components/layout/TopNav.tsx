@@ -70,7 +70,7 @@ export function TopNav() {
           ))}
         </div>
         <div className="flex-1" />
-        {liveAvailable && (
+        {liveAvailable && ["/", "/golf", "/fairbet"].includes(pathname) && (
           <button
             onClick={toggleLive}
             className={cn(

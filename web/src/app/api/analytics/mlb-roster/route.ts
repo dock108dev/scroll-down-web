@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json(data);
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
+    const status = err instanceof ApiError ? err.proxyStatus : 502;
     return NextResponse.json(
       { error: "Failed to fetch roster" },
       { status },

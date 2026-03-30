@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(data);
   } catch (err) {
-    const status = err instanceof ApiError ? err.status : 500;
+    const status = err instanceof ApiError ? err.proxyStatus : 502;
     return NextResponse.json(
       { error: "Failed to activate model" },
       { status },

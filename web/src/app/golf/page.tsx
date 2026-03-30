@@ -1,7 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useGolfTournaments } from "@/hooks/useGolfTournaments";
 import { TournamentCard } from "@/components/golf/TournamentCard";
+import { Spinner } from "@/components/shared/Spinner";
 import type { GolfTournament } from "@/lib/golf-types";
 
 function Section({ title, tournaments }: { title: string; tournaments: GolfTournament[] }) {
@@ -22,6 +24,7 @@ function Section({ title, tournaments }: { title: string; tournaments: GolfTourn
 
 export default function GolfPage() {
   const { sections, loading, error, refetch } = useGolfTournaments();
+  const [retryCount, setRetryCount] = useState(0);
 
   return (
     <main data-testid="page-golf" className="mx-auto max-w-3xl px-4 py-6">
@@ -35,13 +38,17 @@ export default function GolfPage() {
 
       {error && (
         <div className="py-12 text-center space-y-4">
-          <p className="text-sm text-neutral-400">We&apos;re having trouble loading tournament data right now.</p>
+          <p className="text-sm text-neutral-400">
+            {retryCount >= 3
+              ? "The service may be temporarily unavailable."
+              : "We\u2019re having trouble loading tournament data right now."}
+          </p>
           <button
-            onClick={() => refetch()}
+            onClick={() => { setRetryCount((c) => c + 1); refetch(); }}
             disabled={loading}
-            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition disabled:opacity-50"
+            className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition disabled:opacity-50"
           >
-            {loading ? "Retrying…" : "Retry"}
+            {loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
           </button>
           <p className="text-xs text-neutral-600">Check back shortly — tournament data updates regularly.</p>
         </div>
