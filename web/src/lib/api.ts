@@ -30,9 +30,27 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
   }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  // Abort after 3s unless the caller already provides a signal
-  const timeout = !init?.signal ? AbortSignal.timeout(FETCH_TIMEOUT_MS) : undefined;
-  const res = await fetch(path, { ...init, headers, signal: timeout ?? init?.signal });
+  // Abort after timeout unless the caller already provides a signal
+  let timeoutSignal: AbortSignal | undefined;
+  if (!init?.signal) {
+    if (typeof AbortSignal.timeout === "function") {
+      timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+    } else {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      timeoutSignal = controller.signal;
+    }
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(path, { ...init, headers, signal: timeoutSignal ?? init?.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Request timed out. Please check your connection and try again.");
+    }
+    throw new Error("Unable to load data. Please check your connection and try again.");
+  }
 
   if (res.status === 401) {
     // Token expired — clear auth state

@@ -80,6 +80,7 @@ export function SettingsDrawer() {
           <h2 className="text-lg font-bold text-neutral-100">Settings</h2>
           <button
             onClick={closeSettings}
+            aria-label="Close settings"
             className="text-neutral-500 hover:text-neutral-200 transition-colors text-xl leading-none p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
           >
             &#10005;

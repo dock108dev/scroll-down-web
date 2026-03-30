@@ -23,27 +23,31 @@ export function Section({
   return (
     <div className="space-y-1">
       {collapsible ? (
-        <button
-          onClick={() => setOpen((o) => !o)}
-          className="flex w-full items-center justify-between px-1 mb-2"
-        >
-          <h2
-            className={cn(
-              "text-xs font-semibold uppercase tracking-wide",
-              titleClassName ?? "text-neutral-500",
-            )}
+        <h2 className="mb-2">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={isOpen}
+            className="flex w-full items-center justify-between px-1"
           >
-            {title}
-          </h2>
-          <span
-            className={cn(
-              "text-xs text-neutral-500 transition-transform duration-200",
-              isOpen ? "" : "-rotate-90",
-            )}
-          >
-            &#9660;
-          </span>
-        </button>
+            <span
+              className={cn(
+                "text-xs font-semibold uppercase tracking-wide",
+                titleClassName ?? "text-neutral-500",
+              )}
+            >
+              {title}
+            </span>
+            <span
+              className={cn(
+                "text-xs text-neutral-500 transition-transform duration-200",
+                isOpen ? "" : "-rotate-90",
+              )}
+            >
+              &#9660;
+            </span>
+          </button>
+        </h2>
       ) : (
         <h2
           className={cn(

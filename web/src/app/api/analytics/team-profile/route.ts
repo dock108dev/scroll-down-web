@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
     );
     return NextResponse.json(data);
   } catch (err) {
-    const status = err instanceof ApiError ? err.proxyStatus : 502;
+    const status = err instanceof ApiError && err.proxyStatus ? err.proxyStatus : 500;
     return NextResponse.json(
       { error: "Failed to fetch team profile" },
       { status },
