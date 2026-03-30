@@ -13,6 +13,8 @@ import type {
 } from "./golf-types";
 import { useAuth } from "@/stores/auth";
 
+const FETCH_TIMEOUT_MS = 3_000;
+
 export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
   const token = useAuth.getState().token;
   // Normalize any HeadersInit form (Headers, [k,v][], or object) into a plain record
@@ -28,7 +30,27 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
   }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const res = await fetch(path, { ...init, headers });
+  // Abort after timeout unless the caller already provides a signal
+  let timeoutSignal: AbortSignal | undefined;
+  if (!init?.signal) {
+    if (typeof AbortSignal.timeout === "function") {
+      timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
+    } else {
+      const controller = new AbortController();
+      setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+      timeoutSignal = controller.signal;
+    }
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(path, { ...init, headers, signal: timeoutSignal ?? init?.signal });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new Error("Request timed out. Please check your connection and try again.");
+    }
+    throw new Error("Unable to load data. Please check your connection and try again.");
+  }
 
   if (res.status === 401) {
     // Token expired — clear auth state
@@ -46,8 +68,8 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export const api = {
-  games: (params?: URLSearchParams) =>
-    fetchApi<GameListResponse>(`/api/games${params ? `?${params}` : ""}`),
+  games: (params?: URLSearchParams, init?: RequestInit) =>
+    fetchApi<GameListResponse>(`/api/games${params ? `?${params}` : ""}`, init),
   game: (id: number) => fetchApi<GameDetailResponse>(`/api/games/${id}`),
   flow: (id: number) => fetchApi<GameFlowResponse>(`/api/games/${id}/flow`),
   fairbetOdds: (params?: URLSearchParams) =>
@@ -66,9 +88,10 @@ export const api = {
     if (sortBy) params.set("sort_by", sortBy);
     return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
   },
-  golfTournaments: (params?: URLSearchParams) =>
+  golfTournaments: (params?: URLSearchParams, init?: RequestInit) =>
     fetchApi<GolfTournamentListResponse>(
       `/api/golf/tournaments${params ? `?${params}` : ""}`,
+      init,
     ),
   golfTournament: (eventId: string) =>
     fetchApi<GolfTournament>(`/api/golf/tournaments/${eventId}`),

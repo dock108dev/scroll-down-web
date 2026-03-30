@@ -49,13 +49,14 @@ function getSectionDateRanges(): Record<SectionKey, DateRange> {
 async function fetchSection(
   range: DateRange,
   league?: string,
+  init?: RequestInit,
 ): Promise<GameSummary[]> {
   const params = new URLSearchParams();
   params.set("startDate", range.startDate);
   params.set("endDate", range.endDate);
   params.set("limit", String(API.GAMES_LIMIT));
   if (league) params.set("league", league);
-  const data = await api.games(params);
+  const data = await api.games(params, init);
   return data.games;
 }
 
@@ -142,6 +143,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const [loading, setLoading] = useState(!hasCached);
   const [error, setError] = useState<string | null>(null);
   const prevLeagueRef = useRef(league);
+  const abortRef = useRef<AbortController | null>(null);
 
   const fetchAll = useCallback(async (showLoading?: boolean, force?: boolean) => {
     // Check freshness per listKey — skip if all recently fetched (unless forced)
@@ -153,15 +155,22 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
       if (allFresh) return;
     }
 
+    // Abort any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     if (showLoading) setLoading(true);
     setError(null);
 
     try {
+      const init = { signal: controller.signal };
       const [yesterday, today, upcoming] = await Promise.all([
-        fetchSection(ranges.Yesterday, league),
-        fetchSection(ranges.Today, league),
-        fetchSection(ranges.Upcoming, league),
+        fetchSection(ranges.Yesterday, league, init),
+        fetchSection(ranges.Today, league, init),
+        fetchSection(ranges.Upcoming, league, init),
       ]);
+      if (controller.signal.aborted) return;
 
       // Upsert per section with aligned listKeys
       const sections: [SectionKey, GameSummary[]][] = [
@@ -189,6 +198,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
       setSectionIds(buckets);
       setLoading(false);
     } catch (err) {
+      if (controller.signal.aborted) return;
       setError(
         err instanceof Error ? err.message : "Failed to fetch games",
       );
@@ -221,6 +231,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
       setSectionIds(seeded);
     }
     fetchAll(isLeagueChange || loading);
+    return () => { abortRef.current?.abort(); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchAll]);
 

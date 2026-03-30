@@ -16,7 +16,7 @@ export function AuthGate({
   children,
 }: {
   minRole?: Role;
-  message?: string;
+  message?: React.ReactNode;
   showSignup?: boolean;
   preview?: React.ReactNode;
   children: React.ReactNode;
@@ -42,7 +42,7 @@ export function AuthGate({
           {showSignup && (
             <Link
               href="/login?tab=signup"
-              onClick={() => trackEvent("signup_gate_click", { message })}
+              onClick={() => trackEvent("signup_gate_click", { message: typeof message === "string" ? message : "custom" })}
               className="inline-block text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-blue-600 text-white hover:bg-blue-500 transition-colors"
             >
               Sign Up Free

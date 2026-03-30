@@ -7,10 +7,10 @@ import { BookFilters } from "@/components/fairbet/BookFilters";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
 import { LiveOddsPanel } from "@/components/fairbet/LiveOddsPanel";
-import { AuthGate } from "@/components/auth/AuthGate";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
+import { Spinner } from "@/components/shared/Spinner";
 import { RENDER } from "@/lib/config";
 
 export default function FairBetPage() {
@@ -20,6 +20,7 @@ export default function FairBetPage() {
   const [showParlay, setShowParlay] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [activeTab, setActiveTab] = useState<"pregame" | "live">("pregame");
+  const [retryCount, setRetryCount] = useState(0);
 
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
@@ -135,14 +136,7 @@ export default function FairBetPage() {
 
       {/* ── Content ── */}
       <div className="px-4 pb-4 space-y-3">
-        {activeTab === "live" && (
-          <AuthGate
-            minRole="user"
-            message="Sign up for free to access live odds"
-          >
-            <LiveOddsPanel />
-          </AuthGate>
-        )}
+        {activeTab === "live" && <LiveOddsPanel />}
 
         {activeTab === "pregame" && <>
         {/* Loading state */}
@@ -156,16 +150,21 @@ export default function FairBetPage() {
         {/* Error state */}
         {hook.error && (
           <div className="py-12 text-center space-y-4">
-            <p className="text-sm text-neutral-400">We&apos;re having trouble loading odds right now.</p>
+            <p className="text-sm text-neutral-400">
+              {retryCount >= 3
+                ? "The service may be temporarily unavailable."
+                : "We\u2019re having trouble loading odds right now."}
+            </p>
             <button
-              onClick={hook.refetch}
-              className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200"
+              onClick={() => { setRetryCount((c) => c + 1); hook.refetch(); }}
+              disabled={hook.loading}
+              className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200 disabled:opacity-50"
               style={{
                 backgroundColor: "var(--fb-surface-secondary)",
                 border: "1px solid var(--fb-border-subtle)",
               }}
             >
-              Retry
+              {hook.loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
             </button>
             <p className="text-xs text-neutral-600">Odds data updates every few minutes.</p>
           </div>
@@ -173,7 +172,7 @@ export default function FairBetPage() {
 
         {/* Empty state */}
         {!hook.loading && !hook.error && hook.filteredBets.length === 0 && (
-          <div className="py-12 text-center space-y-3">
+          <div className="py-12 text-center space-y-5">
             <p className="text-sm text-neutral-400">
               {hook.filters.evOnly
                 ? "No +EV bets found with current filters"
@@ -191,6 +190,28 @@ export default function FairBetPage() {
               >
                 Show all bets
               </button>
+            )}
+
+            {/* Example card */}
+            {!hook.filters.evOnly && (
+              <div className="mx-auto max-w-sm text-left rounded-xl p-4 space-y-3 opacity-60 pointer-events-none select-none" style={{ backgroundColor: "var(--fb-card-bg)", border: "1px dashed var(--fb-border-subtle)" }}>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Example</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-neutral-200">Lakers vs Celtics</p>
+                    <p className="text-xs text-neutral-500">Spread &middot; NBA</p>
+                  </div>
+                  <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${FairBetTheme.positive}20`, color: FairBetTheme.positive }}>+2.4% EV</span>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-neutral-400">Fair: <strong className="text-neutral-200">-108</strong></span>
+                  <span className="text-neutral-400">Best: <strong style={{ color: FairBetTheme.positive }}>-102</strong></span>
+                  <span className="text-neutral-500 ml-auto">DraftKings</span>
+                </div>
+                <p className="text-[10px] text-neutral-600 leading-relaxed">
+                  &uarr; When a book&apos;s price is better than the fair line, you have an edge.
+                </p>
+              </div>
             )}
           </div>
         )}
@@ -276,7 +297,7 @@ export default function FairBetPage() {
               <h2 className="text-lg font-semibold text-neutral-50">How FairBet Works</h2>
               <button
                 onClick={() => setShowHowItWorks(false)}
-                className="text-neutral-500 hover:text-neutral-50 text-sm"
+                className="text-neutral-500 hover:text-neutral-50 text-sm min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 Close
               </button>

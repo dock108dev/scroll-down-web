@@ -70,7 +70,7 @@ export function TopNav() {
           ))}
         </div>
         <div className="flex-1" />
-        {liveAvailable && (
+        {liveAvailable && ["/", "/golf", "/fairbet"].includes(pathname) && (
           <button
             onClick={toggleLive}
             className={cn(
@@ -79,6 +79,7 @@ export function TopNav() {
                 ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
                 : "bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
             )}
+            aria-label={followingLive ? "Live scores on — click to freeze scores" : "Live scores off — click to follow live scores"}
             title={followingLive ? "Following live — click to freeze scores" : "Click to follow live scores"}
           >
             <span
@@ -94,7 +95,12 @@ export function TopNav() {
                 )}
               />
             </span>
-            LIVE
+            <span className="flex flex-col items-start leading-none">
+              <span>LIVE</span>
+              <span className={cn("text-[9px] font-normal", followingLive ? "text-green-400/70" : "text-neutral-500")}>
+                {followingLive ? "Auto-updating" : "Scores frozen"}
+              </span>
+            </span>
           </button>
         )}
         {token ? (

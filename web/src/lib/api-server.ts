@@ -11,6 +11,19 @@ export class ApiError extends Error {
   ) {
     super(`API ${status}: ${body}`);
   }
+
+  /** True when the upstream error is a gateway-level issue (not a client problem). */
+  get isUpstreamGatewayError(): boolean {
+    // 401/403 from the upstream API means our API key or gateway auth is
+    // misconfigured — the *client* didn't do anything wrong.  Map these to
+    // 502 so the browser doesn't think it has an auth problem.
+    return [401, 403, 502, 503, 504].includes(this.status);
+  }
+
+  /** The status code the API proxy should return to the client. */
+  get proxyStatus(): number {
+    return this.isUpstreamGatewayError ? 502 : this.status;
+  }
 }
 
 // ── Double-encoded UTF-8 repair ─────────────────────────────

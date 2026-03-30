@@ -1,28 +1,68 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-/** Card-style section with a title header — used by Settings and Profile. */
+/** Card-style section with a title header — used by Settings and Profile.
+ *  When `collapsible` is true, the section can be toggled open/closed.
+ *  Defaults to open unless `defaultOpen` is explicitly false. */
 export function Section({
   title,
   children,
   titleClassName,
+  collapsible = false,
+  defaultOpen = true,
 }: {
   title: string;
   children: React.ReactNode;
   titleClassName?: string;
+  collapsible?: boolean;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(defaultOpen);
+  const isOpen = !collapsible || open;
+
   return (
     <div className="space-y-1">
-      <h2
-        className={cn(
-          "text-xs font-semibold uppercase tracking-wide px-1 mb-2",
-          titleClassName ?? "text-neutral-500",
-        )}
-      >
-        {title}
-      </h2>
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800">
-        {children}
-      </div>
+      {collapsible ? (
+        <h2 className="mb-2">
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={isOpen}
+            className="flex w-full items-center justify-between px-1"
+          >
+            <span
+              className={cn(
+                "text-xs font-semibold uppercase tracking-wide",
+                titleClassName ?? "text-neutral-500",
+              )}
+            >
+              {title}
+            </span>
+            <span
+              className={cn(
+                "text-xs text-neutral-500 transition-transform duration-200",
+                isOpen ? "" : "-rotate-90",
+              )}
+            >
+              &#9660;
+            </span>
+          </button>
+        </h2>
+      ) : (
+        <h2
+          className={cn(
+            "text-xs font-semibold uppercase tracking-wide px-1 mb-2",
+            titleClassName ?? "text-neutral-500",
+          )}
+        >
+          {title}
+        </h2>
+      )}
+      {isOpen && (
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

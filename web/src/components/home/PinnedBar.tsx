@@ -106,7 +106,8 @@ export function PinnedBar() {
               e.stopPropagation();
               togglePin(chip.id);
             }}
-            className="ml-0.5 rounded-full p-0.5 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600 transition"
+            className="ml-0.5 rounded-full p-2 -mr-1 text-neutral-500 hover:text-neutral-200 hover:bg-neutral-600 transition"
+            aria-label={`Unpin ${chip.awayTeamAbbr} vs ${chip.homeTeamAbbr}`}
           >
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />

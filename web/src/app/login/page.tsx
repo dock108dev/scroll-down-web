@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, Suspense } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
@@ -25,12 +25,16 @@ function LoginForm() {
 
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const reason = searchParams.get("reason");
+  const rawRedirect = searchParams.get("redirect");
+  // Only allow safe internal paths — prevent open redirects
+  const redirectTo = rawRedirect && /^\/[^/]/.test(rawRedirect) ? rawRedirect : null;
   const [tab, setTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
 
@@ -49,10 +53,49 @@ function LoginForm() {
     return Object.keys(errs).length === 0;
   }, [email, password, confirmPassword, tab]);
 
+  const validateField = useCallback((field: "email" | "password" | "confirmPassword") => {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (field === "email" && email && !VALIDATION.EMAIL_RE.test(email)) {
+        next.email = "Enter a valid email address";
+      } else if (field === "email") {
+        delete next.email;
+      }
+      if (field === "password" && password.length > 0 && password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+        next.password = "Password must be at least 8 characters";
+      } else if (field === "password") {
+        delete next.password;
+      }
+      if (field === "confirmPassword" && confirmPassword && password !== confirmPassword) {
+        next.confirmPassword = "Passwords don't match";
+      } else if (field === "confirmPassword") {
+        delete next.confirmPassword;
+      }
+      return next;
+    });
+  }, [email, password, confirmPassword]);
+
+  // Re-validate on every change after first failed submit
+  useEffect(() => {
+    if (!submitted) return;
+    const errs: Record<string, string> = {};
+    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+      errs.email = "Enter a valid email address";
+    }
+    if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+      errs.password = "Password must be at least 8 characters";
+    }
+    if (tab === "signup" && password !== confirmPassword) {
+      errs.confirmPassword = "Passwords don't match";
+    }
+    setFieldErrors(errs); // eslint-disable-line react-hooks/set-state-in-effect -- re-validate form fields as user types after first submit
+  }, [submitted, email, password, confirmPassword, tab]);
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
       setError(null);
+      setSubmitted(true);
       if (!validate()) return;
 
       try {
@@ -63,7 +106,7 @@ function LoginForm() {
           await signup(email, password);
           trackEvent("signup_success");
         }
-        router.push("/");
+        router.push(redirectTo || "/");
       } catch (err) {
         if (err instanceof AuthError) {
           if (err.status === 409) {
@@ -78,7 +121,7 @@ function LoginForm() {
         }
       }
     },
-    [tab, email, password, rememberMe, validate, login, signup, router],
+    [tab, email, password, rememberMe, validate, login, signup, router, redirectTo],
   );
 
   const handleMagicLink = useCallback(async () => {
@@ -140,6 +183,7 @@ function LoginForm() {
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _, ...rest } = prev; return rest; }); }}
+            onBlur={() => validateField("email")}
             autoComplete="email"
             aria-invalid={!!fieldErrors.email}
             className={cn(
@@ -162,6 +206,7 @@ function LoginForm() {
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _, ...rest } = prev; return rest; }); }}
+            onBlur={() => validateField("password")}
             autoComplete={tab === "login" ? "current-password" : "new-password"}
             aria-invalid={!!fieldErrors.password}
             className={cn(
@@ -185,6 +230,7 @@ function LoginForm() {
               type="password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
+              onBlur={() => validateField("confirmPassword")}
               autoComplete="new-password"
               className="w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none focus:border-neutral-600 transition"
               placeholder="Re-enter password"

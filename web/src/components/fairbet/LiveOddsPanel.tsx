@@ -92,12 +92,13 @@ export function LiveOddsPanel() {
 
           <button
             onClick={hook.refetch}
-            className="shrink-0 p-2 rounded-lg text-neutral-500 hover:text-neutral-300 transition"
+            className="shrink-0 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center rounded-lg text-neutral-500 hover:text-neutral-300 transition"
             style={{
               backgroundColor: "var(--fb-surface-secondary)",
               border: "1px solid var(--fb-border-subtle)",
             }}
             title="Refresh"
+            aria-label="Refresh in-game odds"
           >
             <svg
               className="w-4 h-4"
@@ -207,29 +208,29 @@ export function LiveOddsPanel() {
       )}
 
       {hook.error && !hasData && (
-        <div className="py-12 text-center space-y-3">
-          <div
-            className="text-sm"
-            style={{ color: FairBetTheme.negative }}
-          >
-            {hook.error}
-          </div>
+        <div className="py-12 text-center space-y-4">
+          <p className="text-sm text-neutral-400">We&apos;re having trouble loading in-game odds right now.</p>
           <button
             onClick={hook.refetch}
-            className="text-xs font-medium px-4 py-1.5 rounded-lg text-neutral-400"
+            disabled={hook.loading || hook.gamesLoading}
+            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200 disabled:opacity-50"
             style={{
               backgroundColor: "var(--fb-surface-secondary)",
               border: "1px solid var(--fb-border-subtle)",
             }}
           >
-            Retry
+            {hook.loading || hook.gamesLoading ? "Retrying…" : "Retry"}
           </button>
+          <p className="text-xs text-neutral-600">In-game odds are available when live games are in progress.</p>
         </div>
       )}
 
       {!hook.gamesLoading && !hook.loading && hook.liveGames.length === 0 && (
-        <div className="py-12 text-center text-sm text-neutral-500">
-          No live games with odds right now.
+        <div className="py-12 text-center space-y-3">
+          <p className="text-sm text-neutral-400">No live games with in-game odds right now.</p>
+          <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
+            In-game odds appear here when games are in progress. Check the Pre-Game tab for upcoming bets.
+          </p>
         </div>
       )}
 
@@ -372,7 +373,7 @@ function FilterPill({
   return (
     <button
       onClick={onClick}
-      className="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition whitespace-nowrap"
+      className="shrink-0 rounded-full px-3 py-2 min-h-[44px] text-xs font-medium transition whitespace-nowrap"
       style={
         active
           ? { backgroundColor: FairBetTheme.info, color: "#fff" }
@@ -400,7 +401,7 @@ function TogglePill({
   return (
     <button
       onClick={onClick}
-      className="shrink-0 rounded-full px-3 py-1 text-xs font-medium transition"
+      className="shrink-0 rounded-full px-3 py-2 min-h-[44px] text-xs font-medium transition"
       style={
         active
           ? {

@@ -31,7 +31,7 @@ export default function AnalyticsPage() {
 
       <AuthGate
         minRole="user"
-        message="Sign up for free to access analytics tools"
+        message="Create a free account to run Monte Carlo simulations on any matchup — get win probabilities, projected scores, and the most likely outcomes for every game."
         preview={
           <div className="grid grid-cols-2 gap-3 select-none pointer-events-none blur-[2px] opacity-60">
             {SPORTS.map((sport) => (

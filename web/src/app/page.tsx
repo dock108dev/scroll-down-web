@@ -14,6 +14,7 @@ import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useHomeScroll } from "@/stores/home-scroll";
 import { pickSnapshot } from "@/lib/score-display";
+import { Spinner } from "@/components/shared/Spinner";
 import { cn } from "@/lib/utils";
 
 // ── Sorting helpers ────────────────────────────────────────
@@ -56,6 +57,7 @@ function deriveLeagues(games: GameCore[]): string[] {
 export default function HomePage() {
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
+  const [retryCount, setRetryCount] = useState(0);
   const { sections, allGames, loading, error, refetch } = useGamesList(
     league || undefined,
     search || undefined,
@@ -238,7 +240,9 @@ export default function HomePage() {
 
       {/* Sticky toolbar */}
       <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
-        <SearchBar value={search} onChange={setSearch} disabled={!!error && !hasAnyGames} />
+        {(!error || hasAnyGames) && (
+          <SearchBar value={search} onChange={setSearch} />
+        )}
 
         {/* League pills + batch actions + refresh */}
         <div className="flex items-center gap-2">
@@ -305,11 +309,11 @@ export default function HomePage() {
             )}
             <button
               onClick={() => refetch()}
-              className="p-1.5 rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
               title="Refresh"
               aria-label="Refresh games"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="23 4 23 10 17 10" />
                 <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
               </svg>
@@ -328,14 +332,25 @@ export default function HomePage() {
       {/* Error state */}
       {error && (
         <div className="px-4 py-12 text-center space-y-4">
-          <p className="text-sm text-neutral-400">We&apos;re having trouble loading games right now.</p>
+          <p className="text-sm text-neutral-400">
+            {retryCount >= 3
+              ? "The service may be temporarily unavailable."
+              : followingLive
+                ? "We\u2019re having trouble loading live scores right now."
+                : "We\u2019re having trouble loading games right now."}
+          </p>
           <button
-            onClick={() => refetch()}
-            className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition"
+            onClick={() => { setRetryCount((c) => c + 1); refetch(); }}
+            disabled={loading}
+            className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition disabled:opacity-50"
           >
-            Retry
+            {loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
           </button>
-          <p className="text-xs text-neutral-600">Check back shortly — data updates every few minutes.</p>
+          <p className="text-xs text-neutral-600">
+            {followingLive
+              ? "Live scores will update automatically when the connection is restored."
+              : "Check back shortly \u2014 data updates every few minutes."}
+          </p>
         </div>
       )}
 
