@@ -61,3 +61,6 @@ tests/**/debug-*.spec.ts
 tests/**/tmp-*.spec.ts
 tests/**/scratch-*.spec.ts
 
+# Exploratory QA generated artifacts (output goes to repo-root docs/audit-results/)
+docs/
+

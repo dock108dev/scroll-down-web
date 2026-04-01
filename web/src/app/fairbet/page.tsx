@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useFairBetOdds } from "@/hooks/useFairBetOdds";
 import { BetCard } from "@/components/fairbet/BetCard";
 import { BookFilters } from "@/components/fairbet/BookFilters";
@@ -20,7 +21,7 @@ export default function FairBetPage() {
   const [showParlay, setShowParlay] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [activeTab, setActiveTab] = useState<"pregame" | "live">("pregame");
-  const [retryCount, setRetryCount] = useState(0);
+  const { retryCount, manualRetry } = useAutoRetry({ error: hook.error, loading: hook.loading, refetch: hook.refetch });
 
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
@@ -110,8 +111,8 @@ export default function FairBetPage() {
           ))}
         </div>
 
-        {/* ── Filters (pregame only) ── */}
-        {activeTab === "pregame" && <BookFilters
+        {/* ── Filters (pregame only, hidden when error with no data) ── */}
+        {activeTab === "pregame" && !(hook.error && hook.filteredBets.length === 0) && <BookFilters
           availableLeagues={hook.availableLeagues}
           selectedLeague={hook.filters.league}
           onLeagueChange={hook.setLeague}
@@ -156,7 +157,7 @@ export default function FairBetPage() {
                 : "We\u2019re having trouble loading odds right now."}
             </p>
             <button
-              onClick={() => { setRetryCount((c) => c + 1); hook.refetch(); }}
+              onClick={manualRetry}
               disabled={hook.loading}
               className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200 disabled:opacity-50"
               style={{
@@ -166,7 +167,13 @@ export default function FairBetPage() {
             >
               {hook.loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
             </button>
-            <p className="text-xs text-neutral-600">Odds data updates every few minutes.</p>
+            <p className="text-xs text-neutral-600">
+              {retryCount >= 3
+                ? "Automatic retries exhausted. You can still retry manually."
+                : retryCount > 0
+                  ? "Retrying automatically…"
+                  : "Odds data updates every few minutes."}
+            </p>
           </div>
         )}
 

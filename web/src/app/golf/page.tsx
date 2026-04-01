@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useGolfTournaments } from "@/hooks/useGolfTournaments";
 import { TournamentCard } from "@/components/golf/TournamentCard";
 import { Spinner } from "@/components/shared/Spinner";
@@ -24,7 +24,7 @@ function Section({ title, tournaments }: { title: string; tournaments: GolfTourn
 
 export default function GolfPage() {
   const { sections, loading, error, refetch } = useGolfTournaments();
-  const [retryCount, setRetryCount] = useState(0);
+  const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch });
 
   return (
     <main data-testid="page-golf" className="mx-auto max-w-3xl px-4 py-6">
@@ -44,13 +44,19 @@ export default function GolfPage() {
               : "We\u2019re having trouble loading tournament data right now."}
           </p>
           <button
-            onClick={() => { setRetryCount((c) => c + 1); refetch(); }}
+            onClick={manualRetry}
             disabled={loading}
             className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition disabled:opacity-50"
           >
             {loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
           </button>
-          <p className="text-xs text-neutral-600">Check back shortly — tournament data updates regularly.</p>
+          <p className="text-xs text-neutral-600">
+            {retryCount >= 3
+              ? "Automatic retries exhausted. You can still retry manually."
+              : retryCount > 0
+                ? "Retrying automatically…"
+                : "Check back shortly — tournament data updates regularly."}
+          </p>
         </div>
       )}
 

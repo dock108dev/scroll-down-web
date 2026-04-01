@@ -98,7 +98,7 @@ export function TopNav() {
             <span className="flex flex-col items-start leading-none">
               <span>LIVE</span>
               <span className={cn("text-[9px] font-normal", followingLive ? "text-green-400/70" : "text-neutral-500")}>
-                {followingLive ? "Auto-updating" : "Scores frozen"}
+                {followingLive ? "Auto-updating" : "Updates paused"}
               </span>
             </span>
           </button>
