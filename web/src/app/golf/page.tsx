@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useGolfTournaments } from "@/hooks/useGolfTournaments";
 import { TournamentCard } from "@/components/golf/TournamentCard";
 import { Spinner } from "@/components/shared/Spinner";
@@ -25,6 +25,22 @@ function Section({ title, tournaments }: { title: string; tournaments: GolfTourn
 export default function GolfPage() {
   const { sections, loading, error, refetch } = useGolfTournaments();
   const [retryCount, setRetryCount] = useState(0);
+  const autoRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Auto-retry with backoff on error
+  useEffect(() => {
+    if (!error || loading) {
+      if (autoRetryRef.current) { clearTimeout(autoRetryRef.current); autoRetryRef.current = null; }
+      return;
+    }
+    if (retryCount >= 3) return;
+    const delay = 10_000 * Math.pow(2, retryCount);
+    autoRetryRef.current = setTimeout(() => {
+      setRetryCount((c) => c + 1);
+      refetch();
+    }, delay);
+    return () => { if (autoRetryRef.current) clearTimeout(autoRetryRef.current); };
+  }, [error, loading, retryCount, refetch]);
 
   return (
     <main data-testid="page-golf" className="mx-auto max-w-3xl px-4 py-6">
@@ -50,7 +66,13 @@ export default function GolfPage() {
           >
             {loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
           </button>
-          <p className="text-xs text-neutral-600">Check back shortly — tournament data updates regularly.</p>
+          <p className="text-xs text-neutral-600">
+            {retryCount >= 3
+              ? "Automatic retries exhausted. You can still retry manually."
+              : retryCount > 0
+                ? "Retrying automatically…"
+                : "Check back shortly — tournament data updates regularly."}
+          </p>
         </div>
       )}
 

@@ -92,7 +92,7 @@ export default function RootLayout({
           <div className="min-h-screen flex flex-col">
             <BetaBanner />
             <TopNav />
-            <main className="flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+            <main className="flex-1 min-h-[60vh] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
               <div className="scroll-fade-top" />
               <div className="scroll-fade-bottom" />
               {children}

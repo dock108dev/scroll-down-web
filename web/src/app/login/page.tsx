@@ -164,7 +164,7 @@ function LoginForm() {
             className={cn(
               "flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all",
               tab === t
-                ? "bg-neutral-600 text-neutral-50 shadow-sm"
+                ? "bg-blue-600 text-white shadow-sm"
                 : "text-neutral-400 hover:text-neutral-200",
             )}
           >
@@ -264,9 +264,16 @@ function LoginForm() {
           </div>
         )}
 
+        {/* Validation summary (shown after submitting with errors) */}
+        {submitted && Object.keys(fieldErrors).length > 0 && (
+          <p role="alert" className="text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            Please fix the highlighted fields above.
+          </p>
+        )}
+
         {/* API error */}
         {error && (
-          <p role="alert" className="text-xs text-red-400 text-center">{error}</p>
+          <p role="alert" className="text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
         )}
 
         {/* Submit */}

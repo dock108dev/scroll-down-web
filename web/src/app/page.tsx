@@ -58,6 +58,7 @@ export default function HomePage() {
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
   const [retryCount, setRetryCount] = useState(0);
+  const autoRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { sections, allGames, loading, error, refetch } = useGamesList(
     league || undefined,
     search || undefined,
@@ -100,6 +101,22 @@ export default function HomePage() {
     // Only run once after initial load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  // Auto-retry with exponential backoff when in error state
+  useEffect(() => {
+    if (!error || loading) {
+      if (autoRetryRef.current) { clearTimeout(autoRetryRef.current); autoRetryRef.current = null; }
+      return;
+    }
+    // Backoff: 10s, 20s, 40s, then stop after 3 auto-retries
+    if (retryCount >= 3) return;
+    const delay = 10_000 * Math.pow(2, retryCount);
+    autoRetryRef.current = setTimeout(() => {
+      setRetryCount((c) => c + 1);
+      refetch();
+    }, delay);
+    return () => { if (autoRetryRef.current) clearTimeout(autoRetryRef.current); };
+  }, [error, loading, retryCount, refetch]);
 
   // Auto-prune pins for games no longer in the fetched range
   useEffect(() => {
@@ -347,9 +364,13 @@ export default function HomePage() {
             {loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
           </button>
           <p className="text-xs text-neutral-600">
-            {followingLive
-              ? "Live scores will update automatically when the connection is restored."
-              : "Check back shortly \u2014 data updates every few minutes."}
+            {retryCount >= 3
+              ? "Automatic retries exhausted. You can still retry manually."
+              : retryCount > 0
+                ? "Retrying automatically…"
+                : followingLive
+                  ? "Live scores will update automatically when the connection is restored."
+                  : "Check back shortly \u2014 data updates every few minutes."}
           </p>
         </div>
       )}

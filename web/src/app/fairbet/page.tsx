@@ -22,6 +22,22 @@ export default function FairBetPage() {
   const [activeTab, setActiveTab] = useState<"pregame" | "live">("pregame");
   const [retryCount, setRetryCount] = useState(0);
 
+  // Auto-retry with backoff on error
+  const autoRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!hook.error || hook.loading) {
+      if (autoRetryRef.current) { clearTimeout(autoRetryRef.current); autoRetryRef.current = null; }
+      return;
+    }
+    if (retryCount >= 3) return;
+    const delay = 10_000 * Math.pow(2, retryCount);
+    autoRetryRef.current = setTimeout(() => {
+      setRetryCount((c) => c + 1);
+      hook.refetch();
+    }, delay);
+    return () => { if (autoRetryRef.current) clearTimeout(autoRetryRef.current); };
+  }, [hook.error, hook.loading, retryCount, hook.refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
   const [prevFilters, setPrevFilters] = useState(hook.filters);
@@ -110,8 +126,8 @@ export default function FairBetPage() {
           ))}
         </div>
 
-        {/* ── Filters (pregame only) ── */}
-        {activeTab === "pregame" && <BookFilters
+        {/* ── Filters (pregame only, hidden when error with no data) ── */}
+        {activeTab === "pregame" && !(hook.error && hook.filteredBets.length === 0) && <BookFilters
           availableLeagues={hook.availableLeagues}
           selectedLeague={hook.filters.league}
           onLeagueChange={hook.setLeague}
@@ -166,7 +182,13 @@ export default function FairBetPage() {
             >
               {hook.loading ? <><Spinner size={14} /> Retrying…</> : "Retry"}
             </button>
-            <p className="text-xs text-neutral-600">Odds data updates every few minutes.</p>
+            <p className="text-xs text-neutral-600">
+              {retryCount >= 3
+                ? "Automatic retries exhausted. You can still retry manually."
+                : retryCount > 0
+                  ? "Retrying automatically…"
+                  : "Odds data updates every few minutes."}
+            </p>
           </div>
         )}
 
