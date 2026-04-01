@@ -2,7 +2,7 @@
  * Exploratory QA script — browses the live app like a real sports fan.
  * Run: cd web && npx tsx tests/explore-qa.ts
  */
-import { chromium, Page, Browser, BrowserContext, ConsoleMessage } from "playwright";
+import { chromium, Page, Browser, ConsoleMessage } from "playwright";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -33,13 +33,6 @@ async function screenshot(page: Page, name: string): Promise<string> {
   const file = path.join(SCREENSHOT_DIR, `explore-qa-${name}.png`);
   await page.screenshot({ path: file, fullPage: false });
   console.log(`  📸 ${name}`);
-  return `explore-qa-${name}.png`;
-}
-
-async function fullScreenshot(page: Page, name: string): Promise<string> {
-  const file = path.join(SCREENSHOT_DIR, `explore-qa-${name}.png`);
-  await page.screenshot({ path: file, fullPage: true });
-  console.log(`  📸 ${name} (full)`);
   return `explore-qa-${name}.png`;
 }
 
@@ -74,7 +67,7 @@ async function desktopSession(browser: Browser) {
   console.log(`  Game cards found: ${gameCards}`);
   if (gameCards === 0) {
     // Check for empty states or loading indicators
-    const emptyState = await page.locator('[class*="empty"], [class*="no-games"], [class*="Empty"]').count();
+    const _emptyState = await page.locator('[class*="empty"], [class*="no-games"], [class*="Empty"]').count();
     const loading = await page.locator('[class*="loading"], [class*="spinner"], [class*="skeleton"]').count();
     const bodyText = await page.locator("body").innerText();
     if (bodyText.includes("No games") || bodyText.includes("no games")) {
@@ -175,7 +168,7 @@ async function desktopSession(browser: Browser) {
   console.log("→ Golf page");
   const golfStart = Date.now();
   await page.goto(`${BASE}/golf`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
-  const golfLoad = Date.now() - golfStart;
+  const _golfLoad = Date.now() - golfStart;
   await page.waitForTimeout(2000);
   await screenshot(page, "golf-desktop");
 
@@ -634,14 +627,14 @@ async function apiChecks() {
           detail: `Response took ${elapsed}ms which exceeds 5s threshold.`,
         });
       }
-    } catch (err: any) {
-      console.log(`  ${ep}: FAILED - ${err.message}`);
+    } catch (err: unknown) {
+      console.log(`  ${ep}: FAILED - ${(err as Error).message}`);
       addFinding({
         type: "bug",
         severity: "high",
         page: ep,
         title: `API ${ep} request failed`,
-        detail: `Error: ${err.message}`,
+        detail: `Error: ${(err as Error).message}`,
       });
     }
   }

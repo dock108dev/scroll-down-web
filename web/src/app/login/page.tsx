@@ -182,7 +182,7 @@ function LoginForm() {
           <input
             type="email"
             value={email}
-            onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _, ...rest } = prev; return rest; }); }}
+            onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _email, ...rest } = prev; return rest; }); }}
             onBlur={() => validateField("email")}
             autoComplete="email"
             aria-invalid={!!fieldErrors.email}
@@ -205,7 +205,7 @@ function LoginForm() {
           <input
             type="password"
             value={password}
-            onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _, ...rest } = prev; return rest; }); }}
+            onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _password, ...rest } = prev; return rest; }); }}
             onBlur={() => validateField("password")}
             autoComplete={tab === "login" ? "current-password" : "new-password"}
             aria-invalid={!!fieldErrors.password}
