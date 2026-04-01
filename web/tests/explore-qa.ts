@@ -2,12 +2,12 @@
  * Exploratory QA script — browses the live app like a real sports fan.
  * Run: cd web && npx tsx tests/explore-qa.ts
  */
-import { chromium, Page, Browser, ConsoleMessage } from "playwright";
+import { chromium, Page, Browser, ConsoleMessage } from "@playwright/test";
 import * as fs from "fs";
 import * as path from "path";
 
 const BASE = "http://localhost:3001";
-const SCREENSHOT_DIR = path.resolve(__dirname, "../docs/audit-results/screenshots");
+const SCREENSHOT_DIR = path.resolve(__dirname, "..", "..", "docs", "audit-results", "screenshots");
 
 // Ensure screenshot dir exists
 fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
@@ -57,7 +57,7 @@ async function desktopSession(browser: Browser) {
   // ── HOME PAGE ──
   console.log("→ Home page");
   const homeStart = Date.now();
-  await page.goto(BASE, { waitUntil: "networkidle", timeout: 30000 }).catch(() => {});
+  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 30000 }).catch(() => {});
   const homeLoad = Date.now() - homeStart;
   await page.waitForTimeout(2000);
   await screenshot(page, "home-desktop-light");
@@ -67,7 +67,6 @@ async function desktopSession(browser: Browser) {
   console.log(`  Game cards found: ${gameCards}`);
   if (gameCards === 0) {
     // Check for empty states or loading indicators
-    const _emptyState = await page.locator('[class*="empty"], [class*="no-games"], [class*="Empty"]').count();
     const loading = await page.locator('[class*="loading"], [class*="spinner"], [class*="skeleton"]').count();
     const bodyText = await page.locator("body").innerText();
     if (bodyText.includes("No games") || bodyText.includes("no games")) {
@@ -128,7 +127,7 @@ async function desktopSession(browser: Browser) {
 
   // ── GAME DETAIL PAGE ──
   console.log("→ Game detail page");
-  await page.goto(BASE, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(1500);
 
   // Find any clickable game link
@@ -166,9 +165,7 @@ async function desktopSession(browser: Browser) {
 
   // ── GOLF PAGE ──
   console.log("→ Golf page");
-  const golfStart = Date.now();
-  await page.goto(`${BASE}/golf`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
-  const _golfLoad = Date.now() - golfStart;
+  await page.goto(`${BASE}/golf`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "golf-desktop");
 
@@ -200,7 +197,7 @@ async function desktopSession(browser: Browser) {
 
   // ── FAIRBET PAGE ──
   console.log("→ FairBet page");
-  await page.goto(`${BASE}/fairbet`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/fairbet`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "fairbet-desktop");
 
@@ -215,19 +212,19 @@ async function desktopSession(browser: Browser) {
 
   // ── ANALYTICS PAGE ──
   console.log("→ Analytics page");
-  await page.goto(`${BASE}/analytics`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/analytics`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "analytics-desktop");
 
   // ── HISTORY PAGE ──
   console.log("→ History page");
-  await page.goto(`${BASE}/history`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/history`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "history-desktop");
 
   // ── LOGIN PAGE ──
   console.log("→ Login page");
-  await page.goto(`${BASE}/login`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(1500);
   await screenshot(page, "login-desktop");
 
@@ -254,20 +251,20 @@ async function desktopSession(browser: Browser) {
 
   // ── FORGOT PASSWORD ──
   console.log("→ Forgot password page");
-  await page.goto(`${BASE}/forgot-password`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/forgot-password`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
   await screenshot(page, "forgot-pw-desktop");
 
   // ── PROFILE PAGE ──
   console.log("→ Profile page");
-  await page.goto(`${BASE}/profile`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/profile`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1500);
   await screenshot(page, "profile-desktop");
 
   // ── SETTINGS ──
   console.log("→ Settings");
   // Settings may be a drawer/modal, check for settings button in nav
-  await page.goto(BASE, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
   const settingsBtn = page.locator('button[aria-label*="settings" i], button[aria-label*="Settings"], a[href*="settings"], [data-testid="settings"]').first();
   if (await settingsBtn.isVisible().catch(() => false)) {
@@ -292,19 +289,19 @@ async function desktopSession(browser: Browser) {
   });
   const darkPage = await darkContext.newPage();
 
-  await darkPage.goto(BASE, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await darkPage.goto(BASE, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await darkPage.waitForTimeout(2000);
   await screenshot(darkPage, "home-dark-desktop");
 
-  await darkPage.goto(`${BASE}/golf`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await darkPage.goto(`${BASE}/golf`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await darkPage.waitForTimeout(1500);
   await screenshot(darkPage, "golf-dark-desktop");
 
-  await darkPage.goto(`${BASE}/fairbet`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await darkPage.goto(`${BASE}/fairbet`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await darkPage.waitForTimeout(1500);
   await screenshot(darkPage, "fairbet-dark-desktop");
 
-  await darkPage.goto(`${BASE}/login`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await darkPage.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await darkPage.waitForTimeout(1000);
   await screenshot(darkPage, "login-dark-desktop");
 
@@ -312,17 +309,17 @@ async function desktopSession(browser: Browser) {
 
   // ── PRIVACY & TERMS ──
   console.log("→ Privacy & Terms");
-  await page.goto(`${BASE}/privacy`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/privacy`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
   await screenshot(page, "privacy-desktop");
 
-  await page.goto(`${BASE}/terms`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/terms`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
   await screenshot(page, "terms-desktop");
 
   // ── 404 PAGE ──
   console.log("→ 404 page");
-  await page.goto(`${BASE}/this-page-does-not-exist`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/this-page-does-not-exist`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
   await screenshot(page, "404-desktop");
 
@@ -353,7 +350,7 @@ async function mobileSession(browser: Browser) {
 
   // ── HOME ──
   console.log("→ Home (mobile)");
-  await page.goto(BASE, { waitUntil: "networkidle", timeout: 25000 }).catch(() => {});
+  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 25000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "home-mobile");
 
@@ -396,7 +393,7 @@ async function mobileSession(browser: Browser) {
 
   // ── GAME DETAIL (mobile) ──
   console.log("→ Game detail (mobile)");
-  await page.goto(BASE, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(1500);
   const mobileGameLinks = await page.locator('a[href^="/game/"]').all();
   if (mobileGameLinks.length > 0) {
@@ -424,7 +421,7 @@ async function mobileSession(browser: Browser) {
 
   // ── GOLF (mobile) ──
   console.log("→ Golf (mobile)");
-  await page.goto(`${BASE}/golf`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/golf`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "golf-mobile");
 
@@ -468,7 +465,7 @@ async function mobileSession(browser: Browser) {
 
   // ── FAIRBET (mobile) ──
   console.log("→ FairBet (mobile)");
-  await page.goto(`${BASE}/fairbet`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/fairbet`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "fairbet-mobile");
 
@@ -493,19 +490,19 @@ async function mobileSession(browser: Browser) {
 
   // ── ANALYTICS (mobile) ──
   console.log("→ Analytics (mobile)");
-  await page.goto(`${BASE}/analytics`, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await page.goto(`${BASE}/analytics`, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await page.waitForTimeout(2000);
   await screenshot(page, "analytics-mobile");
 
   // ── HISTORY (mobile) ──
   console.log("→ History (mobile)");
-  await page.goto(`${BASE}/history`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/history`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1500);
   await screenshot(page, "history-mobile");
 
   // ── LOGIN (mobile) ──
   console.log("→ Login (mobile)");
-  await page.goto(`${BASE}/login`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1500);
   await screenshot(page, "login-mobile");
 
@@ -532,7 +529,7 @@ async function mobileSession(browser: Browser) {
 
   // ── PROFILE (mobile) ──
   console.log("→ Profile (mobile)");
-  await page.goto(`${BASE}/profile`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(`${BASE}/profile`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1500);
   await screenshot(page, "profile-mobile");
 
@@ -546,15 +543,15 @@ async function mobileSession(browser: Browser) {
   });
   const darkMobilePage = await darkMobileCtx.newPage();
 
-  await darkMobilePage.goto(BASE, { waitUntil: "networkidle", timeout: 20000 }).catch(() => {});
+  await darkMobilePage.goto(BASE, { waitUntil: "domcontentloaded", timeout: 20000 }).catch(() => {});
   await darkMobilePage.waitForTimeout(2000);
   await screenshot(darkMobilePage, "home-dark-mobile");
 
-  await darkMobilePage.goto(`${BASE}/fairbet`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await darkMobilePage.goto(`${BASE}/fairbet`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await darkMobilePage.waitForTimeout(1500);
   await screenshot(darkMobilePage, "fairbet-dark-mobile");
 
-  await darkMobilePage.goto(`${BASE}/golf`, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await darkMobilePage.goto(`${BASE}/golf`, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await darkMobilePage.waitForTimeout(1500);
   await screenshot(darkMobilePage, "golf-dark-mobile");
 
@@ -562,7 +559,7 @@ async function mobileSession(browser: Browser) {
 
   // ── SETTINGS (mobile) ──
   console.log("→ Settings (mobile)");
-  await page.goto(BASE, { waitUntil: "networkidle", timeout: 15000 }).catch(() => {});
+  await page.goto(BASE, { waitUntil: "domcontentloaded", timeout: 15000 }).catch(() => {});
   await page.waitForTimeout(1000);
   const mobileSettingsBtn = page.locator('button[aria-label*="settings" i], button[aria-label*="Settings"], [data-testid="settings"]').first();
   if (await mobileSettingsBtn.isVisible().catch(() => false)) {

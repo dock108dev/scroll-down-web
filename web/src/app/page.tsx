@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useGamesList, SECTION_ORDER } from "@/hooks/useGamesList";
 import type { GameCore } from "@/stores/game-data";
 
@@ -57,8 +58,6 @@ function deriveLeagues(games: GameCore[]): string[] {
 export default function HomePage() {
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
-  const [retryCount, setRetryCount] = useState(0);
-  const autoRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { sections, allGames, loading, error, refetch } = useGamesList(
     league || undefined,
     search || undefined,
@@ -102,21 +101,7 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
 
-  // Auto-retry with exponential backoff when in error state
-  useEffect(() => {
-    if (!error || loading) {
-      if (autoRetryRef.current) { clearTimeout(autoRetryRef.current); autoRetryRef.current = null; }
-      return;
-    }
-    // Backoff: 10s, 20s, 40s, then stop after 3 auto-retries
-    if (retryCount >= 3) return;
-    const delay = 10_000 * Math.pow(2, retryCount);
-    autoRetryRef.current = setTimeout(() => {
-      setRetryCount((c) => c + 1);
-      refetch();
-    }, delay);
-    return () => { if (autoRetryRef.current) clearTimeout(autoRetryRef.current); };
-  }, [error, loading, retryCount, refetch]);
+  const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch });
 
   // Auto-prune pins for games no longer in the fetched range
   useEffect(() => {
@@ -357,7 +342,7 @@ export default function HomePage() {
                 : "We\u2019re having trouble loading games right now."}
           </p>
           <button
-            onClick={() => { setRetryCount((c) => c + 1); refetch(); }}
+            onClick={manualRetry}
             disabled={loading}
             className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition disabled:opacity-50"
           >

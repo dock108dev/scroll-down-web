@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
+import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useFairBetOdds } from "@/hooks/useFairBetOdds";
 import { BetCard } from "@/components/fairbet/BetCard";
 import { BookFilters } from "@/components/fairbet/BookFilters";
@@ -20,23 +21,7 @@ export default function FairBetPage() {
   const [showParlay, setShowParlay] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [activeTab, setActiveTab] = useState<"pregame" | "live">("pregame");
-  const [retryCount, setRetryCount] = useState(0);
-
-  // Auto-retry with backoff on error
-  const autoRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!hook.error || hook.loading) {
-      if (autoRetryRef.current) { clearTimeout(autoRetryRef.current); autoRetryRef.current = null; }
-      return;
-    }
-    if (retryCount >= 3) return;
-    const delay = 10_000 * Math.pow(2, retryCount);
-    autoRetryRef.current = setTimeout(() => {
-      setRetryCount((c) => c + 1);
-      hook.refetch();
-    }, delay);
-    return () => { if (autoRetryRef.current) clearTimeout(autoRetryRef.current); };
-  }, [hook.error, hook.loading, retryCount, hook.refetch]); // eslint-disable-line react-hooks/exhaustive-deps
+  const { retryCount, manualRetry } = useAutoRetry({ error: hook.error, loading: hook.loading, refetch: hook.refetch });
 
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
@@ -172,7 +157,7 @@ export default function FairBetPage() {
                 : "We\u2019re having trouble loading odds right now."}
             </p>
             <button
-              onClick={() => { setRetryCount((c) => c + 1); hook.refetch(); }}
+              onClick={manualRetry}
               disabled={hook.loading}
               className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200 disabled:opacity-50"
               style={{
