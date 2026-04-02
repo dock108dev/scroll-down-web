@@ -45,14 +45,15 @@ export function useGolfTournaments() {
     return () => { abortRef.current?.abort(); };
   }, [fetchTournaments]);
 
-  // Poll for updates
+  // Poll for updates — skip when in error state to avoid flooding console
   useEffect(() => {
+    if (error) return;
     const id = setInterval(
       () => fetchTournaments({ silent: true }),
       POLLING.GOLF_TOURNAMENTS_REFRESH_MS,
     );
     return () => clearInterval(id);
-  }, [fetchTournaments]);
+  }, [fetchTournaments, error]);
 
   const sections: GolfTournamentSections = useMemo(() => {
     const now = new Date();

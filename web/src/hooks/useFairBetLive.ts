@@ -152,11 +152,12 @@ export function useFairBetLive(): UseFairBetLiveReturn {
     fullRefresh();
   }, [fullRefresh]);
 
-  // Auto-refresh every 15s
+  // Auto-refresh every 15s — skip when in error state to avoid flooding console
   useEffect(() => {
+    if (error) return;
     const iv = setInterval(fullRefresh, POLLING.LIVE_ODDS_REFRESH_MS);
     return () => clearInterval(iv);
-  }, [fullRefresh]);
+  }, [fullRefresh, error]);
 
   // ── Client-side filtering ───────────────────────────────
   const filterBets = useCallback(
