@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { AnalyticsTabNav } from "@/features/analytics/components/AnalyticsTabNav";
 
 interface SportCard {
   key: string;
@@ -28,6 +29,8 @@ export default function AnalyticsPage() {
           most likely final outcomes — powered by real-time team performance data.
         </p>
       </div>
+
+      <AnalyticsTabNav />
 
       <AuthGate
         minRole="user"

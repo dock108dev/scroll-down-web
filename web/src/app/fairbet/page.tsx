@@ -156,6 +156,10 @@ export default function FairBetPage() {
                 ? "The service may be temporarily unavailable."
                 : "We\u2019re having trouble loading odds right now."}
             </p>
+            <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
+              FairBet compares odds across sportsbooks to find bets where the
+              price is better than the true probability — giving you an edge.
+            </p>
             <button
               onClick={manualRetry}
               disabled={hook.loading}
@@ -172,7 +176,7 @@ export default function FairBetPage() {
                 ? "Automatic retries exhausted. You can still retry manually."
                 : retryCount > 0
                   ? "Retrying automatically…"
-                  : "Odds data updates every few minutes."}
+                  : "Odds will appear here once the connection is restored."}
             </p>
           </div>
         )}

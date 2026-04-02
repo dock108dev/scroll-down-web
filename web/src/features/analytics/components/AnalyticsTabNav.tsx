@@ -7,11 +7,11 @@ import { useAuth } from "@/stores/auth";
 interface Tab {
   label: string;
   href: string;
-  minRole: "user" | "admin";
+  minRole: "guest" | "user" | "admin";
 }
 
 const TABS: Tab[] = [
-  { label: "Simulator", href: "/analytics/simulator", minRole: "user" },
+  { label: "Simulator", href: "/analytics/simulator", minRole: "guest" },
   { label: "Profiles", href: "/analytics/profiles", minRole: "user" },
   { label: "Models", href: "/analytics/models", minRole: "admin" },
   { label: "Batch Sims", href: "/analytics/batch", minRole: "admin" },

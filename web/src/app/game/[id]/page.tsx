@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useGameDetail } from "@/hooks/useGameDetail";
 import { isFinal } from "@/lib/types";
 import type { GameStatus } from "@/lib/types";
@@ -36,6 +37,7 @@ export default function GameDetailPage({
 }) {
   const { id } = use(params);
   const gameId = Number(id);
+  const router = useRouter();
   const { data, core, loading, error, refetch: refetchDetail } = useGameDetail(gameId);
 
   const sections = useMemo(() => (data ? getSections(data) : []), [data]);
@@ -255,6 +257,18 @@ export default function GameDetailPage({
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-6 space-y-4">
+        <div className="md:hidden">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
+            aria-label="Go back"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back
+          </button>
+        </div>
         <LoadingSkeleton className="h-40" />
         <LoadingSkeleton count={3} className="h-24" />
       </div>
@@ -264,8 +278,22 @@ export default function GameDetailPage({
   // ─── Error state ───────────────────────────────────────────
   if (error || !data) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8 text-center text-red-500 text-sm">
-        {error ?? "Game not found"}
+      <div className="mx-auto max-w-5xl px-4 py-8 space-y-4">
+        <div className="md:hidden">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
+            aria-label="Go back"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back
+          </button>
+        </div>
+        <p className="text-center text-red-500 text-sm">
+          {error ?? "Game not found"}
+        </p>
       </div>
     );
   }
@@ -277,6 +305,19 @@ export default function GameDetailPage({
 
   return (
     <div data-testid="page-game-detail" className="mx-auto max-w-5xl">
+      {/* Mobile back button */}
+      <div className="md:hidden px-4 pt-3 pb-1">
+        <button
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
+          aria-label="Go back"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </button>
+      </div>
       <div ref={headerRef}>
         <GameHeader game={game} />
       </div>
