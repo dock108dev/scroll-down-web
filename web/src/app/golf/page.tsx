@@ -40,8 +40,8 @@ export default function GolfPage() {
         <div className="py-12 text-center space-y-4">
           <p className="text-sm text-neutral-400">
             {retryCount >= 3
-              ? "The service may be temporarily unavailable."
-              : "We\u2019re having trouble loading tournament data right now."}
+              ? "We can\u2019t reach the server right now. It may be temporarily unavailable."
+              : "We\u2019re having trouble connecting to load tournament data."}
           </p>
           <button
             onClick={manualRetry}

@@ -68,12 +68,12 @@ export function Footer() {
                 </li>
               ))}
               <li>
-                <a
-                  href="mailto:support@scrolldownsports.dev"
+                <Link
+                  href="/contact"
                   className="inline-flex items-center min-h-[44px] text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
                 >
                   Contact
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

@@ -82,14 +82,14 @@ export default function FairBetPage() {
           </div>
           <button
             onClick={() => setShowHowItWorks(true)}
-            className="text-xs font-medium rounded-full px-3 py-2 min-h-[44px] transition"
+            className="text-xs sm:text-xs font-medium rounded-full px-3 sm:px-3 py-2 min-h-[44px] transition"
             style={{
               backgroundColor: "var(--fb-info-soft)",
               color: "var(--fb-info)",
               border: "1px solid var(--fb-info)30",
             }}
           >
-            What is this?
+            How it works
           </button>
         </div>
 
@@ -178,6 +178,17 @@ export default function FairBetPage() {
                   ? "Retrying automatically…"
                   : "Odds will appear here once the connection is restored."}
             </p>
+            <button
+              onClick={() => setShowHowItWorks(true)}
+              className="mt-2 text-xs font-medium px-4 py-2 min-h-[44px] rounded-lg transition"
+              style={{
+                backgroundColor: "var(--fb-info-soft)",
+                color: "var(--fb-info)",
+                border: "1px solid var(--fb-info)40",
+              }}
+            >
+              Learn how FairBet works &rarr;
+            </button>
           </div>
         )}
 

@@ -336,10 +336,10 @@ export default function HomePage() {
         <div className="px-4 py-12 text-center space-y-4">
           <p className="text-sm text-neutral-400">
             {retryCount >= 3
-              ? "The service may be temporarily unavailable."
+              ? "We can\u2019t reach the server right now. It may be temporarily unavailable."
               : followingLive
                 ? "We\u2019re having trouble loading live scores right now."
-                : "We\u2019re having trouble loading games right now."}
+                : "We\u2019re having trouble connecting to the server."}
           </p>
           <button
             onClick={manualRetry}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 const MAX_AUTO_RETRIES = 3;
-const BASE_DELAY_MS = 10_000;
+const BASE_DELAY_MS = 3_000;
 
 /**
  * Auto-retry with exponential backoff on error.

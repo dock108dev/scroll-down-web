@@ -113,7 +113,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Recaps — Default Expanded ──────────────────── */}
-      <Section title="Recaps — Default Expanded" collapsible>
+      <Section title="Recaps — Default Expanded" collapsible defaultOpen={false}>
         {HOME_SECTIONS.map((section) => (
           <SettingsCheckRow
             key={section}
@@ -125,7 +125,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Timeline — Default Tiers ────────────────────── */}
-      <Section title="Timeline — Default Tiers" collapsible>
+      <Section title="Timeline — Default Tiers" collapsible defaultOpen={false}>
         {([
           { tier: 1, label: "Key Plays", desc: "Scoring, turnovers, big moments" },
           { tier: 2, label: "Secondary", desc: "Fouls, rebounds, stoppages" },
@@ -179,7 +179,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
-      <Section title="Odds" collapsible>
+      <Section title="Odds" collapsible defaultOpen={false}>
         <Row label="Default Book">
           <DarkSelect
             value={preferredSportsbook}
@@ -306,13 +306,13 @@ function SettingsToggle({
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative inline-flex h-6 w-11 items-center rounded-full transition",
+          "relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200",
           checked ? "bg-green-500" : "bg-neutral-700",
         )}
       >
         <span
           className={cn(
-            "inline-block h-4 w-4 transform rounded-full bg-white transition",
+            "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200",
             checked ? "translate-x-6" : "translate-x-1",
           )}
         />
