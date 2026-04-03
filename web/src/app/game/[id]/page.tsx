@@ -17,6 +17,7 @@ import { WrapUpSection } from "@/components/game/WrapUpSection";
 import { MLBAdvancedStatsSection } from "@/components/game/MLBAdvancedStatsSection";
 import { PregameBuzzSection } from "@/components/game/PregameBuzzSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { Spinner } from "@/components/shared/Spinner";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useReveal } from "@/stores/reveal";
@@ -25,6 +26,7 @@ import { useGameData } from "@/stores/game-data";
 import { POLLING } from "@/lib/config";
 import { resolveTeamColor } from "@/lib/utils";
 import { useSectionLayout } from "@/stores/section-layout";
+import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gamePbpChannel } from "@/realtime/channels";
 
@@ -39,6 +41,7 @@ export default function GameDetailPage({
   const gameId = Number(id);
   const router = useRouter();
   const { data, core, loading, error, refetch: refetchDetail } = useGameDetail(gameId);
+  const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch: refetchDetail });
 
   const sections = useMemo(() => (data ? getSections(data) : []), [data]);
   const [activeSection, setActiveSection] = useState<string>("");
@@ -291,9 +294,27 @@ export default function GameDetailPage({
             Back
           </button>
         </div>
-        <p className="text-center text-red-500 text-sm">
-          {error ?? "Game not found"}
-        </p>
+        <div className="py-12 text-center space-y-4">
+          <p className="text-sm text-neutral-400">
+            {retryCount >= 3
+              ? "The service may be temporarily unavailable."
+              : "We\u2019re having trouble loading game data right now."}
+          </p>
+          <button
+            onClick={manualRetry}
+            disabled={loading}
+            className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition disabled:opacity-50"
+          >
+            {loading ? <><Spinner size={14} /> Retrying&hellip;</> : "Retry"}
+          </button>
+          <p className="text-xs text-neutral-600">
+            {retryCount >= 3
+              ? "Automatic retries exhausted. You can still retry manually."
+              : retryCount > 0
+                ? "Retrying automatically\u2026"
+                : "Check back shortly \u2014 game data updates regularly."}
+          </p>
+        </div>
       </div>
     );
   }
