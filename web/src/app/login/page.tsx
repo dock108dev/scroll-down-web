@@ -350,6 +350,18 @@ function LoginForm() {
           </>
         )}
       </p>
+
+      {/* Go back link when redirected from another page */}
+      {redirectTo && (
+        <p className="text-center mt-3">
+          <Link
+            href={redirectTo}
+            className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+          >
+            &larr; Go back
+          </Link>
+        </p>
+      )}
     </div>
   );
 }

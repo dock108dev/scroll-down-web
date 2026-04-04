@@ -14,7 +14,7 @@ const LEGAL_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="hidden md:block border-t border-neutral-800 bg-neutral-950 mt-12">
+    <footer className="hidden md:block border-t border-neutral-800 bg-neutral-950 mt-auto">
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div className="grid grid-cols-3 gap-8">
           {/* Brand */}

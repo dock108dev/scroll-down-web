@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { setDegraded as setSharedDegraded } from "@/hooks/useHealthStatus";
 
 /**
  * Pings /api/health on mount and periodically.
  * Shows a subtle warning banner when the backend is degraded.
+ * Also publishes degraded state to the shared useHealthStatus hook.
  */
 export function DegradedBanner() {
   const [degraded, setDegraded] = useState(false);
@@ -17,9 +19,16 @@ export function DegradedBanner() {
       try {
         const res = await fetch("/api/health", { cache: "no-store" });
         const data = await res.json();
-        if (active) setDegraded(data.status === "degraded");
+        if (active) {
+          const isDegraded = data.status === "degraded";
+          setDegraded(isDegraded);
+          setSharedDegraded(isDegraded);
+        }
       } catch {
-        if (active) setDegraded(true);
+        if (active) {
+          setDegraded(true);
+          setSharedDegraded(true);
+        }
       }
     }
 

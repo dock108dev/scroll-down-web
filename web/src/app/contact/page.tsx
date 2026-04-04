@@ -20,7 +20,7 @@ export default function ContactPage() {
           </p>
           <a
             href="mailto:support@scrolldownsports.dev"
-            className="inline-flex items-center gap-2 text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors min-h-[44px]"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors min-h-[44px] bg-blue-500/10 px-3 py-2 rounded-lg border border-blue-500/20"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />

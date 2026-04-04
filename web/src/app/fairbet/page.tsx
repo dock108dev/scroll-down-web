@@ -66,6 +66,7 @@ export default function FairBetPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-neutral-50">FairBet</h1>
+            <span className="hidden sm:inline text-xs text-neutral-500">Compare odds &middot; Find +EV</span>
             {hook.canShowParlay && (
               <button
                 onClick={() => setShowParlay(true)}
@@ -92,6 +93,12 @@ export default function FairBetPage() {
             How it works
           </button>
         </div>
+
+        {/* ── Brief description ── */}
+        <p className="text-xs text-neutral-500 leading-relaxed -mt-1">
+          Compares odds across sportsbooks to find bets where the price is
+          better than the true probability.
+        </p>
 
         {/* ── Tabs ── */}
         <div className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>

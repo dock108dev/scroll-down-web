@@ -225,23 +225,12 @@ export function SettingsContent() {
       {/* ─── Disclaimer ────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
         <h2 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
-          Quick thing we have to say
+          Disclaimer
         </h2>
         <p className="text-xs text-neutral-500 leading-relaxed">
-          Positive expected value does not mean a bet is going to win. It just
-          means the number was off. Sometimes that helps, sometimes it does not.
-          If it does work and we keep beating closing line value, cool. That
-          usually comes with limits, which is just how sportsbooks operate. When
-          that happens, people tend to move to peer to peer exchanges, where you
-          are betting against other people instead of books. We have thoughts
-          there. More on that later.
-        </p>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          On the app side, data is delayed because real time data costs real
-          money. Lines move, scores update on a timer, and occasionally things
-          change while you are looking at them. We use solid sources and do our
-          best, but nothing here is perfect or guaranteed. This is meant to help
-          you think, not think for you. Use it, enjoy it, and keep it fun.
+          +EV does not mean a bet will win &mdash; it means the number is off.
+          Data is delayed; lines and scores update on a timer. Nothing here is
+          guaranteed. This is meant to help you think, not think for you.
         </p>
       </div>
 
