@@ -133,6 +133,8 @@ export function SettingsContent() {
         ] as const).map(({ tier, label, desc }) => (
           <button
             key={tier}
+            role="checkbox"
+            aria-checked={timelineDefaultTiers.includes(tier)}
             onClick={() => toggleTimelineTier(tier)}
             className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
           >
@@ -332,6 +334,8 @@ function SettingsCheckRow({
 }) {
   return (
     <button
+      role="checkbox"
+      aria-checked={checked}
       onClick={onToggle}
       className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
     >
@@ -353,10 +357,12 @@ function SegmentedControl({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex rounded-lg bg-neutral-800 p-0.5">
+    <div role="radiogroup" className="flex rounded-lg bg-neutral-800 p-0.5">
       {options.map((opt) => (
         <button
           key={opt.value}
+          role="radio"
+          aria-checked={value === opt.value}
           onClick={() => onChange(opt.value)}
           className={cn(
             "px-3 py-1 text-xs font-medium rounded-md transition-all",

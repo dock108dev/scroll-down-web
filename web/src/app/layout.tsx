@@ -8,6 +8,7 @@ import { RealtimeProvider } from "@/components/layout/RealtimeProvider";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Footer } from "@/components/layout/Footer";
 import { BetaBanner } from "@/components/layout/BetaBanner";
+import { DegradedBanner } from "@/components/layout/DegradedBanner";
 import { AnalyticsProvider } from "@/components/layout/AnalyticsProvider";
 
 const SITE_URL = "https://scrolldownsports.dev";
@@ -91,6 +92,7 @@ export default function RootLayout({
           <AnalyticsProvider />
           <div className="min-h-screen flex flex-col">
             <BetaBanner />
+            <DegradedBanner />
             <TopNav />
             <main className="flex-1 min-h-[60vh] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
               <div className="scroll-fade-top" />
