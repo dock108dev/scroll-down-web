@@ -6,10 +6,12 @@ import { CACHE } from "@/lib/config";
 /**
  * Calls `onRefresh` when the tab returns from background.
  * Always refreshes if hidden > VISIBILITY_AWAY_MS, or if realtime is offline.
+ * Pass `enabled = false` to suppress refreshes (e.g. during persistent error state).
  */
 export function useVisibilityRefresh(
   onRefresh: () => void,
   realtimeConnected: boolean,
+  enabled = true,
 ) {
   const hiddenAtRef = useRef(0);
 
@@ -21,7 +23,7 @@ export function useVisibilityRefresh(
         const away = hiddenAtRef.current
           ? Date.now() - hiddenAtRef.current
           : 0;
-        if (away > CACHE.VISIBILITY_AWAY_MS || !realtimeConnected) {
+        if (enabled && (away > CACHE.VISIBILITY_AWAY_MS || !realtimeConnected)) {
           onRefresh();
         }
       }
@@ -31,5 +33,5 @@ export function useVisibilityRefresh(
     return () => {
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [onRefresh, realtimeConnected]);
+  }, [onRefresh, realtimeConnected, enabled]);
 }

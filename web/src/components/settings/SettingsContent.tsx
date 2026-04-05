@@ -135,6 +135,7 @@ export function SettingsContent() {
             key={tier}
             role="checkbox"
             aria-checked={timelineDefaultTiers.includes(tier)}
+            aria-label={label}
             onClick={() => toggleTimelineTier(tier)}
             className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
           >
@@ -295,6 +296,7 @@ function SettingsToggle({
       <button
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         onClick={() => onChange(!checked)}
         className={cn(
           "relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200",
@@ -325,6 +327,7 @@ function SettingsCheckRow({
     <button
       role="checkbox"
       aria-checked={checked}
+      aria-label={label}
       onClick={onToggle}
       className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
     >

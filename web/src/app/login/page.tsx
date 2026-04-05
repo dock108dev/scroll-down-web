@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
@@ -37,13 +37,19 @@ function LoginForm() {
   const [submitted, setSubmitted] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const validate = useCallback(() => {
     const errs: Record<string, string> = {};
-    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+    if (!email) {
+      errs.email = "Email is required";
+    } else if (!VALIDATION.EMAIL_RE.test(email)) {
       errs.email = "Enter a valid email address";
     }
-    if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+    if (!password) {
+      errs.password = "Password is required";
+    } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
       errs.password = "Password must be at least 8 characters";
     }
     if (tab === "signup" && password !== confirmPassword) {
@@ -56,15 +62,21 @@ function LoginForm() {
   const validateField = useCallback((field: "email" | "password" | "confirmPassword") => {
     setFieldErrors((prev) => {
       const next = { ...prev };
-      if (field === "email" && email && !VALIDATION.EMAIL_RE.test(email)) {
-        next.email = "Enter a valid email address";
-      } else if (field === "email") {
-        delete next.email;
+      if (field === "email") {
+        if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+          next.email = !email ? "Email is required" : "Enter a valid email address";
+        } else {
+          delete next.email;
+        }
       }
-      if (field === "password" && password.length > 0 && password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
-        next.password = "Password must be at least 8 characters";
-      } else if (field === "password") {
-        delete next.password;
+      if (field === "password") {
+        if (password.length > 0 && password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+          next.password = "Password must be at least 8 characters";
+        } else if (password.length === 0 && submitted) {
+          next.password = "Password is required";
+        } else {
+          delete next.password;
+        }
       }
       if (field === "confirmPassword" && confirmPassword && password !== confirmPassword) {
         next.confirmPassword = "Passwords don't match";
@@ -73,16 +85,20 @@ function LoginForm() {
       }
       return next;
     });
-  }, [email, password, confirmPassword]);
+  }, [email, password, confirmPassword, submitted]);
 
   // Re-validate on every change after first failed submit
   useEffect(() => {
     if (!submitted) return;
     const errs: Record<string, string> = {};
-    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+    if (!email) {
+      errs.email = "Email is required";
+    } else if (!VALIDATION.EMAIL_RE.test(email)) {
       errs.email = "Enter a valid email address";
     }
-    if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+    if (!password) {
+      errs.password = "Password is required";
+    } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
       errs.password = "Password must be at least 8 characters";
     }
     if (tab === "signup" && password !== confirmPassword) {
@@ -96,7 +112,15 @@ function LoginForm() {
       e.preventDefault();
       setError(null);
       setSubmitted(true);
-      if (!validate()) return;
+      if (!validate()) {
+        // Focus first errored field for accessibility and clear visual feedback
+        if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+          emailRef.current?.focus();
+        } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+          passwordRef.current?.focus();
+        }
+        return;
+      }
 
       try {
         if (tab === "login") {
@@ -147,7 +171,7 @@ function LoginForm() {
       {/* Redirect reason message */}
       {reason === "profile" && (
         <p className="text-xs text-neutral-400 text-center mb-4 bg-neutral-800/50 rounded-lg px-3 py-2">
-          Please log in to view your profile.
+          Log in or create an account to track your predictions and manage your profile.
         </p>
       )}
 
@@ -180,6 +204,7 @@ function LoginForm() {
             Email
           </label>
           <input
+            ref={emailRef}
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _email, ...rest } = prev; return rest; }); }}
@@ -206,6 +231,7 @@ function LoginForm() {
             Password
           </label>
           <input
+            ref={passwordRef}
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _password, ...rest } = prev; return rest; }); }}

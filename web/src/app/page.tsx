@@ -357,6 +357,19 @@ export default function HomePage() {
                   ? "Live scores will update automatically when the connection is restored."
                   : "Check back shortly \u2014 data updates every few minutes."}
           </p>
+
+          {/* Feature explainer when data is unavailable */}
+          {retryCount >= 3 && (
+            <div className="mt-6 mx-auto max-w-sm text-left space-y-3 border border-neutral-800 rounded-lg p-4 bg-neutral-900/50">
+              <p className="text-xs font-medium text-neutral-300">While you wait, here&apos;s what Scroll Down Sports offers:</p>
+              <ul className="text-xs text-neutral-500 space-y-1.5 list-none">
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Spoiler-free scores — reveal results on your schedule</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Live MLB, NBA, NHL, and NCAAB games</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Play-by-play timelines for every game</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> FairBet odds comparison across sportsbooks</li>
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

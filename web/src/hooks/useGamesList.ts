@@ -254,6 +254,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   useVisibilityRefresh(
     () => fetchAll(false, true),
     realtimeStatus.connected,
+    !error, // disable visibility refresh while in error state to avoid flooding console
   );
 
   // Derive sections from store using tracked section IDs
