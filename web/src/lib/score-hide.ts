@@ -8,13 +8,32 @@ function normalizeTeam(value: string): string {
   return value.trim().toLowerCase();
 }
 
+let cachedLeaguesRef: string[] | null = null;
+let cachedTeamsRef: string[] | null = null;
+let cachedLeaguesSet = new Set<string>();
+let cachedTeamsSet = new Set<string>();
+
+function getNormalizedHiddenSets(hiddenLeagues: string[], hiddenTeams: string[]) {
+  if (hiddenLeagues !== cachedLeaguesRef) {
+    cachedLeaguesRef = hiddenLeagues;
+    cachedLeaguesSet = new Set(hiddenLeagues.map(normalizeLeague));
+  }
+  if (hiddenTeams !== cachedTeamsRef) {
+    cachedTeamsRef = hiddenTeams;
+    cachedTeamsSet = new Set(hiddenTeams.map(normalizeTeam));
+  }
+  return { leagueSet: cachedLeaguesSet, teamSet: cachedTeamsSet };
+}
+
 export function isGameHiddenByBlacklist(
   game: GameCore,
   hiddenLeagues: string[],
   hiddenTeams: string[],
 ): boolean {
-  const leagueSet = new Set(hiddenLeagues.map(normalizeLeague));
-  const teamSet = new Set(hiddenTeams.map(normalizeTeam));
+  const { leagueSet, teamSet } = getNormalizedHiddenSets(
+    hiddenLeagues,
+    hiddenTeams,
+  );
 
   if (leagueSet.has(normalizeLeague(game.leagueCode))) return true;
 

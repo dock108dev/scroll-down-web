@@ -19,6 +19,8 @@ export function GameHeader({ game }: GameHeaderProps) {
   const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
   const display = useScoreDisplay(game.id);
   const [showHideTeamPicker, setShowHideTeamPicker] = useState(false);
+  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
+  const setScoreRevealMode = useSettings((s) => s.setScoreRevealMode);
   const scoreHideTeams = useSettings((s) => s.scoreHideTeams);
   const addScoreHideTeam = useSettings((s) => s.addScoreHideTeam);
 
@@ -103,7 +105,16 @@ export function GameHeader({ game }: GameHeaderProps) {
             {canHideAnyTeam && (
               <button
                 disabled={openHidePickerDisabled}
-                onClick={() => setShowHideTeamPicker((v) => !v)}
+                onClick={() => {
+                  // Team hide lists affect score display only in blacklist mode.
+                  // Switch mode automatically so this action has immediate effect.
+                  if (scoreRevealMode !== "blacklist") {
+                    setScoreRevealMode("blacklist");
+                    setShowHideTeamPicker(true);
+                    return;
+                  }
+                  setShowHideTeamPicker((v) => !v);
+                }}
                 className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 title={teamsAtLimit ? "Team hide limit reached" : undefined}
               >

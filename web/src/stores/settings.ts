@@ -9,6 +9,39 @@ export const SCORE_HIDE_LIMITS = {
   TEAMS: 100,
 } as const;
 
+function normalizeLeague(league: string): string {
+  return league.trim().toUpperCase();
+}
+
+function normalizeTeam(team: string): string {
+  return team.trim();
+}
+
+function normalizeLeagueList(input: string[]): string[] {
+  const unique = new Set<string>();
+  for (const value of input) {
+    const normalized = normalizeLeague(value);
+    if (!normalized) continue;
+    unique.add(normalized);
+    if (unique.size >= SCORE_HIDE_LIMITS.LEAGUES) break;
+  }
+  return Array.from(unique).sort();
+}
+
+function normalizeTeamList(input: string[]): string[] {
+  const byLower = new Map<string, string>();
+  for (const value of input) {
+    const normalized = normalizeTeam(value);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (!byLower.has(key)) {
+      byLower.set(key, normalized);
+      if (byLower.size >= SCORE_HIDE_LIMITS.TEAMS) break;
+    }
+  }
+  return Array.from(byLower.values()).sort((a, b) => a.localeCompare(b));
+}
+
 interface SettingsState {
   theme: "system" | "light" | "dark";
   scoreRevealMode: "always" | "onMarkRead" | "blacklist";
@@ -30,8 +63,10 @@ interface SettingsState {
   setScoreRevealMode: (m: "always" | "onMarkRead" | "blacklist") => void;
   addScoreHideLeague: (league: string) => void;
   removeScoreHideLeague: (league: string) => void;
+  setScoreHideLeagues: (leagues: string[]) => void;
   addScoreHideTeam: (team: string) => void;
   removeScoreHideTeam: (team: string) => void;
+  setScoreHideTeams: (teams: string[]) => void;
   setPreferredSportsbook: (b: string) => void;
   setOddsFormat: (f: "american" | "decimal" | "fractional") => void;
   setAutoResumePosition: (v: boolean) => void;
@@ -65,7 +100,7 @@ export const useSettings = create<SettingsState>()(
       setTheme: (theme) => set({ theme }),
       setScoreRevealMode: (scoreRevealMode) => set({ scoreRevealMode }),
       addScoreHideLeague: (league) => {
-        const normalized = league.trim().toUpperCase();
+        const normalized = normalizeLeague(league);
         if (!normalized) return;
         const current = get().scoreHideLeagues;
         if (current.includes(normalized)) return;
@@ -73,13 +108,15 @@ export const useSettings = create<SettingsState>()(
         set({ scoreHideLeagues: [...current, normalized].sort() });
       },
       removeScoreHideLeague: (league) => {
-        const normalized = league.trim().toUpperCase();
+        const normalized = normalizeLeague(league);
         set((s) => ({
           scoreHideLeagues: s.scoreHideLeagues.filter((v) => v !== normalized),
         }));
       },
+      setScoreHideLeagues: (leagues) =>
+        set({ scoreHideLeagues: normalizeLeagueList(leagues) }),
       addScoreHideTeam: (team) => {
-        const normalized = team.trim();
+        const normalized = normalizeTeam(team);
         if (!normalized) return;
         const current = get().scoreHideTeams;
         if (current.some((v) => v.toLowerCase() === normalized.toLowerCase())) return;
@@ -87,11 +124,13 @@ export const useSettings = create<SettingsState>()(
         set({ scoreHideTeams: [...current, normalized].sort((a, b) => a.localeCompare(b)) });
       },
       removeScoreHideTeam: (team) => {
-        const normalized = team.trim().toLowerCase();
+        const normalized = normalizeTeam(team).toLowerCase();
         set((s) => ({
           scoreHideTeams: s.scoreHideTeams.filter((v) => v.toLowerCase() !== normalized),
         }));
       },
+      setScoreHideTeams: (teams) =>
+        set({ scoreHideTeams: normalizeTeamList(teams) }),
       setPreferredSportsbook: (preferredSportsbook) =>
         set({ preferredSportsbook }),
       setOddsFormat: (oddsFormat) => set({ oddsFormat }),

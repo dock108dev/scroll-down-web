@@ -132,20 +132,10 @@ function hydrateFromServer(prefs: ServerPreferences) {
     );
   }
   if (Array.isArray(s.scoreHideLeagues)) {
-    for (const league of setters.scoreHideLeagues) {
-      setters.removeScoreHideLeague(league);
-    }
-    for (const league of s.scoreHideLeagues) {
-      setters.addScoreHideLeague(league);
-    }
+    setters.setScoreHideLeagues(s.scoreHideLeagues);
   }
   if (Array.isArray(s.scoreHideTeams)) {
-    for (const team of setters.scoreHideTeams) {
-      setters.removeScoreHideTeam(team);
-    }
-    for (const team of s.scoreHideTeams) {
-      setters.addScoreHideTeam(team);
-    }
+    setters.setScoreHideTeams(s.scoreHideTeams);
   }
   if (s.preferredSportsbook !== undefined) setters.setPreferredSportsbook(s.preferredSportsbook);
   if (s.oddsFormat) setters.setOddsFormat(s.oddsFormat as "american" | "decimal" | "fractional");

@@ -122,9 +122,24 @@ function setFairbetCache(allBets: APIBet[], booksAvailable: string[], totalFromS
   writeCache<FairBetLocalCache>(STORAGE_KEYS.FAIRBET_CACHE, { allBets, booksAvailable, totalFromServer });
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+
+    function onAbort() {
+      clearTimeout(timeoutId);
+      signal?.removeEventListener("abort", onAbort);
+      reject(new DOMException("Aborted", "AbortError"));
+    }
+
+    signal?.addEventListener("abort", onAbort, { once: true });
   });
 }
 
@@ -181,7 +196,8 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
           if (controller.signal.aborted) throw err;
           if (attempt >= API.FAIRBET_PAGE_RETRY_ATTEMPTS) throw err;
           attempt += 1;
-          await sleep(API.FAIRBET_PAGE_RETRY_DELAY_MS * attempt);
+          const delayMs = API.FAIRBET_PAGE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+          await sleep(delayMs, controller.signal);
         }
       }
     };
