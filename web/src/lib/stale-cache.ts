@@ -18,6 +18,7 @@ export function readCache<T>(key: string): CacheEntry<T> | null {
     if (!entry.data || !entry.savedAt) return null;
     return entry;
   } catch {
+    // Corrupt or unparseable cache entry — treat as cache miss
     return null;
   }
 }
