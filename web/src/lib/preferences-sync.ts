@@ -14,10 +14,11 @@ import { isDegraded } from "@/hooks/useHealthStatus";
 
 const TAG = "[prefs-sync]";
 
-// ─── Backoff state for push failures ───────────────────────────────
+// ─── Backoff state ─────────────────────────────────────────────────
 
-let consecutiveFailures = 0;
+let consecutivePushFailures = 0;
 const MAX_BACKOFF_FAILURES = 3; // stop pushing after 3 consecutive failures
+let fetchHasLoggedError = false;
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -55,8 +56,8 @@ async function fetchPreferences(): Promise<ServerPreferences | null> {
   });
 
   if (!res.ok) {
-    // Log once, not on every retry — kept at debug level to avoid console noise
-    if (consecutiveFailures === 0) {
+    if (!fetchHasLoggedError) {
+      fetchHasLoggedError = true;
       console.warn(`${TAG} fetchPreferences failed: ${res.status} ${res.statusText}`);
     }
     return null;
@@ -78,14 +79,14 @@ async function pushPreferences(prefs: Omit<ServerPreferences, "updatedAt">): Pro
   });
 
   if (!res.ok) {
-    consecutiveFailures++;
+    consecutivePushFailures++;
     // Only log the first failure — subsequent ones are suppressed to avoid flooding console
-    if (consecutiveFailures === 1) {
+    if (consecutivePushFailures === 1) {
       console.warn(`${TAG} pushPreferences failed: ${res.status} ${res.statusText} (further errors suppressed)`);
     }
     throw new Error(`Push failed: ${res.status}`);
   }
-  consecutiveFailures = 0; // Reset on success
+  consecutivePushFailures = 0;
 }
 
 // ─── Snapshot current local state ───────────────────────────────────
@@ -181,7 +182,7 @@ const PUSH_DEBOUNCE_MS = 2_000;
 function schedulePush() {
   if (isHydrating) return;
   // Stop pushing when backend is degraded or after repeated failures
-  if (isDegraded() || consecutiveFailures >= MAX_BACKOFF_FAILURES) return;
+  if (isDegraded() || consecutivePushFailures >= MAX_BACKOFF_FAILURES) return;
 
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
@@ -224,7 +225,8 @@ function stopSyncing() {
  */
 export async function pullAndStartSync(): Promise<void> {
   // Reset backoff so a fresh login gets a clean slate
-  consecutiveFailures = 0;
+  consecutivePushFailures = 0;
+  fetchHasLoggedError = false;
 
   try {
     const prefs = await fetchPreferences();

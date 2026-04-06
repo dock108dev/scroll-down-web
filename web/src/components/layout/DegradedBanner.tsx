@@ -47,14 +47,15 @@ export function DegradedBanner() {
     }
 
     check();
-    // Poll less frequently when degraded (5 min) vs healthy (60s)
-    const pollMs = 5 * 60_000;
+    // Poll every 60s when healthy for fast degradation detection,
+    // back off to 5 min when degraded to reduce noise.
+    const pollMs = degraded ? 5 * 60_000 : 60_000;
     intervalRef.current = setInterval(check, pollMs);
     return () => {
       active = false;
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, []);
+  }, [degraded]);
 
   // Update "ago" display every 30 seconds
   useEffect(() => {

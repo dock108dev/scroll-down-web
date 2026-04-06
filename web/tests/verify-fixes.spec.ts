@@ -1,8 +1,12 @@
 import { test, expect } from "@playwright/test";
+import * as fs from "fs";
 
 const SCREENSHOT_DIR = "../docs/audit-results/screenshots";
 
 test.describe("Verify exploratory fixes", () => {
+  test.beforeAll(() => {
+    fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+  });
   test("Login form shows validation errors on empty submit", async ({ page }) => {
     await page.goto("/login", { waitUntil: "domcontentloaded" });
     await page.waitForTimeout(500);
@@ -42,7 +46,10 @@ test.describe("Verify exploratory fixes", () => {
 
   test("Home page error state has feature explainer", async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
-    await page.waitForTimeout(15000); // Wait for auto-retry to exhaust
+
+    // Wait for auto-retry to exhaust (3s + 6s + 12s backoff) and the
+    // "Automatic retries exhausted" text to appear, rather than a fixed sleep.
+    await expect(page.getByText("Automatic retries exhausted")).toBeVisible({ timeout: 25_000 });
 
     await page.screenshot({
       path: `${SCREENSHOT_DIR}/explore-fixed-home-error.png`,

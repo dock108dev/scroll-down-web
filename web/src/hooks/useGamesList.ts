@@ -156,7 +156,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const prevLeagueRef = useRef(league);
   const abortRef = useRef<AbortController | null>(null);
 
-  // ─�� Seed from localStorage on cold start ──────────────────
+  // ── Seed from localStorage on cold start ────────────────────
   const seededRef = useRef(false);
   useEffect(() => {
     if (seededRef.current || hasCached) return;
