@@ -10,6 +10,18 @@ import { trackEvent } from "@/lib/analytics";
 
 type Tab = "login" | "signup";
 
+const shakeKeyframes = `
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  15% { transform: translateX(-6px); }
+  30% { transform: translateX(6px); }
+  45% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  75% { transform: translateX(-2px); }
+  90% { transform: translateX(2px); }
+}
+`;
+
 export default function LoginPage() {
   return (
     <Suspense>
@@ -37,6 +49,7 @@ function LoginForm() {
   const [submitted, setSubmitted] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [shaking, setShaking] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
 
@@ -113,7 +126,9 @@ function LoginForm() {
       setError(null);
       setSubmitted(true);
       if (!validate()) {
-        // Focus first errored field for accessibility and clear visual feedback
+        // Shake the form and focus first errored field
+        setShaking(true);
+        setTimeout(() => setShaking(false), 500);
         if (!email || !VALIDATION.EMAIL_RE.test(email)) {
           emailRef.current?.focus();
         } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
@@ -164,14 +179,26 @@ function LoginForm() {
 
   return (
     <div className="mx-auto max-w-sm px-4 py-12">
+      <style dangerouslySetInnerHTML={{ __html: shakeKeyframes }} />
       <h1 className="text-xl font-bold text-neutral-100 text-center mb-6">
-        {tab === "login" ? "Welcome back" : "Create an account"}
+        {reason === "profile"
+          ? "Sign in to your profile"
+          : reason === "history"
+            ? "Sign in for game history"
+            : tab === "login"
+              ? "Welcome back"
+              : "Create an account"}
       </h1>
 
       {/* Redirect reason message */}
       {reason === "profile" && (
         <p className="text-xs text-neutral-400 text-center mb-4 bg-neutral-800/50 rounded-lg px-3 py-2">
-          Log in or create an account to track your predictions and manage your profile.
+          Sign in to view your profile, track predictions, and manage your account.
+        </p>
+      )}
+      {reason === "history" && (
+        <p className="text-xs text-neutral-400 text-center mb-4 bg-neutral-800/50 rounded-lg px-3 py-2">
+          Sign in to browse past scores, search by team, and review completed games.
         </p>
       )}
 
@@ -197,7 +224,7 @@ function LoginForm() {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-4">
+      <form onSubmit={handleSubmit} noValidate className="space-y-4" style={shaking ? { animation: "shake 0.4s ease-in-out" } : undefined}>
         {/* Email */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
@@ -303,14 +330,18 @@ function LoginForm() {
 
         {/* Validation summary (shown after submitting with errors) */}
         {submitted && Object.keys(fieldErrors).length > 0 && (
-          <p role="alert" className="text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
-            Please fix the highlighted fields above.
-          </p>
+          <div role="alert" className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Please fix the highlighted fields above.</span>
+          </div>
         )}
 
         {/* API error */}
         {error && (
-          <p role="alert" className="text-xs text-red-400 text-center bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{error}</p>
+          <div role="alert" className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>{error}</span>
+          </div>
         )}
 
         {/* Submit */}

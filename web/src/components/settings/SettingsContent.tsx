@@ -184,7 +184,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
-      <Section title="Odds" collapsible defaultOpen={false}>
+      <Section title="Odds" collapsible>
         <Row label="Default Book">
           <DarkSelect
             value={preferredSportsbook}

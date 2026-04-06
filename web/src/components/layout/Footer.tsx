@@ -27,7 +27,7 @@ export function Footer() {
               timelines, betting analytics, and matchup simulators for MLB, NBA,
               NHL, and NCAAB.
             </p>
-            <p className="mt-3 text-[11px] text-neutral-600">
+            <p className="mt-3 text-[11px] text-neutral-500">
               Currently in beta &middot; v0.1.0
             </p>
           </div>
@@ -80,7 +80,7 @@ export function Footer() {
         </div>
 
         <div className="mt-8 pt-6 border-t border-neutral-800/50 text-center">
-          <p className="text-[11px] text-neutral-600">
+          <p className="text-[11px] text-neutral-500">
             &copy; {new Date().getFullYear()} Scroll Down Sports. All rights reserved.
             Data is delayed and provided for informational purposes only.
             Not financial advice. Gamble responsibly.

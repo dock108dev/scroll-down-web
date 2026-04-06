@@ -62,6 +62,17 @@ export default function GolfPage() {
                 ? "Retrying automatically…"
                 : "Check back shortly — tournament data updates regularly."}
           </p>
+
+          {/* Feature explainer when data is unavailable */}
+          <div className="mt-6 mx-auto max-w-sm text-left space-y-3 border border-neutral-800 rounded-lg p-4 bg-neutral-900/50">
+            <p className="text-xs font-medium text-neutral-300">What you&apos;ll find here when data is available:</p>
+            <ul className="text-xs text-neutral-500 space-y-1.5 list-none">
+              <li className="flex items-start gap-2"><span className="text-green-400 mt-px">&#9679;</span> Live PGA Tour leaderboards updated throughout the round</li>
+              <li className="flex items-start gap-2"><span className="text-green-400 mt-px">&#9679;</span> This week&apos;s tournament with player scores and standings</li>
+              <li className="flex items-start gap-2"><span className="text-green-400 mt-px">&#9679;</span> Upcoming tournament schedule and recent results</li>
+              <li className="flex items-start gap-2"><span className="text-green-400 mt-px">&#9679;</span> Hole-by-hole scoring details for each player</li>
+            </ul>
+          </div>
         </div>
       )}
 

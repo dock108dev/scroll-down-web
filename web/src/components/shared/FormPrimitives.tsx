@@ -28,6 +28,7 @@ export function Section({
             type="button"
             onClick={() => setOpen((o) => !o)}
             aria-expanded={isOpen}
+            aria-label={`${isOpen ? "Collapse" : "Expand"} ${title}`}
             className="flex w-full items-center justify-between px-1"
           >
             <span
