@@ -93,6 +93,7 @@ interface UseGamesListReturn {
 
 // ── localStorage cache shape ──────────────────────────────
 interface GamesCacheData {
+  dateKey: string;
   sectionIds: Record<SectionKey, number[]>;
   cores: Array<{ id: number; core: GameCore }>;
 }
@@ -112,8 +113,10 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const needsListRefresh = useGameData((s) => s.needsListRefresh);
   const clearListRefresh = useGameData((s) => s.clearListRefresh);
 
+  // Recompute section ranges if the Eastern calendar day changes while app is open.
+  const todayKey = fmtDate(easternToday());
   // Align realtime channels with list cache keys by league+date pair
-  const ranges = useMemo(() => getSectionDateRanges(), []);
+  const ranges = useMemo(() => getSectionDateRanges(), [todayKey]);
 
   const channels = useMemo(() => {
     return SECTION_ORDER.map((key) =>
@@ -163,6 +166,8 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     seededRef.current = true;
     const cached = readCache<GamesCacheData>(STORAGE_KEYS.GAMES_CACHE);
     if (!cached) return;
+    // Only hydrate if the cache was generated for the same Eastern day.
+    if (cached.data.dateKey !== ranges.Today.startDate) return;
     const { sectionIds: cachedIds, cores } = cached.data;
     // Hydrate game-data store directly with cached GameCore objects.
     // GameCore has the same camelCase field names as GameSummary, so
@@ -179,8 +184,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     setStale(true);
     setStaleAt(cached.savedAt);
     setLoading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [hasCached, leagueKey, ranges, upsertFromList]);
 
   const fetchAll = useCallback(async (showLoading?: boolean, force?: boolean) => {
     // Check freshness per listKey — skip if all recently fetched (unless forced)
@@ -246,7 +250,11 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
           return entry ? { id, core: entry.core } : null;
         })
         .filter((c): c is { id: number; core: GameCore } => c !== null);
-      writeCache<GamesCacheData>(STORAGE_KEYS.GAMES_CACHE, { sectionIds: buckets, cores });
+      writeCache<GamesCacheData>(STORAGE_KEYS.GAMES_CACHE, {
+        dateKey: ranges.Today.startDate,
+        sectionIds: buckets,
+        cores,
+      });
     } catch (err) {
       if (controller.signal.aborted) return;
       // If we have existing data (in-memory or from localStorage), show it as stale

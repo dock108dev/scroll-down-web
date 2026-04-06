@@ -1,11 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import type { Game } from "@/lib/types";
 import type { GameCore } from "@/stores/game-data";
 import { isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
+import { useSettings } from "@/stores/settings";
 import { pickSnapshot } from "@/lib/score-display";
 import { cn, formatDate, formatTimeET, teamColorStyle } from "@/lib/utils";
 
@@ -16,6 +18,9 @@ interface GameHeaderProps {
 export function GameHeader({ game }: GameHeaderProps) {
   const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
   const display = useScoreDisplay(game.id);
+  const [showHideTeamPicker, setShowHideTeamPicker] = useState(false);
+  const scoreHideTeams = useSettings((s) => s.scoreHideTeams);
+  const addScoreHideTeam = useSettings((s) => s.addScoreHideTeam);
 
   const pinned = usePinnedGames((s) => s.isPinned)(game.id);
   const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
@@ -28,6 +33,14 @@ export function GameHeader({ game }: GameHeaderProps) {
   const showScore = display?.visible ?? false;
   const hasScoreUpdate = display?.hasUpdate ?? false;
   const statusCategory = display?.statusCategory ?? "other";
+  const hiddenSet = new Set(scoreHideTeams.map((v) => v.trim().toLowerCase()));
+  const awayAlreadyHidden =
+    hiddenSet.has(game.awayTeam.trim().toLowerCase()) ||
+    (!!game.awayTeamAbbr && hiddenSet.has(game.awayTeamAbbr.trim().toLowerCase()));
+  const homeAlreadyHidden =
+    hiddenSet.has(game.homeTeam.trim().toLowerCase()) ||
+    (!!game.homeTeamAbbr && hiddenSet.has(game.homeTeamAbbr.trim().toLowerCase()));
+  const canHideAnyTeam = !awayAlreadyHidden || !homeAlreadyHidden;
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
@@ -44,6 +57,13 @@ export function GameHeader({ game }: GameHeaderProps) {
 
   const awayStyle = teamColorStyle(game.awayTeamColorLight, game.awayTeamColorDark);
   const homeStyle = teamColorStyle(game.homeTeamColorLight, game.homeTeamColorDark);
+
+  const hideAwayTeam = () => addScoreHideTeam(game.awayTeam);
+  const hideHomeTeam = () => addScoreHideTeam(game.homeTeam);
+  const hideBothTeams = () => {
+    addScoreHideTeam(game.awayTeam);
+    addScoreHideTeam(game.homeTeam);
+  };
 
   return (
     <div data-testid="game-header" className="px-4 pt-6 pb-4">
@@ -74,39 +94,91 @@ export function GameHeader({ game }: GameHeaderProps) {
               </button>
             )}
           </span>
-          {statusCategory === "live" && (
-            <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+          <div className="flex items-center gap-2">
+            {canHideAnyTeam && (
+              <button
+                onClick={() => setShowHideTeamPicker((v) => !v)}
+                className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 transition-colors"
+              >
+                + Hide Team
+              </button>
+            )}
+            {statusCategory === "live" && (
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+                </span>
+                <span className="text-green-400">LIVE</span>
+                {(game.currentPeriodLabel || game.gameClock) && (
+                  <span className="text-neutral-500 font-normal">
+                    {game.currentPeriodLabel ?? ""}{game.gameClock && game.gameClock !== game.currentPeriodLabel ? ` ${game.gameClock}` : ""}
+                  </span>
+                )}
               </span>
-              <span className="text-green-400">LIVE</span>
-              {(game.currentPeriodLabel || game.gameClock) && (
-                <span className="text-neutral-500 font-normal">
-                  {game.currentPeriodLabel ?? ""}{game.gameClock && game.gameClock !== game.currentPeriodLabel ? ` ${game.gameClock}` : ""}
+            )}
+            {statusCategory === "live-updated" && (
+              <button
+                onClick={handleScoreToggle}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-400/10 hover:bg-amber-400/20 transition-colors"
+              >
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
+                </span>
+                <span className="text-amber-400">LIVE Update</span>
+              </button>
+            )}
+            {statusCategory === "final" && (
+              <span className="text-xs text-neutral-500 uppercase font-medium">Final</span>
+            )}
+            {statusCategory === "pregame" && (
+              <span className="text-xs text-neutral-500 uppercase font-medium">Upcoming</span>
+            )}
+          </div>
+        </div>
+
+        {showHideTeamPicker && canHideAnyTeam && (
+          <div className="mb-4 rounded-lg border border-neutral-800 bg-neutral-900/80 px-3 py-3">
+            <p className="text-xs text-neutral-500 mb-2">
+              Pick team to hide in selective score mode
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {!awayAlreadyHidden ? (
+                <button
+                  onClick={hideAwayTeam}
+                  className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors"
+                >
+                  + {game.awayTeam}
+                </button>
+              ) : (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-500">
+                  {game.awayTeam} hidden
                 </span>
               )}
-            </span>
-          )}
-          {statusCategory === "live-updated" && (
-            <button
-              onClick={handleScoreToggle}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-400/10 hover:bg-amber-400/20 transition-colors"
-            >
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-400" />
-              </span>
-              <span className="text-amber-400">LIVE Update</span>
-            </button>
-          )}
-          {statusCategory === "final" && (
-            <span className="text-xs text-neutral-500 uppercase font-medium">Final</span>
-          )}
-          {statusCategory === "pregame" && (
-            <span className="text-xs text-neutral-500 uppercase font-medium">Upcoming</span>
-          )}
-        </div>
+              {!homeAlreadyHidden ? (
+                <button
+                  onClick={hideHomeTeam}
+                  className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors"
+                >
+                  + {game.homeTeam}
+                </button>
+              ) : (
+                <span className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-500">
+                  {game.homeTeam} hidden
+                </span>
+              )}
+              {!awayAlreadyHidden && !homeAlreadyHidden && (
+                <button
+                  onClick={hideBothTeams}
+                  className="text-xs px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors"
+                >
+                  + Hide both
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Away (left) @ Home (right) — team colors as text */}
         <div className="flex items-center justify-between gap-4">

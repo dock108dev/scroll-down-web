@@ -99,7 +99,12 @@ function snapshotLocal(): Omit<ServerPreferences, "updatedAt"> {
   return {
     settings: {
       theme: settings.theme,
-      scoreRevealMode: settings.scoreRevealMode,
+      // Backend currently supports two modes. Keep compatibility while
+      // selective hide mode is client-only until backend schema is updated.
+      scoreRevealMode:
+        settings.scoreRevealMode === "blacklist"
+          ? "onMarkRead"
+          : settings.scoreRevealMode,
       preferredSportsbook: settings.preferredSportsbook,
       oddsFormat: settings.oddsFormat,
       autoResumePosition: settings.autoResumePosition,
@@ -122,7 +127,11 @@ function hydrateFromServer(prefs: ServerPreferences) {
   // Settings store
   const setters = useSettings.getState();
   if (s.theme) setters.setTheme(s.theme as "system" | "light" | "dark");
-  if (s.scoreRevealMode) setters.setScoreRevealMode(s.scoreRevealMode as "always" | "onMarkRead");
+  if (s.scoreRevealMode) {
+    setters.setScoreRevealMode(
+      s.scoreRevealMode as "always" | "onMarkRead" | "blacklist",
+    );
+  }
   if (s.preferredSportsbook !== undefined) setters.setPreferredSportsbook(s.preferredSportsbook);
   if (s.oddsFormat) setters.setOddsFormat(s.oddsFormat as "american" | "decimal" | "fractional");
   if (s.autoResumePosition !== undefined) setters.setAutoResumePosition(s.autoResumePosition);
