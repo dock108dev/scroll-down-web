@@ -26,6 +26,8 @@ interface ServerPreferences {
   settings: {
     theme: string;
     scoreRevealMode: string;
+    scoreHideLeagues: string[];
+    scoreHideTeams: string[];
     preferredSportsbook: string;
     oddsFormat: string;
     autoResumePosition: boolean;
@@ -99,12 +101,9 @@ function snapshotLocal(): Omit<ServerPreferences, "updatedAt"> {
   return {
     settings: {
       theme: settings.theme,
-      // Backend currently supports two modes. Keep compatibility while
-      // selective hide mode is client-only until backend schema is updated.
-      scoreRevealMode:
-        settings.scoreRevealMode === "blacklist"
-          ? "onMarkRead"
-          : settings.scoreRevealMode,
+      scoreRevealMode: settings.scoreRevealMode,
+      scoreHideLeagues: settings.scoreHideLeagues,
+      scoreHideTeams: settings.scoreHideTeams,
       preferredSportsbook: settings.preferredSportsbook,
       oddsFormat: settings.oddsFormat,
       autoResumePosition: settings.autoResumePosition,
@@ -131,6 +130,22 @@ function hydrateFromServer(prefs: ServerPreferences) {
     setters.setScoreRevealMode(
       s.scoreRevealMode as "always" | "onMarkRead" | "blacklist",
     );
+  }
+  if (Array.isArray(s.scoreHideLeagues)) {
+    for (const league of setters.scoreHideLeagues) {
+      setters.removeScoreHideLeague(league);
+    }
+    for (const league of s.scoreHideLeagues) {
+      setters.addScoreHideLeague(league);
+    }
+  }
+  if (Array.isArray(s.scoreHideTeams)) {
+    for (const team of setters.scoreHideTeams) {
+      setters.removeScoreHideTeam(team);
+    }
+    for (const team of s.scoreHideTeams) {
+      setters.addScoreHideTeam(team);
+    }
   }
   if (s.preferredSportsbook !== undefined) setters.setPreferredSportsbook(s.preferredSportsbook);
   if (s.oddsFormat) setters.setOddsFormat(s.oddsFormat as "american" | "decimal" | "fractional");

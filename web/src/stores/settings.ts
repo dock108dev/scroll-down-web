@@ -4,6 +4,11 @@ import { STORAGE_KEYS, DEFAULTS, POLLING } from "@/lib/config";
 
 /* global window, localStorage */
 
+export const SCORE_HIDE_LIMITS = {
+  LEAGUES: 20,
+  TEAMS: 100,
+} as const;
+
 interface SettingsState {
   theme: "system" | "light" | "dark";
   scoreRevealMode: "always" | "onMarkRead" | "blacklist";
@@ -64,6 +69,7 @@ export const useSettings = create<SettingsState>()(
         if (!normalized) return;
         const current = get().scoreHideLeagues;
         if (current.includes(normalized)) return;
+        if (current.length >= SCORE_HIDE_LIMITS.LEAGUES) return;
         set({ scoreHideLeagues: [...current, normalized].sort() });
       },
       removeScoreHideLeague: (league) => {
@@ -77,6 +83,7 @@ export const useSettings = create<SettingsState>()(
         if (!normalized) return;
         const current = get().scoreHideTeams;
         if (current.some((v) => v.toLowerCase() === normalized.toLowerCase())) return;
+        if (current.length >= SCORE_HIDE_LIMITS.TEAMS) return;
         set({ scoreHideTeams: [...current, normalized].sort((a, b) => a.localeCompare(b)) });
       },
       removeScoreHideTeam: (team) => {

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useSettings } from "@/stores/settings";
+import { SCORE_HIDE_LIMITS, useSettings } from "@/stores/settings";
 import { useAuth } from "@/stores/auth";
 import { useGameData } from "@/stores/game-data";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,8 @@ export function SettingsContent() {
   const [leagueInput, setLeagueInput] = useState("");
   const [teamInput, setTeamInput] = useState("");
   const gameEntries = useGameData((s) => s.games);
+  const leaguesAtLimit = scoreHideLeagues.length >= SCORE_HIDE_LIMITS.LEAGUES;
+  const teamsAtLimit = scoreHideTeams.length >= SCORE_HIDE_LIMITS.TEAMS;
 
   const availableLeagues = useMemo(() => {
     const set = new Set<string>();
@@ -218,7 +220,9 @@ export function SettingsContent() {
             )}
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-neutral-400">Hidden leagues</p>
+              <p className="text-xs font-medium text-neutral-400">
+                Hidden leagues ({scoreHideLeagues.length}/{SCORE_HIDE_LIMITS.LEAGUES})
+              </p>
               <div className="flex gap-2">
                 <input
                   value={leagueInput}
@@ -232,20 +236,28 @@ export function SettingsContent() {
                     addScoreHideLeague(leagueInput);
                     setLeagueInput("");
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors"
+                  disabled={leaguesAtLimit}
+                  className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add
                 </button>
               </div>
+              {leaguesAtLimit && (
+                <p className="text-xs text-neutral-600">League limit reached.</p>
+              )}
               <TagList items={scoreHideLeagues} onRemove={removeScoreHideLeague} />
-              <QuickPickList
-                items={availableLeagues.filter((l) => !scoreHideLeagues.includes(l)).slice(0, 12)}
-                onPick={addScoreHideLeague}
-              />
+              {!leaguesAtLimit && (
+                <QuickPickList
+                  items={availableLeagues.filter((l) => !scoreHideLeagues.includes(l)).slice(0, 12)}
+                  onPick={addScoreHideLeague}
+                />
+              )}
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs font-medium text-neutral-400">Hidden teams</p>
+              <p className="text-xs font-medium text-neutral-400">
+                Hidden teams ({scoreHideTeams.length}/{SCORE_HIDE_LIMITS.TEAMS})
+              </p>
               <div className="flex gap-2">
                 <input
                   value={teamInput}
@@ -259,16 +271,22 @@ export function SettingsContent() {
                     addScoreHideTeam(teamInput);
                     setTeamInput("");
                   }}
-                  className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors"
+                  disabled={teamsAtLimit}
+                  className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add
                 </button>
               </div>
+              {teamsAtLimit && (
+                <p className="text-xs text-neutral-600">Team limit reached.</p>
+              )}
               <TagList items={scoreHideTeams} onRemove={removeScoreHideTeam} />
-              <QuickPickList
-                items={availableTeams.filter((t) => !scoreHideTeams.some((x) => x.toLowerCase() === t.toLowerCase())).slice(0, 16)}
-                onPick={addScoreHideTeam}
-              />
+              {!teamsAtLimit && (
+                <QuickPickList
+                  items={availableTeams.filter((t) => !scoreHideTeams.some((x) => x.toLowerCase() === t.toLowerCase())).slice(0, 16)}
+                  onPick={addScoreHideTeam}
+                />
+              )}
             </div>
           </div>
         )}

@@ -7,7 +7,7 @@ import { isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
-import { useSettings } from "@/stores/settings";
+import { SCORE_HIDE_LIMITS, useSettings } from "@/stores/settings";
 import { pickSnapshot } from "@/lib/score-display";
 import { cn, formatDate, formatTimeET, teamColorStyle } from "@/lib/utils";
 
@@ -41,6 +41,8 @@ export function GameHeader({ game }: GameHeaderProps) {
     hiddenSet.has(game.homeTeam.trim().toLowerCase()) ||
     (!!game.homeTeamAbbr && hiddenSet.has(game.homeTeamAbbr.trim().toLowerCase()));
   const canHideAnyTeam = !awayAlreadyHidden || !homeAlreadyHidden;
+  const teamsAtLimit = scoreHideTeams.length >= SCORE_HIDE_LIMITS.TEAMS;
+  const openHidePickerDisabled = !canHideAnyTeam || teamsAtLimit;
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
@@ -61,6 +63,9 @@ export function GameHeader({ game }: GameHeaderProps) {
   const hideAwayTeam = () => addScoreHideTeam(game.awayTeam);
   const hideHomeTeam = () => addScoreHideTeam(game.homeTeam);
   const hideBothTeams = () => {
+    if (scoreHideTeams.length + (awayAlreadyHidden ? 0 : 1) + (homeAlreadyHidden ? 0 : 1) > SCORE_HIDE_LIMITS.TEAMS) {
+      return;
+    }
     addScoreHideTeam(game.awayTeam);
     addScoreHideTeam(game.homeTeam);
   };
@@ -97,8 +102,10 @@ export function GameHeader({ game }: GameHeaderProps) {
           <div className="flex items-center gap-2">
             {canHideAnyTeam && (
               <button
+                disabled={openHidePickerDisabled}
                 onClick={() => setShowHideTeamPicker((v) => !v)}
-                className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 transition-colors"
+                className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title={teamsAtLimit ? "Team hide limit reached" : undefined}
               >
                 + Hide Team
               </button>
@@ -143,11 +150,17 @@ export function GameHeader({ game }: GameHeaderProps) {
             <p className="text-xs text-neutral-500 mb-2">
               Pick team to hide in selective score mode
             </p>
+            {teamsAtLimit && (
+              <p className="text-xs text-neutral-600 mb-2">
+                Team limit reached ({scoreHideTeams.length}/{SCORE_HIDE_LIMITS.TEAMS}).
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
               {!awayAlreadyHidden ? (
                 <button
+                  disabled={teamsAtLimit}
                   onClick={hideAwayTeam}
-                  className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors"
+                  className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   + {game.awayTeam}
                 </button>
@@ -158,8 +171,9 @@ export function GameHeader({ game }: GameHeaderProps) {
               )}
               {!homeAlreadyHidden ? (
                 <button
+                  disabled={teamsAtLimit}
                   onClick={hideHomeTeam}
-                  className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors"
+                  className="text-xs px-2.5 py-1 rounded-full bg-neutral-800 text-neutral-200 hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   + {game.homeTeam}
                 </button>
@@ -170,8 +184,9 @@ export function GameHeader({ game }: GameHeaderProps) {
               )}
               {!awayAlreadyHidden && !homeAlreadyHidden && (
                 <button
+                  disabled={scoreHideTeams.length + 2 > SCORE_HIDE_LIMITS.TEAMS}
                   onClick={hideBothTeams}
-                  className="text-xs px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors"
+                  className="text-xs px-2.5 py-1 rounded-full bg-blue-500/20 text-blue-300 hover:bg-blue-500/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   + Hide both
                 </button>
