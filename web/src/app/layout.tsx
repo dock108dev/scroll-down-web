@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomTabs } from "@/components/layout/BottomTabs";
@@ -8,6 +9,7 @@ import { RealtimeProvider } from "@/components/layout/RealtimeProvider";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Footer } from "@/components/layout/Footer";
 import { BetaBanner } from "@/components/layout/BetaBanner";
+import { DegradedBanner } from "@/components/layout/DegradedBanner";
 import { AnalyticsProvider } from "@/components/layout/AnalyticsProvider";
 
 const SITE_URL = "https://scrolldownsports.dev";
@@ -63,6 +65,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        <Script
+          defer
+          data-domain="scrolldownsports.dev"
+          src="https://plausible.io/js/script.js"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -91,6 +98,7 @@ export default function RootLayout({
           <AnalyticsProvider />
           <div className="min-h-screen flex flex-col">
             <BetaBanner />
+            <DegradedBanner />
             <TopNav />
             <main className="flex-1 min-h-[60vh] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
               <div className="scroll-fade-top" />

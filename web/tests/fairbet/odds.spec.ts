@@ -35,10 +35,10 @@ test.describe("FairBet Page - Odds", () => {
     }
   });
 
-  test('"What is this?" button opens explainer @smoke', async ({ page }) => {
-    const whatIsThisButton = page.getByRole("button", { name: "What is this?" });
-    await expect(whatIsThisButton).toBeVisible();
-    await whatIsThisButton.click();
+  test('"How it works" button opens explainer @smoke', async ({ page }) => {
+    const howItWorksButton = page.getByRole("button", { name: "How it works" });
+    await expect(howItWorksButton).toBeVisible();
+    await howItWorksButton.click();
 
     await expect(
       page.getByRole("heading", { name: "How FairBet Works" })

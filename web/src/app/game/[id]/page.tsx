@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useGameDetail } from "@/hooks/useGameDetail";
 import { isFinal } from "@/lib/types";
 import type { GameStatus } from "@/lib/types";
@@ -16,6 +17,7 @@ import { WrapUpSection } from "@/components/game/WrapUpSection";
 import { MLBAdvancedStatsSection } from "@/components/game/MLBAdvancedStatsSection";
 import { PregameBuzzSection } from "@/components/game/PregameBuzzSection";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { Spinner } from "@/components/shared/Spinner";
 import { CollapsibleSection } from "@/components/shared/CollapsibleSection";
 import { useReadingPosition } from "@/stores/reading-position";
 import { useReveal } from "@/stores/reveal";
@@ -24,8 +26,11 @@ import { useGameData } from "@/stores/game-data";
 import { POLLING } from "@/lib/config";
 import { resolveTeamColor } from "@/lib/utils";
 import { useSectionLayout } from "@/stores/section-layout";
+import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gamePbpChannel } from "@/realtime/channels";
+import { trackEvent, initScrollTracking } from "@/lib/analytics";
+import { InlineFeedback } from "@/components/shared/InlineFeedback";
 
 // ─── Main Page Component ───────────────────────────────────────
 
@@ -36,7 +41,9 @@ export default function GameDetailPage({
 }) {
   const { id } = use(params);
   const gameId = Number(id);
+  const router = useRouter();
   const { data, core, loading, error, refetch: refetchDetail } = useGameDetail(gameId);
+  const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch: refetchDetail });
 
   const sections = useMemo(() => (data ? getSections(data) : []), [data]);
   const [activeSection, setActiveSection] = useState<string>("");
@@ -44,6 +51,12 @@ export default function GameDetailPage({
   const headerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // ─── Analytics ──────────────────────────────────────────────
+  useEffect(() => {
+    trackEvent("game_view", { gameId: id });
+    return initScrollTracking();
+  }, [id]);
 
   // Reading position store
   const getPosition = useReadingPosition((s) => s.getPosition);
@@ -255,6 +268,18 @@ export default function GameDetailPage({
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-6 space-y-4">
+        <div className="md:hidden">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
+            aria-label="Go back"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back
+          </button>
+        </div>
         <LoadingSkeleton className="h-40" />
         <LoadingSkeleton count={3} className="h-24" />
       </div>
@@ -264,8 +289,40 @@ export default function GameDetailPage({
   // ─── Error state ───────────────────────────────────────────
   if (error || !data) {
     return (
-      <div className="mx-auto max-w-5xl px-4 py-8 text-center text-red-500 text-sm">
-        {error ?? "Game not found"}
+      <div className="mx-auto max-w-5xl px-4 py-8 space-y-4">
+        <div className="md:hidden">
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
+            aria-label="Go back"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+            Back
+          </button>
+        </div>
+        <div className="py-12 text-center space-y-4">
+          <p className="text-sm text-neutral-400">
+            {retryCount >= 3
+              ? "The service may be temporarily unavailable."
+              : "We\u2019re having trouble loading game data right now."}
+          </p>
+          <button
+            onClick={manualRetry}
+            disabled={loading}
+            className="inline-flex items-center gap-2 text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg bg-neutral-800 text-neutral-200 hover:text-neutral-50 border border-neutral-700 transition disabled:opacity-50"
+          >
+            {loading ? <><Spinner size={14} /> Retrying&hellip;</> : "Retry"}
+          </button>
+          <p className="text-xs text-neutral-600">
+            {retryCount >= 3
+              ? "Automatic retries exhausted. You can still retry manually."
+              : retryCount > 0
+                ? "Retrying automatically\u2026"
+                : "Check back shortly \u2014 game data updates regularly."}
+          </p>
+        </div>
       </div>
     );
   }
@@ -277,6 +334,19 @@ export default function GameDetailPage({
 
   return (
     <div data-testid="page-game-detail" className="mx-auto max-w-5xl">
+      {/* Mobile back button */}
+      <div className="md:hidden px-4 pt-3 pb-1">
+        <button
+          onClick={() => router.back()}
+          className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
+          aria-label="Go back"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          Back
+        </button>
+      </div>
       <div ref={headerRef}>
         <GameHeader game={game} />
       </div>
@@ -419,6 +489,8 @@ export default function GameDetailPage({
           </CollapsibleSection>
         )}
       </div>
+
+      <InlineFeedback context="game" />
     </div>
   );
 }

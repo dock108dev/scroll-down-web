@@ -14,7 +14,7 @@ const LEGAL_LINKS = [
 
 export function Footer() {
   return (
-    <footer className="hidden md:block border-t border-neutral-800 bg-neutral-950 mt-12">
+    <footer className="hidden md:block border-t border-neutral-800 bg-neutral-950 mt-auto">
       <div className="mx-auto max-w-5xl px-6 py-10">
         <div className="grid grid-cols-3 gap-8">
           {/* Brand */}
@@ -68,12 +68,12 @@ export function Footer() {
                 </li>
               ))}
               <li>
-                <a
-                  href="mailto:support@scrolldownsports.dev"
+                <Link
+                  href="/contact"
                   className="inline-flex items-center min-h-[44px] text-sm text-neutral-500 hover:text-neutral-200 transition-colors"
                 >
                   Contact
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

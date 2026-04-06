@@ -16,6 +16,8 @@ interface SettingsState {
   followingLive: boolean;
   /** Timestamp (ms) when followingLive was last activated or activity detected. */
   followingLiveAt: number;
+  /** Admin-only: show banner when displaying stale cached data. */
+  showStaleBanners: boolean;
 
   setTheme: (t: "system" | "light" | "dark") => void;
   setScoreRevealMode: (m: "always" | "onMarkRead") => void;
@@ -29,6 +31,7 @@ interface SettingsState {
   toggleHomeSection: (section: string) => void;
   setFollowingLive: (v: boolean) => void;
   touchFollowingLive: () => void;
+  setShowStaleBanners: (v: boolean) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -44,6 +47,7 @@ export const useSettings = create<SettingsState>()(
       timelineDefaultTiers: DEFAULTS.TIMELINE_TIERS,
       followingLive: false,
       followingLiveAt: 0,
+      showStaleBanners: true,
 
       setTheme: (theme) => set({ theme }),
       setScoreRevealMode: (scoreRevealMode) => set({ scoreRevealMode }),
@@ -74,10 +78,11 @@ export const useSettings = create<SettingsState>()(
       setFollowingLive: (v) =>
         set({ followingLive: v, followingLiveAt: v ? Date.now() : 0 }),
       touchFollowingLive: () => set({ followingLiveAt: Date.now() }),
+      setShowStaleBanners: (showStaleBanners) => set({ showStaleBanners }),
     }),
     {
       name: STORAGE_KEYS.SETTINGS,
-      version: 2,
+      version: 3,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
         if (version < 1) {
@@ -94,6 +99,10 @@ export const useSettings = create<SettingsState>()(
           // v1 → v2: add followingLive fields
           state.followingLive = false;
           state.followingLiveAt = 0;
+        }
+        if (version < 3) {
+          // v2 → v3: add showStaleBanners
+          state.showStaleBanners = true;
         }
         // Auto-expire followingLive if stale
         if (

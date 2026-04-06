@@ -132,7 +132,7 @@ components/
   home/         # GameRow, PinnedBar, SearchBar
   layout/       # TopNav, BottomTabs, Footer, SettingsDrawer, BetaBanner, AnalyticsProvider
   settings/     # SettingsContent
-  shared/       # FormPrimitives, LoadingSkeleton, SectionHeader, CollapsibleSection
+  shared/       # FormPrimitives, LoadingSkeleton, SectionHeader, CollapsibleSection, InlineFeedback, StaleBanner
 ```
 
 ```
@@ -218,6 +218,9 @@ Configured in `next.config.ts` via the `headers()` export:
 | `Referrer-Policy` | `strict-origin-when-cross-origin` | Control referrer leakage |
 | `Permissions-Policy` | `camera=(), microphone=(), geolocation=()` | Restrict browser APIs |
 | `Cache-Control` | `no-store` (API routes only) | Prevent caching of user-specific API responses |
+| `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Force HTTPS for 2 years |
+| `X-DNS-Prefetch-Control` | `off` | Prevent DNS prefetch leaking visited domains |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' ... https://plausible.io; connect-src 'self' ... wss://sports-data-admin.dock108.ai; frame-ancestors 'none'` | Restrict script/connect sources, prevent framing |
 
 ### SEO & Discoverability
 
@@ -225,6 +228,7 @@ Configured in `next.config.ts` via the `headers()` export:
 - `sitemap.ts` — lists public pages with priority and change frequency
 - `manifest.ts` — PWA web manifest (installable, standalone display)
 - Per-page metadata via layout files — unique titles, descriptions, canonical URLs
+- Game detail pages (`/game/[id]`) have dynamic metadata via `generateMetadata` in layout + dynamic OG images via `opengraph-image.tsx`
 - Root layout includes OpenGraph, Twitter card, and JSON-LD WebApplication schema
 - Private/admin pages have `robots: { index: false }` metadata
 
@@ -237,7 +241,38 @@ Configured in `next.config.ts` via the `headers()` export:
 
 ### Analytics
 
-Self-hosted pageview and event tracking (`src/lib/analytics.ts`). No third-party services, no cookies. Events sent via `navigator.sendBeacon` to `/api/analytics-event`, which logs structured JSON to stdout (captured by Docker). IPs are anonymized before logging. Key events tracked: pageviews (automatic), signup gate clicks, simulation runs, login/signup success, token refresh errors.
+Dual analytics: self-hosted event tracking (`src/lib/analytics.ts`) + Plausible Analytics (external dashboard). No cookies.
+
+**Self-hosted:** Events sent via `navigator.sendBeacon` to `/api/analytics-event`, which logs structured JSON to stdout (captured by Docker). IPs anonymized before logging.
+
+**Plausible:** Script loaded in root layout. `trackEvent()` bridges to both self-hosted and Plausible, so all custom events appear in both systems.
+
+**Events tracked:**
+- Pageviews (automatic)
+- `reveal_score` — user reveals a game's score (with gameId)
+- `game_view` — user opens a game detail page (with gameId)
+- `scroll_50`, `scroll_90` — scroll depth milestones on home and game pages
+- `feedback_up`, `feedback_down` — inline feedback on game, fairbet, golf pages
+- `signup_gate_click`, `simulation_run`, `login_success`, `signup_success`, `token_refresh_error`
+
+## Degraded-State Handling
+
+When the backend API is unavailable, the app degrades gracefully:
+
+1. **localStorage cache fallback** — On successful fetches, game data, FairBet odds, and golf tournaments are cached to localStorage (`sd-games-cache`, `sd-fairbet-cache`, `sd-golf-cache`). On fetch failure, cached data is displayed silently instead of an error state.
+2. **Stale data indicator** — Admin users see an optional "Showing cached data" banner (controlled by `showStaleBanners` setting). Regular users see no indicator.
+3. **Auto-retry backoff** — `useAutoRetry` retries 3 times with exponential backoff (3s, 6s, 12s), then stops. When the health endpoint reports degraded, auto-retries are skipped entirely.
+4. **Polling suppression** — When showing stale data, background polling and visibility-triggered refreshes are disabled to avoid flooding a dead backend.
+5. **Preference sync backoff** — `preferences-sync.ts` stops pushing after 3 consecutive failures or when degraded state is detected. Only the first failure is logged to console.
+6. **DegradedBanner** — Global health-check banner pings `/api/health` periodically and shows a subtle warning when degraded.
+
+Implementation: `src/lib/stale-cache.ts`, `src/hooks/useHealthStatus.ts`, `src/components/shared/StaleBanner.tsx`.
+
+## Inline Feedback
+
+Game detail, FairBet, and Golf pages include a lightweight "Was this useful?" feedback component at the bottom of content. Votes fire `feedback_up` or `feedback_down` analytics events with page context.
+
+Implementation: `src/components/shared/InlineFeedback.tsx`.
 
 ## Sports Supported
 

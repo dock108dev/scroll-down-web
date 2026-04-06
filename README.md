@@ -51,6 +51,11 @@ npm run dev                         # http://localhost:3001
 | Realtime updates (WebSocket primary, SSE fallback) | Yes |
 | NHL skater / goalie stats | Yes |
 | Pinned games (up to 10, mini scores in header) | Yes |
+| Stale data fallback (localStorage cache for API outages) | Yes |
+| Degraded-state handling (auto-retry backoff, polling suppression) | Yes |
+| Plausible Analytics + self-hosted event tracking | Yes |
+| Inline user feedback (game, fairbet, golf pages) | Yes |
+| Dynamic OG images for game pages | Yes |
 | AI agent audit infrastructure (Playwright + scripts) | Yes |
 
 ## Architecture
@@ -85,6 +90,7 @@ All detailed documentation lives in [`docs/`](docs/):
 | [Testing](docs/testing.md) | Playwright E2E test setup, audit suite, and patterns |
 | [Client-Side Logic](docs/client-logic.md) | What intentionally stays in-browser |
 | [Development](docs/development.md) | Local dev setup, debugging, QA checklist |
+| [Upstream API Observations](docs/upstream-api-observations.md) | Backend API behavior notes from audit runs |
 | [Audit Agent Guide](docs/audit-agent.md) | Agent guide for the headless audit Mac |
 
 ## Repository Layout

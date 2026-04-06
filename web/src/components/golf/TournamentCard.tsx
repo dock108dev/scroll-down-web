@@ -2,14 +2,8 @@
 
 import Link from "next/link";
 import type { GolfTournament } from "@/lib/golf-types";
+import { formatDateRange } from "@/lib/golf-types";
 import { cn } from "@/lib/utils";
-
-function formatDateRange(start: string, end: string) {
-  const s = new Date(start);
-  const e = new Date(end);
-  const opts: Intl.DateTimeFormatOptions = { month: "short", day: "numeric" };
-  return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", opts)}`;
-}
 
 function formatPurse(purse: number) {
   if (purse >= 1_000_000) return `$${(purse / 1_000_000).toFixed(1)}M`;

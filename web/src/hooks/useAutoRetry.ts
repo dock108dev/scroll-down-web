@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useHealthDegraded } from "./useHealthStatus";
 
 const MAX_AUTO_RETRIES = 3;
-const BASE_DELAY_MS = 10_000;
+const BASE_DELAY_MS = 3_000;
 
 /**
  * Auto-retry with exponential backoff on error.
+ * Skips auto-retries when backend is known-degraded (manual retry still works).
  * Returns { retryCount, manualRetry } — retryCount resets on success.
  */
 export function useAutoRetry({
@@ -16,6 +18,7 @@ export function useAutoRetry({
   loading: boolean;
   refetch: () => void;
 }) {
+  const degraded = useHealthDegraded();
   const retryCountRef = useRef(0);
   const autoRetryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Expose count for UI — driven by the ref to avoid lint issues with
@@ -38,6 +41,8 @@ export function useAutoRetry({
       return;
     }
     if (retryCountRef.current >= MAX_AUTO_RETRIES) return;
+    // Skip auto-retry when backend is known-degraded — reduces request flood
+    if (degraded) return;
     const delay = BASE_DELAY_MS * Math.pow(2, retryCountRef.current);
     autoRetryRef.current = setTimeout(() => {
       retryCountRef.current += 1;
@@ -47,7 +52,7 @@ export function useAutoRetry({
     return () => {
       if (autoRetryRef.current) clearTimeout(autoRetryRef.current);
     };
-  }, [error, loading, refetch]); // retryCount intentionally excluded — driven by ref
+  }, [error, loading, refetch, degraded]); // retryCount intentionally excluded — driven by ref
 
   // Manual retry resets auto-retry counter so it gets a fresh budget
   const manualRetry = useCallback(() => {

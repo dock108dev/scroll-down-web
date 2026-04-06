@@ -64,4 +64,61 @@ export function trackEvent(
     name,
     props,
   });
+
+  // Bridge to Plausible if loaded
+  if (typeof window !== "undefined") {
+    const w = window as unknown as Record<string, unknown>;
+    if (typeof w.plausible === "function") {
+      (w.plausible as (n: string, o?: { props?: Record<string, string | number | boolean> }) => void)(
+        name,
+        props ? { props } : undefined,
+      );
+    }
+  }
+}
+
+// ── Scroll depth tracking ─────────────────────────────────────
+
+let scrollCleanup: (() => void) | null = null;
+
+/**
+ * Track scroll depth milestones (50%, 90%). Fires each event once per page.
+ * Call in a mount useEffect — returns a cleanup function.
+ */
+export function initScrollTracking(): () => void {
+  // Clean up previous listener (e.g. on route change)
+  scrollCleanup?.();
+
+  let fired50 = false;
+  let fired90 = false;
+  let ticking = false;
+
+  const handler = () => {
+    if (ticking) return;
+    ticking = true;
+    requestAnimationFrame(() => {
+      ticking = false;
+      const scrollTop = window.scrollY;
+      const height = document.documentElement.scrollHeight - window.innerHeight;
+      if (height <= 0) return;
+      const pct = (scrollTop / height) * 100;
+
+      if (pct > 50 && !fired50) {
+        fired50 = true;
+        trackEvent("scroll_50");
+      }
+      if (pct > 90 && !fired90) {
+        fired90 = true;
+        trackEvent("scroll_90");
+      }
+    });
+  };
+
+  window.addEventListener("scroll", handler, { passive: true });
+  const cleanup = () => {
+    window.removeEventListener("scroll", handler);
+    scrollCleanup = null;
+  };
+  scrollCleanup = cleanup;
+  return cleanup;
 }

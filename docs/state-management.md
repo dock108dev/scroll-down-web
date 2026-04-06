@@ -41,6 +41,7 @@ User preferences. All settings have sensible defaults and work without auth.
 | `timelineDefaultTiers` | `number[]` | `[1, 2, 3]` | Which play tiers to show in timeline |
 | `followingLive` | `boolean` | `false` | Following Live mode (continuous score updates) |
 | `followingLiveAt` | `number` | `0` | Timestamp when Following Live was activated |
+| `showStaleBanners` | `boolean` | `true` | Admin-only: show banner when displaying stale cached data |
 
 ### `reveal` (persisted: `sd-read-state`)
 
@@ -100,6 +101,10 @@ For authenticated users, preferences sync bidirectionally with the server via `s
 2. **On change**: any settings/pins/reveals change triggers a debounced push (2s delay)
 3. **On logout**: sync stops; localStorage retained for guest browsing
 4. **On tab close**: `flushPreferences()` with `keepalive: true` for best-effort final push
+
+### Error handling
+
+Push failures are handled with backoff: after 3 consecutive failures, pushing stops until the next login. When the health endpoint reports degraded state, push/pull are skipped entirely. Only the first failure is logged to console to avoid noise.
 
 ### Conflict resolution
 

@@ -36,6 +36,8 @@ export function SettingsContent() {
     toggleHomeSection,
     timelineDefaultTiers,
     toggleTimelineTier,
+    showStaleBanners,
+    setShowStaleBanners,
   } = useSettings();
 
   const { token, email: authEmail, role, logout } = useAuth();
@@ -113,7 +115,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Recaps — Default Expanded ──────────────────── */}
-      <Section title="Recaps — Default Expanded" collapsible>
+      <Section title="Recaps — Default Expanded" collapsible defaultOpen={false}>
         {HOME_SECTIONS.map((section) => (
           <SettingsCheckRow
             key={section}
@@ -125,7 +127,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Timeline — Default Tiers ────────────────────── */}
-      <Section title="Timeline — Default Tiers" collapsible>
+      <Section title="Timeline — Default Tiers" collapsible defaultOpen={false}>
         {([
           { tier: 1, label: "Key Plays", desc: "Scoring, turnovers, big moments" },
           { tier: 2, label: "Secondary", desc: "Fouls, rebounds, stoppages" },
@@ -133,6 +135,9 @@ export function SettingsContent() {
         ] as const).map(({ tier, label, desc }) => (
           <button
             key={tier}
+            role="checkbox"
+            aria-checked={timelineDefaultTiers.includes(tier)}
+            aria-label={label}
             onClick={() => toggleTimelineTier(tier)}
             className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
           >
@@ -179,7 +184,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
-      <Section title="Odds" collapsible>
+      <Section title="Odds" collapsible defaultOpen={false}>
         <Row label="Default Book">
           <DarkSelect
             value={preferredSportsbook}
@@ -220,26 +225,27 @@ export function SettingsContent() {
         </div>
       </Section>
 
+      {/* ─── Admin ─────────────────────────────────────── */}
+      {role === "admin" && (
+        <Section title="Admin" collapsible defaultOpen={false}>
+          <SettingsToggle
+            label="Show Stale Data Banners"
+            hint="Show a banner when displaying cached data during API outages"
+            checked={showStaleBanners}
+            onChange={setShowStaleBanners}
+          />
+        </Section>
+      )}
+
       {/* ─── Disclaimer ────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
         <h2 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
-          Quick thing we have to say
+          Disclaimer
         </h2>
         <p className="text-xs text-neutral-500 leading-relaxed">
-          Positive expected value does not mean a bet is going to win. It just
-          means the number was off. Sometimes that helps, sometimes it does not.
-          If it does work and we keep beating closing line value, cool. That
-          usually comes with limits, which is just how sportsbooks operate. When
-          that happens, people tend to move to peer to peer exchanges, where you
-          are betting against other people instead of books. We have thoughts
-          there. More on that later.
-        </p>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          On the app side, data is delayed because real time data costs real
-          money. Lines move, scores update on a timer, and occasionally things
-          change while you are looking at them. We use solid sources and do our
-          best, but nothing here is perfect or guaranteed. This is meant to help
-          you think, not think for you. Use it, enjoy it, and keep it fun.
+          +EV does not mean a bet will win &mdash; it means the number is off.
+          Data is delayed; lines and scores update on a timer. Nothing here is
+          guaranteed. This is meant to help you think, not think for you.
         </p>
       </div>
 
@@ -304,15 +310,16 @@ function SettingsToggle({
       <button
         role="switch"
         aria-checked={checked}
+        aria-label={label}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative inline-flex h-6 w-11 items-center rounded-full transition",
+          "relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200",
           checked ? "bg-green-500" : "bg-neutral-700",
         )}
       >
         <span
           className={cn(
-            "inline-block h-4 w-4 transform rounded-full bg-white transition",
+            "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200",
             checked ? "translate-x-6" : "translate-x-1",
           )}
         />
@@ -332,6 +339,9 @@ function SettingsCheckRow({
 }) {
   return (
     <button
+      role="checkbox"
+      aria-checked={checked}
+      aria-label={label}
       onClick={onToggle}
       className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
     >
@@ -353,10 +363,12 @@ function SegmentedControl({
   onChange: (v: string) => void;
 }) {
   return (
-    <div className="flex rounded-lg bg-neutral-800 p-0.5">
+    <div role="radiogroup" className="flex rounded-lg bg-neutral-800 p-0.5">
       {options.map((opt) => (
         <button
           key={opt.value}
+          role="radio"
+          aria-checked={value === opt.value}
           onClick={() => onChange(opt.value)}
           className={cn(
             "px-3 py-1 text-xs font-medium rounded-md transition-all",

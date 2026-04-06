@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState, useSyncExternalStore } from "react";
+import { useHealthDegraded } from "@/hooks/useHealthStatus";
 
 const DISMISSED_KEY = "sd-beta-banner-dismissed";
 
@@ -23,8 +24,10 @@ function getServerSnapshot(): boolean {
 
 export function BetaBanner() {
   const shouldShow = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const isDegraded = useHealthDegraded();
   const [dismissed, setDismissed] = useState(false);
-  const visible = shouldShow && !dismissed;
+  // Hide beta banner when degraded banner is showing to reduce banner noise
+  const visible = shouldShow && !dismissed && !isDegraded;
 
   const dismiss = useCallback(() => {
     setDismissed(true);

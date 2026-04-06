@@ -52,8 +52,8 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
     throw new Error("Unable to load data. Please check your connection and try again.");
   }
 
-  if (res.status === 401) {
-    // Token expired — clear auth state
+  if (res.status === 401 && token) {
+    // Token expired or stale — clear auth state silently
     useAuth.getState().logout();
   }
   if (!res.ok) {

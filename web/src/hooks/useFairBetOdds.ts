@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { APIBet } from "@/lib/types";
-import { CACHE, API, FAIRBET } from "@/lib/config";
+import { CACHE, API, FAIRBET, STORAGE_KEYS } from "@/lib/config";
+import { readCache, writeCache } from "@/lib/stale-cache";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { fairbetChannel } from "@/realtime/channels";
 import { useGameData } from "@/stores/game-data";
@@ -46,6 +47,10 @@ export interface UseFairBetOddsReturn {
   loadingFraction: number;
   /** Error message (null if none). */
   error: string | null;
+  /** True when displaying stale cached data after a fetch failure. */
+  stale: boolean;
+  /** Timestamp of last successful fetch (when stale). */
+  staleAt: number | null;
   /** Refetch all data. */
   refetch: () => void;
 
@@ -106,8 +111,15 @@ function getFairbetCached(): FairBetCacheEntry | null {
   return fairbetCache;
 }
 
+interface FairBetLocalCache {
+  allBets: APIBet[];
+  booksAvailable: string[];
+  totalFromServer: number;
+}
+
 function setFairbetCache(allBets: APIBet[], booksAvailable: string[], totalFromServer: number) {
   fairbetCache = { allBets, booksAvailable, totalFromServer, fetchedAt: Date.now() };
+  writeCache<FairBetLocalCache>(STORAGE_KEYS.FAIRBET_CACHE, { allBets, booksAvailable, totalFromServer });
 }
 
 // ── Hook ───────────────────────────────────────────────────────────
@@ -115,16 +127,22 @@ function setFairbetCache(allBets: APIBet[], booksAvailable: string[], totalFromS
 export function useFairBetOdds(): UseFairBetOddsReturn {
   const cached = getFairbetCached();
 
+  // Seed from localStorage if in-memory cache is empty
+  const localCache = !cached ? readCache<FairBetLocalCache>(STORAGE_KEYS.FAIRBET_CACHE) : null;
+  const seedData = cached ?? (localCache ? { ...localCache.data, fetchedAt: localCache.savedAt } : null);
+
   // Raw data
-  const [allBets, setAllBets] = useState<APIBet[]>(cached?.allBets ?? []);
-  const [booksAvailable, setBooksAvailable] = useState<string[]>(cached?.booksAvailable ?? []);
-  const [totalFromServer, setTotalFromServer] = useState(cached?.totalFromServer ?? 0);
+  const [allBets, setAllBets] = useState<APIBet[]>(seedData?.allBets ?? []);
+  const [booksAvailable, setBooksAvailable] = useState<string[]>(seedData?.booksAvailable ?? []);
+  const [totalFromServer, setTotalFromServer] = useState(seedData?.totalFromServer ?? 0);
 
   // Loading
-  const [loading, setLoading] = useState(!cached);
+  const [loading, setLoading] = useState(!seedData);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [loadedCount, setLoadedCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [stale, setStale] = useState(!!localCache && !cached);
+  const [staleAt, setStaleAt] = useState<number | null>(localCache && !cached ? localCache.savedAt : null);
 
   // Filters
   const [filters, setFilters] = useState<FairBetFilters>(DEFAULT_FILTERS);
@@ -197,6 +215,8 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
     // Write completed data to cache
     setFairbetCache(finalBets, firstPage.books_available ?? [], total);
+    setStale(false);
+    setStaleAt(null);
   }, []);
 
   // ── Public fetch (with cache check) ─────────────────────────────
@@ -211,13 +231,25 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     setIsLoadingMore(false);
     setError(null);
     setLoadedCount(0);
-    setAllBets([]);
+    // Don't clear allBets — keep showing stale data during retry
 
     try {
       await doFullFetch(controller);
+      setStale(false);
+      setStaleAt(null);
     } catch (err) {
       if (controller.signal.aborted) return;
-      setError(err instanceof Error ? err.message : "Failed to fetch odds");
+      // If we have data (in-memory or from localStorage), show it as stale
+      setAllBets((prev) => {
+        if (prev.length > 0) {
+          setStale(true);
+          setStaleAt((prevAt) => prevAt ?? Date.now());
+          setError(null);
+        } else {
+          setError(err instanceof Error ? err.message : "Failed to fetch odds");
+        }
+        return prev;
+      });
       setLoading(false);
       setIsLoadingMore(false);
     }
@@ -288,6 +320,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
       });
     },
     realtimeStatus.connected,
+    !stale, // disable visibility refresh while showing stale cached data
   );
 
   // ── Loading progress ─────────────────────────────────────────────
@@ -515,6 +548,8 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     loadingProgress,
     loadingFraction,
     error,
+    stale,
+    staleAt,
     refetch: fetchOdds,
 
     filters,

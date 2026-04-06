@@ -16,7 +16,9 @@ import { usePinnedGames } from "@/stores/pinned-games";
 import { useHomeScroll } from "@/stores/home-scroll";
 import { pickSnapshot } from "@/lib/score-display";
 import { Spinner } from "@/components/shared/Spinner";
+import { StaleBanner } from "@/components/shared/StaleBanner";
 import { cn } from "@/lib/utils";
+import { initScrollTracking } from "@/lib/analytics";
 
 // ── Sorting helpers ────────────────────────────────────────
 
@@ -58,7 +60,7 @@ function deriveLeagues(games: GameCore[]): string[] {
 export default function HomePage() {
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
-  const { sections, allGames, loading, error, refetch } = useGamesList(
+  const { sections, allGames, loading, error, stale, staleAt, refetch } = useGamesList(
     league || undefined,
     search || undefined,
   );
@@ -100,6 +102,9 @@ export default function HomePage() {
     // Only run once after initial load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  // Scroll depth analytics
+  useEffect(() => initScrollTracking(), []);
 
   const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch });
 
@@ -227,18 +232,16 @@ export default function HomePage() {
 
   return (
     <div data-testid="page-home" className="mx-auto max-w-2xl">
-      {/* SEO-visible hero — visible only when no games loaded yet */}
-      {!hasAnyGames && !loading && !error && (
-        <div className="px-4 pt-6 pb-2">
-          <h1 className="text-xl font-bold text-neutral-50">
-            Live Scores &amp; Spoiler-Free Recaps
-          </h1>
-          <p className="mt-1 text-sm text-neutral-400 leading-relaxed">
-            Follow MLB, NBA, NHL, and NCAAB games on your schedule. Scores are
-            hidden by default so you can catch up without spoilers.
-          </p>
-        </div>
-      )}
+      {/* Hero */}
+      <div className="px-4 pt-6 pb-2">
+        <h1 className="text-xl font-bold text-neutral-50">
+          Follow games without getting the score spoiled.
+        </h1>
+        <p className="mt-1 text-sm text-neutral-400 leading-relaxed">
+          Real-time updates, play-by-play flow, and momentum &mdash; without
+          ruining the outcome.
+        </p>
+      </div>
 
       {/* Sticky toolbar */}
       <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
@@ -324,6 +327,8 @@ export default function HomePage() {
         </div>
       </div>
 
+      <StaleBanner stale={stale} staleAt={staleAt} onRetry={() => refetch()} />
+
       {/* Loading state */}
       {loading && (
         <div className="px-4 py-4 space-y-3">
@@ -336,10 +341,10 @@ export default function HomePage() {
         <div className="px-4 py-12 text-center space-y-4">
           <p className="text-sm text-neutral-400">
             {retryCount >= 3
-              ? "The service may be temporarily unavailable."
+              ? "We can\u2019t reach the server right now. It may be temporarily unavailable."
               : followingLive
                 ? "We\u2019re having trouble loading live scores right now."
-                : "We\u2019re having trouble loading games right now."}
+                : "We\u2019re having trouble connecting to the server."}
           </p>
           <button
             onClick={manualRetry}
@@ -357,6 +362,19 @@ export default function HomePage() {
                   ? "Live scores will update automatically when the connection is restored."
                   : "Check back shortly \u2014 data updates every few minutes."}
           </p>
+
+          {/* Feature explainer when data is unavailable */}
+          {retryCount >= 3 && (
+            <div className="mt-6 mx-auto max-w-sm text-left space-y-3 border border-neutral-800 rounded-lg p-4 bg-neutral-900/50">
+              <p className="text-xs font-medium text-neutral-300">While you wait, here&apos;s what Scroll Down Sports offers:</p>
+              <ul className="text-xs text-neutral-500 space-y-1.5 list-none">
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Spoiler-free scores — reveal results on your schedule</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Live MLB, NBA, NHL, and NCAAB games</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Play-by-play timelines for every game</li>
+                <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> FairBet odds comparison across sportsbooks</li>
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

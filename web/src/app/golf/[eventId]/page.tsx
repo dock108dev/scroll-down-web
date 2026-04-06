@@ -4,6 +4,7 @@ import { use } from "react";
 import Link from "next/link";
 import { useGolfLeaderboard } from "@/hooks/useGolfLeaderboard";
 import { Leaderboard } from "@/components/golf/Leaderboard";
+import { formatDateRange } from "@/lib/golf-types";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES: Record<string, string> = {
@@ -17,17 +18,6 @@ const STATUS_LABELS: Record<string, string> = {
   upcoming: "Upcoming",
   completed: "Final",
 };
-
-function formatDateRange(start: string, end: string) {
-  const s = new Date(start);
-  const e = new Date(end);
-  const opts: Intl.DateTimeFormatOptions = {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  };
-  return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", opts)}`;
-}
 
 export default function GolfEventPage({
   params,
@@ -89,7 +79,7 @@ export default function GolfEventPage({
               {tournament.course}
             </p>
             <p className="mt-0.5 text-xs text-neutral-500">
-              {formatDateRange(tournament.start_date, tournament.end_date)}
+              {formatDateRange(tournament.start_date, tournament.end_date, true)}
               {tournament.current_round &&
                 tournament.status === "in_progress" &&
                 ` · Round ${tournament.current_round}`}

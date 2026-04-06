@@ -106,3 +106,15 @@ Toggle in the top nav that temporarily overrides `scoreRevealMode` to `always` f
 
 ## 33. Preference Sync
 `preferences-sync.ts` syncs settings, pinned game IDs, and revealed game IDs to the server for authenticated users. Server is SSOT on login — local stores are replaced with server values. Local changes are debounced (2 seconds) and pushed back via `PUT /auth/me/preferences`. Non-authed users retain localStorage-only behavior. Reading positions and snapshots are not synced.
+
+## 34. Stale Cache Fallback
+On successful API fetches, game data, FairBet odds, and golf tournaments are cached to localStorage (`sd-games-cache`, `sd-fairbet-cache`, `sd-golf-cache`). On fetch failure, cached data is displayed silently (no error state shown if cache exists). Hooks return a `stale` flag and `staleAt` timestamp. Polling and visibility refresh are suppressed while stale to avoid flooding a dead backend.
+
+## 35. Scroll Depth Tracking
+`initScrollTracking()` in `analytics.ts` fires `scroll_50` and `scroll_90` events once per page load when the user scrolls past those thresholds. Uses `requestAnimationFrame` throttle. Active on home page and game detail page.
+
+## 36. Reveal Score Tracking
+When a user reveals a game's score for the first time, a `reveal_score` event fires with the game ID. Tracked in the `reveal` Zustand store action — covers all reveal entry points (GameRow, GameHeader, MiniScorebar).
+
+## 37. Inline Feedback
+Game detail, FairBet, and Golf pages show a "Was this useful?" prompt with +1/-1 buttons. Fires `feedback_up` or `feedback_down` analytics event with page context. Shows "Thanks!" confirmation after voting.

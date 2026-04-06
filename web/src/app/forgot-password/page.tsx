@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
         </p>
         <Link
           href="/login"
-          className="inline-block text-sm text-blue-400 hover:text-blue-300 mt-4"
+          className="inline-flex items-center min-h-[44px] px-2 text-sm text-blue-400 hover:text-blue-300 mt-4"
         >
           Back to login
         </Link>
@@ -77,7 +77,7 @@ export default function ForgotPasswordPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             autoComplete="email"
-            className="w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none focus:border-neutral-600 transition"
+            className="w-full text-base rounded-lg px-3 py-3 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none focus:border-neutral-600 transition"
             placeholder="you@example.com"
           />
         </div>
@@ -89,7 +89,7 @@ export default function ForgotPasswordPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full text-sm font-medium rounded-lg px-4 py-2.5 bg-blue-600 text-white transition-colors hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
+          className="w-full text-sm font-medium rounded-lg px-4 py-3 min-h-[44px] bg-blue-600 text-white transition-colors hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {loading ? "Sending..." : "Send Reset Link"}
         </button>
@@ -97,7 +97,7 @@ export default function ForgotPasswordPage() {
 
       <p className="text-xs text-neutral-500 text-center mt-6">
         Remember your password?{" "}
-        <Link href="/login" className="text-blue-400 hover:text-blue-300">
+        <Link href="/login" className="inline-flex items-center min-h-[44px] px-2 text-blue-400 hover:text-blue-300">
           Log in
         </Link>
       </p>

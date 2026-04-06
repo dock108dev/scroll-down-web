@@ -12,6 +12,8 @@ import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
 import { Spinner } from "@/components/shared/Spinner";
+import { StaleBanner } from "@/components/shared/StaleBanner";
+import { InlineFeedback } from "@/components/shared/InlineFeedback";
 import { RENDER } from "@/lib/config";
 
 export default function FairBetPage() {
@@ -66,6 +68,7 @@ export default function FairBetPage() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-neutral-50">FairBet</h1>
+            <span className="hidden sm:inline text-xs text-neutral-500">Compare odds &middot; Find +EV</span>
             {hook.canShowParlay && (
               <button
                 onClick={() => setShowParlay(true)}
@@ -82,16 +85,22 @@ export default function FairBetPage() {
           </div>
           <button
             onClick={() => setShowHowItWorks(true)}
-            className="text-xs font-medium rounded-full px-3 py-2 min-h-[44px] transition"
+            className="text-xs sm:text-xs font-medium rounded-full px-3 sm:px-3 py-2 min-h-[44px] transition"
             style={{
               backgroundColor: "var(--fb-info-soft)",
               color: "var(--fb-info)",
               border: "1px solid var(--fb-info)30",
             }}
           >
-            What is this?
+            How it works
           </button>
         </div>
+
+        {/* ── Brief description ── */}
+        <p className="text-xs text-neutral-500 leading-relaxed -mt-1">
+          Compares odds across sportsbooks to find bets where the price is
+          better than the true probability.
+        </p>
 
         {/* ── Tabs ── */}
         <div className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
@@ -140,6 +149,8 @@ export default function FairBetPage() {
         {activeTab === "live" && <LiveOddsPanel />}
 
         {activeTab === "pregame" && <>
+        <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
+
         {/* Loading state */}
         {hook.loading && (
           <div className="py-20 flex flex-col items-center gap-3">
@@ -155,6 +166,10 @@ export default function FairBetPage() {
               {retryCount >= 3
                 ? "The service may be temporarily unavailable."
                 : "We\u2019re having trouble loading odds right now."}
+            </p>
+            <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
+              FairBet compares odds across sportsbooks to find bets where the
+              price is better than the true probability — giving you an edge.
             </p>
             <button
               onClick={manualRetry}
@@ -172,8 +187,19 @@ export default function FairBetPage() {
                 ? "Automatic retries exhausted. You can still retry manually."
                 : retryCount > 0
                   ? "Retrying automatically…"
-                  : "Odds data updates every few minutes."}
+                  : "Odds will appear here once the connection is restored."}
             </p>
+            <button
+              onClick={() => setShowHowItWorks(true)}
+              className="mt-2 text-xs font-medium px-4 py-2 min-h-[44px] rounded-lg transition"
+              style={{
+                backgroundColor: "var(--fb-info-soft)",
+                color: "var(--fb-info)",
+                border: "1px solid var(--fb-info)40",
+              }}
+            >
+              Learn how FairBet works &rarr;
+            </button>
           </div>
         )}
 
@@ -404,6 +430,7 @@ export default function FairBetPage() {
           </div>
         </div>
       )}
+      <InlineFeedback context="fairbet" />
     </div>
   );
 }

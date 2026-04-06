@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, Suspense } from "react";
+import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
@@ -37,13 +37,19 @@ function LoginForm() {
   const [submitted, setSubmitted] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const passwordRef = useRef<HTMLInputElement>(null);
 
   const validate = useCallback(() => {
     const errs: Record<string, string> = {};
-    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+    if (!email) {
+      errs.email = "Email is required";
+    } else if (!VALIDATION.EMAIL_RE.test(email)) {
       errs.email = "Enter a valid email address";
     }
-    if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+    if (!password) {
+      errs.password = "Password is required";
+    } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
       errs.password = "Password must be at least 8 characters";
     }
     if (tab === "signup" && password !== confirmPassword) {
@@ -56,15 +62,21 @@ function LoginForm() {
   const validateField = useCallback((field: "email" | "password" | "confirmPassword") => {
     setFieldErrors((prev) => {
       const next = { ...prev };
-      if (field === "email" && email && !VALIDATION.EMAIL_RE.test(email)) {
-        next.email = "Enter a valid email address";
-      } else if (field === "email") {
-        delete next.email;
+      if (field === "email") {
+        if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+          next.email = !email ? "Email is required" : "Enter a valid email address";
+        } else {
+          delete next.email;
+        }
       }
-      if (field === "password" && password.length > 0 && password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
-        next.password = "Password must be at least 8 characters";
-      } else if (field === "password") {
-        delete next.password;
+      if (field === "password") {
+        if (password.length > 0 && password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+          next.password = "Password must be at least 8 characters";
+        } else if (password.length === 0 && submitted) {
+          next.password = "Password is required";
+        } else {
+          delete next.password;
+        }
       }
       if (field === "confirmPassword" && confirmPassword && password !== confirmPassword) {
         next.confirmPassword = "Passwords don't match";
@@ -73,16 +85,20 @@ function LoginForm() {
       }
       return next;
     });
-  }, [email, password, confirmPassword]);
+  }, [email, password, confirmPassword, submitted]);
 
   // Re-validate on every change after first failed submit
   useEffect(() => {
     if (!submitted) return;
     const errs: Record<string, string> = {};
-    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+    if (!email) {
+      errs.email = "Email is required";
+    } else if (!VALIDATION.EMAIL_RE.test(email)) {
       errs.email = "Enter a valid email address";
     }
-    if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+    if (!password) {
+      errs.password = "Password is required";
+    } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
       errs.password = "Password must be at least 8 characters";
     }
     if (tab === "signup" && password !== confirmPassword) {
@@ -96,7 +112,15 @@ function LoginForm() {
       e.preventDefault();
       setError(null);
       setSubmitted(true);
-      if (!validate()) return;
+      if (!validate()) {
+        // Focus first errored field for accessibility and clear visual feedback
+        if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+          emailRef.current?.focus();
+        } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
+          passwordRef.current?.focus();
+        }
+        return;
+      }
 
       try {
         if (tab === "login") {
@@ -147,7 +171,7 @@ function LoginForm() {
       {/* Redirect reason message */}
       {reason === "profile" && (
         <p className="text-xs text-neutral-400 text-center mb-4 bg-neutral-800/50 rounded-lg px-3 py-2">
-          Please log in to view your profile.
+          Log in or create an account to track your predictions and manage your profile.
         </p>
       )}
 
@@ -180,6 +204,7 @@ function LoginForm() {
             Email
           </label>
           <input
+            ref={emailRef}
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setFieldErrors((prev) => { const { email: _email, ...rest } = prev; return rest; }); }}
@@ -187,13 +212,16 @@ function LoginForm() {
             autoComplete="email"
             aria-invalid={!!fieldErrors.email}
             className={cn(
-              "w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
-              fieldErrors.email ? "border-red-500 focus:border-red-400" : "border-neutral-800 focus:border-neutral-600",
+              "w-full text-base rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
+              fieldErrors.email ? "border-red-500 ring-2 ring-red-500/30 focus:border-red-400 bg-neutral-900" : "border-neutral-800 focus:border-neutral-600",
             )}
             placeholder="you@example.com"
           />
           {fieldErrors.email && (
-            <p role="alert" className="text-xs text-red-400">{fieldErrors.email}</p>
+            <p role="alert" className="text-xs text-red-400 flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {fieldErrors.email}
+            </p>
           )}
         </div>
 
@@ -203,6 +231,7 @@ function LoginForm() {
             Password
           </label>
           <input
+            ref={passwordRef}
             type="password"
             value={password}
             onChange={(e) => { setPassword(e.target.value); setFieldErrors((prev) => { const { password: _password, ...rest } = prev; return rest; }); }}
@@ -210,13 +239,16 @@ function LoginForm() {
             autoComplete={tab === "login" ? "current-password" : "new-password"}
             aria-invalid={!!fieldErrors.password}
             className={cn(
-              "w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
-              fieldErrors.password ? "border-red-500 focus:border-red-400" : "border-neutral-800 focus:border-neutral-600",
+              "w-full text-base rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
+              fieldErrors.password ? "border-red-500 ring-2 ring-red-500/30 focus:border-red-400 bg-neutral-900" : "border-neutral-800 focus:border-neutral-600",
             )}
             placeholder="Min 8 characters"
           />
           {fieldErrors.password && (
-            <p role="alert" className="text-xs text-red-400">{fieldErrors.password}</p>
+            <p role="alert" className="text-xs text-red-400 flex items-center gap-1">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              {fieldErrors.password}
+            </p>
           )}
         </div>
 
@@ -232,11 +264,16 @@ function LoginForm() {
               onChange={(e) => setConfirmPassword(e.target.value)}
               onBlur={() => validateField("confirmPassword")}
               autoComplete="new-password"
-              className="w-full text-sm rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border border-neutral-800 outline-none focus:border-neutral-600 transition"
+              aria-invalid={!!fieldErrors.confirmPassword}
+              className={cn(
+                "w-full text-base rounded-lg px-3 py-2.5 bg-neutral-900 text-neutral-200 border outline-none transition",
+                fieldErrors.confirmPassword ? "border-red-500 ring-2 ring-red-500/30 focus:border-red-400 bg-neutral-900" : "border-neutral-800 focus:border-neutral-600",
+              )}
               placeholder="Re-enter password"
             />
             {fieldErrors.confirmPassword && (
-              <p className="text-xs text-red-400">
+              <p role="alert" className="text-xs text-red-400 flex items-center gap-1">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                 {fieldErrors.confirmPassword}
               </p>
             )}
@@ -339,6 +376,18 @@ function LoginForm() {
           </>
         )}
       </p>
+
+      {/* Go back link when redirected from another page */}
+      {redirectTo && (
+        <p className="text-center mt-3">
+          <Link
+            href={redirectTo}
+            className="text-xs text-neutral-500 hover:text-neutral-300 transition-colors"
+          >
+            &larr; Go back
+          </Link>
+        </p>
+      )}
     </div>
   );
 }
