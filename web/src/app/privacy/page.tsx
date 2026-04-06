@@ -44,10 +44,10 @@ export default function PrivacyPage() {
         <p>
           Questions about privacy? Reach us at{" "}
           <a
-            href="mailto:support@scrolldownsports.dev"
+            href="mailto:dock108dev@gmail.com"
             className="text-blue-400 hover:text-blue-300 transition-colors"
           >
-            support@scrolldownsports.dev
+            dock108dev@gmail.com
           </a>.
         </p>
       </section>

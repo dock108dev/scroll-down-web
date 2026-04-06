@@ -19,14 +19,14 @@ export default function ContactPage() {
             The fastest way to reach us:
           </p>
           <a
-            href="mailto:support@scrolldownsports.dev"
+            href="mailto:dock108dev@gmail.com"
             className="inline-flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors min-h-[44px] bg-blue-500/10 px-3 py-2 rounded-lg border border-blue-500/20"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            support@scrolldownsports.dev
+            dock108dev@gmail.com
           </a>
         </div>
 
@@ -43,8 +43,7 @@ export default function ContactPage() {
         <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-5 space-y-3">
           <h2 className="text-sm font-semibold text-neutral-200">Response Time</h2>
           <p className="text-sm text-neutral-400 leading-relaxed">
-            We typically respond within 24 hours. For urgent issues (site down,
-            data errors), please include &quot;URGENT&quot; in your subject line.
+            We typically respond within 24 hours.
           </p>
         </div>
       </section>
