@@ -103,10 +103,14 @@ export default function FairBetPage() {
         </p>
 
         {/* ── Tabs ── */}
-        <div className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
+        <div role="tablist" aria-label="FairBet odds timing" className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
           {(["pregame", "live"] as const).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
+              aria-controls={`tabpanel-${tab}`}
+              id={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
               className="flex-1 text-xs font-semibold py-2.5 min-h-[44px] rounded-md transition-colors capitalize"
               style={{
@@ -146,9 +150,9 @@ export default function FairBetPage() {
 
       {/* ── Content ── */}
       <div className="px-4 pb-4 space-y-3">
-        {activeTab === "live" && <LiveOddsPanel />}
+        {activeTab === "live" && <div role="tabpanel" id="tabpanel-live" aria-labelledby="tab-live"><LiveOddsPanel /></div>}
 
-        {activeTab === "pregame" && <>
+        {activeTab === "pregame" && <div role="tabpanel" id="tabpanel-pregame" aria-labelledby="tab-pregame">
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
         {/* Loading state */}
@@ -292,7 +296,7 @@ export default function FairBetPage() {
             </div>
           </div>
         )}
-        </>}
+        </div>}
       </div>
 
       {/* ── Sheets ── */}

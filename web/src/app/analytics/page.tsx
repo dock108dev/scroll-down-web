@@ -37,7 +37,7 @@ export default function AnalyticsPage() {
         message="Create a free account to run Monte Carlo simulations on any matchup — get win probabilities, projected scores, and the most likely outcomes for every game."
         preview={
           <div className="space-y-4 select-none pointer-events-none">
-            {/* Sample simulation result */}
+            {/* Sample simulation results */}
             <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-4 space-y-3 opacity-70 blur-[1px]">
               <div className="flex items-center justify-between">
                 <div>
@@ -57,7 +57,23 @@ export default function AnalyticsPage() {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 opacity-60 blur-[2px]">
+            <div className="grid grid-cols-2 gap-3 opacity-60 blur-[1px]">
+              <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-3 space-y-2">
+                <p className="text-xs text-neutral-500 font-medium">Lakers vs Celtics</p>
+                <div className="text-center">
+                  <p className="text-base font-bold text-green-400">52.7%</p>
+                  <p className="text-[10px] text-neutral-500">112 – 108</p>
+                </div>
+              </div>
+              <div className="rounded-xl border border-neutral-800 bg-neutral-900 p-3 space-y-2">
+                <p className="text-xs text-neutral-500 font-medium">Bruins vs Rangers</p>
+                <div className="text-center">
+                  <p className="text-base font-bold text-neutral-300">46.1%</p>
+                  <p className="text-[10px] text-neutral-500">2.8 – 3.1</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 opacity-50 blur-[2px]">
               {SPORTS.map((sport) => (
                 <div
                   key={sport.key}

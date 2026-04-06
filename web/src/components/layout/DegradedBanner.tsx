@@ -73,7 +73,7 @@ export function DegradedBanner() {
           Limited
         </span>
         <span className="hidden sm:inline">
-          Some data may be temporarily unavailable. Cached results may be shown.
+          Some data may be temporarily unavailable. Live scores and odds may not update.
         </span>
         <span className="sm:hidden">
           Some data may be unavailable.
