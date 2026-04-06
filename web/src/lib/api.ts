@@ -17,7 +17,10 @@ const FETCH_TIMEOUT_MS = 3_000;
 
 type FetchApiInit = RequestInit & { timeoutMs?: number };
 
-function buildRequestSignal(userSignal: AbortSignal | undefined, timeoutMs: number) {
+function buildRequestSignal(
+  userSignal: AbortSignal | null | undefined,
+  timeoutMs: number,
+) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -59,7 +62,10 @@ export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T>
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const timeoutMs = init?.timeoutMs ?? FETCH_TIMEOUT_MS;
-  const { signal, cleanup } = buildRequestSignal(init?.signal, timeoutMs);
+  const { signal, cleanup } = buildRequestSignal(
+    init?.signal ?? undefined,
+    timeoutMs,
+  );
 
   let res: Response;
   try {
