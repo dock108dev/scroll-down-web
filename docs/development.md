@@ -221,6 +221,22 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Score reveal mode toggle works
 - [ ] Odds format toggle works
 
+### Degraded State & Stale Cache
+- [ ] Block API (devtools Network offline), refresh — cached data shown silently
+- [ ] Admin sees stale data banner (yellow), regular user sees nothing
+- [ ] Admin can toggle off stale banners in Settings > Admin
+- [ ] Cold start with no cache + API down shows skeleton → error state
+- [ ] Console errors stay under 5 during degraded session (no flooding)
+- [ ] Manual Retry button always works regardless of degraded state
+
+### Analytics & Feedback
+- [ ] Plausible script loads (check Network tab for plausible.io)
+- [ ] Revealing a score fires `reveal_score` event (check /api/analytics-event in Network)
+- [ ] Opening a game fires `game_view` event
+- [ ] Scrolling past 50%/90% fires `scroll_50`/`scroll_90` once
+- [ ] Inline feedback (+1/-1) works on game, fairbet, golf pages
+- [ ] Feedback shows "Thanks!" after voting
+
 ### Cross-Cutting
 - [ ] Light and dark themes display correctly
 - [ ] No hardcoded white/dark colors in light mode
@@ -228,6 +244,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 - [ ] Empty states show contextual messages
 - [ ] Error states show retry button
 - [ ] Realtime connection indicator (green dot on FairBet page)
+- [ ] Game page has dynamic title and OG image in page source
 
 ## Common Issues
 

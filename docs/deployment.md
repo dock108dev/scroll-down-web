@@ -54,7 +54,7 @@ Returns `"degraded"` with a 503 status if the backend API is unreachable. The ap
 
 ### Security Headers
 
-`next.config.ts` sets security headers on all responses: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (restricts camera/mic/geo). API routes also get `Cache-Control: no-store`.
+`next.config.ts` sets security headers on all responses: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (restricts camera/mic/geo), `Strict-Transport-Security` (HSTS, 2 years), `Content-Security-Policy` (restricts script/connect sources to self + Plausible + backend, prevents framing), `X-DNS-Prefetch-Control: off`. API routes also get `Cache-Control: no-store`.
 
 ## CI/CD Pipeline
 

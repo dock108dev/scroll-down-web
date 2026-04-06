@@ -1,3 +1,17 @@
+// ─── Golf Utilities ──────────────────────────────────────
+
+/** Format a tournament date range for display. */
+export function formatDateRange(start: string, end: string, includeYear = false) {
+  const s = new Date(start);
+  const e = new Date(end);
+  const opts: Intl.DateTimeFormatOptions = {
+    month: "short",
+    day: "numeric",
+    ...(includeYear && { year: "numeric" }),
+  };
+  return `${s.toLocaleDateString("en-US", opts)} – ${e.toLocaleDateString("en-US", opts)}`;
+}
+
 // ─── Golf Types ──────────────────────────────────────────
 
 export interface GolfTournament {

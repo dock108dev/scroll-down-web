@@ -77,5 +77,8 @@ All keys are prefixed with `sd-` to avoid collisions.
 | `sd-read-state` | `reveal.ts` | Revealed game IDs + score snapshots |
 | `sd-section-layout` | `section-layout.ts` | Expanded/collapsed sections per game |
 | `sd-reading-position` | `reading-position.ts` | Scroll position per game (play index) |
+| `sd-games-cache` | `stale-cache.ts` | Cached game data for degraded-state fallback |
+| `sd-fairbet-cache` | `stale-cache.ts` | Cached FairBet odds for degraded-state fallback |
+| `sd-golf-cache` | `stale-cache.ts` | Cached golf tournaments for degraded-state fallback |
 
-Note: `home-scroll` store is in-memory only (not persisted to localStorage).
+Note: `home-scroll` store is in-memory only (not persisted to localStorage). Cache keys (`sd-*-cache`) are written by data-fetching hooks on successful fetch and read on cold start for stale fallback.
