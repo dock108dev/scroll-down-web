@@ -21,11 +21,11 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: {
-    default: "Scroll Down Sports — Catch Up on Games Without Spoilers",
+    default: "Scroll Down Sports — Catch Up on Games Your Way",
     template: "%s | Scroll Down Sports",
   },
   description:
-    "Follow MLB, NBA, NHL, and college basketball on your schedule. Spoiler-free scores, play-by-play timelines, betting analytics, and Monte Carlo matchup simulators — all in one place.",
+    "Follow MLB, NBA, NHL, and college basketball on your schedule. Live scores when you want them, play by play timelines, betting analytics, and matchup simulators in one place.",
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: "/" },
   icons: {
@@ -38,9 +38,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "Scroll Down Sports",
-    title: "Scroll Down Sports — Catch Up on Games Without Spoilers",
+    title: "Scroll Down Sports — Catch Up on Games Your Way",
     description:
-      "Spoiler-free scores, play-by-play timelines, betting analytics, and Monte Carlo matchup simulators for MLB, NBA, NHL, and NCAAB.",
+      "Live scores when you want them, play by play timelines, betting analytics, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
     url: SITE_URL,
     images: [{ url: "/app-icon.png", width: 1024, height: 1024, alt: "Scroll Down Sports" }],
   },
@@ -48,7 +48,7 @@ export const metadata: Metadata = {
     card: "summary",
     title: "Scroll Down Sports",
     description:
-      "Spoiler-free scores, real-time timelines, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
+      "Live scores when you want them, real time timelines, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
     images: ["/app-icon.png"],
   },
   robots: {
@@ -79,7 +79,7 @@ export default function RootLayout({
               name: "Scroll Down Sports",
               url: SITE_URL,
               description:
-                "Spoiler-free sports scores, play-by-play timelines, betting analytics, and Monte Carlo matchup simulators for MLB, NBA, NHL, and NCAAB.",
+                "Live scores when you want them, play by play timelines, betting analytics, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
               applicationCategory: "SportsApplication",
               operatingSystem: "Web",
               offers: {
