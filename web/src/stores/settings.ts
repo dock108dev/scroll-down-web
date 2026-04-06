@@ -4,9 +4,49 @@ import { STORAGE_KEYS, DEFAULTS, POLLING } from "@/lib/config";
 
 /* global window, localStorage */
 
+export const SCORE_HIDE_LIMITS = {
+  LEAGUES: 20,
+  TEAMS: 100,
+} as const;
+
+function normalizeLeague(league: string): string {
+  return league.trim().toUpperCase();
+}
+
+function normalizeTeam(team: string): string {
+  return team.trim();
+}
+
+function normalizeLeagueList(input: string[]): string[] {
+  const unique = new Set<string>();
+  for (const value of input) {
+    const normalized = normalizeLeague(value);
+    if (!normalized) continue;
+    unique.add(normalized);
+    if (unique.size >= SCORE_HIDE_LIMITS.LEAGUES) break;
+  }
+  return Array.from(unique).sort();
+}
+
+function normalizeTeamList(input: string[]): string[] {
+  const byLower = new Map<string, string>();
+  for (const value of input) {
+    const normalized = normalizeTeam(value);
+    if (!normalized) continue;
+    const key = normalized.toLowerCase();
+    if (!byLower.has(key)) {
+      byLower.set(key, normalized);
+      if (byLower.size >= SCORE_HIDE_LIMITS.TEAMS) break;
+    }
+  }
+  return Array.from(byLower.values()).sort((a, b) => a.localeCompare(b));
+}
+
 interface SettingsState {
   theme: "system" | "light" | "dark";
-  scoreRevealMode: "always" | "onMarkRead";
+  scoreRevealMode: "always" | "onMarkRead" | "blacklist";
+  scoreHideLeagues: string[];
+  scoreHideTeams: string[];
   preferredSportsbook: string;
   oddsFormat: "american" | "decimal" | "fractional";
   autoResumePosition: boolean;
@@ -20,7 +60,13 @@ interface SettingsState {
   showStaleBanners: boolean;
 
   setTheme: (t: "system" | "light" | "dark") => void;
-  setScoreRevealMode: (m: "always" | "onMarkRead") => void;
+  setScoreRevealMode: (m: "always" | "onMarkRead" | "blacklist") => void;
+  addScoreHideLeague: (league: string) => void;
+  removeScoreHideLeague: (league: string) => void;
+  setScoreHideLeagues: (leagues: string[]) => void;
+  addScoreHideTeam: (team: string) => void;
+  removeScoreHideTeam: (team: string) => void;
+  setScoreHideTeams: (teams: string[]) => void;
   setPreferredSportsbook: (b: string) => void;
   setOddsFormat: (f: "american" | "decimal" | "fractional") => void;
   setAutoResumePosition: (v: boolean) => void;
@@ -39,6 +85,8 @@ export const useSettings = create<SettingsState>()(
     (set, get) => ({
       theme: DEFAULTS.THEME as "system" | "light" | "dark",
       scoreRevealMode: "onMarkRead",
+      scoreHideLeagues: [],
+      scoreHideTeams: [],
       preferredSportsbook: "",
       oddsFormat: DEFAULTS.ODDS_FORMAT as "american" | "decimal" | "fractional",
       autoResumePosition: true,
@@ -51,6 +99,38 @@ export const useSettings = create<SettingsState>()(
 
       setTheme: (theme) => set({ theme }),
       setScoreRevealMode: (scoreRevealMode) => set({ scoreRevealMode }),
+      addScoreHideLeague: (league) => {
+        const normalized = normalizeLeague(league);
+        if (!normalized) return;
+        const current = get().scoreHideLeagues;
+        if (current.includes(normalized)) return;
+        if (current.length >= SCORE_HIDE_LIMITS.LEAGUES) return;
+        set({ scoreHideLeagues: [...current, normalized].sort() });
+      },
+      removeScoreHideLeague: (league) => {
+        const normalized = normalizeLeague(league);
+        set((s) => ({
+          scoreHideLeagues: s.scoreHideLeagues.filter((v) => v !== normalized),
+        }));
+      },
+      setScoreHideLeagues: (leagues) =>
+        set({ scoreHideLeagues: normalizeLeagueList(leagues) }),
+      addScoreHideTeam: (team) => {
+        const normalized = normalizeTeam(team);
+        if (!normalized) return;
+        const current = get().scoreHideTeams;
+        if (current.some((v) => v.toLowerCase() === normalized.toLowerCase())) return;
+        if (current.length >= SCORE_HIDE_LIMITS.TEAMS) return;
+        set({ scoreHideTeams: [...current, normalized].sort((a, b) => a.localeCompare(b)) });
+      },
+      removeScoreHideTeam: (team) => {
+        const normalized = normalizeTeam(team).toLowerCase();
+        set((s) => ({
+          scoreHideTeams: s.scoreHideTeams.filter((v) => v.toLowerCase() !== normalized),
+        }));
+      },
+      setScoreHideTeams: (teams) =>
+        set({ scoreHideTeams: normalizeTeamList(teams) }),
       setPreferredSportsbook: (preferredSportsbook) =>
         set({ preferredSportsbook }),
       setOddsFormat: (oddsFormat) => set({ oddsFormat }),
@@ -82,7 +162,7 @@ export const useSettings = create<SettingsState>()(
     }),
     {
       name: STORAGE_KEYS.SETTINGS,
-      version: 3,
+      version: 4,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
         if (version < 1) {
@@ -103,6 +183,11 @@ export const useSettings = create<SettingsState>()(
         if (version < 3) {
           // v2 → v3: add showStaleBanners
           state.showStaleBanners = true;
+        }
+        if (version < 4) {
+          // v3 → v4: add selective score hide lists
+          state.scoreHideLeagues = [];
+          state.scoreHideTeams = [];
         }
         // Auto-expire followingLive if stale
         if (

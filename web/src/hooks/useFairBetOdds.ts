@@ -122,6 +122,27 @@ function setFairbetCache(allBets: APIBet[], booksAvailable: string[], totalFromS
   writeCache<FairBetLocalCache>(STORAGE_KEYS.FAIRBET_CACHE, { allBets, booksAvailable, totalFromServer });
 }
 
+function sleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new DOMException("Aborted", "AbortError"));
+      return;
+    }
+    const timeoutId = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+
+    function onAbort() {
+      clearTimeout(timeoutId);
+      signal?.removeEventListener("abort", onAbort);
+      reject(new DOMException("Aborted", "AbortError"));
+    }
+
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 // ── Hook ───────────────────────────────────────────────────────────
 
 export function useFairBetOdds(): UseFairBetOddsReturn {
@@ -156,13 +177,33 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   // ── Core fetch logic ─────────────────────────────────────────────
 
   const doFullFetch = useCallback(async (controller: AbortController) => {
-    // First page
-    const params = new URLSearchParams();
-    params.set("has_fair", "true");
-    params.set("limit", String(API.FAIRBET_PAGE_SIZE));
-    params.set("offset", "0");
+    const fetchPageWithRetry = async (offset: number) => {
+      let attempt = 0;
+      for (;;) {
+        if (controller.signal.aborted) {
+          throw new DOMException("Aborted", "AbortError");
+        }
+        try {
+          const params = new URLSearchParams();
+          params.set("has_fair", "true");
+          params.set("limit", String(API.FAIRBET_PAGE_SIZE));
+          params.set("offset", String(offset));
+          return await api.fairbetOdds(params, {
+            signal: controller.signal,
+            timeoutMs: API.FAIRBET_REQUEST_TIMEOUT_MS,
+          });
+        } catch (err) {
+          if (controller.signal.aborted) throw err;
+          if (attempt >= API.FAIRBET_PAGE_RETRY_ATTEMPTS) throw err;
+          attempt += 1;
+          const delayMs = API.FAIRBET_PAGE_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+          await sleep(delayMs, controller.signal);
+        }
+      }
+    };
 
-    const firstPage = await api.fairbetOdds(params);
+    // First page
+    const firstPage = await fetchPageWithRetry(0);
     if (controller.signal.aborted) return;
 
     const total = firstPage.total ?? firstPage.bets.length;
@@ -176,41 +217,53 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
     // Remaining pages
     let finalBets = firstPage.bets.map(enrichBet);
+    let hadPageFailures = false;
 
     if (firstPage.bets.length < total) {
       setIsLoadingMore(true);
-      const remainingOffsets: number[] = [];
-      for (let offset = API.FAIRBET_PAGE_SIZE; offset < total; offset += API.FAIRBET_PAGE_SIZE) {
-        remainingOffsets.push(offset);
-      }
-
-      // Fetch remaining pages with concurrency limit
-      let loaded = firstPage.bets.length;
-
-      for (let i = 0; i < remainingOffsets.length; i += API.FAIRBET_MAX_CONCURRENT) {
-        if (controller.signal.aborted) return;
-        const batch = remainingOffsets.slice(i, i + API.FAIRBET_MAX_CONCURRENT);
-        const results = await Promise.all(
-          batch.map((offset) => {
-            const p = new URLSearchParams();
-            p.set("has_fair", "true");
-            p.set("limit", String(API.FAIRBET_PAGE_SIZE));
-            p.set("offset", String(offset));
-            return api.fairbetOdds(p);
-          }),
-        );
-        if (controller.signal.aborted) return;
-        const batchBets = results.flatMap((r) => r.bets).map(enrichBet);
-        finalBets = [...finalBets, ...batchBets];
-        for (const result of results) {
-          loaded += result.bets.length;
+      try {
+        const remainingOffsets: number[] = [];
+        for (let offset = API.FAIRBET_PAGE_SIZE; offset < total; offset += API.FAIRBET_PAGE_SIZE) {
+          remainingOffsets.push(offset);
         }
-        setLoadedCount(loaded);
-        // Append incrementally
-        setAllBets((prev) => [...prev, ...batchBets]);
-      }
 
-      setIsLoadingMore(false);
+        // Fetch remaining pages with bounded concurrency and tolerate per-page failures.
+        let loaded = firstPage.bets.length;
+        for (let i = 0; i < remainingOffsets.length; i += API.FAIRBET_MAX_CONCURRENT) {
+          if (controller.signal.aborted) return;
+          const batch = remainingOffsets.slice(i, i + API.FAIRBET_MAX_CONCURRENT);
+          const settled = await Promise.allSettled(
+            batch.map((offset) => fetchPageWithRetry(offset)),
+          );
+
+          if (controller.signal.aborted) return;
+          const successfulPages = settled
+            .filter((result): result is PromiseFulfilledResult<Awaited<ReturnType<typeof fetchPageWithRetry>>> => result.status === "fulfilled")
+            .map((result) => result.value);
+          const failedPages = settled.length - successfulPages.length;
+          if (failedPages > 0) hadPageFailures = true;
+
+          const batchBets = successfulPages.flatMap((r) => r.bets).map(enrichBet);
+          finalBets = [...finalBets, ...batchBets];
+          for (const result of successfulPages) {
+            loaded += result.bets.length;
+          }
+          setLoadedCount(loaded);
+          // Append incrementally
+          if (batchBets.length > 0) {
+            setAllBets((prev) => [...prev, ...batchBets]);
+          }
+        }
+      } finally {
+        setIsLoadingMore(false);
+      }
+    }
+
+    if (hadPageFailures) {
+      // Keep partial data visible but mark as stale since not all pages loaded.
+      setStale(true);
+      setStaleAt((prev) => prev ?? Date.now());
+      return;
     }
 
     // Write completed data to cache
@@ -235,8 +288,6 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
     try {
       await doFullFetch(controller);
-      setStale(false);
-      setStaleAt(null);
     } catch (err) {
       if (controller.signal.aborted) return;
       // If we have data (in-memory or from localStorage), show it as stale

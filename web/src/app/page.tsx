@@ -235,11 +235,11 @@ export default function HomePage() {
       {/* Hero */}
       <div className="px-4 pt-6 pb-2">
         <h1 className="text-xl font-bold text-neutral-50">
-          Follow games without getting the score spoiled.
+          Follow games your way, with scores shown only when you want them.
         </h1>
         <p className="mt-1 text-sm text-neutral-400 leading-relaxed">
-          Real-time updates, play-by-play flow, and momentum &mdash; without
-          ruining the outcome.
+          Live updates, game flow, and momentum so you can stay in it without
+          seeing the result too soon.
         </p>
       </div>
 

@@ -26,6 +26,8 @@ interface ServerPreferences {
   settings: {
     theme: string;
     scoreRevealMode: string;
+    scoreHideLeagues: string[];
+    scoreHideTeams: string[];
     preferredSportsbook: string;
     oddsFormat: string;
     autoResumePosition: boolean;
@@ -100,6 +102,8 @@ function snapshotLocal(): Omit<ServerPreferences, "updatedAt"> {
     settings: {
       theme: settings.theme,
       scoreRevealMode: settings.scoreRevealMode,
+      scoreHideLeagues: settings.scoreHideLeagues,
+      scoreHideTeams: settings.scoreHideTeams,
       preferredSportsbook: settings.preferredSportsbook,
       oddsFormat: settings.oddsFormat,
       autoResumePosition: settings.autoResumePosition,
@@ -122,7 +126,17 @@ function hydrateFromServer(prefs: ServerPreferences) {
   // Settings store
   const setters = useSettings.getState();
   if (s.theme) setters.setTheme(s.theme as "system" | "light" | "dark");
-  if (s.scoreRevealMode) setters.setScoreRevealMode(s.scoreRevealMode as "always" | "onMarkRead");
+  if (s.scoreRevealMode) {
+    setters.setScoreRevealMode(
+      s.scoreRevealMode as "always" | "onMarkRead" | "blacklist",
+    );
+  }
+  if (Array.isArray(s.scoreHideLeagues)) {
+    setters.setScoreHideLeagues(s.scoreHideLeagues);
+  }
+  if (Array.isArray(s.scoreHideTeams)) {
+    setters.setScoreHideTeams(s.scoreHideTeams);
+  }
   if (s.preferredSportsbook !== undefined) setters.setPreferredSportsbook(s.preferredSportsbook);
   if (s.oddsFormat) setters.setOddsFormat(s.oddsFormat as "american" | "decimal" | "fractional");
   if (s.autoResumePosition !== undefined) setters.setAutoResumePosition(s.autoResumePosition);

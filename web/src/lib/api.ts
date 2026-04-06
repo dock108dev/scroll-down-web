@@ -15,7 +15,38 @@ import { useAuth } from "@/stores/auth";
 
 const FETCH_TIMEOUT_MS = 3_000;
 
-export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> {
+type FetchApiInit = RequestInit & { timeoutMs?: number };
+
+function buildRequestSignal(
+  userSignal: AbortSignal | null | undefined,
+  timeoutMs: number,
+) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+  const onUserAbort = () => {
+    controller.abort();
+  };
+
+  if (userSignal) {
+    if (userSignal.aborted) {
+      controller.abort();
+    } else {
+      userSignal.addEventListener("abort", onUserAbort, { once: true });
+    }
+  }
+
+  const cleanup = () => {
+    clearTimeout(timeoutId);
+    if (userSignal) {
+      userSignal.removeEventListener("abort", onUserAbort);
+    }
+  };
+
+  return { signal: controller.signal, cleanup };
+}
+
+export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T> {
   const token = useAuth.getState().token;
   // Normalize any HeadersInit form (Headers, [k,v][], or object) into a plain record
   const headers: Record<string, string> = {};
@@ -30,26 +61,22 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
   }
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  // Abort after timeout unless the caller already provides a signal
-  let timeoutSignal: AbortSignal | undefined;
-  if (!init?.signal) {
-    if (typeof AbortSignal.timeout === "function") {
-      timeoutSignal = AbortSignal.timeout(FETCH_TIMEOUT_MS);
-    } else {
-      const controller = new AbortController();
-      setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-      timeoutSignal = controller.signal;
-    }
-  }
+  const timeoutMs = init?.timeoutMs ?? FETCH_TIMEOUT_MS;
+  const { signal, cleanup } = buildRequestSignal(
+    init?.signal ?? undefined,
+    timeoutMs,
+  );
 
   let res: Response;
   try {
-    res = await fetch(path, { ...init, headers, signal: timeoutSignal ?? init?.signal });
+    res = await fetch(path, { ...init, headers, signal });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
       throw new Error("Request timed out. Please check your connection and try again.");
     }
     throw new Error("Unable to load data. Please check your connection and try again.");
+  } finally {
+    cleanup();
   }
 
   if (res.status === 401 && token) {
@@ -68,13 +95,14 @@ export async function fetchApi<T>(path: string, init?: RequestInit): Promise<T> 
 }
 
 export const api = {
-  games: (params?: URLSearchParams, init?: RequestInit) =>
+  games: (params?: URLSearchParams, init?: FetchApiInit) =>
     fetchApi<GameListResponse>(`/api/games${params ? `?${params}` : ""}`, init),
   game: (id: number) => fetchApi<GameDetailResponse>(`/api/games/${id}`),
   flow: (id: number) => fetchApi<GameFlowResponse>(`/api/games/${id}/flow`),
-  fairbetOdds: (params?: URLSearchParams) =>
+  fairbetOdds: (params?: URLSearchParams, init?: FetchApiInit) =>
     fetchApi<BetsResponse>(
       `/api/fairbet/odds${params ? `?${params}` : ""}`,
+      init,
     ),
   fairbetLiveGames: (league?: string) => {
     const params = new URLSearchParams();

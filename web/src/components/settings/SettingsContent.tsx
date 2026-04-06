@@ -5,6 +5,7 @@ import { useSettings } from "@/stores/settings";
 import { useAuth } from "@/stores/auth";
 import { cn } from "@/lib/utils";
 import { Section, Row } from "@/components/shared/FormPrimitives";
+import { ScoreHideBlacklistControls } from "./ScoreHideBlacklistControls";
 
 const KNOWN_BOOKS = [
   "DraftKings",
@@ -26,6 +27,12 @@ export function SettingsContent() {
     setTheme,
     scoreRevealMode,
     setScoreRevealMode,
+    scoreHideLeagues,
+    scoreHideTeams,
+    addScoreHideLeague,
+    removeScoreHideLeague,
+    addScoreHideTeam,
+    removeScoreHideTeam,
     oddsFormat,
     setOddsFormat,
     preferredSportsbook,
@@ -164,23 +171,36 @@ export function SettingsContent() {
           <DarkSelect
             value={scoreRevealMode}
             onChange={(v) =>
-              setScoreRevealMode(v as "always" | "onMarkRead")
+              setScoreRevealMode(v as "always" | "onMarkRead" | "blacklist")
             }
             options={[
               {
                 value: "onMarkRead",
-                label: "Spoiler free (hold to reveal)",
+                label: "Hidden until reveal",
               },
+              { value: "blacklist", label: "Selective hide (league or team)" },
               { value: "always", label: "Always show scores" },
             ]}
           />
         </Row>
-        <div className="px-4 pb-3 pt-2">
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            Spoiler free hides scores until you tap. &apos;Always show&apos;
-            displays live and final scores automatically.
-          </p>
-        </div>
+        {scoreRevealMode === "blacklist" && (
+          <ScoreHideBlacklistControls
+            token={token}
+            scoreHideLeagues={scoreHideLeagues}
+            scoreHideTeams={scoreHideTeams}
+            addScoreHideLeague={addScoreHideLeague}
+            removeScoreHideLeague={removeScoreHideLeague}
+            addScoreHideTeam={addScoreHideTeam}
+            removeScoreHideTeam={removeScoreHideTeam}
+          />
+        )}
+        {scoreRevealMode !== "blacklist" && (
+          <div className="px-4 pb-3 pt-2">
+            <p className="text-xs text-neutral-500 leading-relaxed">
+              Hidden until reveal keeps live and final scores hidden until you tap. Always show displays scores automatically.
+            </p>
+          </div>
+        )}
       </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
