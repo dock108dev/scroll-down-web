@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { TopNav } from "@/components/layout/TopNav";
 import { BottomTabs } from "@/components/layout/BottomTabs";
@@ -64,6 +65,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        <Script
+          defer
+          data-domain="scrolldownsports.dev"
+          src="https://plausible.io/js/script.js"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{

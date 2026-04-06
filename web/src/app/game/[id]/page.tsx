@@ -29,6 +29,8 @@ import { useSectionLayout } from "@/stores/section-layout";
 import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gamePbpChannel } from "@/realtime/channels";
+import { trackEvent, initScrollTracking } from "@/lib/analytics";
+import { InlineFeedback } from "@/components/shared/InlineFeedback";
 
 // ─── Main Page Component ───────────────────────────────────────
 
@@ -49,6 +51,12 @@ export default function GameDetailPage({
   const headerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // ─── Analytics ──────────────────────────────────────────────
+  useEffect(() => {
+    trackEvent("game_view", { gameId: id });
+    return initScrollTracking();
+  }, [id]);
 
   // Reading position store
   const getPosition = useReadingPosition((s) => s.getPosition);
@@ -481,6 +489,8 @@ export default function GameDetailPage({
           </CollapsibleSection>
         )}
       </div>
+
+      <InlineFeedback context="game" />
     </div>
   );
 }

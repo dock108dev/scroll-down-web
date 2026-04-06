@@ -18,6 +18,7 @@ import { pickSnapshot } from "@/lib/score-display";
 import { Spinner } from "@/components/shared/Spinner";
 import { StaleBanner } from "@/components/shared/StaleBanner";
 import { cn } from "@/lib/utils";
+import { initScrollTracking } from "@/lib/analytics";
 
 // ── Sorting helpers ────────────────────────────────────────
 
@@ -101,6 +102,9 @@ export default function HomePage() {
     // Only run once after initial load
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading]);
+
+  // Scroll depth analytics
+  useEffect(() => initScrollTracking(), []);
 
   const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch });
 
@@ -228,18 +232,16 @@ export default function HomePage() {
 
   return (
     <div data-testid="page-home" className="mx-auto max-w-2xl">
-      {/* SEO-visible hero — visible only when no games loaded yet */}
-      {!hasAnyGames && !loading && !error && (
-        <div className="px-4 pt-6 pb-2">
-          <h1 className="text-xl font-bold text-neutral-50">
-            Live Scores &amp; Spoiler-Free Recaps
-          </h1>
-          <p className="mt-1 text-sm text-neutral-400 leading-relaxed">
-            Follow MLB, NBA, NHL, and NCAAB games on your schedule. Scores are
-            hidden by default so you can catch up without spoilers.
-          </p>
-        </div>
-      )}
+      {/* Hero */}
+      <div className="px-4 pt-6 pb-2">
+        <h1 className="text-xl font-bold text-neutral-50">
+          Follow games without getting the score spoiled.
+        </h1>
+        <p className="mt-1 text-sm text-neutral-400 leading-relaxed">
+          Real-time updates, play-by-play flow, and momentum &mdash; without
+          ruining the outcome.
+        </p>
+      </div>
 
       {/* Sticky toolbar */}
       <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>

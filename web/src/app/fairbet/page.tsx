@@ -13,6 +13,7 @@ import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
 import { Spinner } from "@/components/shared/Spinner";
 import { StaleBanner } from "@/components/shared/StaleBanner";
+import { InlineFeedback } from "@/components/shared/InlineFeedback";
 import { RENDER } from "@/lib/config";
 
 export default function FairBetPage() {
@@ -429,6 +430,7 @@ export default function FairBetPage() {
           </div>
         </div>
       )}
+      <InlineFeedback context="fairbet" />
     </div>
   );
 }

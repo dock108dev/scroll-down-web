@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { STORAGE_KEYS, STORAGE } from "@/lib/config";
+import { trackEvent } from "@/lib/analytics";
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -40,6 +41,9 @@ export const useReveal = create<RevealState>()(
       snapshots: new Map<number, RevealSnapshot>(),
 
       reveal: (gameId, snapshot) => {
+        if (!get().revealedIds.has(gameId)) {
+          trackEvent("reveal_score", { gameId: String(gameId) });
+        }
         set((s) => ({
           revealedIds: new Set(s.revealedIds).add(gameId),
           snapshots: new Map(s.snapshots).set(gameId, snapshot),

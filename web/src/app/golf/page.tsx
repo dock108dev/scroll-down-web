@@ -6,6 +6,7 @@ import { TournamentCard } from "@/components/golf/TournamentCard";
 import { Spinner } from "@/components/shared/Spinner";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { StaleBanner } from "@/components/shared/StaleBanner";
+import { InlineFeedback } from "@/components/shared/InlineFeedback";
 import type { GolfTournament } from "@/lib/golf-types";
 
 function Section({ title, tournaments }: { title: string; tournaments: GolfTournament[] }) {
@@ -83,6 +84,8 @@ export default function GolfPage() {
             )}
         </div>
       )}
+
+      <InlineFeedback context="golf" />
     </main>
   );
 }
