@@ -32,3 +32,8 @@ function getServerSnapshot() {
 export function useHealthDegraded(): boolean {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 }
+
+/** Non-React getter for plain modules (e.g. preferences-sync). */
+export function isDegraded(): boolean {
+  return degraded;
+}

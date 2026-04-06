@@ -16,6 +16,7 @@ import { usePinnedGames } from "@/stores/pinned-games";
 import { useHomeScroll } from "@/stores/home-scroll";
 import { pickSnapshot } from "@/lib/score-display";
 import { Spinner } from "@/components/shared/Spinner";
+import { StaleBanner } from "@/components/shared/StaleBanner";
 import { cn } from "@/lib/utils";
 
 // ── Sorting helpers ────────────────────────────────────────
@@ -58,7 +59,7 @@ function deriveLeagues(games: GameCore[]): string[] {
 export default function HomePage() {
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
-  const { sections, allGames, loading, error, refetch } = useGamesList(
+  const { sections, allGames, loading, error, stale, staleAt, refetch } = useGamesList(
     league || undefined,
     search || undefined,
   );
@@ -323,6 +324,8 @@ export default function HomePage() {
           </div>
         </div>
       </div>
+
+      <StaleBanner stale={stale} staleAt={staleAt} onRetry={() => refetch()} />
 
       {/* Loading state */}
       {loading && (

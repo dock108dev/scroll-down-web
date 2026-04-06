@@ -4,6 +4,8 @@ import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useGolfTournaments } from "@/hooks/useGolfTournaments";
 import { TournamentCard } from "@/components/golf/TournamentCard";
 import { Spinner } from "@/components/shared/Spinner";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
+import { StaleBanner } from "@/components/shared/StaleBanner";
 import type { GolfTournament } from "@/lib/golf-types";
 
 function Section({ title, tournaments }: { title: string; tournaments: GolfTournament[] }) {
@@ -23,17 +25,19 @@ function Section({ title, tournaments }: { title: string; tournaments: GolfTourn
 }
 
 export default function GolfPage() {
-  const { sections, loading, error, refetch } = useGolfTournaments();
+  const { sections, loading, error, stale, staleAt, refetch } = useGolfTournaments();
   const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch });
 
   return (
     <main data-testid="page-golf" className="mx-auto max-w-3xl px-4 py-6">
       <h1 className="mb-6 text-xl font-bold text-neutral-50">PGA Tour</h1>
 
+      <StaleBanner stale={stale} staleAt={staleAt} onRetry={() => refetch()} />
+
       {loading && (
-        <p className="py-12 text-center text-sm text-neutral-500">
-          Loading tournaments…
-        </p>
+        <div className="py-6 space-y-3">
+          <LoadingSkeleton variant="list" count={4} />
+        </div>
       )}
 
       {error && (

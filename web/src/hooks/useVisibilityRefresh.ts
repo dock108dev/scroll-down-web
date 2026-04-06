@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { CACHE } from "@/lib/config";
+import { isDegraded } from "./useHealthStatus";
 
 /**
  * Calls `onRefresh` when the tab returns from background.
@@ -23,7 +24,7 @@ export function useVisibilityRefresh(
         const away = hiddenAtRef.current
           ? Date.now() - hiddenAtRef.current
           : 0;
-        if (enabled && (away > CACHE.VISIBILITY_AWAY_MS || !realtimeConnected)) {
+        if (enabled && !isDegraded() && (away > CACHE.VISIBILITY_AWAY_MS || !realtimeConnected)) {
           onRefresh();
         }
       }

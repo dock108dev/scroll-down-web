@@ -5,11 +5,12 @@ import { api } from "@/lib/api";
 import type { GameSummary } from "@/lib/types";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
-import { CACHE, API } from "@/lib/config";
+import { CACHE, API, STORAGE_KEYS } from "@/lib/config";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameListChannel } from "@/realtime/channels";
 import { easternToday, addDays, fmtDate, toEasternDateStr } from "@/lib/date-utils";
 import { useVisibilityRefresh } from "./useVisibilityRefresh";
+import { readCache, writeCache } from "@/lib/stale-cache";
 
 // ── Section date ranges ────────────────────────────────────
 
@@ -85,7 +86,15 @@ interface UseGamesListReturn {
   allGames: GameCore[];
   loading: boolean;
   error: string | null;
+  stale: boolean;
+  staleAt: number | null;
   refetch: () => Promise<void>;
+}
+
+// ── localStorage cache shape ──────────────────────────────
+interface GamesCacheData {
+  sectionIds: Record<SectionKey, number[]>;
+  cores: Array<{ id: number; core: GameCore }>;
 }
 
 // ── Track list fetch freshness per listKey ──────────────────
@@ -142,8 +151,36 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const hasCached = listKeys.some((lk) => listFetches.has(lk));
   const [loading, setLoading] = useState(!hasCached);
   const [error, setError] = useState<string | null>(null);
+  const [stale, setStale] = useState(false);
+  const [staleAt, setStaleAt] = useState<number | null>(null);
   const prevLeagueRef = useRef(league);
   const abortRef = useRef<AbortController | null>(null);
+
+  // ─�� Seed from localStorage on cold start ──────────────────
+  const seededRef = useRef(false);
+  useEffect(() => {
+    if (seededRef.current || hasCached) return;
+    seededRef.current = true;
+    const cached = readCache<GamesCacheData>(STORAGE_KEYS.GAMES_CACHE);
+    if (!cached) return;
+    const { sectionIds: cachedIds, cores } = cached.data;
+    // Hydrate game-data store directly with cached GameCore objects.
+    // GameCore has the same camelCase field names as GameSummary, so
+    // we cast through unknown to satisfy the type checker.
+    for (const key of SECTION_ORDER) {
+      const lk = gameListChannel(leagueKey, ranges[key].startDate);
+      const ids = new Set(cachedIds[key] ?? []);
+      const sectionCores = cores.filter((c) => ids.has(c.id));
+      if (sectionCores.length > 0) {
+        upsertFromList(lk, sectionCores.map((c) => c.core as unknown as GameSummary));
+      }
+    }
+    setSectionIds(cachedIds);
+    setStale(true);
+    setStaleAt(cached.savedAt);
+    setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const fetchAll = useCallback(async (showLoading?: boolean, force?: boolean) => {
     // Check freshness per listKey — skip if all recently fetched (unless forced)
@@ -196,12 +233,37 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
       }
 
       setSectionIds(buckets);
+      setStale(false);
+      setStaleAt(null);
       setLoading(false);
+
+      // Persist to localStorage for cold-start fallback
+      const allIds = [...buckets.Yesterday, ...buckets.Today, ...buckets.Upcoming];
+      const store = useGameData.getState();
+      const cores = allIds
+        .map((id) => {
+          const entry = store.games.get(id);
+          return entry ? { id, core: entry.core } : null;
+        })
+        .filter((c): c is { id: number; core: GameCore } => c !== null);
+      writeCache<GamesCacheData>(STORAGE_KEYS.GAMES_CACHE, { sectionIds: buckets, cores });
     } catch (err) {
       if (controller.signal.aborted) return;
-      setError(
-        err instanceof Error ? err.message : "Failed to fetch games",
-      );
+      // If we have existing data (in-memory or from localStorage), show it as stale
+      const store = useGameData.getState();
+      const hasData = listKeys.some((lk) => {
+        const meta = store.listFetches.get(lk);
+        return meta && meta.gameIds.length > 0;
+      });
+      if (hasData) {
+        setStale(true);
+        setStaleAt((prev) => prev ?? Date.now());
+        setError(null);
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch games",
+        );
+      }
       setLoading(false);
     }
   }, [league, leagueKey, ranges, listKeys, upsertFromList]);
@@ -254,7 +316,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   useVisibilityRefresh(
     () => fetchAll(false, true),
     realtimeStatus.connected,
-    !error, // disable visibility refresh while in error state to avoid flooding console
+    !error && !stale, // disable visibility refresh while in error or stale state
   );
 
   // Derive sections from store using tracked section IDs
@@ -280,5 +342,5 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     [sections],
   );
 
-  return { sections, allGames, loading, error, refetch: fetchAll };
+  return { sections, allGames, loading, error, stale, staleAt, refetch: fetchAll };
 }

@@ -36,6 +36,8 @@ export function SettingsContent() {
     toggleHomeSection,
     timelineDefaultTiers,
     toggleTimelineTier,
+    showStaleBanners,
+    setShowStaleBanners,
   } = useSettings();
 
   const { token, email: authEmail, role, logout } = useAuth();
@@ -222,6 +224,18 @@ export function SettingsContent() {
           </p>
         </div>
       </Section>
+
+      {/* ─── Admin ─────────────────────────────────────── */}
+      {role === "admin" && (
+        <Section title="Admin" collapsible defaultOpen={false}>
+          <SettingsToggle
+            label="Show Stale Data Banners"
+            hint="Show a banner when displaying cached data during API outages"
+            checked={showStaleBanners}
+            onChange={setShowStaleBanners}
+          />
+        </Section>
+      )}
 
       {/* ─── Disclaimer ────────────────────────────────── */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">

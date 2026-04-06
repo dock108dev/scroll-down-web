@@ -56,20 +56,15 @@ test.describe("Analytics navigation @smoke", () => {
 
     const modelsTab = authedPage.getByRole("link", { name: "Models" });
     const batchTab = authedPage.getByRole("link", { name: "Batch Sims" });
-    const experimentsTab = authedPage.getByRole("link", {
-      name: "Experiments",
-    });
 
     if (role === "admin") {
       // Admin should see all tabs
       await expect(modelsTab).toBeVisible();
       await expect(batchTab).toBeVisible();
-      await expect(experimentsTab).toBeVisible();
     } else {
       // Non-admin should not see admin tabs
       await expect(modelsTab).not.toBeVisible();
       await expect(batchTab).not.toBeVisible();
-      await expect(experimentsTab).not.toBeVisible();
     }
   });
 

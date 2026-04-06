@@ -12,6 +12,7 @@ import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
 import { betId } from "@/lib/fairbet-utils";
 import { Spinner } from "@/components/shared/Spinner";
+import { StaleBanner } from "@/components/shared/StaleBanner";
 import { RENDER } from "@/lib/config";
 
 export default function FairBetPage() {
@@ -147,6 +148,8 @@ export default function FairBetPage() {
         {activeTab === "live" && <LiveOddsPanel />}
 
         {activeTab === "pregame" && <>
+        <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
+
         {/* Loading state */}
         {hook.loading && (
           <div className="py-20 flex flex-col items-center gap-3">

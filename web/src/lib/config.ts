@@ -66,6 +66,9 @@ export const STORAGE_KEYS = {
   SECTION_LAYOUT: "sd-section-layout",
   READING_POSITION: "sd-reading-position",
   AUTH: "sd-auth",
+  GAMES_CACHE: "sd-games-cache",
+  FAIRBET_CACHE: "sd-fairbet-cache",
+  GOLF_CACHE: "sd-golf-cache",
 };
 
 export const STORAGE = {

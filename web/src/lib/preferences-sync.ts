@@ -10,8 +10,14 @@ import { useAuth } from "@/stores/auth";
 import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useReveal } from "@/stores/reveal";
+import { isDegraded } from "@/hooks/useHealthStatus";
 
 const TAG = "[prefs-sync]";
+
+// ─── Backoff state for push failures ───────────────────────────────
+
+let consecutiveFailures = 0;
+const MAX_BACKOFF_FAILURES = 3; // stop pushing after 3 consecutive failures
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -42,13 +48,17 @@ let isHydrating = false;
 async function fetchPreferences(): Promise<ServerPreferences | null> {
   const token = useAuth.getState().token;
   if (!token) return null;
+  if (isDegraded()) return null; // Skip when backend is known-degraded
 
   const res = await fetch("/api/auth/me/preferences", {
     headers: { Authorization: `Bearer ${token}` },
   });
 
   if (!res.ok) {
-    console.warn(`${TAG} fetchPreferences failed: ${res.status} ${res.statusText}`);
+    // Log once, not on every retry — kept at debug level to avoid console noise
+    if (consecutiveFailures === 0) {
+      console.warn(`${TAG} fetchPreferences failed: ${res.status} ${res.statusText}`);
+    }
     return null;
   }
   return res.json();
@@ -68,9 +78,14 @@ async function pushPreferences(prefs: Omit<ServerPreferences, "updatedAt">): Pro
   });
 
   if (!res.ok) {
-    console.warn(`${TAG} pushPreferences failed: ${res.status} ${res.statusText}`);
+    consecutiveFailures++;
+    // Only log the first failure — subsequent ones are suppressed to avoid flooding console
+    if (consecutiveFailures === 1) {
+      console.warn(`${TAG} pushPreferences failed: ${res.status} ${res.statusText} (further errors suppressed)`);
+    }
     throw new Error(`Push failed: ${res.status}`);
   }
+  consecutiveFailures = 0; // Reset on success
 }
 
 // ─── Snapshot current local state ───────────────────────────────────
@@ -165,17 +180,15 @@ const PUSH_DEBOUNCE_MS = 2_000;
 
 function schedulePush() {
   if (isHydrating) return;
+  // Stop pushing when backend is degraded or after repeated failures
+  if (isDegraded() || consecutiveFailures >= MAX_BACKOFF_FAILURES) return;
 
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
     pushTimer = null;
-    pushPreferences(snapshotLocal())
-      .then(() => {
-        console.info(`${TAG} pushed preferences to server`);
-      })
-      .catch((err) => {
-        console.warn(`${TAG} push failed:`, err);
-      });
+    pushPreferences(snapshotLocal()).catch(() => {
+      // Error already logged inside pushPreferences on first failure
+    });
   }, PUSH_DEBOUNCE_MS);
 }
 
@@ -210,6 +223,9 @@ function stopSyncing() {
  * Pulls server preferences then starts watching for local changes.
  */
 export async function pullAndStartSync(): Promise<void> {
+  // Reset backoff so a fresh login gets a clean slate
+  consecutiveFailures = 0;
+
   try {
     const prefs = await fetchPreferences();
     if (prefs) {
@@ -219,10 +235,9 @@ export async function pullAndStartSync(): Promise<void> {
       } finally {
         isHydrating = false;
       }
-      console.info(`${TAG} pulled preferences from server`);
     }
-  } catch (err) {
-    console.warn(`${TAG} pull failed:`, err);
+  } catch {
+    // Logged inside fetchPreferences — no need to double-log
   }
 
   startSyncing();
