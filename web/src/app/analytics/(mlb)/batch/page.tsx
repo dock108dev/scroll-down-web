@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { useAuth } from "@/stores/auth";
 import { StatusBadge } from "@/features/analytics/components/StatusBadge";
 import {
   startBatchSimulation,
@@ -19,6 +20,8 @@ function fmtPct(v: number | null | undefined): string {
 }
 
 export default function BatchPage() {
+  const role = useAuth((s) => s.role);
+  const isAdmin = role === "admin";
   const [jobs, setJobs] = useState<BatchJob[]>([]);
   const [models, setModels] = useState<RegisteredModel[]>([]);
   const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>([]);
@@ -172,7 +175,7 @@ export default function BatchPage() {
   }
 
   return (
-    <AuthGate minRole="admin" message="Batch simulations require admin access">
+    <AuthGate minRole="user" message="Sign up for free to view batch simulation results">
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-bold text-neutral-50">Batch Sims</h1>
@@ -194,7 +197,8 @@ export default function BatchPage() {
           </div>
         )}
 
-        {/* ── Launch ────────────────────────────────────── */}
+        {/* ── Launch (admin only) ───────────────────────── */}
+        {isAdmin && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
             Launch Batch Simulation
@@ -255,6 +259,7 @@ export default function BatchPage() {
             </button>
           </div>
         </section>
+        )}
 
         {/* ── Jobs ──────────────────────────────────────── */}
         <section className="space-y-3">
@@ -262,6 +267,7 @@ export default function BatchPage() {
             <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
               Jobs
             </h2>
+            {isAdmin && (
             <button
               onClick={handleRecordOutcomes}
               disabled={recording}
@@ -269,6 +275,7 @@ export default function BatchPage() {
             >
               {recording ? "Recording..." : "Record Outcomes"}
             </button>
+            )}
           </div>
           {jobs.length === 0 ? (
             <p className="text-sm text-neutral-500">No batch jobs.</p>

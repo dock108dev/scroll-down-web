@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { useAuth } from "@/stores/auth";
 import { StatusBadge } from "@/features/analytics/components/StatusBadge";
 import {
   fetchTrainingJobs,
@@ -31,6 +32,8 @@ const ALGORITHMS = [
 ];
 
 export default function ModelsPage() {
+  const role = useAuth((s) => s.role);
+  const isAdmin = role === "admin";
   const [trainingJobs, setTrainingJobs] = useState<TrainingJob[]>([]);
   const [models, setModels] = useState<RegisteredModel[]>([]);
   const [calibration, setCalibration] = useState<CalibrationReport | null>(null);
@@ -156,7 +159,7 @@ export default function ModelsPage() {
   }
 
   return (
-    <AuthGate minRole="admin" message="Models management requires admin access">
+    <AuthGate minRole="user" message="Sign up for free to view model performance and predictions">
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-bold text-neutral-50">Models</h1>
@@ -178,7 +181,8 @@ export default function ModelsPage() {
           </div>
         )}
 
-        {/* ── Training ──────────────────────────────────── */}
+        {/* ── Training (admin only) ─────────────────────── */}
+        {isAdmin && (
         <section className="space-y-3">
           <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
             Train New Model
@@ -256,7 +260,7 @@ export default function ModelsPage() {
                       <span className="text-xs text-neutral-500">{job.algorithm}</span>
                       <StatusBadge status={job.status} />
                     </div>
-                    {(job.status === "running" || job.status === "pending") && (
+                    {isAdmin && (job.status === "running" || job.status === "pending") && (
                       <button
                         onClick={() => handleCancelJob(job.id)}
                         className="text-xs text-red-400 hover:text-red-300"
@@ -277,6 +281,7 @@ export default function ModelsPage() {
             </div>
           )}
         </section>
+        )}
 
         {/* ── Model Registry ────────────────────────────── */}
         <section className="space-y-3">
@@ -298,16 +303,24 @@ export default function ModelsPage() {
                       <span className="text-xs text-neutral-500 ml-2">v{m.version}</span>
                       <span className="text-xs text-neutral-600 ml-2">{m.algorithm}</span>
                     </div>
-                    <button
-                      onClick={() => handleActivateModel(m)}
-                      className={`text-xs px-2 py-1 rounded transition-colors ${
-                        m.active
-                          ? "bg-green-900/50 text-green-400"
-                          : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
-                      }`}
-                    >
-                      {m.active ? "Active" : "Activate"}
-                    </button>
+                    {isAdmin ? (
+                      <button
+                        onClick={() => handleActivateModel(m)}
+                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                          m.active
+                            ? "bg-green-900/50 text-green-400"
+                            : "bg-neutral-800 text-neutral-400 hover:bg-neutral-700"
+                        }`}
+                      >
+                        {m.active ? "Active" : "Activate"}
+                      </button>
+                    ) : (
+                      m.active && (
+                        <span className="text-xs px-2 py-1 rounded bg-green-900/50 text-green-400">
+                          Active
+                        </span>
+                      )
+                    )}
                   </div>
                   {m.metrics && (
                     <p className="text-xs text-neutral-500 mt-1">
