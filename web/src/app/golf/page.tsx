@@ -35,13 +35,13 @@ export default function GolfPage() {
 
       <StaleBanner stale={stale} staleAt={staleAt} onRetry={() => refetch()} />
 
-      {loading && (
+      {loading && !error && (
         <div className="py-6 space-y-3">
           <LoadingSkeleton variant="list" count={4} />
         </div>
       )}
 
-      {error && (
+      {error && !loading && (
         <div className="py-12 text-center space-y-4">
           <p className="text-sm text-neutral-400">
             {retryCount >= 3

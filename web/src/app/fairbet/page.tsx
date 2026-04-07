@@ -63,7 +63,7 @@ export default function FairBetPage() {
 
   return (
     <div data-testid="page-fairbet" className="mx-auto max-w-5xl">
-      <div className="px-4 py-4 space-y-4">
+      <div className="sticky z-30 bg-neutral-950 px-4 py-4 space-y-4 border-b border-neutral-800/50" style={{ top: "var(--header-h)" }}>
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -156,7 +156,7 @@ export default function FairBetPage() {
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
         {/* Loading state */}
-        {hook.loading && (
+        {hook.loading && !hook.error && (
           <div className="py-20 flex flex-col items-center gap-3">
             <div className="text-sm text-neutral-500">Loading bets…</div>
             <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />

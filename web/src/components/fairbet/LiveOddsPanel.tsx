@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useFairBetLive } from "@/hooks/useFairBetLive";
 import type { LiveGameData } from "@/hooks/useFairBetLive";
+import { useHealthDegraded } from "@/hooks/useHealthStatus";
 import { BetCard } from "@/components/fairbet/BetCard";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { LeagueBadge } from "@/components/fairbet/LeagueBadge";
@@ -25,6 +26,7 @@ const SORT_OPTIONS = [
 
 export function LiveOddsPanel() {
   const hook = useFairBetLive();
+  const isDegraded = useHealthDegraded();
   const [explainerBet, setExplainerBet] = useState<APIBet | null>(null);
   const [showExplainer, setShowExplainer] = useState(false);
 
@@ -227,10 +229,28 @@ export function LiveOddsPanel() {
 
       {!hook.gamesLoading && !hook.loading && hook.liveGames.length === 0 && (
         <div className="py-12 text-center space-y-3">
-          <p className="text-sm text-neutral-400">No live games with in-game odds right now.</p>
-          <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
-            In-game odds appear here when games are in progress. Check the Pre-Game tab for upcoming bets.
+          <p className="text-sm text-neutral-400">
+            {isDegraded
+              ? "Can\u2019t check for live games right now \u2014 the server is temporarily unreachable."
+              : "No live games with in-game odds right now."}
           </p>
+          <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
+            {isDegraded
+              ? "In-game odds will appear here once the connection is restored and games are in progress."
+              : "In-game odds appear here when games are in progress. Check the Pre-Game tab for upcoming bets."}
+          </p>
+          {isDegraded && (
+            <button
+              onClick={hook.refetch}
+              className="text-sm font-medium px-5 py-2.5 min-h-[44px] rounded-lg text-neutral-200"
+              style={{
+                backgroundColor: "var(--fb-surface-secondary)",
+                border: "1px solid var(--fb-border-subtle)",
+              }}
+            >
+              Retry
+            </button>
+          )}
         </div>
       )}
 

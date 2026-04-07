@@ -227,6 +227,10 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Safety timeout — abort after 20s to prevent infinite loading state
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 20_000);
+
     setLoading(true);
     setIsLoadingMore(false);
     setError(null);
@@ -238,7 +242,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
       setStale(false);
       setStaleAt(null);
     } catch (err) {
-      if (controller.signal.aborted) return;
+      if (controller.signal.aborted && !timedOut) return;
       // If we have data (in-memory or from localStorage), show it as stale
       setAllBets((prev) => {
         if (prev.length > 0) {
@@ -246,12 +250,14 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
           setStaleAt((prevAt) => prevAt ?? Date.now());
           setError(null);
         } else {
-          setError(err instanceof Error ? err.message : "Failed to fetch odds");
+          setError(timedOut ? "Request timed out" : (err instanceof Error ? err.message : "Failed to fetch odds"));
         }
         return prev;
       });
       setLoading(false);
       setIsLoadingMore(false);
+    } finally {
+      clearTimeout(timeout);
     }
   }, [doFullFetch]);
 
