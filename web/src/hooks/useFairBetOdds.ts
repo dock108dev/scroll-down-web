@@ -186,6 +186,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
         try {
           const params = new URLSearchParams();
           params.set("has_fair", "true");
+          params.set("sort_by", "ev");
           params.set("limit", String(API.FAIRBET_PAGE_SIZE));
           params.set("offset", String(offset));
           return await api.fairbetOdds(params, {
