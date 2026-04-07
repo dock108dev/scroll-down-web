@@ -50,8 +50,15 @@ function LoginForm() {
   const [magicLinkSent, setMagicLinkSent] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [shaking, setShaking] = useState(false);
+  const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (shakeTimer.current) clearTimeout(shakeTimer.current);
+    };
+  }, []);
 
   const validate = useCallback(() => {
     const errs: Record<string, string> = {};
@@ -128,7 +135,8 @@ function LoginForm() {
       if (!validate()) {
         // Shake the form and focus first errored field
         setShaking(true);
-        setTimeout(() => setShaking(false), 500);
+        if (shakeTimer.current) clearTimeout(shakeTimer.current);
+        shakeTimer.current = setTimeout(() => setShaking(false), 500);
         if (!email || !VALIDATION.EMAIL_RE.test(email)) {
           emailRef.current?.focus();
         } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {

@@ -8,7 +8,8 @@ import * as fs from "fs";
 import * as path from "path";
 
 const BASE = "http://localhost:3001";
-const SCREENSHOTS = path.resolve(__dirname, "../docs/audit-results/screenshots");
+const SCREENSHOTS = path.resolve(__dirname, "../../docs/audit-results/screenshots");
+const RESULTS_DIR = path.resolve(__dirname, "../../docs/audit-results");
 const DESKTOP = { width: 1280, height: 720 };
 const MOBILE = { width: 390, height: 844 };
 
@@ -366,6 +367,8 @@ async function exploreMobile(ctx: BrowserContext) {
 
 async function main() {
   console.log("=== Exploratory QA — 2026-04-06 ===\n");
+  fs.mkdirSync(SCREENSHOTS, { recursive: true });
+  fs.mkdirSync(RESULTS_DIR, { recursive: true });
   const browser = await chromium.launch({ headless: true });
 
   console.log("\n--- Desktop (1280x720) ---\n");
@@ -392,7 +395,7 @@ async function main() {
 
   // Save results
   fs.writeFileSync(
-    path.resolve(__dirname, "../docs/audit-results/explore-qa7-results.json"),
+    path.join(RESULTS_DIR, "explore-qa7-results.json"),
     JSON.stringify({ findings, consoleErrors: uniqueErrors, timestamp: new Date().toISOString() }, null, 2)
   );
   console.log("\nResults saved.");
