@@ -11,10 +11,11 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
+  { label: "Forecasts", href: "/analytics/forecasts", minRole: "user" },
   { label: "Simulator", href: "/analytics/simulator", minRole: "guest" },
   { label: "Profiles", href: "/analytics/profiles", minRole: "user" },
-  { label: "Models", href: "/analytics/models", minRole: "user" },
-  { label: "Batch Sims", href: "/analytics/batch", minRole: "user" },
+  { label: "Models", href: "/analytics/models", minRole: "admin" },
+  { label: "Batch Sims", href: "/analytics/batch", minRole: "admin" },
 ];
 
 const ROLE_RANK = { guest: 0, user: 1, admin: 2 } as const;

@@ -223,6 +223,53 @@ export interface PredictionOutcome {
   created_at: string | null;
 }
 
+// ─── Forecast Types ────────────────────────────────────────
+
+export interface ForecastLineAnalysis {
+  market_home_ml: number;
+  market_away_ml: number;
+  market_home_wp: number;
+  market_away_wp: number;
+  home_edge: number;
+  away_edge: number;
+  model_home_line: number;
+  model_away_line: number;
+  home_ev_pct: number;
+  away_ev_pct: number;
+  provider: string;
+  line_type: string;
+}
+
+export interface ForecastSimMeta {
+  iterations: number;
+  wp_std_dev: number;
+  profile_games_home: number;
+  profile_games_away: number;
+  model_id: string | null;
+}
+
+export interface Forecast {
+  game_id: number;
+  game_date: string;
+  home_team: string;
+  away_team: string;
+  home_win_prob: number;
+  away_win_prob: number;
+  predicted_home_score: number;
+  predicted_away_score: number;
+  probability_source: string;
+  line_analysis: ForecastLineAnalysis | null;
+  sim_meta: ForecastSimMeta;
+  refreshed_at: string;
+}
+
+export interface ForecastsResponse {
+  forecasts: Forecast[];
+  date: string;
+  count: number;
+  last_refreshed: string;
+}
+
 // ─── Profiles Types ─────────────────────────────────────────
 
 export interface TeamProfile {
