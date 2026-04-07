@@ -158,7 +158,7 @@ export default function FairBetPage() {
         {/* Loading state */}
         {hook.loading && !hook.error && (
           <div className="py-20 flex flex-col items-center gap-3">
-            <div className="text-sm text-neutral-500">Loading bets…</div>
+            <div className="text-sm text-neutral-500">Fetching odds from sportsbooks…</div>
             <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
           </div>
         )}

@@ -380,19 +380,25 @@ export default function HomePage() {
       {!loading && !error && !hasAnyGames && (
         <div className="px-4 py-12 text-center space-y-3">
           <p className="text-sm text-neutral-400">
-            {search ? "No games match your search" : "No games scheduled right now"}
+            {search
+              ? "No games match your search"
+              : league
+                ? `No ${league.toUpperCase()} games scheduled right now`
+                : "No games scheduled right now"}
           </p>
           <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
             {search
               ? "Try a different search term or clear your filter."
-              : "Check back when MLB, NBA, NHL, or NCAAB games are on the schedule. Games typically start in the afternoon and evening."}
+              : league
+                ? `There are no ${league.toUpperCase()} games in the current window. Try "All" to see other sports.`
+                : "Check back when MLB, NBA, NHL, or NCAAB games are on the schedule. Games typically start in the afternoon and evening."}
           </p>
-          {search && (
+          {(search || league) && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => { setSearch(""); setLeague(""); }}
               className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
             >
-              Clear search
+              {search ? "Clear search" : "Show all sports"}
             </button>
           )}
         </div>
