@@ -10,6 +10,7 @@ import {
 import type {
   SimulatorTeam,
   SimulatorResult,
+  MLBRosterResponse,
   RosterBatter,
   RosterPitcher,
   LineupSlot,
@@ -25,15 +26,28 @@ const EMPTY_LINEUP: LineupSlot[] = Array.from({ length: 9 }, () => ({
   external_ref: "",
   name: "",
 }));
-function autoFillLineup(batters: RosterBatter[]): LineupSlot[] {
-  return batters.slice(0, 9).map((b) => ({
+function autoFillLineup(roster: MLBRosterResponse): LineupSlot[] {
+  if (roster.projected_lineup && roster.projected_lineup.length >= 9) {
+    return roster.projected_lineup.slice(0, 9);
+  }
+  return roster.batters.slice(0, 9).map((b) => ({
     external_ref: b.external_ref,
     name: b.name,
   }));
 }
 
-function autoFillStarter(pitchers: RosterPitcher[]): PitcherSlot | null {
-  const p = pitchers[0];
+function autoFillStarter(roster: MLBRosterResponse): PitcherSlot | null {
+  if (roster.probable_starter) {
+    const match = roster.pitchers.find(
+      (p) => p.external_ref === roster.probable_starter!.external_ref,
+    );
+    return {
+      external_ref: roster.probable_starter.external_ref,
+      name: roster.probable_starter.name,
+      avg_ip: match?.avg_ip,
+    };
+  }
+  const p = roster.pitchers[0];
   return p ? { external_ref: p.external_ref, name: p.name, avg_ip: p.avg_ip } : null;
 }
 
@@ -107,9 +121,9 @@ export default function MLBSimulatorPage() {
         setHomeBatters(r.batters);
         setHomePitchers(r.pitchers);
         setHomeLineup(
-          r.batters.length >= 9 ? autoFillLineup(r.batters) : [...EMPTY_LINEUP],
+          r.batters.length >= 9 ? autoFillLineup(r) : [...EMPTY_LINEUP],
         );
-        setHomeStarter(autoFillStarter(r.pitchers));
+        setHomeStarter(autoFillStarter(r));
       })
       .catch(() => {
         if (!cancelled) {
@@ -147,9 +161,9 @@ export default function MLBSimulatorPage() {
         setAwayBatters(r.batters);
         setAwayPitchers(r.pitchers);
         setAwayLineup(
-          r.batters.length >= 9 ? autoFillLineup(r.batters) : [...EMPTY_LINEUP],
+          r.batters.length >= 9 ? autoFillLineup(r) : [...EMPTY_LINEUP],
         );
-        setAwayStarter(autoFillStarter(r.pitchers));
+        setAwayStarter(autoFillStarter(r));
       })
       .catch(() => {
         if (!cancelled) {

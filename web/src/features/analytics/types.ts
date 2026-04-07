@@ -24,6 +24,8 @@ export interface RosterPitcher {
 export interface MLBRosterResponse {
   batters: RosterBatter[];
   pitchers: RosterPitcher[];
+  projected_lineup?: LineupSlot[];
+  probable_starter?: { external_ref: string; name: string };
 }
 
 export interface LineupSlot {

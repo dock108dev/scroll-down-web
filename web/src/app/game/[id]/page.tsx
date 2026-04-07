@@ -87,8 +87,12 @@ export default function GameDetailPage({
     [sections, hasFlow, status, gameIsRead],
   );
 
-  // Persisted layout wins; otherwise use defaults
-  const expandedSections = savedLayout ?? defaultExpanded;
+  // Single-section pages always expand that section so the user doesn't
+  // land on a blank page. Once a second section appears, respect user prefs.
+  const expandedSections =
+    sections.length === 1
+      ? sections
+      : (savedLayout ?? defaultExpanded);
 
   const isSectionOpen = (section: string) =>
     expandedSections.includes(section);
