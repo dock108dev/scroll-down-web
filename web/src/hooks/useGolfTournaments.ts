@@ -29,6 +29,10 @@ export function useGolfTournaments() {
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Safety timeout — abort after 15s to prevent stuck loading state
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 15_000);
+
     if (!opts?.silent) setLoading(true);
     setError(null);
     try {
@@ -40,7 +44,8 @@ export function useGolfTournaments() {
         setStaleAt(null);
       }
     } catch (err) {
-      if (controller.signal.aborted) return;
+      // Ignore aborts from cleanup/new-fetch, but treat timeouts as errors
+      if (controller.signal.aborted && !timedOut) return;
       // If we have data, show it as stale instead of error
       setTournaments((prev) => {
         if (prev.length > 0) {
@@ -49,13 +54,14 @@ export function useGolfTournaments() {
           setError(null);
         } else {
           setError(
-            err instanceof Error ? err.message : "Failed to fetch tournaments",
+            timedOut ? "Request timed out" : (err instanceof Error ? err.message : "Failed to fetch tournaments"),
           );
         }
         return prev;
       });
     } finally {
-      if (!controller.signal.aborted) setLoading(false);
+      clearTimeout(timeout);
+      if (!controller.signal.aborted || timedOut) setLoading(false);
     }
   }, []);
 

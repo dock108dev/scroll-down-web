@@ -110,6 +110,7 @@ export function SettingsContent() {
       <Section title="Appearance">
         <Row label="Theme">
           <SegmentedControl
+            testId="theme-selector"
             options={[
               { value: "system", label: "System" },
               { value: "light", label: "Light" },
@@ -166,7 +167,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Score Display ──────────────────────────────── */}
-      <Section title="Score Display" collapsible>
+      <Section title="Score Display" collapsible defaultOpen={false}>
         <Row label="Score visibility">
           <DarkSelect
             value={scoreRevealMode}
@@ -377,13 +378,15 @@ function SegmentedControl({
   options,
   value,
   onChange,
+  testId,
 }: {
   options: { value: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
+  testId?: string;
 }) {
   return (
-    <div role="radiogroup" className="flex rounded-lg bg-neutral-800 p-0.5">
+    <div role="radiogroup" data-testid={testId} className="flex rounded-lg bg-neutral-800 p-0.5">
       {options.map((opt) => (
         <button
           key={opt.value}

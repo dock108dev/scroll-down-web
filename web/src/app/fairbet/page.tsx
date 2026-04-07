@@ -63,7 +63,7 @@ export default function FairBetPage() {
 
   return (
     <div data-testid="page-fairbet" className="mx-auto max-w-5xl">
-      <div className="px-4 py-4 space-y-4">
+      <div className="sticky z-30 bg-neutral-950 px-4 py-4 space-y-4 border-b border-neutral-800/50" style={{ top: "var(--header-h)" }}>
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -103,10 +103,14 @@ export default function FairBetPage() {
         </p>
 
         {/* ── Tabs ── */}
-        <div className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
+        <div role="tablist" aria-label="FairBet odds timing" className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
           {(["pregame", "live"] as const).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
+              aria-controls={`tabpanel-${tab}`}
+              id={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
               className="flex-1 text-xs font-semibold py-2.5 min-h-[44px] rounded-md transition-colors capitalize"
               style={{
@@ -146,13 +150,13 @@ export default function FairBetPage() {
 
       {/* ── Content ── */}
       <div className="px-4 pb-4 space-y-3">
-        {activeTab === "live" && <LiveOddsPanel />}
+        {activeTab === "live" && <div role="tabpanel" id="tabpanel-live" aria-labelledby="tab-live"><LiveOddsPanel /></div>}
 
-        {activeTab === "pregame" && <>
+        {activeTab === "pregame" && <div role="tabpanel" id="tabpanel-pregame" aria-labelledby="tab-pregame">
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
         {/* Loading state */}
-        {hook.loading && (
+        {hook.loading && !hook.error && (
           <div className="py-20 flex flex-col items-center gap-3">
             <div className="text-sm text-neutral-500">Loading bets…</div>
             <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
@@ -292,7 +296,7 @@ export default function FairBetPage() {
             </div>
           </div>
         )}
-        </>}
+        </div>}
       </div>
 
       {/* ── Sheets ── */}

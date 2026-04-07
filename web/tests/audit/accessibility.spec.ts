@@ -70,6 +70,15 @@ test.describe("Audit: Accessibility", () => {
     test(`${pg.name}: focus order is logical`, async ({ page }) => {
       await gotoAndWait(page, pg.url);
 
+      // Wait for the health-check banner transition to settle so no
+      // focusable elements are mid-animation when we start tabbing.
+      // Avoid networkidle — SSE connections keep it pending indefinitely.
+      await page
+        .locator("[data-testid='top-nav']")
+        .waitFor({ state: "visible", timeout: 5_000 })
+        .catch(() => {});
+      await page.waitForTimeout(1_000);
+
       // Tab through first 10 focusable elements and verify they're visible
       for (let i = 0; i < 10; i++) {
         await page.keyboard.press("Tab");

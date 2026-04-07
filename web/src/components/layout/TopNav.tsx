@@ -73,40 +73,48 @@ export function TopNav() {
         </div>
         <div className="flex-1" />
         {liveAvailable && ["/", "/golf", "/fairbet"].includes(pathname) && (
-          <button
-            onClick={isDegraded ? undefined : toggleLive}
-            disabled={isDegraded}
-            className={cn(
-              "flex items-center gap-2 mr-3 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium transition",
-              isDegraded
-                ? "bg-neutral-800 text-neutral-500 cursor-not-allowed opacity-60"
-                : followingLive
+          isDegraded ? (
+            <span
+              className="flex items-center gap-1.5 mr-3 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium bg-neutral-800/60 text-neutral-500"
+              aria-label="Live updates unavailable — server connection issue"
+              title="Live updates unavailable"
+            >
+              <span className="inline-block h-2 w-2 rounded-full bg-neutral-600 shrink-0" />
+              <span>LIVE</span>
+            </span>
+          ) : (
+            <button
+              onClick={toggleLive}
+              className={cn(
+                "flex items-center gap-2 mr-3 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium transition",
+                followingLive
                   ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
-            )}
-            aria-label={isDegraded ? "Live updates unavailable — server connection issue" : followingLive ? "Live scores on — click to freeze scores" : "Live scores off — click to follow live scores"}
-            title={isDegraded ? "Live updates unavailable" : followingLive ? "Following live — click to freeze scores" : "Click to follow live scores"}
-          >
-            <span
-              className={cn(
-                "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors",
-                isDegraded ? "bg-neutral-600" : followingLive ? "bg-green-500" : "bg-neutral-600",
               )}
+              aria-label={followingLive ? "Live scores on — click to freeze scores" : "Live scores off — click to follow live scores"}
+              title={followingLive ? "Following live — click to freeze scores" : "Click to follow live scores"}
             >
               <span
                 className={cn(
-                  "inline-block h-3 w-3 rounded-full bg-white transition-transform",
-                  isDegraded ? "translate-x-0.5" : followingLive ? "translate-x-3.5" : "translate-x-0.5",
+                  "relative inline-flex h-4 w-7 shrink-0 items-center rounded-full transition-colors",
+                  followingLive ? "bg-green-500" : "bg-neutral-600",
                 )}
-              />
-            </span>
-            <span className="flex flex-col items-start leading-none">
-              <span>LIVE</span>
-              <span className={cn("text-[9px] font-normal", isDegraded ? "text-yellow-500/70" : followingLive ? "text-green-400/70" : "text-neutral-500")}>
-                {isDegraded ? "Unavailable" : followingLive ? "Auto-updating" : "Updates paused"}
+              >
+                <span
+                  className={cn(
+                    "inline-block h-3 w-3 rounded-full bg-white transition-transform",
+                    followingLive ? "translate-x-3.5" : "translate-x-0.5",
+                  )}
+                />
               </span>
-            </span>
-          </button>
+              <span className="flex flex-col items-start leading-none">
+                <span>LIVE</span>
+                <span className={cn("text-[9px] font-normal", followingLive ? "text-green-400/70" : "text-neutral-500")}>
+                  {followingLive ? "Auto-updating" : "Updates paused"}
+                </span>
+              </span>
+            </button>
+          )
         )}
         {token ? (
           <Link

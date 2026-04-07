@@ -238,7 +238,7 @@ function HistoryPageInner() {
 
 export default function HistoryPage() {
   return (
-    <AuthGate minRole="admin" message={<>Game History is coming soon — browse past scores, search by team, and review completed matchups. Check yesterday&apos;s results on the <Link href="/" className="text-blue-400 hover:text-blue-300 underline">Games page</Link> (Yesterday section).</>} showSignup={false}>
+    <AuthGate minRole="admin" message={<div className="space-y-3"><div className="flex justify-center"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p className="text-sm font-medium text-neutral-200">Game History is coming soon</p><p className="text-xs text-neutral-400 leading-relaxed">Browse past scores, search by team, and review completed matchups. In the meantime, check yesterday&apos;s results on the <Link href="/" className="text-blue-400 hover:text-blue-300 underline">Games page</Link>.</p></div>} showSignup={false}>
       <Suspense>
         <HistoryPageInner />
       </Suspense>
