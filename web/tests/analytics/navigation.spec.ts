@@ -68,11 +68,15 @@ test.describe("Analytics navigation @smoke", () => {
     }
   });
 
-  test("analytics landing links to simulator", async ({ authedPage }) => {
+  test("analytics landing links to forecasts and simulator", async ({ authedPage }) => {
     await authedPage.goto("/analytics");
     await waitForLoad(authedPage);
 
-    const mlbCard = authedPage.getByRole("link", { name: /MLB/ });
+    const forecastsCard = authedPage.getByRole("link", { name: /Today's Forecasts/ });
+    await expect(forecastsCard).toBeVisible();
+    await expect(forecastsCard).toHaveAttribute("href", "/analytics/forecasts");
+
+    const mlbCard = authedPage.getByRole("link", { name: /MLB Simulator/ });
     await expect(mlbCard).toBeVisible();
     await expect(mlbCard).toHaveAttribute("href", "/analytics/simulator");
   });
