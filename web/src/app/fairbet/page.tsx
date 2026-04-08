@@ -149,7 +149,7 @@ export default function FairBetPage() {
       </div>
 
       {/* ── Content ── */}
-      <div className="px-4 pb-4 space-y-2">
+      <div className="px-4 pb-4 space-y-3">
         {activeTab === "live" && <div role="tabpanel" id="tabpanel-live" aria-labelledby="tab-live"><LiveOddsPanel /></div>}
 
         {activeTab === "pregame" && <div role="tabpanel" id="tabpanel-pregame" aria-labelledby="tab-pregame">

@@ -103,12 +103,18 @@ function ForecastCard({ f }: { f: Forecast }) {
                   <span className="text-neutral-500">{f.away_team}</span>
                   <span className="text-neutral-300 tabular-nums">
                     {fmtLine(f.line_analysis.market_away_ml)}
+                    <span className="text-neutral-500 ml-1.5">
+                      ({fmtPct(f.line_analysis.market_away_wp)})
+                    </span>
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-500">{f.home_team}</span>
                   <span className="text-neutral-300 tabular-nums">
                     {fmtLine(f.line_analysis.market_home_ml)}
+                    <span className="text-neutral-500 ml-1.5">
+                      ({fmtPct(f.line_analysis.market_home_wp)})
+                    </span>
                   </span>
                 </div>
               </div>
