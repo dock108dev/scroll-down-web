@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useAuth } from "@/stores/auth";
 import { setDegraded as setSharedDegraded } from "@/hooks/useHealthStatus";
 
 /** Format "Last checked X min ago" from a timestamp. */
@@ -11,18 +12,25 @@ function formatAgo(ts: number): string {
   return `${mins} min ago`;
 }
 
+/** Number of consecutive failures before showing the banner. */
+const FAILURE_THRESHOLD = 3;
+
 /**
  * Pings /api/health on mount and periodically.
  * Shows a subtle warning banner when the backend is degraded.
+ * Only visible to admin users. Requires multiple consecutive failures
+ * before triggering to avoid false positives from transient slowness.
  * Also publishes degraded state to the shared useHealthStatus hook.
  * Backs off polling to 5 min when degraded to reduce console noise.
  */
 export function DegradedBanner() {
+  const role = useAuth((s) => s.role);
   const [degraded, setDegraded] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [lastChecked, setLastChecked] = useState<number>(0);
   const [, forceUpdate] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const failCountRef = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -33,14 +41,22 @@ export function DegradedBanner() {
         const data = await res.json();
         if (active) {
           const isDegraded = data.status === "degraded";
-          setDegraded(isDegraded);
-          setSharedDegraded(isDegraded);
+          if (isDegraded) {
+            failCountRef.current++;
+          } else {
+            failCountRef.current = 0;
+          }
+          const showDegraded = failCountRef.current >= FAILURE_THRESHOLD;
+          setDegraded(showDegraded);
+          setSharedDegraded(showDegraded);
           setLastChecked(Date.now());
         }
       } catch {
         if (active) {
-          setDegraded(true);
-          setSharedDegraded(true);
+          failCountRef.current++;
+          const showDegraded = failCountRef.current >= FAILURE_THRESHOLD;
+          setDegraded(showDegraded);
+          setSharedDegraded(showDegraded);
           setLastChecked(Date.now());
         }
       }
@@ -64,7 +80,7 @@ export function DegradedBanner() {
     return () => clearInterval(id);
   }, [degraded, dismissed]);
 
-  if (!degraded || dismissed) return null;
+  if (!degraded || dismissed || role !== "admin") return null;
 
   return (
     <div className="w-full bg-yellow-500/10 border-b border-yellow-500/20">

@@ -99,8 +99,29 @@ function ensureMinLuminance(hex: string, minLum: number): string {
 }
 
 /**
+ * Darken a hex color so it stays below a maximum luminance threshold.
+ * Mixes towards black until the target is reached.
+ */
+function ensureMaxLuminance(hex: string, maxLum: number): string {
+  const rgb = parseHex(hex);
+  if (!rgb) return hex;
+  const [r, g, b] = rgb;
+  if (luminance(r, g, b) <= maxLum) return hex;
+  for (let t = 0.05; t <= 0.95; t += 0.05) {
+    const mr = Math.round(r * (1 - t));
+    const mg = Math.round(g * (1 - t));
+    const mb = Math.round(b * (1 - t));
+    if (luminance(mr, mg, mb) <= maxLum) {
+      return `#${mr.toString(16).padStart(2, "0")}${mg.toString(16).padStart(2, "0")}${mb.toString(16).padStart(2, "0")}`;
+    }
+  }
+  return hex;
+}
+
+/**
  * Pick the correct team color for the current theme.
  * In dark mode, ensures the color is light enough to read against dark backgrounds.
+ * In light mode, ensures the color is dark enough to read against light backgrounds.
  * Falls back to `fallback` if no color is available.
  */
 export function resolveTeamColor(
@@ -111,9 +132,9 @@ export function resolveTeamColor(
   const dark = isDarkMode();
   const color = dark ? colorDark : colorLight;
   const resolved = color || fallback;
-  // In dark mode, ensure minimum luminance so colors aren't invisible
   if (dark) return ensureMinLuminance(resolved, 0.15);
-  return resolved;
+  // In light mode, ensure color isn't too light to read on white
+  return ensureMaxLuminance(resolved, 0.35);
 }
 
 /**
