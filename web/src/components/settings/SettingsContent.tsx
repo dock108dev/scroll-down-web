@@ -86,7 +86,8 @@ export function SettingsContent() {
         ) : (
           <div className="px-4 py-3 space-y-2">
             <p className="text-xs text-neutral-500">
-              Sign in to sync your preferences and access all features
+              Sign in to sync your preferences and access all features.
+              Settings are saved locally on this device.
             </p>
             <div className="flex items-center gap-3">
               <Link

@@ -434,7 +434,7 @@ export default function FairBetPage() {
           </div>
         </div>
       )}
-      {!hook.error && <InlineFeedback context="fairbet" />}
+      {!hook.error && !hook.loading && hook.allBets.length > 0 && <InlineFeedback context="fairbet" />}
     </div>
   );
 }
