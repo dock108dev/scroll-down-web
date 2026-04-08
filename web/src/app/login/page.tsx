@@ -186,7 +186,7 @@ function LoginForm() {
   }, [email, requestMagicLink]);
 
   return (
-    <div className="mx-auto max-w-sm px-4 py-12">
+    <div className="mx-auto max-w-sm md:max-w-md px-4 py-12">
       <style dangerouslySetInnerHTML={{ __html: shakeKeyframes }} />
       <h1 className="text-xl font-bold text-neutral-100 text-center mb-6">
         {reason === "profile"

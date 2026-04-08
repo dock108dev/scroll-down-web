@@ -96,7 +96,7 @@ export default function GolfPage() {
         </div>
       )}
 
-      <InlineFeedback context="golf" />
+      {!error && <InlineFeedback context="golf" />}
     </main>
   );
 }

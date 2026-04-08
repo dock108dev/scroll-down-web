@@ -494,7 +494,7 @@ export default function GameDetailPage({
         )}
       </div>
 
-      <InlineFeedback context="game" />
+      {!error && <InlineFeedback context="game" />}
     </div>
   );
 }
