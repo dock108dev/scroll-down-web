@@ -112,7 +112,7 @@ export default function FairBetPage() {
               aria-controls={`tabpanel-${tab}`}
               id={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
-              className="flex-1 text-xs font-semibold py-2.5 min-h-[44px] rounded-md transition-colors capitalize"
+              className="flex-1 text-xs font-semibold py-2.5 min-h-[44px] rounded-md transition-colors capitalize text-center whitespace-nowrap"
               style={{
                 backgroundColor: activeTab === tab ? "var(--fb-card-bg)" : "transparent",
                 color: activeTab === tab ? "var(--ds-text-primary)" : "var(--ds-text-tertiary)",

@@ -150,9 +150,15 @@ export default function ModelsPage() {
 
   if (loading) {
     return (
-      <div className="space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="h-20 bg-neutral-800 rounded animate-pulse" />
+      <div className="space-y-4">
+        <div>
+          <h1 className="text-xl font-bold text-neutral-50">Models</h1>
+          <p className="text-xs text-neutral-500 mt-1">
+            Training, model registry, and performance monitoring.
+          </p>
+        </div>
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-16 bg-neutral-800 rounded-lg animate-pulse" />
         ))}
       </div>
     );

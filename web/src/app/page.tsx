@@ -330,14 +330,14 @@ export default function HomePage() {
       <StaleBanner stale={stale} staleAt={staleAt} onRetry={() => refetch()} />
 
       {/* Loading state */}
-      {loading && (
+      {loading && !error && (
         <div className="px-4 py-4 space-y-3">
           <LoadingSkeleton count={10} variant="timelineRow" />
         </div>
       )}
 
       {/* Error state */}
-      {error && (
+      {error && !loading && (
         <div className="px-4 py-12 text-center space-y-4">
           <p className="text-sm text-neutral-400">
             {retryCount >= 3
