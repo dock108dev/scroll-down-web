@@ -69,11 +69,12 @@ export function LiveOddsPanel() {
   }, []);
 
   const hasData = hook.gameData.length > 0;
+  const showFilters = hasData || hook.gamesLoading || hook.loading;
 
   return (
     <div data-testid="live-odds-panel" className="space-y-3">
-      {/* ── Filters ──────────────────────────────────────── */}
-      <div className="space-y-2">
+      {/* ── Filters (hidden when no live games and not loading) ── */}
+      {showFilters && <div className="space-y-2">
         {/* League pills + refresh */}
         <div className="flex gap-2 overflow-x-auto scrollbar-none pb-0.5">
           <FilterPill
@@ -196,7 +197,7 @@ export function LiveOddsPanel() {
             </div>
           )}
         </div>
-      </div>
+      </div>}
 
       {/* ── States ───────────────────────────────────────── */}
       {(hook.gamesLoading || hook.loading) && !hasData && (

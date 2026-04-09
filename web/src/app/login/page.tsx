@@ -48,7 +48,7 @@ function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [shaking, setShaking] = useState(false);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -132,7 +132,10 @@ function LoginForm() {
       e.preventDefault();
       setError(null);
       setSubmitted(true);
-      if (!validate()) {
+      const isValid = validate();
+      if (!isValid) {
+        // Show a visible error message as a fallback
+        setError("Please fill in the required fields.");
         // Shake the form and focus first errored field
         setShaking(true);
         if (shakeTimer.current) clearTimeout(shakeTimer.current);
@@ -234,7 +237,7 @@ function LoginForm() {
 
       <form onSubmit={handleSubmit} noValidate className={cn("space-y-4 rounded-lg transition-all duration-300", submitted && Object.keys(fieldErrors).length > 0 && "ring-1 ring-red-500/20 bg-red-500/[0.03] p-4 -mx-4")} style={shaking ? { animation: "shake 0.4s ease-in-out" } : undefined}>
         {/* Validation summary — top of form so it's immediately visible */}
-        {submitted && Object.keys(fieldErrors).length > 0 && (
+        {submitted && !error && Object.keys(fieldErrors).length > 0 && (
           <div role="alert" data-testid="validation-summary" className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span>Please fix the highlighted fields below.</span>

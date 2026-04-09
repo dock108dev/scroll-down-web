@@ -165,7 +165,7 @@ export default function ModelsPage() {
   }
 
   return (
-    <AuthGate minRole="user" message="Sign up for free to view model performance and predictions">
+    <AuthGate minRole="user" message={<div className="space-y-3"><p className="font-medium">Sign up for free to view model performance</p><ul className="text-xs text-neutral-400 space-y-1 text-left"><li>Train pitch outcome and batted ball models</li><li>Track accuracy, calibration, and degradation alerts</li><li>Compare algorithm performance over time</li></ul></div>}>
       <div className="space-y-6">
         <div>
           <h1 className="text-xl font-bold text-neutral-50">Models</h1>

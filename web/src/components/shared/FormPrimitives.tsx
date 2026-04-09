@@ -6,12 +6,14 @@ import { cn } from "@/lib/utils";
  *  Defaults to open unless `defaultOpen` is explicitly false. */
 export function Section({
   title,
+  description,
   children,
   titleClassName,
   collapsible = false,
   defaultOpen = true,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
   titleClassName?: string;
   collapsible?: boolean;
@@ -48,12 +50,17 @@ export function Section({
               >
                 {title}
               </span>
-              {!isOpen && (
+              {!isOpen && !description && (
                 <span className="text-[10px] text-neutral-600 font-normal normal-case tracking-normal">
                   tap to expand
                 </span>
               )}
             </div>
+            {!isOpen && description && (
+              <span className="text-[10px] text-neutral-600 font-normal normal-case tracking-normal max-w-[60%] text-right truncate">
+                {description}
+              </span>
+            )}
             <span
               className={cn(
                 "text-xs text-neutral-500 transition-transform duration-200",
@@ -75,14 +82,19 @@ export function Section({
         </h2>
       )}
       {isOpen && (
-        <div
-          id={panelId}
-          role={collapsible ? "region" : undefined}
-          aria-labelledby={buttonId}
-          className="rounded-lg border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800"
-        >
-          {children}
-        </div>
+        <>
+          {description && collapsible && (
+            <p className="text-[11px] text-neutral-500 px-1 -mt-1 mb-1.5">{description}</p>
+          )}
+          <div
+            id={panelId}
+            role={collapsible ? "region" : undefined}
+            aria-labelledby={buttonId}
+            className="rounded-lg border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800"
+          >
+            {children}
+          </div>
+        </>
       )}
     </div>
   );

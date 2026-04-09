@@ -25,6 +25,18 @@ export default function FairBetPage() {
   const [activeTab, setActiveTab] = useState<"pregame" | "live">("pregame");
   const { retryCount, manualRetry } = useAutoRetry({ error: hook.error, loading: hook.loading, refetch: hook.refetch });
 
+  // Show "taking longer than expected" after 3s of loading
+  const [loadingSlowFlag, setLoadingSlowFlag] = useState(false);
+  const loadingSlow = hook.loading && !hook.error && loadingSlowFlag;
+  useEffect(() => {
+    if (!hook.loading || hook.error) return;
+    const timer = setTimeout(() => setLoadingSlowFlag(true), 3_000);
+    return () => {
+      clearTimeout(timer);
+      setLoadingSlowFlag(false);
+    };
+  }, [hook.loading, hook.error]);
+
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
   const [prevFilters, setPrevFilters] = useState(hook.filters);
@@ -158,8 +170,13 @@ export default function FairBetPage() {
         {/* Loading state */}
         {hook.loading && !hook.error && (
           <div className="py-20 flex flex-col items-center gap-3">
-            <div className="text-sm text-neutral-500">Fetching odds from sportsbooks…</div>
+            <div className="text-sm text-neutral-500">
+              {loadingSlow ? "Taking longer than expected…" : "Fetching odds from sportsbooks…"}
+            </div>
             <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
+            {loadingSlow && (
+              <p className="text-xs text-neutral-600 mt-1">The server may be slow to respond. We&apos;ll show an error if it doesn&apos;t connect.</p>
+            )}
           </div>
         )}
 

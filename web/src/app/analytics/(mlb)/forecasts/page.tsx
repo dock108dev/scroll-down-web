@@ -258,7 +258,7 @@ export default function ForecastsPage() {
 
       <AuthGate
         minRole="user"
-        message="Sign up for free to view today's MLB predictions and market edge analysis"
+        message={<div className="space-y-3"><p className="font-medium">Sign up for free to view today&apos;s MLB predictions</p><ul className="text-xs text-neutral-400 space-y-1 text-left"><li>Win probabilities for every game on the schedule</li><li>Market edge analysis vs. sportsbook lines</li><li>Expected scores, run lines, and over/under estimates</li></ul></div>}
       >
         {/* Edge filter */}
         <div className="flex items-center gap-2">

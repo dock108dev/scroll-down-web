@@ -119,7 +119,7 @@ export default function ProfilesPage() {
         </p>
       </div>
 
-      <AuthGate minRole="user" message="Sign up for free to access team profiles">
+      <AuthGate minRole="user" message={<div className="space-y-3"><p className="font-medium">Sign up for free to access team profiles</p><ul className="text-xs text-neutral-400 space-y-1 text-left"><li>Roster, lineup, and bullpen breakdowns</li><li>Season performance trends and splits</li><li>Recent form, home/away, and platoon data</li></ul></div>}>
         <div className="space-y-5">
           {error && (
             <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-4 py-3">
