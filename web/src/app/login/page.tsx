@@ -48,7 +48,7 @@ function LoginForm() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
-  const [rememberMe, setRememberMe] = useState(true);
+  const [rememberMe, setRememberMe] = useState(false);
   const [shaking, setShaking] = useState(false);
   const shakeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -132,7 +132,10 @@ function LoginForm() {
       e.preventDefault();
       setError(null);
       setSubmitted(true);
-      if (!validate()) {
+      const isValid = validate();
+      if (!isValid) {
+        // Show a visible error message as a fallback
+        setError("Please fill in the required fields.");
         // Shake the form and focus first errored field
         setShaking(true);
         if (shakeTimer.current) clearTimeout(shakeTimer.current);
@@ -160,11 +163,13 @@ function LoginForm() {
             setError("An account with this email already exists");
           } else if (err.status === 401) {
             setError("Invalid email or password");
+          } else if (err.status >= 500) {
+            setError("Server is temporarily unavailable. Please try again later.");
           } else {
             setError(err.message);
           }
         } else {
-          setError("Something went wrong. Try again.");
+          setError("Unable to connect. Check your internet and try again.");
         }
       }
     },
@@ -186,7 +191,7 @@ function LoginForm() {
   }, [email, requestMagicLink]);
 
   return (
-    <div className="mx-auto max-w-sm px-4 py-12">
+    <div className="mx-auto max-w-sm md:max-w-md px-4 py-12">
       <style dangerouslySetInnerHTML={{ __html: shakeKeyframes }} />
       <h1 className="text-xl font-bold text-neutral-100 text-center mb-6">
         {reason === "profile"
@@ -232,7 +237,15 @@ function LoginForm() {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} noValidate className="space-y-4" style={shaking ? { animation: "shake 0.4s ease-in-out" } : undefined}>
+      <form onSubmit={handleSubmit} noValidate className={cn("space-y-4 rounded-lg transition-all duration-300", submitted && Object.keys(fieldErrors).length > 0 && "ring-1 ring-red-500/20 bg-red-500/[0.03] p-4 -mx-4")} style={shaking ? { animation: "shake 0.4s ease-in-out" } : undefined}>
+        {/* Validation summary — top of form so it's immediately visible */}
+        {submitted && !error && Object.keys(fieldErrors).length > 0 && (
+          <div role="alert" data-testid="validation-summary" className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Please fix the highlighted fields below.</span>
+          </div>
+        )}
+
         {/* Email */}
         <div className="space-y-1">
           <label className="text-xs font-medium text-neutral-500 uppercase tracking-wider">
@@ -336,17 +349,9 @@ function LoginForm() {
           </div>
         )}
 
-        {/* Validation summary (shown after submitting with errors) */}
-        {submitted && Object.keys(fieldErrors).length > 0 && (
-          <div role="alert" className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>Please fix the highlighted fields above.</span>
-          </div>
-        )}
-
         {/* API error */}
         {error && (
-          <div role="alert" className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
+          <div role="alert" className="flex items-center gap-2 text-sm text-red-400 bg-red-500/15 border border-red-500/40 rounded-lg px-3 py-3">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span>{error}</span>
           </div>

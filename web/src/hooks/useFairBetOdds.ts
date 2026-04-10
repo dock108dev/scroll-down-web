@@ -281,9 +281,9 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    // Safety timeout — abort after 20s to prevent infinite loading state
+    // Safety timeout — abort after 8s to match Home/Golf error-state timing
     let timedOut = false;
-    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 20_000);
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 8_000);
 
     setLoading(true);
     setIsLoadingMore(false);
@@ -389,7 +389,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
   const loadingProgress =
     loading
-      ? "Loading bets..."
+      ? "Fetching odds from sportsbooks\u2026"
       : isLoadingMore
         ? `Loading ${loadedCount.toLocaleString()} of ${totalFromServer.toLocaleString()}...`
         : "";

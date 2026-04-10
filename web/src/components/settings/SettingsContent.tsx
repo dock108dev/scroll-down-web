@@ -86,7 +86,8 @@ export function SettingsContent() {
         ) : (
           <div className="px-4 py-3 space-y-2">
             <p className="text-xs text-neutral-500">
-              Sign in to sync your preferences and access all features
+              Sign in to sync your preferences and access all features.
+              Settings are saved locally on this device.
             </p>
             <div className="flex items-center gap-3">
               <Link
@@ -123,7 +124,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Recaps — Default Expanded ──────────────────── */}
-      <Section title="Recaps — Default Expanded" collapsible defaultOpen={false}>
+      <Section title="Recaps — Default Expanded" collapsible defaultOpen={false} description="Choose which date sections start expanded on the home page.">
         {HOME_SECTIONS.map((section) => (
           <SettingsCheckRow
             key={section}
@@ -135,7 +136,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Timeline — Default Tiers ────────────────────── */}
-      <Section title="Timeline — Default Tiers" collapsible defaultOpen={false}>
+      <Section title="Timeline — Default Tiers" collapsible defaultOpen={false} description="Pick which play tiers are visible by default in game timelines.">
         {([
           { tier: 1, label: "Key Plays", desc: "Scoring, turnovers, big moments" },
           { tier: 2, label: "Secondary", desc: "Fouls, rebounds, stoppages" },
@@ -167,7 +168,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Score Display ──────────────────────────────── */}
-      <Section title="Score Display" collapsible defaultOpen={false}>
+      <Section title="Score Display" collapsible defaultOpen={true} description="Control how and when scores are revealed on game cards.">
         <Row label="Score visibility">
           <DarkSelect
             value={scoreRevealMode}
@@ -205,7 +206,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
-      <Section title="Odds" collapsible defaultOpen={false}>
+      <Section title="Odds" collapsible defaultOpen={true} description="Set your preferred sportsbook, odds format, and market filters for FairBet.">
         <Row label="Default Book">
           <DarkSelect
             value={preferredSportsbook}

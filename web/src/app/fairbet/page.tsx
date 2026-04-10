@@ -25,6 +25,24 @@ export default function FairBetPage() {
   const [activeTab, setActiveTab] = useState<"pregame" | "live">("pregame");
   const { retryCount, manualRetry } = useAutoRetry({ error: hook.error, loading: hook.loading, refetch: hook.refetch });
 
+  // Show "taking longer than expected" after 3s of loading
+  const [loadingSlowFlag, setLoadingSlowFlag] = useState(false);
+  const loadingSlow = hook.loading && !hook.error && loadingSlowFlag;
+  // Force timeout after 15s of loading with no error — prevents perpetual spinner
+  const [loadingTimedOutFlag, setLoadingTimedOutFlag] = useState(false);
+  const loadingTimedOut = loadingTimedOutFlag && hook.loading && !hook.error;
+  useEffect(() => {
+    if (!hook.loading || hook.error) return;
+    const slowTimer = setTimeout(() => setLoadingSlowFlag(true), 3_000);
+    const timeoutTimer = setTimeout(() => setLoadingTimedOutFlag(true), 15_000);
+    return () => {
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutTimer);
+      setLoadingSlowFlag(false);
+      setLoadingTimedOutFlag(false);
+    };
+  }, [hook.loading, hook.error]);
+
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
   const [prevFilters, setPrevFilters] = useState(hook.filters);
@@ -112,7 +130,9 @@ export default function FairBetPage() {
               aria-controls={`tabpanel-${tab}`}
               id={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
-              className="flex-1 text-[11px] font-semibold py-1.5 min-h-[36px] sm:min-h-[32px] rounded-md transition-colors capitalize"
+
+              className="flex-1 text-xs font-semibold py-2.5 min-h-[44px] rounded-md transition-colors capitalize text-center whitespace-nowrap"
+
               style={{
                 backgroundColor: activeTab === tab ? "var(--fb-card-bg)" : "transparent",
                 color: activeTab === tab ? "var(--ds-text-primary)" : "var(--ds-text-tertiary)",
@@ -156,15 +176,20 @@ export default function FairBetPage() {
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
         {/* Loading state */}
-        {hook.loading && !hook.error && (
+        {hook.loading && !hook.error && !loadingTimedOut && (
           <div className="py-20 flex flex-col items-center gap-3">
-            <div className="text-sm text-neutral-500">Loading bets…</div>
+            <div className="text-sm text-neutral-500">
+              {loadingSlow ? "Taking longer than expected…" : "Fetching odds from sportsbooks…"}
+            </div>
             <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
+            {loadingSlow && (
+              <p className="text-xs text-neutral-600 mt-1">The server may be slow to respond. We&apos;ll show an error if it doesn&apos;t connect.</p>
+            )}
           </div>
         )}
 
-        {/* Error state */}
-        {hook.error && (
+        {/* Error state (includes loading timeout) */}
+        {(hook.error || loadingTimedOut) && (
           <div className="py-12 text-center space-y-4">
             <p className="text-sm text-neutral-400">
               {retryCount >= 3
@@ -434,7 +459,7 @@ export default function FairBetPage() {
           </div>
         </div>
       )}
-      <InlineFeedback context="fairbet" />
+      {!hook.error && !hook.loading && hook.allBets.length > 0 && <InlineFeedback context="fairbet" />}
     </div>
   );
 }

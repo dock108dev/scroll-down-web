@@ -267,7 +267,7 @@ export default function MLBSimulatorPage() {
 
       <AuthGate
         minRole="user"
-        message="Sign up for free to access the matchup simulator"
+        message={<div className="space-y-3"><p className="font-medium">Sign up for free to access the matchup simulator</p><ul className="text-xs text-neutral-400 space-y-1 text-left"><li>Simulate any matchup with real starting lineups</li><li>See pitch-by-pitch projected outcomes</li><li>Compare win probability with and without specific players</li></ul></div>}
       >
         {/* ── Team Pickers ──────────────────────────────── */}
         <div className="grid grid-cols-2 gap-3">

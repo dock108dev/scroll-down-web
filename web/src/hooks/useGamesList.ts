@@ -116,6 +116,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   // Recompute section ranges if the Eastern calendar day changes while app is open.
   const todayKey = fmtDate(easternToday());
   // Align realtime channels with list cache keys by league+date pair
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- todayKey intentionally triggers recompute on day change
   const ranges = useMemo(() => getSectionDateRanges(), [todayKey]);
 
   const channels = useMemo(() => {
@@ -201,6 +202,10 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
     const controller = new AbortController();
     abortRef.current = controller;
 
+    // Safety timeout — abort after 10s to prevent stuck loading state
+    let timedOut = false;
+    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 10_000);
+
     if (showLoading) setLoading(true);
     setError(null);
 
@@ -256,7 +261,8 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         cores,
       });
     } catch (err) {
-      if (controller.signal.aborted) return;
+      // Ignore aborts from cleanup/new-fetch, but treat timeouts as errors
+      if (controller.signal.aborted && !timedOut) return;
       // If we have existing data (in-memory or from localStorage), show it as stale
       const store = useGameData.getState();
       const hasData = listKeys.some((lk) => {
@@ -269,10 +275,12 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         setError(null);
       } else {
         setError(
-          err instanceof Error ? err.message : "Failed to fetch games",
+          timedOut ? "Request timed out" : (err instanceof Error ? err.message : "Failed to fetch games"),
         );
       }
       setLoading(false);
+    } finally {
+      clearTimeout(timeout);
     }
   }, [league, leagueKey, ranges, listKeys, upsertFromList]);
 

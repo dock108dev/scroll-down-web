@@ -194,8 +194,8 @@
   --ds-border-color: rgba(255, 255, 255, 0.08);
 
   /* ── Skeleton shimmer (dark mode) ────────────────── */
-  --ds-skeleton-base: rgba(255, 255, 255, 0.04);
-  --ds-skeleton-shine: rgba(255, 255, 255, 0.08);
+  --ds-skeleton-base: rgba(255, 255, 255, 0.08);
+  --ds-skeleton-shine: rgba(255, 255, 255, 0.16);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

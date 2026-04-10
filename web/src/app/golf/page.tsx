@@ -96,7 +96,9 @@ export default function GolfPage() {
         </div>
       )}
 
-      <InlineFeedback context="golf" />
+      {!error && !loading && (sections.thisWeek.length > 0 || sections.upcoming.length > 0 || sections.recent.length > 0) && (
+        <InlineFeedback context="golf" />
+      )}
     </main>
   );
 }

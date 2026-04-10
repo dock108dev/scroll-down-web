@@ -36,7 +36,7 @@ export function AuthGate({
   return (
     <div data-testid="auth-gate" className="relative">
       {preview && <div aria-hidden="true">{preview}</div>}
-      <div className={`${preview ? "absolute inset-0 flex items-center justify-center" : ""} mx-auto max-w-md px-4 py-16 text-center space-y-4`}>
+      <div className={`${preview ? "absolute inset-0 flex items-center justify-center pb-20 md:pb-0" : ""} mx-auto max-w-md px-4 py-16 text-center space-y-4`}>
         <div className="rounded-lg border border-neutral-700 bg-neutral-900/80 px-6 py-8 space-y-4 shadow-lg">
           <p className="text-sm text-neutral-300">{message}</p>
           {showSignup && (

@@ -6,12 +6,14 @@ import { cn } from "@/lib/utils";
  *  Defaults to open unless `defaultOpen` is explicitly false. */
 export function Section({
   title,
+  description,
   children,
   titleClassName,
   collapsible = false,
   defaultOpen = true,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
   titleClassName?: string;
   collapsible?: boolean;
@@ -19,6 +21,12 @@ export function Section({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   const isOpen = !collapsible || open;
+  const panelId = collapsible
+    ? `section-panel-${title.toLowerCase().replace(/\s+/g, "-")}`
+    : undefined;
+  const buttonId = collapsible
+    ? `section-btn-${title.toLowerCase().replace(/\s+/g, "-")}`
+    : undefined;
 
   return (
     <div className="space-y-1">
@@ -26,19 +34,33 @@ export function Section({
         <h2 className="mb-2">
           <button
             type="button"
+            id={buttonId}
             onClick={() => setOpen((o) => !o)}
             aria-expanded={isOpen}
+            aria-controls={panelId}
             aria-label={`${isOpen ? "Collapse" : "Expand"} ${title}`}
-            className="flex w-full items-center justify-between px-1"
+            className="flex w-full items-center justify-between px-1 min-h-[44px] group"
           >
-            <span
-              className={cn(
-                "text-xs font-semibold uppercase tracking-wide",
-                titleClassName ?? "text-neutral-500",
+            <div className="flex items-center gap-2">
+              <span
+                className={cn(
+                  "text-xs font-semibold uppercase tracking-wide",
+                  titleClassName ?? "text-neutral-500",
+                )}
+              >
+                {title}
+              </span>
+              {!isOpen && !description && (
+                <span className="text-[10px] text-neutral-600 font-normal normal-case tracking-normal">
+                  tap to expand
+                </span>
               )}
-            >
-              {title}
-            </span>
+            </div>
+            {!isOpen && description && (
+              <span className="text-[10px] text-neutral-600 font-normal normal-case tracking-normal max-w-[60%] text-right truncate">
+                {description}
+              </span>
+            )}
             <span
               className={cn(
                 "text-xs text-neutral-500 transition-transform duration-200",
@@ -60,9 +82,19 @@ export function Section({
         </h2>
       )}
       {isOpen && (
-        <div className="rounded-lg border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800">
-          {children}
-        </div>
+        <>
+          {description && collapsible && (
+            <p className="text-[11px] text-neutral-500 px-1 -mt-1 mb-1.5">{description}</p>
+          )}
+          <div
+            id={panelId}
+            role={collapsible ? "region" : undefined}
+            aria-labelledby={buttonId}
+            className="rounded-lg border border-neutral-800 bg-neutral-900 divide-y divide-neutral-800"
+          >
+            {children}
+          </div>
+        </>
       )}
     </div>
   );

@@ -330,14 +330,14 @@ export default function HomePage() {
       <StaleBanner stale={stale} staleAt={staleAt} onRetry={() => refetch()} />
 
       {/* Loading state */}
-      {loading && (
+      {loading && !error && (
         <div className="px-4 py-4 space-y-3">
           <LoadingSkeleton count={10} variant="timelineRow" />
         </div>
       )}
 
       {/* Error state */}
-      {error && (
+      {error && !loading && (
         <div className="px-4 py-12 text-center space-y-4">
           <p className="text-sm text-neutral-400">
             {retryCount >= 3
@@ -363,6 +363,12 @@ export default function HomePage() {
                   : "Check back shortly \u2014 data updates every few minutes."}
           </p>
 
+          {league && (
+            <p className="text-xs text-neutral-500">
+              Showing: <span className="font-medium text-neutral-300">{league.toUpperCase()}</span> &mdash; filters will apply once data loads.{" "}
+              <button onClick={() => setLeague("")} className="text-blue-400 hover:text-blue-300">Clear filter</button>
+            </p>
+          )}
           {/* Feature explainer when data is unavailable */}
           <div className="mt-6 mx-auto max-w-sm text-left space-y-3 border border-neutral-800 rounded-lg p-4 bg-neutral-900/50">
             <p className="text-xs font-medium text-neutral-300">While you wait, here&apos;s what Scroll Down Sports offers:</p>
@@ -380,19 +386,25 @@ export default function HomePage() {
       {!loading && !error && !hasAnyGames && (
         <div className="px-4 py-12 text-center space-y-3">
           <p className="text-sm text-neutral-400">
-            {search ? "No games match your search" : "No games scheduled right now"}
+            {search
+              ? "No games match your search"
+              : league
+                ? `No ${league.toUpperCase()} games scheduled right now`
+                : "No games scheduled right now"}
           </p>
           <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
             {search
               ? "Try a different search term or clear your filter."
-              : "Check back when MLB, NBA, NHL, or NCAAB games are on the schedule. Games typically start in the afternoon and evening."}
+              : league
+                ? `There are no ${league.toUpperCase()} games in the current window. Try "All" to see other sports.`
+                : "Check back when MLB, NBA, NHL, or NCAAB games are on the schedule. Games typically start in the afternoon and evening."}
           </p>
-          {search && (
+          {(search || league) && (
             <button
-              onClick={() => setSearch("")}
+              onClick={() => { setSearch(""); setLeague(""); }}
               className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
             >
-              Clear search
+              {search ? "Clear search" : "Show all sports"}
             </button>
           )}
         </div>

@@ -173,7 +173,8 @@ export default function ForecastsPage() {
 
       <AuthGate
         minRole="user"
-        message="Sign up for free to view today's MLB predictions"
+        message={<div className="space-y-3"><p className="font-medium">Sign up for free to view today&apos;s MLB predictions</p><ul className="text-xs text-neutral-400 space-y-1 text-left"><li>Win probabilities for every game on the schedule</li><li>Market edge analysis vs. sportsbook lines</li><li>Expected scores, run lines, and over/under estimates</li></ul></div>}
+
       >
         {error && (
           <div className="text-sm text-red-400 bg-red-900/20 border border-red-800 rounded-lg px-4 py-3">
