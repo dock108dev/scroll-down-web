@@ -116,6 +116,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   // Recompute section ranges if the Eastern calendar day changes while app is open.
   const todayKey = fmtDate(easternToday());
   // Align realtime channels with list cache keys by league+date pair
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- todayKey intentionally triggers recompute on day change
   const ranges = useMemo(() => getSectionDateRanges(), [todayKey]);
 
   const channels = useMemo(() => {

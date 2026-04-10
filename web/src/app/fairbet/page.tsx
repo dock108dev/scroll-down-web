@@ -29,22 +29,17 @@ export default function FairBetPage() {
   const [loadingSlowFlag, setLoadingSlowFlag] = useState(false);
   const loadingSlow = hook.loading && !hook.error && loadingSlowFlag;
   // Force timeout after 15s of loading with no error — prevents perpetual spinner
-  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
+  const [loadingTimedOutFlag, setLoadingTimedOutFlag] = useState(false);
+  const loadingTimedOut = loadingTimedOutFlag && hook.loading && !hook.error;
   useEffect(() => {
-    if (!hook.loading || hook.error) {
-      // Not loading — no timers needed. Reset flags on cleanup instead of
-      // calling setState synchronously in the effect body.
-      return () => {
-        setLoadingTimedOut(false);
-      };
-    }
+    if (!hook.loading || hook.error) return;
     const slowTimer = setTimeout(() => setLoadingSlowFlag(true), 3_000);
-    const timeoutTimer = setTimeout(() => setLoadingTimedOut(true), 15_000);
+    const timeoutTimer = setTimeout(() => setLoadingTimedOutFlag(true), 15_000);
     return () => {
       clearTimeout(slowTimer);
       clearTimeout(timeoutTimer);
       setLoadingSlowFlag(false);
-      setLoadingTimedOut(false);
+      setLoadingTimedOutFlag(false);
     };
   }, [hook.loading, hook.error]);
 
