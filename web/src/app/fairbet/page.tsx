@@ -82,11 +82,11 @@ export default function FairBetPage() {
 
   return (
     <div data-testid="page-fairbet" className="mx-auto max-w-5xl">
-      <div className="sticky z-30 bg-neutral-950 px-4 py-4 space-y-4 border-b border-neutral-800/50" style={{ top: "var(--header-h)" }}>
+      <div className="sticky z-30 bg-neutral-950 px-4 py-2 sm:py-3 space-y-2 sm:space-y-2.5 border-b border-neutral-800/50" style={{ top: "var(--header-h)" }}>
         {/* ── Header ── */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-bold text-neutral-50">FairBet</h1>
+            <h1 className="text-base sm:text-lg font-bold text-neutral-50">FairBet</h1>
             <span className="hidden sm:inline text-xs text-neutral-500">Compare odds &middot; Find +EV</span>
             {hook.canShowParlay && (
               <button
@@ -104,7 +104,7 @@ export default function FairBetPage() {
           </div>
           <button
             onClick={() => setShowHowItWorks(true)}
-            className="text-xs sm:text-xs font-medium rounded-full px-3 sm:px-3 py-2 min-h-[44px] transition"
+            className="text-[11px] font-medium rounded-full px-2.5 py-1.5 min-h-[36px] sm:min-h-[32px] transition"
             style={{
               backgroundColor: "var(--fb-info-soft)",
               color: "var(--fb-info)",
@@ -116,7 +116,7 @@ export default function FairBetPage() {
         </div>
 
         {/* ── Brief description ── */}
-        <p className="text-xs text-neutral-500 leading-relaxed -mt-1">
+        <p className="text-[11px] text-neutral-500 leading-snug -mt-0.5">
           Compares odds across sportsbooks to find bets where the price is
           better than the true probability.
         </p>
@@ -131,7 +131,9 @@ export default function FairBetPage() {
               aria-controls={`tabpanel-${tab}`}
               id={`tab-${tab}`}
               onClick={() => setActiveTab(tab)}
+
               className="flex-1 text-xs font-semibold py-2.5 min-h-[44px] rounded-md transition-colors capitalize text-center whitespace-nowrap"
+
               style={{
                 backgroundColor: activeTab === tab ? "var(--fb-card-bg)" : "transparent",
                 color: activeTab === tab ? "var(--ds-text-primary)" : "var(--ds-text-tertiary)",

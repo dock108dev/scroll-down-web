@@ -119,9 +119,6 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
   // Optionally group into side pairs for mainline
   const pairs = groupSides ? groupIntoPairs(allRows) : allRows.map((r) => [r]);
 
-  // Check if there are any closing line entries
-  const hasClosingLines = odds.some((o) => o.isClosingLine);
-
   return (
     <div className="overflow-x-auto rounded-lg border border-neutral-800">
       <table className="w-full text-xs">
@@ -147,11 +144,6 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
                 </th>
               );
             })}
-            {hasClosingLines && (
-              <th className="text-center px-2 py-2 font-medium text-amber-500/70 whitespace-nowrap bg-neutral-800/80">
-                CL
-              </th>
-            )}
           </tr>
         </thead>
         <tbody>
@@ -163,7 +155,6 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
               oddsFormat={oddsFormat}
               preferredBook={preferredBook}
               showPlayerNames={showPlayerNames}
-              hasClosingLines={hasClosingLines}
               isFirstPair={pairIdx === 0}
             />
           ))}
@@ -179,7 +170,6 @@ function PairGroup({
   oddsFormat,
   preferredBook,
   showPlayerNames,
-  hasClosingLines,
   isFirstPair,
 }: {
   rows: [string, OddsEntry[]][];
@@ -187,7 +177,6 @@ function PairGroup({
   oddsFormat: "american" | "decimal" | "fractional";
   preferredBook: string;
   showPlayerNames?: boolean;
-  hasClosingLines: boolean;
   isFirstPair: boolean;
 }) {
   return (
@@ -195,7 +184,6 @@ function PairGroup({
       {rows.map(([key, entries], rowIdx) => {
         const first = entries[0];
         const bestPrice = findBestPrice(entries);
-        const closingEntry = entries.find((e) => e.isClosingLine);
 
         const label = buildLabel(first, showPlayerNames);
 
@@ -249,20 +237,6 @@ function PairGroup({
                 </td>
               );
             })}
-            {hasClosingLines && (
-              <td className="text-center px-2 py-1.5 tabular-nums whitespace-nowrap bg-neutral-800/30">
-                {closingEntry?.price != null ? (
-                  <span className="text-amber-400/80">
-                    {formatOdds(closingEntry.price, oddsFormat)}
-                    <span className="ml-0.5 text-[9px] align-super text-amber-500/60">
-                      CL
-                    </span>
-                  </span>
-                ) : (
-                  <span className="text-neutral-600">&mdash;</span>
-                )}
-              </td>
-            )}
           </tr>
         );
       })}

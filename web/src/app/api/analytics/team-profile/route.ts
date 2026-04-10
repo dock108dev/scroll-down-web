@@ -4,7 +4,7 @@ import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
 export async function GET(req: NextRequest) {
   try {
     const team = req.nextUrl.searchParams.get("team");
-    const window = req.nextUrl.searchParams.get("window") || "30";
+    const window = req.nextUrl.searchParams.get("window") || req.nextUrl.searchParams.get("rolling_window") || "30";
     if (!team) {
       return NextResponse.json(
         { error: "Missing team parameter" },
@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     }
 
     const data = await apiFetch(
-      `/api/analytics/team-profile?team=${encodeURIComponent(team)}&window=${encodeURIComponent(window)}`,
+      `/api/analytics/team-profile?team=${encodeURIComponent(team)}&rolling_window=${encodeURIComponent(window)}`,
       { headers: forwardAuth(req), revalidate: 3600 },
     );
     return NextResponse.json(data);

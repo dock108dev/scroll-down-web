@@ -7,9 +7,9 @@ const LEAGUE_COLORS: Record<string, { bg: string; text: string }> = {
   nba: { bg: "rgba(196, 92, 38, 0.20)", text: "rgb(196, 92, 38)" },
   nhl: { bg: "rgba(0, 69, 140, 0.25)", text: "rgb(70, 150, 230)" },
   ncaab: { bg: "rgba(33, 140, 33, 0.20)", text: "rgb(33, 140, 33)" },
-  nfl: { bg: "rgba(0, 53, 148, 0.25)", text: "rgb(70, 130, 230)" },
+  nfl: { bg: "rgba(0, 53, 148, 0.25)", text: "rgb(60, 100, 200)" },
   ncaaf: { bg: "rgba(130, 0, 20, 0.20)", text: "rgb(200, 60, 60)" },
-  mlb: { bg: "rgba(0, 45, 114, 0.25)", text: "rgb(70, 130, 230)" },
+  mlb: { bg: "rgba(180, 30, 50, 0.20)", text: "rgb(180, 40, 55)" },
 };
 
 const DEFAULT_COLORS = { bg: "rgba(140, 145, 158, 0.15)", text: "rgb(140, 145, 158)" };

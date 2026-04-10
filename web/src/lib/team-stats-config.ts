@@ -97,6 +97,8 @@ const HOCKEY_GROUPS: StatGroup[] = [
       { key: "pim", label: "PIM", aliases: ["penaltyMinutes", "pim", "penalty_minutes"], lowerIsBetter: true },
       { key: "hits", label: "Hits", aliases: ["hits", "hit"] },
       { key: "blk", label: "Blocked", aliases: ["blockedShots", "blk", "blocked_shots"] },
+      { key: "gv", label: "GV", aliases: ["giveaways", "gv"], lowerIsBetter: true },
+      { key: "ta", label: "TA", aliases: ["takeaways", "ta"] },
       { key: "fo", label: "FO%", aliases: ["faceoffPct", "fo_pct", "faceoffPercentage"], isPercentage: true },
     ],
   },

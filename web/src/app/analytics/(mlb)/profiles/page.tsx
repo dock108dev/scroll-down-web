@@ -5,12 +5,10 @@ import { AuthGate } from "@/components/auth/AuthGate";
 import { fetchTeams, dedupeTeams } from "@/features/analytics/services/SimulatorService";
 import {
   fetchTeamProfile,
-  fetchDataCoverage,
 } from "@/features/analytics/services/ProfilesService";
 import type {
   SimulatorTeam,
   TeamProfile,
-  DataCoverage,
 } from "@/features/analytics/types";
 
 const WINDOWS = [7, 14, 30, 60] as const;
@@ -38,7 +36,6 @@ export default function ProfilesPage() {
   const [window, setWindow] = useState<number>(30);
   const [profiles, setProfiles] = useState<Record<string, TeamProfile>>({});
   const [profilesLoading, setProfilesLoading] = useState<Record<string, boolean>>({});
-  const [coverage, setCoverage] = useState<DataCoverage | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Load teams
@@ -52,15 +49,6 @@ export default function ProfilesPage() {
       finally { if (!cancelled) setTeamsLoading(false); }
     }
     load();
-    return () => { cancelled = true; };
-  }, []);
-
-  // Load data coverage
-  useEffect(() => {
-    let cancelled = false;
-    fetchDataCoverage()
-      .then((c) => { if (!cancelled) setCoverage(c); })
-      .catch(() => { /* ignore */ });
     return () => { cancelled = true; };
   }, []);
 
@@ -227,54 +215,6 @@ export default function ProfilesPage() {
             </div>
           )}
 
-          {/* ── Data Coverage ──────────────────────────── */}
-          {coverage && (
-            <section className="space-y-2">
-              <h2 className="text-sm font-semibold text-neutral-300 uppercase tracking-wider">
-                Data Coverage
-              </h2>
-              <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 space-y-3">
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div>
-                    <span className="text-neutral-500">PA Data</span>
-                    <div className={`font-medium ${coverage.advanced_data_coverage.pa ? "text-green-400" : "text-neutral-500"}`}>
-                      {coverage.advanced_data_coverage.pa ? "Ready" : "Missing"}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Pitch Data</span>
-                    <div className={`font-medium ${coverage.advanced_data_coverage.pitch ? "text-green-400" : "text-neutral-500"}`}>
-                      {coverage.advanced_data_coverage.pitch ? "Ready" : "Missing"}
-                    </div>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Fielding Data</span>
-                    <div className={`font-medium ${coverage.advanced_data_coverage.fielding ? "text-green-400" : "text-neutral-500"}`}>
-                      {coverage.advanced_data_coverage.fielding ? "Ready" : "Missing"}
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-neutral-500">Player Advanced Stats</span>
-                    <div className="text-neutral-200 font-medium">{coverage.counts.player_advanced_stats.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Pitcher Game Stats</span>
-                    <div className="text-neutral-200 font-medium">{coverage.counts.pitcher_game_stats.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Team Advanced Stats</span>
-                    <div className="text-neutral-200 font-medium">{coverage.counts.team_advanced_stats.toLocaleString()}</div>
-                  </div>
-                  <div>
-                    <span className="text-neutral-500">Fielding Stats</span>
-                    <div className="text-neutral-200 font-medium">{coverage.counts.fielding_stats.toLocaleString()}</div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
         </div>
       </AuthGate>
     </>
