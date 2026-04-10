@@ -32,8 +32,11 @@ export default function FairBetPage() {
   const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   useEffect(() => {
     if (!hook.loading || hook.error) {
-      setLoadingTimedOut(false);
-      return;
+      // Not loading — no timers needed. Reset flags on cleanup instead of
+      // calling setState synchronously in the effect body.
+      return () => {
+        setLoadingTimedOut(false);
+      };
     }
     const slowTimer = setTimeout(() => setLoadingSlowFlag(true), 3_000);
     const timeoutTimer = setTimeout(() => setLoadingTimedOut(true), 15_000);
@@ -41,6 +44,7 @@ export default function FairBetPage() {
       clearTimeout(slowTimer);
       clearTimeout(timeoutTimer);
       setLoadingSlowFlag(false);
+      setLoadingTimedOut(false);
     };
   }, [hook.loading, hook.error]);
 
