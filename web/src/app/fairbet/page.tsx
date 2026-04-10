@@ -28,11 +28,18 @@ export default function FairBetPage() {
   // Show "taking longer than expected" after 3s of loading
   const [loadingSlowFlag, setLoadingSlowFlag] = useState(false);
   const loadingSlow = hook.loading && !hook.error && loadingSlowFlag;
+  // Force timeout after 15s of loading with no error — prevents perpetual spinner
+  const [loadingTimedOut, setLoadingTimedOut] = useState(false);
   useEffect(() => {
-    if (!hook.loading || hook.error) return;
-    const timer = setTimeout(() => setLoadingSlowFlag(true), 3_000);
+    if (!hook.loading || hook.error) {
+      setLoadingTimedOut(false);
+      return;
+    }
+    const slowTimer = setTimeout(() => setLoadingSlowFlag(true), 3_000);
+    const timeoutTimer = setTimeout(() => setLoadingTimedOut(true), 15_000);
     return () => {
-      clearTimeout(timer);
+      clearTimeout(slowTimer);
+      clearTimeout(timeoutTimer);
       setLoadingSlowFlag(false);
     };
   }, [hook.loading, hook.error]);
@@ -168,7 +175,7 @@ export default function FairBetPage() {
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
         {/* Loading state */}
-        {hook.loading && !hook.error && (
+        {hook.loading && !hook.error && !loadingTimedOut && (
           <div className="py-20 flex flex-col items-center gap-3">
             <div className="text-sm text-neutral-500">
               {loadingSlow ? "Taking longer than expected…" : "Fetching odds from sportsbooks…"}
@@ -180,8 +187,8 @@ export default function FairBetPage() {
           </div>
         )}
 
-        {/* Error state */}
-        {hook.error && (
+        {/* Error state (includes loading timeout) */}
+        {(hook.error || loadingTimedOut) && (
           <div className="py-12 text-center space-y-4">
             <p className="text-sm text-neutral-400">
               {retryCount >= 3

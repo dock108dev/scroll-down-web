@@ -67,9 +67,9 @@ export function DegradedBanner() {
   if (!degraded || dismissed) return null;
 
   return (
-    <div className="w-full bg-yellow-500/10 border-b border-yellow-500/20">
-      <div className="mx-auto flex items-center justify-center gap-2 px-4 py-1.5 text-xs text-neutral-300">
-        <span className="inline-flex items-center rounded-full bg-yellow-500/15 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-yellow-400">
+    <div className="w-full bg-yellow-500/15 border-b border-yellow-500/30">
+      <div className="mx-auto flex items-center justify-center gap-2 px-4 py-2 text-xs sm:text-sm text-neutral-200">
+        <span className="inline-flex items-center rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] sm:text-xs font-semibold uppercase tracking-wider text-yellow-400">
           Limited
         </span>
         <span className="hidden sm:inline">

@@ -363,6 +363,12 @@ export default function HomePage() {
                   : "Check back shortly \u2014 data updates every few minutes."}
           </p>
 
+          {league && (
+            <p className="text-xs text-neutral-500">
+              Showing: <span className="font-medium text-neutral-300">{league.toUpperCase()}</span> &mdash; filters will apply once data loads.{" "}
+              <button onClick={() => setLeague("")} className="text-blue-400 hover:text-blue-300">Clear filter</button>
+            </p>
+          )}
           {/* Feature explainer when data is unavailable */}
           <div className="mt-6 mx-auto max-w-sm text-left space-y-3 border border-neutral-800 rounded-lg p-4 bg-neutral-900/50">
             <p className="text-xs font-medium text-neutral-300">While you wait, here&apos;s what Scroll Down Sports offers:</p>

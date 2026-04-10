@@ -168,7 +168,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Score Display ──────────────────────────────── */}
-      <Section title="Score Display" collapsible defaultOpen={false} description="Control how and when scores are revealed on game cards.">
+      <Section title="Score Display" collapsible defaultOpen={true} description="Control how and when scores are revealed on game cards.">
         <Row label="Score visibility">
           <DarkSelect
             value={scoreRevealMode}
@@ -206,7 +206,7 @@ export function SettingsContent() {
       </Section>
 
       {/* ─── Odds ───────────────────────────────────────── */}
-      <Section title="Odds" collapsible defaultOpen={false} description="Set your preferred sportsbook, odds format, and market filters for FairBet.">
+      <Section title="Odds" collapsible defaultOpen={true} description="Set your preferred sportsbook, odds format, and market filters for FairBet.">
         <Row label="Default Book">
           <DarkSelect
             value={preferredSportsbook}

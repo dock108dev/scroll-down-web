@@ -163,11 +163,13 @@ function LoginForm() {
             setError("An account with this email already exists");
           } else if (err.status === 401) {
             setError("Invalid email or password");
+          } else if (err.status >= 500) {
+            setError("Server is temporarily unavailable. Please try again later.");
           } else {
             setError(err.message);
           }
         } else {
-          setError("Something went wrong. Try again.");
+          setError("Unable to connect. Check your internet and try again.");
         }
       }
     },
@@ -349,7 +351,7 @@ function LoginForm() {
 
         {/* API error */}
         {error && (
-          <div role="alert" className="flex items-center gap-2 text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2.5">
+          <div role="alert" className="flex items-center gap-2 text-sm text-red-400 bg-red-500/15 border border-red-500/40 rounded-lg px-3 py-3">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             <span>{error}</span>
           </div>

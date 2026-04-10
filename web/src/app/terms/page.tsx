@@ -4,7 +4,8 @@ export const metadata: Metadata = { title: "Terms of Service — Scroll Down Spo
 
 export default function TermsPage() {
   return (
-    <div data-testid="page-terms" className="mx-auto max-w-2xl px-4 py-10 space-y-6">
+    <div data-testid="page-terms" className="mx-auto max-w-2xl px-4 py-10">
+      <div className="rounded-xl border border-neutral-800 bg-neutral-900/50 px-6 py-8 space-y-6">
       <h1 className="text-2xl font-bold text-neutral-100">Terms of Service</h1>
 
       <p className="text-sm text-neutral-400 leading-relaxed">
@@ -62,6 +63,7 @@ export default function TermsPage() {
       <p className="text-xs text-neutral-600 pt-4 border-t border-neutral-800">
         These terms may be updated as the product evolves. We are currently in beta.
       </p>
+      </div>
     </div>
   );
 }
