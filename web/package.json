@@ -22,7 +22,7 @@
     "test:audit:report": "npx playwright test --project=audit --reporter=json > ../docs/audit-results/test-results.json && ../scripts/generate-report.sh ../docs/audit-results ../docs/audit-results/reports/$(date +%Y-%m-%d).md"
   },
   "dependencies": {
-    "next": "16.2.2",
+    "next": "16.2.3",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zustand": "^5.0.12"
