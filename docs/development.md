@@ -31,8 +31,6 @@ See `.env.local.example` for local development defaults.
 | `npm start` | Start production server |
 | `npm run lint` | ESLint check |
 | `npx tsc --noEmit` | TypeScript type check |
-| `npm run test:audit` | Run audit test suite |
-| `npm run test:audit:report` | Audit tests + markdown report |
 
 ## Docker (Local)
 

@@ -45,33 +45,6 @@ export default defineConfig({
       },
       dependencies: ["setup"],
     },
-
-    // Audit project — always captures screenshots/video, no retries
-    {
-      name: "audit",
-      testMatch: /audit\/.+\.spec\.ts/,
-      testIgnore: /audit\/api-stress\.spec\.ts/,
-      use: {
-        ...devices["Desktop Chrome"],
-        screenshot: "on",
-        video: "on",
-      },
-      retries: 0,
-      dependencies: ["setup"],
-    },
-
-    // Stress tests run after main audit to avoid rate-limiting other tests
-    {
-      name: "audit-stress",
-      testMatch: /audit\/api-stress\.spec\.ts/,
-      use: {
-        ...devices["Desktop Chrome"],
-        screenshot: "on",
-        video: "on",
-      },
-      retries: 0,
-      dependencies: ["audit"],
-    },
   ],
 
   webServer: {

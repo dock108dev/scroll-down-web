@@ -2,7 +2,7 @@
 
 ## Overview
 
-End-to-end tests use Playwright with three browser projects: desktop Chromium, mobile-viewport Chromium (390x844, touch enabled), and an audit project (always-on screenshots/video). Tests run against a live dev server on `localhost:3001`.
+End-to-end tests use Playwright with two browser projects: desktop Chromium and mobile-viewport Chromium (390x844, touch enabled). Tests run against a live dev server on `localhost:3001`.
 
 ## Setup
 
@@ -30,10 +30,9 @@ npm run test:ui
 - **Global setup**: creates a test account via signup, saves auth state to `tests/.auth/user-state.json`
 - **Desktop project** (`chromium`): default viewport
 - **Mobile project** (`mobile`): 390x844 viewport, touch enabled, Chromium (not WebKit)
-- **Audit project** (`audit`): matches `audit/*.spec.ts`, always captures screenshots and video, no retries
 - **Base URL**: `http://localhost:3001`
 - **Timeout**: 30s per test
-- **Retries**: 2 in CI, 0 locally (audit project always 0)
+- **Retries**: 2 in CI, 0 locally
 
 ## Auth Pattern
 
@@ -68,9 +67,6 @@ npm test
 |--------|---------|
 | `waitForLoad(page)` | Waits for skeleton loaders to disappear |
 | `waitForGameData(page, timeout?)` | Waits for game rows to appear; returns `false` if API unavailable |
-| `waitForHealthy(page)` | Hits `/api/health`, asserts app is responding |
-| `screenshotPage(page, name)` | Full-page screenshot to `docs/audit-results/screenshots/` |
-| `collectPerformanceMetrics(page)` | Navigation Timing API metrics (TTFB, DCL, load, interactive) |
 | `measureMs(fn)` | Times an async operation in milliseconds |
 | `loginViaUI(page, email, password)` | Fills login form and submits |
 | `signupViaUI(page, email, password)` | Fills signup form and submits |
@@ -97,22 +93,6 @@ npm test
 | `tests/cache/` | LocalStorage staleness, tab visibility | Simulates visibility changes |
 | `tests/realtime/` | SSE endpoint connectivity | Verifies proxy responds |
 | `tests/settings/` | Theme, score reveal mode, odds format | Toggles settings and verifies |
-
-### Audit Suite
-
-The audit project (`tests/audit/`) runs separately with `npm run test:audit`. Always captures screenshots and video. No retries.
-
-| Test File | Purpose |
-|-----------|---------|
-| `crawl-all-pages.spec.ts` | Full-page screenshots, performance timing, console errors, broken images, overflow detection |
-| `api-validation.spec.ts` | Validates 15+ API endpoints for status, JSON shape, and response time |
-| `data-accuracy.spec.ts` | Cross-references API data with UI rendering (scores, team names, tournament names) |
-| `error-scenarios.spec.ts` | 404 pages, nonexistent IDs, network failures via route interception |
-| `performance-benchmarks.spec.ts` | LCP, CLS via PerformanceObserver, outputs JSON to `docs/audit-results/` |
-| `visual-regression.spec.ts` | Desktop + mobile screenshot comparison with 0.2% pixel diff tolerance |
-| `accessibility.spec.ts` | Alt text, accessible names, focus order |
-
-Audit results are written to `docs/audit-results/` (gitignored).
 
 ## Resilience Patterns
 
@@ -191,8 +171,6 @@ Components expose `data-testid` attributes for stable test selectors:
 
 The CI pipeline runs Playwright smoke tests (`@smoke`-tagged) on every push via the `playwright-smoke` job in `.github/workflows/ci.yml`. A separate daily workflow (`.github/workflows/e2e-daily.yml`) runs the full Playwright suite at 6 AM UTC. Both produce `playwright-report` artifacts.
 
-The agent audit workflow (`.github/workflows/agent-audit.yml`) runs the audit project weekly on Mondays and can be triggered manually via `workflow_dispatch`. It builds the app, runs audit tests, generates a markdown report, and files GitHub issues for failures.
-
 ## NPM Scripts
 
 | Command | Purpose |
@@ -201,5 +179,3 @@ The agent audit workflow (`.github/workflows/agent-audit.yml`) runs the audit pr
 | `npm run test:smoke` | Smoke tests only (`@smoke` tag) |
 | `npm run test:headed` | Tests in visible browser |
 | `npm run test:ui` | Playwright UI mode |
-| `npm run test:audit` | Audit project tests only |
-| `npm run test:audit:report` | Audit tests + JSON output + markdown report |

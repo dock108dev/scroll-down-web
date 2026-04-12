@@ -85,23 +85,8 @@ Every main-branch push produces two tags:
 ### Other Workflows
 
 - **E2E daily** (`.github/workflows/e2e-daily.yml`) — runs all Playwright tests daily at 6 AM UTC
-- **Agent audit** (`.github/workflows/agent-audit.yml`) — runs the audit project weekly on Mondays at 6 AM UTC (also `workflow_dispatch`). Builds the app, runs audit tests, generates a report, and files GitHub issues for failures.
 - **CodeQL** (`.github/workflows/codeql.yml`) — weekly security scanning (JavaScript/TypeScript)
 - **Dependabot** (`.github/dependabot.yml`) — weekly dependency update PRs
-
-## Audit Infrastructure
-
-The `scripts/` directory contains orchestration for continuous AI-driven auditing:
-
-| Script | Purpose |
-|--------|---------|
-| `scripts/agent-audit.sh` | Main orchestrator: deps check, health gate, run audit suite, generate report, file issues |
-| `scripts/generate-report.sh` | Reads JSON test results, produces markdown report |
-| `scripts/file-github-issue.sh` | Files GitHub issues via `gh` CLI with deduplication |
-
-Audit results are written to `docs/audit-results/` (gitignored). Reports are saved to `docs/audit-results/reports/{date}.md`.
-
-See [Audit Agent Guide](audit-agent.md) for running the audit suite continuously on a dedicated Mac.
 
 ## Local Development
 
