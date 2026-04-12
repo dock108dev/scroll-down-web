@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a **read-only frontend** — it displays sports data but does not scrape, ingest, or store it. All data comes from a single backend API (`sports-data-admin.dock108.ai`). The frontend handles caching, realtime updates, and user preferences locally.
+This is a **read-only frontend** — it displays sports data but does not scrape, ingest, or store it. All data comes from a single backend API (`sda.dock108.dev`). The frontend handles caching, realtime updates, and user preferences locally.
 
 ```
 Browser ──► Next.js App (port 3001) ──► Backend API
@@ -220,7 +220,7 @@ Configured in `next.config.ts` via the `headers()` export:
 | `Cache-Control` | `no-store` (API routes only) | Prevent caching of user-specific API responses |
 | `Strict-Transport-Security` | `max-age=63072000; includeSubDomains; preload` | Force HTTPS for 2 years |
 | `X-DNS-Prefetch-Control` | `off` | Prevent DNS prefetch leaking visited domains |
-| `Content-Security-Policy` | `default-src 'self'; script-src 'self' ... https://plausible.io; connect-src 'self' ... wss://sports-data-admin.dock108.ai; frame-ancestors 'none'` | Restrict script/connect sources, prevent framing |
+| `Content-Security-Policy` | `default-src 'self'; script-src 'self' ... https://plausible.io; connect-src 'self' ... wss://sda.dock108.dev; frame-ancestors 'none'` | Restrict script/connect sources, prevent framing |
 
 ### SEO & Discoverability
 

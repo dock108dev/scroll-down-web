@@ -12,7 +12,7 @@
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `SPORTS_API_INTERNAL_URL` | `https://sports-data-admin.dock108.ai` | Server-side backend URL. Use this in Docker to hit the backend via internal network instead of public DNS. |
+| `SPORTS_API_INTERNAL_URL` | `https://sda.dock108.dev` | Server-side backend URL. Use this in Docker to hit the backend via internal network instead of public DNS. |
 
 ### Build-time
 

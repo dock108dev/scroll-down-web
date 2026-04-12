@@ -18,7 +18,7 @@ npm run dev                         # http://localhost:3001
 | Variable | Required | Purpose |
 |---|---|---|
 | `SPORTS_DATA_API_KEY` | Yes | API authentication sent as `X-API-Key` header. Server-side only — never exposed to browser. |
-| `SPORTS_API_INTERNAL_URL` | No | Override backend URL for server-side fetches. Default: `https://sports-data-admin.dock108.ai` (hardcoded in `src/lib/config.ts`). |
+| `SPORTS_API_INTERNAL_URL` | No | Override backend URL for server-side fetches. Default: `https://sda.dock108.dev` (hardcoded in `src/lib/config.ts`). |
 
 See `.env.local.example` for local development defaults.
 
@@ -248,7 +248,7 @@ The API key never leaves the server. Client-side code only talks to local `/api/
 
 **API errors (500):**
 - Check `SPORTS_DATA_API_KEY` is set in `.env.local`
-- Check backend is reachable (default: `https://sports-data-admin.dock108.ai`, override with `SPORTS_API_INTERNAL_URL`)
+- Check backend is reachable (default: `https://sda.dock108.dev`, override with `SPORTS_API_INTERNAL_URL`)
 - Check browser Network tab for the failing `/api/*` request
 
 **Stale data after code changes:**

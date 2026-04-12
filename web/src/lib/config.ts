@@ -4,7 +4,7 @@
  * adjusted from a single file.
  */
 
-export const BACKEND_BASE_URL = "https://sports-data-admin.dock108.ai";
+export const BACKEND_BASE_URL = "https://sda.dock108.dev";
 
 export const CACHE = {
   GAMES_TTL_MS: 90_000,

@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob:",
               "font-src 'self'",
-              "connect-src 'self' https://plausible.io https://sports-data-admin.dock108.ai wss://sports-data-admin.dock108.ai",
+              "connect-src 'self' https://plausible.io https://sda.dock108.dev wss://sda.dock108.dev",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
