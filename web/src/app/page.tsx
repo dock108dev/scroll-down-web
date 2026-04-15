@@ -19,6 +19,7 @@ import { Spinner } from "@/components/shared/Spinner";
 import { StaleBanner } from "@/components/shared/StaleBanner";
 import { cn } from "@/lib/utils";
 import { initScrollTracking } from "@/lib/analytics";
+import { OnboardingFlow, isOnboardingCompleted } from "@/components/onboarding/OnboardingFlow";
 
 // ── Sorting helpers ────────────────────────────────────────
 
@@ -58,6 +59,14 @@ function deriveLeagues(games: GameCore[]): string[] {
 // ── Page component ─────────────────────────────────────────
 
 export default function HomePage() {
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
+  useEffect(() => {
+    setShowOnboarding(!isOnboardingCompleted());
+    setOnboardingChecked(true);
+  }, []);
+
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
   const { sections, allGames, loading, error, stale, staleAt, refetch } = useGamesList(
@@ -229,6 +238,12 @@ export default function HomePage() {
   }, []);
 
   const stickyTop = `calc(var(--header-h) + ${toolbarHeight}px)`;
+
+  if (!onboardingChecked) return null;
+
+  if (showOnboarding) {
+    return <OnboardingFlow onComplete={() => setShowOnboarding(false)} />;
+  }
 
   return (
     <div data-testid="page-home" className="mx-auto max-w-2xl">

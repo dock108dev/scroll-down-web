@@ -6,6 +6,7 @@ import { useAuth } from "@/stores/auth";
 import { cn } from "@/lib/utils";
 import { Section, Row } from "@/components/shared/FormPrimitives";
 import { ScoreHideBlacklistControls } from "./ScoreHideBlacklistControls";
+import { NotificationSettings } from "./NotificationSettings";
 
 const KNOWN_BOOKS = [
   "DraftKings",
@@ -169,41 +170,31 @@ export function SettingsContent() {
 
       {/* ─── Score Display ──────────────────────────────── */}
       <Section title="Score Display" collapsible defaultOpen={true} description="Control how and when scores are revealed on game cards.">
-        <Row label="Score visibility">
-          <DarkSelect
-            value={scoreRevealMode}
-            onChange={(v) =>
-              setScoreRevealMode(v as "always" | "onMarkRead" | "blacklist")
-            }
-            options={[
-              {
-                value: "onMarkRead",
-                label: "Hidden until reveal",
-              },
-              { value: "blacklist", label: "Selective hide (league or team)" },
-              { value: "always", label: "Always show scores" },
-            ]}
-          />
-        </Row>
-        {scoreRevealMode === "blacklist" && (
-          <ScoreHideBlacklistControls
-            token={token}
-            scoreHideLeagues={scoreHideLeagues}
-            scoreHideTeams={scoreHideTeams}
-            addScoreHideLeague={addScoreHideLeague}
-            removeScoreHideLeague={removeScoreHideLeague}
-            addScoreHideTeam={addScoreHideTeam}
-            removeScoreHideTeam={removeScoreHideTeam}
-          />
-        )}
-        {scoreRevealMode !== "blacklist" && (
-          <div className="px-4 pb-3 pt-2">
-            <p className="text-xs text-neutral-500 leading-relaxed">
-              Hidden until reveal keeps live and final scores hidden until you tap. Always show displays scores automatically.
+        <div className="px-4 py-3">
+          <p className="text-sm text-neutral-200 mb-3">Reveal Mode</p>
+          <RevealModeSelector value={scoreRevealMode} onChange={setScoreRevealMode} />
+        </div>
+        <ScoreHideBlacklistControls
+          token={token}
+          disabled={scoreRevealMode === "always"}
+          scoreHideLeagues={scoreHideLeagues}
+          scoreHideTeams={scoreHideTeams}
+          addScoreHideLeague={addScoreHideLeague}
+          removeScoreHideLeague={removeScoreHideLeague}
+          addScoreHideTeam={addScoreHideTeam}
+          removeScoreHideTeam={removeScoreHideTeam}
+        />
+        {scoreRevealMode !== "always" && (scoreHideLeagues.length > 0 || scoreHideTeams.length > 0) && (
+          <div className="px-4 pb-3 pt-1">
+            <p className="text-xs text-neutral-400">
+              Hiding scores for {scoreHideLeagues.length} league{scoreHideLeagues.length !== 1 ? "s" : ""}, {scoreHideTeams.length} team{scoreHideTeams.length !== 1 ? "s" : ""}
             </p>
           </div>
         )}
       </Section>
+
+      {/* ─── Notifications ──────────────────────────────── */}
+      <NotificationSettings />
 
       {/* ─── Odds ───────────────────────────────────────── */}
       <Section title="Odds" collapsible defaultOpen={true} description="Set your preferred sportsbook, odds format, and market filters for FairBet.">
@@ -402,6 +393,69 @@ function SegmentedControl({
           )}
         >
           {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+const REVEAL_MODES = [
+  {
+    value: "always" as const,
+    label: "Always",
+    desc: "Scores always visible — standard sports app mode",
+  },
+  {
+    value: "onMarkRead" as const,
+    label: "When I tap",
+    desc: "Default. Scores hidden until you tap to reveal each game",
+  },
+  {
+    value: "blacklist" as const,
+    label: "Hidden by default",
+    desc: "Scores visible by default, hidden only for your selected leagues/teams",
+  },
+];
+
+function RevealModeSelector({
+  value,
+  onChange,
+}: {
+  value: "always" | "onMarkRead" | "blacklist";
+  onChange: (v: "always" | "onMarkRead" | "blacklist") => void;
+}) {
+  return (
+    <div role="radiogroup" aria-label="Score reveal mode" className="space-y-2">
+      {REVEAL_MODES.map((mode) => (
+        <button
+          key={mode.value}
+          role="radio"
+          aria-checked={value === mode.value}
+          aria-label={mode.label}
+          onClick={() => onChange(mode.value)}
+          className={cn(
+            "flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+            value === mode.value
+              ? "bg-neutral-800 border border-neutral-600"
+              : "bg-neutral-900 border border-neutral-800 hover:border-neutral-700",
+          )}
+        >
+          <span
+            className={cn(
+              "mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border",
+              value === mode.value
+                ? "border-blue-400 bg-blue-400"
+                : "border-neutral-600",
+            )}
+          >
+            {value === mode.value && (
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+            )}
+          </span>
+          <div>
+            <span className="text-sm text-neutral-200">{mode.label}</span>
+            <p className="text-xs text-neutral-500 mt-0.5">{mode.desc}</p>
+          </div>
         </button>
       ))}
     </div>

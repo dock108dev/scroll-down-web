@@ -45,7 +45,7 @@ export function SocialSection({ posts, phase, outcomeRevealed }: SocialSectionPr
   const title = phase === "pregame" ? "Pregame Buzz" : "Reactions";
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+    <div data-testid="social-section" className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-xs font-semibold text-neutral-500 uppercase tracking-wide">
           {title}

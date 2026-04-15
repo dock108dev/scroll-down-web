@@ -2,22 +2,23 @@
 
 import { useState } from "react";
 import type { Game } from "@/lib/types";
-import type { GameCore } from "@/stores/game-data";
+import type { SafeGameCore } from "@/stores/game-data";
 import { isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
-import { useScoreDisplay } from "@/hooks/useScoreDisplay";
+import { useSpoilerGate } from "@/hooks/useSpoilerGate";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { SCORE_HIDE_LIMITS, useSettings } from "@/stores/settings";
-import { pickSnapshot } from "@/lib/score-display";
 import { cn, formatDate, formatTimeET, teamColorStyle } from "@/lib/utils";
+import { FreshnessBadge } from "@/components/shared/FreshnessBadge";
+import { useDataFreshness } from "@/hooks/useDataFreshness";
 
 interface GameHeaderProps {
-  game: Game | GameCore;
+  game: Game | SafeGameCore;
 }
 
 export function GameHeader({ game }: GameHeaderProps) {
-  const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
-  const display = useScoreDisplay(game.id);
+  const gate = useSpoilerGate(game.id);
+  const { isRevealed } = useReveal();
   const [showHideTeamPicker, setShowHideTeamPicker] = useState(false);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const setScoreRevealMode = useSettings((s) => s.setScoreRevealMode);
@@ -28,13 +29,16 @@ export function GameHeader({ game }: GameHeaderProps) {
   const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
   const togglePin = usePinnedGames((s) => s.togglePin);
 
+  const freshness = useDataFreshness(game);
+  const gameFinal = game.isFinal ?? false;
+
   const read = isRevealed(game.id);
   const pregame = isPregame(game.status, game);
 
-  const hasScoreData = game.homeScore != null && game.awayScore != null;
-  const showScore = display?.visible ?? false;
-  const hasScoreUpdate = display?.hasUpdate ?? false;
-  const statusCategory = display?.statusCategory ?? "other";
+  const showScore = gate?.revealed ?? false;
+  const hasScoreUpdate = gate?.hasUpdate ?? false;
+  const canToggle = gate?.canToggle ?? false;
+  const statusCategory = gate?.statusCategory ?? "other";
   const hiddenSet = new Set(scoreHideTeams.map((v) => v.trim().toLowerCase()));
   const awayAlreadyHidden =
     hiddenSet.has(game.awayTeam.trim().toLowerCase()) ||
@@ -47,16 +51,13 @@ export function GameHeader({ game }: GameHeaderProps) {
   const openHidePickerDisabled = !canHideAnyTeam || teamsAtLimit;
 
   const handleScoreToggle = () => {
-    if (!hasScoreData) return;
-    // Only use acceptUpdate when already revealed and there's a pending update.
-    // For first-time reveals, always use reveal() so the game is added to
-    // revealedIds (acceptUpdate only updates the snapshot).
+    if (!gate || !canToggle) return;
     if (read && hasScoreUpdate) {
-      acceptUpdate(game.id, pickSnapshot(game as GameCore));
+      gate.acceptUpdate();
       return;
     }
-    if (read) hide(game.id);
-    else reveal(game.id, pickSnapshot(game as GameCore));
+    if (read) gate.hide();
+    else gate.reveal();
   };
 
   const awayStyle = teamColorStyle(game.awayTeamColorLight, game.awayTeamColorDark);
@@ -106,8 +107,6 @@ export function GameHeader({ game }: GameHeaderProps) {
               <button
                 disabled={openHidePickerDisabled}
                 onClick={() => {
-                  // Team hide lists affect score display only in blacklist mode.
-                  // Switch mode automatically so this action has immediate effect.
                   if (scoreRevealMode !== "blacklist") {
                     setScoreRevealMode("blacklist");
                     setShowHideTeamPicker(true);
@@ -156,6 +155,7 @@ export function GameHeader({ game }: GameHeaderProps) {
             {statusCategory === "pregame" && (
               <span className="text-xs text-neutral-500 uppercase font-medium">Upcoming</span>
             )}
+            <FreshnessBadge staleness={freshness.staleness} ageLabel={freshness.ageLabel} isFinal={gameFinal} />
           </div>
         </div>
 
@@ -224,7 +224,7 @@ export function GameHeader({ game }: GameHeaderProps) {
             </div>
             {showScore ? (
               <div className="text-4xl font-extrabold tabular-nums mt-2">
-                {display?.awayScore}
+                {gate?.awayScore}
               </div>
             ) : (
               <div className="text-4xl font-extrabold tabular-nums mt-2 text-neutral-800">
@@ -238,7 +238,7 @@ export function GameHeader({ game }: GameHeaderProps) {
             onClick={handleScoreToggle}
             className={cn(
               "text-center shrink-0",
-              !pregame && hasScoreData && "cursor-pointer",
+              !pregame && canToggle && "cursor-pointer",
             )}
           >
             {showScore ? (
@@ -248,7 +248,7 @@ export function GameHeader({ game }: GameHeaderProps) {
                   <p className="text-xs text-amber-400 mt-1 font-medium hover:text-amber-300 transition-colors">
                     Update
                   </p>
-                ) : display?.canToggle ? (
+                ) : gate?.canToggle ? (
                   <p className="text-xs text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
                     Hide score
                   </p>
@@ -259,12 +259,12 @@ export function GameHeader({ game }: GameHeaderProps) {
                 <span
                   className={cn(
                     "text-2xl font-bold text-neutral-600",
-                    !pregame && hasScoreData && "hover:text-neutral-400 transition-colors",
+                    !pregame && canToggle && "hover:text-neutral-400 transition-colors",
                   )}
                 >
                   vs
                 </span>
-                {!pregame && hasScoreData && (
+                {!pregame && canToggle && (
                   <p className="text-xs text-neutral-700 mt-1">
                     Click to reveal
                   </p>
@@ -286,7 +286,7 @@ export function GameHeader({ game }: GameHeaderProps) {
             </div>
             {showScore ? (
               <div className="text-4xl font-extrabold tabular-nums mt-2">
-                {display?.homeScore}
+                {gate?.homeScore}
               </div>
             ) : (
               <div className="text-4xl font-extrabold tabular-nums mt-2 text-neutral-800">

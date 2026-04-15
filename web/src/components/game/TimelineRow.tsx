@@ -7,13 +7,12 @@ interface TimelineRowProps {
   awayTeamAbbr?: string;
   homeColor?: string;
   awayColor?: string;
+  scoresRevealed?: boolean;
 }
 
 // ─── Clean up common API description quirks ────────────────
 function cleanDescription(text: string): string {
-  // "Bucknell 's Spadone" → "Bucknell's Spadone"
   let cleaned = text.replace(/ 's\b/g, "'s");
-  // "Turnover by Team [shot clock violation]" → "Turnover by Team (shot clock violation)"
   cleaned = cleaned.replace(/\[([^\]]*)\]/g, "($1)");
   return cleaned;
 }
@@ -37,17 +36,11 @@ const BOLD_KEYWORDS = [
   "SACRIFICE",
 ];
 
-// Build a regex that matches any of the bold keywords (case-insensitive for
-// mixed-case terms like "makes") plus parenthetical content for de-emphasis.
 const STYLED_PATTERN = new RegExp(
   `(${BOLD_KEYWORDS.map((k) => k.replace(/\s+/g, "\\s+")).join("|")})|(\\([^)]*\\))`,
   "gi",
 );
 
-/**
- * Renders a play description with styled action keywords (bold) and
- * parenthetical/location info (de-emphasized).
- */
 function StyledDescription({
   text,
   tier,
@@ -60,20 +53,17 @@ function StyledDescription({
 
   for (const match of text.matchAll(STYLED_PATTERN)) {
     const idx = match.index!;
-    // Push plain text before this match
     if (idx > lastIndex) {
       parts.push(text.slice(lastIndex, idx));
     }
 
     if (match[1]) {
-      // Bold keyword
       parts.push(
         <span key={idx} className="font-semibold">
           {match[0]}
         </span>,
       );
     } else if (match[2]) {
-      // Parenthetical content - de-emphasized
       parts.push(
         <span key={idx} className="text-neutral-500">
           {match[0]}
@@ -84,7 +74,6 @@ function StyledDescription({
     lastIndex = idx + match[0].length;
   }
 
-  // Push remaining text
   if (lastIndex < text.length) {
     parts.push(text.slice(lastIndex));
   }
@@ -103,9 +92,6 @@ function StyledDescription({
   );
 }
 
-/**
- * Returns black or white text depending on background luminance.
- */
 function textColorForBg(hex: string): string {
   const n = parseInt(hex.replace("#", "").slice(0, 6), 16);
   const r = (n >> 16) & 255;
@@ -116,10 +102,6 @@ function textColorForBg(hex: string): string {
     : "#ffffff";
 }
 
-/**
- * Returns the accent color for a play based on its team abbreviation.
- * Falls back to a default neutral accent.
- */
 function getAccentColor(
   teamAbbr: string | undefined,
   homeTeamAbbr: string | undefined,
@@ -127,17 +109,12 @@ function getAccentColor(
   homeColor: string | undefined,
   awayColor: string | undefined,
 ): string {
-  if (!teamAbbr) return "#525252"; // neutral-600
+  if (!teamAbbr) return "#525252";
   if (teamAbbr === homeTeamAbbr && homeColor) return homeColor;
   if (teamAbbr === awayTeamAbbr && awayColor) return awayColor;
   return "#525252";
 }
 
-/**
- * Splits a play description into a primary action line and optional stats.
- * E.g. "J. Brown 25' 3PT (5 PTS) (Pritchard 4 AST)" →
- *   { primary: "J. Brown 25' 3PT", stats: "5 PTS · Pritchard 4 AST" }
- */
 function splitDescription(text: string): { primary: string; stats: string | null } {
   const i = text.indexOf("(");
   if (i === -1) return { primary: text.trim(), stats: null };
@@ -146,7 +123,7 @@ function splitDescription(text: string): { primary: string; stats: string | null
   for (const m of text.slice(i).matchAll(/\(([^)]*)\)/g)) {
     if (m[1].trim()) groups.push(m[1].trim());
   }
-  return { primary, stats: groups.length ? groups.join(" · ") : null };
+  return { primary, stats: groups.length ? groups.join(" \u00B7 ") : null };
 }
 
 // ─── Main component ─────────────────────────────────────────
@@ -157,6 +134,7 @@ export function TimelineRow({
   awayTeamAbbr,
   homeColor,
   awayColor,
+  scoresRevealed = true,
 }: TimelineRowProps) {
   const tier = play.tier ?? 3;
   const accentColor = getAccentColor(
@@ -167,6 +145,7 @@ export function TimelineRow({
     awayColor,
   );
   const scoreChanged = tier === 1 && (play.scoreChanged ?? false);
+  const showPlayScore = scoresRevealed && play.awayScore != null && play.homeScore != null;
 
   // ── Tier 1: Primary / high-impact ──
   if (tier === 1) {
@@ -175,12 +154,10 @@ export function TimelineRow({
         className="flex items-start gap-3 py-2 px-3 rounded-md bg-neutral-800/40"
         style={{ borderLeft: `4px solid ${accentColor}` }}
       >
-        {/* Time label */}
         <span className="shrink-0 w-12 text-right text-xs text-neutral-400 tabular-nums pt-0.5">
           {play.timeLabel ?? play.gameClock ?? ""}
         </span>
 
-        {/* Team abbreviation badge */}
         {play.teamAbbreviation && (
           <span
             className="shrink-0 inline-flex items-center justify-center rounded px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide"
@@ -190,7 +167,6 @@ export function TimelineRow({
           </span>
         )}
 
-        {/* Description — two-line: action + stats */}
         <div className="flex-1 min-w-0">
           {(() => {
             const { primary, stats } = splitDescription(cleanDescription(play.description ?? ""));
@@ -205,8 +181,7 @@ export function TimelineRow({
           })()}
         </div>
 
-        {/* Score display */}
-        {play.awayScore != null && play.homeScore != null && (
+        {showPlayScore && (
           <span className="shrink-0 text-sm font-bold tabular-nums flex items-center gap-0.5">
             <span style={{ color: awayColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>
               {play.awayScore}
@@ -224,24 +199,21 @@ export function TimelineRow({
     );
   }
 
-  // ── Tier 2: Secondary / contextual — no border, no colored badge, no time ──
+  // ── Tier 2: Secondary / contextual ──
   if (tier === 2) {
     return (
       <div className="flex items-start gap-3 py-1.5 px-3 rounded">
-        {/* Plain team abbreviation (no colored badge) */}
         {play.teamAbbreviation && (
           <span className="shrink-0 text-xs font-medium uppercase text-neutral-500">
             {play.teamAbbreviation}
           </span>
         )}
 
-        {/* Description */}
         <div className="flex-1 min-w-0">
           <StyledDescription text={cleanDescription(play.description ?? "")} tier={2} />
         </div>
 
-        {/* Score (muted) */}
-        {play.awayScore != null && play.homeScore != null && (
+        {showPlayScore && (
           <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
             {play.awayScore}-{play.homeScore}
           </span>
@@ -250,13 +222,10 @@ export function TimelineRow({
     );
   }
 
-  // ── Tier 3: Tertiary / low-signal — no time label ──
+  // ── Tier 3: Tertiary / low-signal ──
   return (
     <div className="flex items-start gap-2 py-1 px-2 ml-8">
-      {/* Dot indicator */}
       <span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-neutral-600" />
-
-      {/* Description */}
       <div className="flex-1 min-w-0">
         <StyledDescription text={cleanDescription(play.description ?? "")} tier={3} />
       </div>

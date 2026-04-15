@@ -11,6 +11,7 @@ import { Footer } from "@/components/layout/Footer";
 import { BetaBanner } from "@/components/layout/BetaBanner";
 import { DegradedBanner } from "@/components/layout/DegradedBanner";
 import { AnalyticsProvider } from "@/components/layout/AnalyticsProvider";
+import { EntitlementProvider } from "@/entitlements/EntitlementProvider";
 
 const SITE_URL = "https://scrolldownsports.dev";
 
@@ -96,6 +97,7 @@ export default function RootLayout({
           <AuthProvider />
           <RealtimeProvider />
           <AnalyticsProvider />
+          <EntitlementProvider>
           <div className="min-h-screen flex flex-col">
             <BetaBanner />
             <DegradedBanner />
@@ -109,6 +111,7 @@ export default function RootLayout({
             <BottomTabs />
             <SettingsDrawer />
           </div>
+          </EntitlementProvider>
         </ThemeProvider>
       </body>
     </html>

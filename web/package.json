@@ -10,7 +10,8 @@
     "test": "npx playwright test",
     "test:smoke": "npx playwright test --grep @smoke",
     "test:ui": "npx playwright test --ui",
-    "test:headed": "npx playwright test --headed"
+    "test:headed": "npx playwright test --headed",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "next": "16.2.3",
@@ -26,7 +27,9 @@
     "@types/react-dom": "^19",
     "eslint": "~9.28",
     "eslint-config-next": "16.2.3",
+    "jsdom": "^29.0.2",
     "tailwindcss": "^4",
-    "typescript": "6.0.2"
+    "typescript": "6.0.2",
+    "vitest": "^4.1.4"
   }
 }

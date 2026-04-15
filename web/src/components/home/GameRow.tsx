@@ -2,21 +2,16 @@
 
 import { memo, useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { GameCore } from "@/stores/game-data";
+import type { SafeGameCore } from "@/stores/game-data";
 import { isLive, isFinal, isPregame } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
-import { useScoreDisplay } from "@/hooks/useScoreDisplay";
+import { useSpoilerGate } from "@/hooks/useSpoilerGate";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { cn, cardDisplayName, formatTimeET, resolveTeamColor } from "@/lib/utils";
 import { LeagueBadge } from "@/components/fairbet/LeagueBadge";
+import { FreshnessBadge } from "@/components/shared/FreshnessBadge";
+import { useDataFreshness } from "@/hooks/useDataFreshness";
 import { APP_TIMEZONE } from "@/lib/date-utils";
-import { pickSnapshot } from "@/lib/score-display";
-
-interface GameRowProps {
-  game: GameCore;
-  showPin?: boolean;
-  variant?: "home" | "history";
-}
 
 
 function formatHistoryDateTime(dateStr: string): string {
@@ -34,41 +29,48 @@ function formatHistoryDateTime(dateStr: string): string {
   return `${monthDay} · ${time} ET`;
 }
 
+interface GameRowProps {
+  game: SafeGameCore;
+  showPin?: boolean;
+  variant?: "home" | "history";
+}
+
 export const GameRow = memo(function GameRow({ game, showPin = true, variant = "home" }: GameRowProps) {
   const isHistory = variant === "history";
   const router = useRouter();
-  const { reveal, acceptUpdate, isRevealed } = useReveal();
-  const display = useScoreDisplay(game.id);
+  const { isRevealed } = useReveal();
+  const gate = useSpoilerGate(game.id);
 
   const pinned = usePinnedGames((s) => s.isPinned)(game.id);
   const pinnedCount = usePinnedGames((s) => s.pinnedIds.size);
   const togglePin = usePinnedGames((s) => s.togglePin);
+
+  const freshness = useDataFreshness(game);
 
   const read = isRevealed(game.id);
   const final = isFinal(game.status, game);
   const live = isLive(game.status, game);
   const pregame = isPregame(game.status, game);
 
-  const hasScoreData = game.homeScore != null && game.awayScore != null;
-  const canToggle = display?.canToggle ?? false;
-  const scoresVisible = display?.visible ?? false;
-  const hasNewData = display?.hasUpdate ?? false;
+  const canToggle = gate?.canToggle ?? false;
+  const scoresVisible = gate?.revealed ?? false;
+  const hasNewData = gate?.hasUpdate ?? false;
 
   // ── Score flash animation ─────────────────────────────────────
-  const prevAwayRef = useRef(display?.awayScore);
-  const prevHomeRef = useRef(display?.homeScore);
+  const prevAwayRef = useRef(gate?.awayScore);
+  const prevHomeRef = useRef(gate?.homeScore);
   const [scoreFlash, setScoreFlash] = useState(false);
 
   useEffect(() => {
     const pA = prevAwayRef.current, pH = prevHomeRef.current;
-    prevAwayRef.current = display?.awayScore;
-    prevHomeRef.current = display?.homeScore;
+    prevAwayRef.current = gate?.awayScore;
+    prevHomeRef.current = gate?.homeScore;
     if (scoresVisible && pA != null && pH != null &&
-        display?.awayScore != null && display?.homeScore != null &&
-        (pA !== display.awayScore || pH !== display.homeScore)) {
+        gate?.awayScore != null && gate?.homeScore != null &&
+        (pA !== gate.awayScore || pH !== gate.homeScore)) {
       setScoreFlash(true);
     }
-  }, [display?.awayScore, display?.homeScore, scoresVisible]);
+  }, [gate?.awayScore, gate?.homeScore, scoresVisible]);
 
   useEffect(() => {
     if (scoreFlash) {
@@ -100,14 +102,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
 
   const handleReveal = (e: React.MouseEvent) => {
     e.stopPropagation();
-    // Always use reveal() for first-time reveals so the game is added to
-    // revealedIds.  acceptUpdate() only updates the snapshot without marking
-    // the game as revealed, which caused the button to appear broken for
-    // live games (especially MLB where scores start at 0-0).
+    if (!gate) return;
     if (read && hasNewData) {
-      acceptUpdate(game.id, pickSnapshot(game));
+      gate.acceptUpdate();
     } else {
-      reveal(game.id, pickSnapshot(game));
+      gate.reveal();
     }
   };
 
@@ -116,12 +115,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     if (!live) return "";
     const showClock = scoresVisible;
     const snapshot = useReveal.getState().getSnapshot(game.id);
-    if (display?.frozen && snapshot?.periodLabel) {
+    if (gate?.frozen && snapshot?.periodLabel) {
       const snapClock = snapshot.clock && snapshot.clock !== snapshot.periodLabel ? snapshot.clock : "";
       return `${snapshot.periodLabel}${snapClock ? ` ${snapClock}` : ""}`;
     }
     if (!showClock) return "";
-    // Deduplicate: MLB puts the inning label in both fields
     const clock = game.gameClock && game.gameClock !== game.currentPeriodLabel ? game.gameClock : "";
     return (game.currentPeriodLabel || clock)
       ? `${game.currentPeriodLabel ?? ""}${clock ? ` ${clock}` : ""}`
@@ -131,7 +129,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   // ── Status indicator ──────────────────────────────────────────
 
   const statusContent = (() => {
-    // History variant: always show "Final", never show update indicators
     if (isHistory) {
       return <span className="text-neutral-600 text-xs">Final</span>;
     }
@@ -140,7 +137,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       if (hasNewData) {
         return (
           <button
-            onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
+            onClick={(e) => { e.stopPropagation(); gate?.acceptUpdate(); }}
             className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
             <span className="relative flex h-1.5 w-1.5">
@@ -167,7 +164,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       if (hasNewData) {
         return (
           <button
-            onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
+            onClick={(e) => { e.stopPropagation(); gate?.acceptUpdate(); }}
             className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
             <span className="relative flex h-1.5 w-1.5">
@@ -191,11 +188,9 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   // ── Score zone ────────────────────────────────────────────────
 
   const scoreZone = (() => {
-    // Pregame: nothing. Also hide if no score data anywhere (core or display snapshot).
-    const hasDisplayScores = display?.homeScore != null && display?.awayScore != null;
-    if (pregame || (!hasScoreData && !hasDisplayScores)) return null;
+    const hasGateScores = gate?.homeScore != null && gate?.awayScore != null;
+    if (pregame || !hasGateScores && !canToggle) return null;
 
-    // Hide mode + unrevealed: reveal button
     if (canToggle && !scoresVisible) {
       return (
         <button
@@ -214,16 +209,12 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       );
     }
 
-    // Scores visible (normal mode or revealed)
-    // Live games: clicking score refreshes it (or no-op if unchanged), not navigate
     if (live) {
       return (
         <button
           onClick={(e) => {
             e.stopPropagation();
-            if (hasNewData) {
-              acceptUpdate(game.id, pickSnapshot(game));
-            }
+            if (hasNewData) gate?.acceptUpdate();
           }}
           className={cn(
             "shrink-0 pl-3 min-w-[96px] min-h-[44px] flex items-center justify-end text-right gap-2",
@@ -231,7 +222,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
           )}
         >
           {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
-          <span className="text-lg font-bold tabular-nums text-neutral-200">{display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}</span>
+          <span className="text-lg font-bold tabular-nums text-neutral-200">{gate?.awayScore} <span className="text-neutral-600">&ndash;</span> {gate?.homeScore}</span>
         </button>
       );
     }
@@ -241,7 +232,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
         "shrink-0 text-lg font-bold tabular-nums text-neutral-200 pl-3 text-right min-w-[96px]",
         scoreFlash && "score-flash",
       )}>
-        {display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}
+        {gate?.awayScore} <span className="text-neutral-600">&ndash;</span> {gate?.homeScore}
       </span>
     );
   })();
@@ -282,6 +273,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
           )}
         </span>
         {statusContent}
+        <FreshnessBadge staleness={freshness.staleness} ageLabel={freshness.ageLabel} isFinal={final} />
       </div>
 
       {/* Center: matchup — abbreviations on small screens, display names on sm+ */}

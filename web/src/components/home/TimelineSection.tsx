@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import type { GameCore } from "@/stores/game-data";
+import type { GameCore, SafeGameCore } from "@/stores/game-data";
 import { useSettings } from "@/stores/settings";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { GameRow } from "./GameRow";

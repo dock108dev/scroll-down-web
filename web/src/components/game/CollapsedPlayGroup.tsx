@@ -12,12 +12,9 @@ interface CollapsedPlayGroupProps {
   awayTeamAbbr?: string;
   homeColor?: string;
   awayColor?: string;
+  scoresRevealed?: boolean;
 }
 
-/**
- * Generates a client-side summary label by counting play types.
- * E.g. "2 missed shots, 1 rebound, 1 other"
- */
 function generateSummary(plays: PlayEntry[]): string {
   const counts: Record<string, number> = {};
 
@@ -89,7 +86,7 @@ function generateSummary(plays: PlayEntry[]): string {
     parts.push(`${count} ${plural}`);
   }
 
-  return parts.join(" · ") || `${plays.length} plays`;
+  return parts.join(" \u00B7 ") || `${plays.length} plays`;
 }
 
 export function CollapsedPlayGroup({
@@ -99,6 +96,7 @@ export function CollapsedPlayGroup({
   awayTeamAbbr,
   homeColor,
   awayColor,
+  scoresRevealed,
 }: CollapsedPlayGroupProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -113,7 +111,6 @@ export function CollapsedPlayGroup({
           "hover:bg-neutral-800/30 transition-colors group",
         )}
       >
-        {/* Chevron indicator */}
         <span
           className={cn(
             "text-[10px] text-neutral-600 transition-transform duration-150",
@@ -123,25 +120,21 @@ export function CollapsedPlayGroup({
           {"\u25B6"}
         </span>
 
-        {/* Dot cluster indicator */}
         <span className="flex items-center gap-0.5 shrink-0">
           <span className="w-1 h-1 rounded-full bg-neutral-600" />
           <span className="w-1 h-1 rounded-full bg-neutral-600" />
           <span className="w-1 h-1 rounded-full bg-neutral-600" />
         </span>
 
-        {/* Summary text */}
         <span className="text-xs text-neutral-500 group-hover:text-neutral-400 transition-colors">
           {label}
         </span>
 
-        {/* Play count badge */}
         <span className="ml-auto text-[10px] text-neutral-600 tabular-nums">
           {plays.length}
         </span>
       </button>
 
-      {/* Expanded individual plays */}
       <div
         className={cn(
           "grid transition-[grid-template-rows] duration-200",
@@ -158,6 +151,7 @@ export function CollapsedPlayGroup({
                 awayTeamAbbr={awayTeamAbbr}
                 homeColor={homeColor}
                 awayColor={awayColor}
+                scoresRevealed={scoresRevealed}
               />
             ))}
           </div>

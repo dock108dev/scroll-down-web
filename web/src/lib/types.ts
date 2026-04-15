@@ -1,14 +1,40 @@
 // ─── Enums ──────────────────────────────────────────────
 
+export type {
+  GameState,
+  GameStateUIConfig,
+} from "./game-state";
+
+export {
+  GAME_STATES,
+  GAME_STATE_UI,
+  isGameState,
+  isLive as isLiveState,
+  isFinal as isFinalState,
+  isScheduled as isScheduledState,
+  isPregame as isPregameState,
+  isDelayed as isDelayedState,
+  isSuspended as isSuspendedState,
+  isPostponed as isPostponedState,
+  isCancelled as isCancelledState,
+  isTerminal,
+  isActive as isActiveState,
+  isPending as isPendingState,
+  shouldShowScore,
+  toCanonicalState,
+} from "./game-state";
+
+import type { GameState } from "./game-state";
+
+/**
+ * @deprecated Use GameState from game-state.ts instead.
+ * Kept for backward compatibility during migration.
+ */
 export type GameStatus =
-  | "scheduled"
-  | "pregame"
+  | GameState
   | "in_progress"
-  | "live"
   | "completed"
-  | "final"
   | "archived"
-  | "postponed"
   | "canceled";
 
 export type MarketType =
@@ -40,6 +66,8 @@ export type BlockRole =
   | "decision_point"
   | "resolution"
   | "unknown";
+
+export type DataStalenessState = "fresh" | "stale" | "very_stale";
 
 // ─── Game List / Summary ────────────────────────────────
 // Admin API returns camelCase
@@ -97,6 +125,9 @@ export interface GameSummary {
   currentPeriodLabel?: string;
   dateSection?: string;
   liveSnapshot?: { periodLabel?: string; timeLabel?: string; homeScore?: number; awayScore?: number; gameClock?: string } | null;
+  dataUpdatedAt?: string;
+  dataSourceDelaySeconds?: number;
+  dataStalenessState?: DataStalenessState;
 }
 
 // ─── Game Detail ────────────────────────────────────────
@@ -107,6 +138,7 @@ export interface GameDetailResponse {
   playerStats: PlayerStat[];
   odds: OddsEntry[];
   socialPosts: SocialPostEntry[];
+  socialEmbedsEnabled?: boolean;
   plays: PlayEntry[];
   derivedMetrics: Record<string, unknown>;
   rawPayloads: Record<string, unknown>;
@@ -167,6 +199,9 @@ export interface Game {
   currentPeriodLabel?: string;
   dateSection?: string;
   liveSnapshot?: { periodLabel?: string; timeLabel?: string; homeScore?: number; awayScore?: number; gameClock?: string } | null;
+  dataUpdatedAt?: string;
+  dataSourceDelaySeconds?: number;
+  dataStalenessState?: DataStalenessState;
 }
 
 // ─── Stats ──────────────────────────────────────────────
@@ -630,25 +665,28 @@ export interface FairbetLiveResponse {
 
 // ─── Helpers ────────────────────────────────────────────
 
-export const TERMINAL_STATUSES: GameStatus[] = ["final", "completed", "archived", "postponed", "canceled"];
+import { toCanonicalState, isTerminal as _isTerminal, isPending as _isPending } from "./game-state";
+
+export const TERMINAL_STATUSES: GameStatus[] = ["final", "completed", "archived", "postponed", "canceled", "cancelled"];
 export const PREGAME_STATUSES: GameStatus[] = ["pregame", "scheduled"];
 
 export function isLive(status: GameStatus, game?: { isLive?: boolean }): boolean {
-  // Status is authoritative — a terminal or pregame status is never "live",
-  // even if a stale boolean override says otherwise.
-  if (TERMINAL_STATUSES.includes(status) || PREGAME_STATUSES.includes(status)) return false;
+  const canonical = toCanonicalState(status);
+  if (_isTerminal(canonical) || _isPending(canonical)) return false;
   if (game?.isLive !== undefined) return game.isLive;
-  return status === "live" || status === "in_progress";
+  return canonical === "live";
 }
 
 export function isFinal(status: GameStatus, game?: { isFinal?: boolean }): boolean {
-  if (TERMINAL_STATUSES.includes(status)) return true;
+  const canonical = toCanonicalState(status);
+  if (_isTerminal(canonical)) return true;
   if (game?.isFinal !== undefined) return game.isFinal;
   return false;
 }
 
 export function isPregame(status: GameStatus, game?: { isPregame?: boolean }): boolean {
-  if (PREGAME_STATUSES.includes(status)) return true;
+  const canonical = toCanonicalState(status);
+  if (_isPending(canonical)) return true;
   if (game?.isPregame !== undefined) return game.isPregame;
   return false;
 }

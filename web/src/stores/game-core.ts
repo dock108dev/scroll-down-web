@@ -46,6 +46,9 @@ export function coreFromSummary(g: GameSummary): GameCore {
     readEligible: g.readEligible,
     dateSection: g.dateSection,
     liveSnapshot: g.liveSnapshot,
+    dataUpdatedAt: g.dataUpdatedAt,
+    dataSourceDelaySeconds: g.dataSourceDelaySeconds,
+    dataStalenessState: g.dataStalenessState,
   };
 }
 
@@ -104,5 +107,8 @@ export function coreFromGame(
     lastOddsAt: g.lastOddsAt,
     homeTeamXHandle: g.homeTeamXHandle,
     awayTeamXHandle: g.awayTeamXHandle,
+    dataUpdatedAt: g.dataUpdatedAt,
+    dataSourceDelaySeconds: g.dataSourceDelaySeconds,
+    dataStalenessState: g.dataStalenessState,
   };
 }

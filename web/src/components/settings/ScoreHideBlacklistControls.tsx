@@ -6,6 +6,7 @@ import { useGameData } from "@/stores/game-data";
 
 interface ScoreHideBlacklistControlsProps {
   token: string | null;
+  disabled?: boolean;
   scoreHideLeagues: string[];
   scoreHideTeams: string[];
   addScoreHideLeague: (league: string) => void;
@@ -20,6 +21,7 @@ interface ScoreHideBlacklistControlsProps {
  */
 export function ScoreHideBlacklistControls({
   token,
+  disabled = false,
   scoreHideLeagues,
   scoreHideTeams,
   addScoreHideLeague,
@@ -52,96 +54,111 @@ export function ScoreHideBlacklistControls({
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [gameEntries]);
 
+  const filteredTeams = useMemo(() => {
+    if (!teamInput.trim()) return availableTeams;
+    const q = teamInput.toLowerCase();
+    return availableTeams.filter((t) => t.toLowerCase().includes(q));
+  }, [availableTeams, teamInput]);
+
   return (
-    <div className="px-4 pb-3 pt-2 space-y-3">
-      <p className="text-xs text-neutral-500 leading-relaxed">
-        Games in your hidden list stay hidden until you reveal. Everything else stays live.
-      </p>
-      {!token && (
-        <p className="text-xs text-neutral-600 leading-relaxed">
-          Sign in to sync this list across devices. You can still use it on this device now.
+    <fieldset disabled={disabled} className={disabled ? "opacity-50" : ""}>
+      <div className="px-4 pb-3 pt-2 space-y-3">
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Games in your hidden list stay hidden until you reveal. Everything else stays live.
         </p>
-      )}
+        {!token && !disabled && (
+          <p className="text-xs text-neutral-600 leading-relaxed">
+            Sign in to sync this list across devices. You can still use it on this device now.
+          </p>
+        )}
 
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-neutral-400">
-          Hidden leagues ({scoreHideLeagues.length}/{SCORE_HIDE_LIMITS.LEAGUES})
-        </p>
-        <div className="flex gap-2">
-          <input
-            value={leagueInput}
-            onChange={(e) => setLeagueInput(e.target.value)}
-            placeholder="Add league code (NBA)"
-            className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-50"
-          />
-          <button
-            onClick={() => {
-              if (!leagueInput.trim()) return;
-              addScoreHideLeague(leagueInput);
-              setLeagueInput("");
-            }}
-            disabled={leaguesAtLimit}
-            className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Add
-          </button>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-neutral-400">
+            Hidden leagues ({scoreHideLeagues.length}/{SCORE_HIDE_LIMITS.LEAGUES})
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={leagueInput}
+              onChange={(e) => setLeagueInput(e.target.value)}
+              placeholder="Add league code (NBA)"
+              aria-label="Add league code"
+              className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-50"
+            />
+            <button
+              onClick={() => {
+                if (!leagueInput.trim()) return;
+                addScoreHideLeague(leagueInput);
+                setLeagueInput("");
+              }}
+              disabled={leaguesAtLimit || disabled}
+              className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add
+            </button>
+          </div>
+          {leaguesAtLimit && (
+            <p className="text-xs text-red-400" role="alert">Maximum 20 leagues</p>
+          )}
+          <TagList items={scoreHideLeagues} onRemove={removeScoreHideLeague} disabled={disabled} />
+          {!leaguesAtLimit && !disabled && (
+            <QuickPickList
+              items={availableLeagues.filter((l) => !scoreHideLeagues.includes(l)).slice(0, 12)}
+              onPick={addScoreHideLeague}
+            />
+          )}
         </div>
-        {leaguesAtLimit && (
-          <p className="text-xs text-neutral-600">League limit reached.</p>
-        )}
-        <TagList items={scoreHideLeagues} onRemove={removeScoreHideLeague} />
-        {!leaguesAtLimit && (
-          <QuickPickList
-            items={availableLeagues.filter((l) => !scoreHideLeagues.includes(l)).slice(0, 12)}
-            onPick={addScoreHideLeague}
-          />
-        )}
-      </div>
 
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-neutral-400">
-          Hidden teams ({scoreHideTeams.length}/{SCORE_HIDE_LIMITS.TEAMS})
-        </p>
-        <div className="flex gap-2">
-          <input
-            value={teamInput}
-            onChange={(e) => setTeamInput(e.target.value)}
-            placeholder="Add team name or abbreviation"
-            className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-50"
-          />
-          <button
-            onClick={() => {
-              if (!teamInput.trim()) return;
-              addScoreHideTeam(teamInput);
-              setTeamInput("");
-            }}
-            disabled={teamsAtLimit}
-            className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Add
-          </button>
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-neutral-400">
+            Hidden teams ({scoreHideTeams.length}/{SCORE_HIDE_LIMITS.TEAMS})
+          </p>
+          <div className="flex gap-2">
+            <input
+              value={teamInput}
+              onChange={(e) => setTeamInput(e.target.value)}
+              placeholder="Search team name or abbreviation"
+              aria-label="Search teams"
+              className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-50"
+            />
+            <button
+              onClick={() => {
+                if (!teamInput.trim()) return;
+                addScoreHideTeam(teamInput);
+                setTeamInput("");
+              }}
+              disabled={teamsAtLimit || disabled}
+              className="px-3 py-1.5 rounded-lg bg-neutral-700 text-sm text-neutral-100 hover:bg-neutral-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Add
+            </button>
+          </div>
+          {teamsAtLimit && (
+            <p className="text-xs text-red-400" role="alert">Maximum 100 teams</p>
+          )}
+          <TagList items={scoreHideTeams} onRemove={removeScoreHideTeam} disabled={disabled} />
+          {!teamsAtLimit && !disabled && (
+            <QuickPickList
+              items={filteredTeams.filter((t) => !scoreHideTeams.some((x) => x.toLowerCase() === t.toLowerCase())).slice(0, 16)}
+              onPick={(team) => {
+                addScoreHideTeam(team);
+                setTeamInput("");
+              }}
+            />
+          )}
         </div>
-        {teamsAtLimit && (
-          <p className="text-xs text-neutral-600">Team limit reached.</p>
-        )}
-        <TagList items={scoreHideTeams} onRemove={removeScoreHideTeam} />
-        {!teamsAtLimit && (
-          <QuickPickList
-            items={availableTeams.filter((t) => !scoreHideTeams.some((x) => x.toLowerCase() === t.toLowerCase())).slice(0, 16)}
-            onPick={addScoreHideTeam}
-          />
-        )}
       </div>
-    </div>
+    </fieldset>
   );
 }
 
 function TagList({
   items,
   onRemove,
+  disabled = false,
 }: {
   items: string[];
   onRemove: (value: string) => void;
+  disabled?: boolean;
 }) {
   if (items.length === 0) {
     return <p className="text-xs text-neutral-600">No items added yet.</p>;
@@ -152,11 +169,12 @@ function TagList({
         <button
           key={item}
           onClick={() => onRemove(item)}
-          className="inline-flex items-center gap-1 rounded-full bg-neutral-800 border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-700 transition-colors"
-          title="Remove"
+          disabled={disabled}
+          aria-label={`Remove ${item}`}
+          className="inline-flex items-center gap-1 rounded-full bg-neutral-800 border border-neutral-700 px-2.5 py-1 text-xs text-neutral-300 hover:bg-neutral-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {item}
-          <span className="text-neutral-500">x</span>
+          <span className="text-neutral-500" aria-hidden="true">&times;</span>
         </button>
       ))}
     </div>

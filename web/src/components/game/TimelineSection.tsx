@@ -6,6 +6,7 @@ import { TimelineRow } from "./TimelineRow";
 import { CollapsedPlayGroup } from "./CollapsedPlayGroup";
 import { useSettings } from "@/stores/settings";
 import { useSectionLayout } from "@/stores/section-layout";
+import { useSpoilerGate } from "@/hooks/useSpoilerGate";
 import { cn } from "@/lib/utils";
 
 // ─── Tier filter config ─────────────────────────────────────
@@ -27,18 +28,12 @@ interface TimelineSectionProps {
   awayColor?: string;
 }
 
-/** A renderable item inside a period. */
 type PeriodItem =
   | { kind: "play"; play: PlayEntry }
   | { kind: "tier3-group"; plays: PlayEntry[] };
 
 // ─── Helpers ────────────────────────────────────────────────
 
-/**
- * Content-based dedup: the backend sometimes returns the same play
- * event under different playIndex values (e.g. from overlapping
- * scrape runs). Key on periodLabel + gameClock + description.
- */
 function dedupePlays(plays: PlayEntry[]): PlayEntry[] {
   const seen = new Set<string>();
   const result: PlayEntry[] = [];
@@ -52,10 +47,6 @@ function dedupePlays(plays: PlayEntry[]): PlayEntry[] {
   return result;
 }
 
-/**
- * Groups plays by periodLabel, deduplicates, and sorts each period
- * chronologically by total score ascending (scores only increase).
- */
 function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
   const unique = dedupePlays(plays);
   const map = new Map<string, PlayEntry[]>();
@@ -68,7 +59,6 @@ function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
       map.set(key, [play]);
     }
   }
-  // Sort each period chronologically: total score ASC, then playIndex ASC
   for (const periodPlays of map.values()) {
     periodPlays.sort((a, b) => {
       const totalA = (a.homeScore ?? 0) + (a.awayScore ?? 0);
@@ -80,17 +70,10 @@ function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
   return map;
 }
 
-/**
- * Returns true for any tier 3 play.
- */
 function isTier3(play: PlayEntry): boolean {
   return (play.tier ?? 3) === 3;
 }
 
-/**
- * Converts an array of plays within a period into renderable items.
- * Consecutive tier 3 plays are collapsed into a single tier3-group.
- */
 function buildPeriodItems(
   periodPlays: PlayEntry[],
 ): PeriodItem[] {
@@ -101,7 +84,6 @@ function buildPeriodItems(
     const play = periodPlays[i];
 
     if (isTier3(play)) {
-      // Collect consecutive tier 3 plays
       const group: PlayEntry[] = [play];
       let j = i + 1;
       while (j < periodPlays.length && isTier3(periodPlays[j])) {
@@ -119,9 +101,6 @@ function buildPeriodItems(
   return items;
 }
 
-/**
- * Filters period items by visible tiers.
- */
 function filterItems(items: PeriodItem[], visibleTiers: number[]): PeriodItem[] {
   return items.filter((item) => {
     if (item.kind === "tier3-group") return visibleTiers.includes(3);
@@ -141,6 +120,7 @@ interface PeriodCardProps {
   awayTeamAbbr?: string;
   homeColor?: string;
   awayColor?: string;
+  scoresRevealed: boolean;
 }
 
 function PeriodCard({
@@ -153,12 +133,12 @@ function PeriodCard({
   awayTeamAbbr,
   homeColor,
   awayColor,
+  scoresRevealed,
 }: PeriodCardProps) {
   const filtered = useMemo(() => filterItems(items, visibleTiers), [items, visibleTiers]);
 
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
-      {/* Sticky period header */}
       <button
         onClick={onToggle}
         className={cn(
@@ -179,7 +159,6 @@ function PeriodCard({
         </span>
       </button>
 
-      {/* Collapsible content */}
       <div
         className={cn(
           "grid transition-[grid-template-rows] duration-200",
@@ -200,6 +179,7 @@ function PeriodCard({
                     awayTeamAbbr={awayTeamAbbr}
                     homeColor={homeColor}
                     awayColor={awayColor}
+                    scoresRevealed={scoresRevealed}
                   />
                 ) : (
                   <TimelineRow
@@ -209,6 +189,7 @@ function PeriodCard({
                     awayTeamAbbr={awayTeamAbbr}
                     homeColor={homeColor}
                     awayColor={awayColor}
+                    scoresRevealed={scoresRevealed}
                   />
                 ),
               )
@@ -232,8 +213,8 @@ export function TimelineSection({
 }: TimelineSectionProps) {
   const defaultTiers = useSettings((s) => s.timelineDefaultTiers);
   const [visibleTiers, setVisibleTiers] = useState<number[]>(defaultTiers);
+  const gate = useSpoilerGate(gameId);
 
-  // Per-game period expand/collapse persistence
   const { getPeriods, togglePeriod } = useSectionLayout();
   const expandedPeriods = getPeriods(gameId) ?? [];
 
@@ -254,8 +235,8 @@ export function TimelineSection({
   }
 
   const periodMap = groupByPeriod(plays);
+  const scoresRevealed = gate?.revealed ?? false;
 
-  // Build renderable items for each period
   const periods = Array.from(periodMap.entries()).map(
     ([period, periodPlays]) => ({
       period,
@@ -265,7 +246,6 @@ export function TimelineSection({
 
   return (
     <div data-testid="timeline-section" className="px-4 space-y-2">
-      {/* Tier filter pills */}
       <div className="flex items-center gap-1.5">
         {TIER_FILTERS.map(({ tier, label }) => {
           const active = visibleTiers.includes(tier);
@@ -298,6 +278,7 @@ export function TimelineSection({
           awayTeamAbbr={awayTeamAbbr}
           homeColor={homeColor}
           awayColor={awayColor}
+          scoresRevealed={scoresRevealed}
         />
       ))}
     </div>

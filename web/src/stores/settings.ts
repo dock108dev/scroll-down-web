@@ -42,6 +42,9 @@ function normalizeTeamList(input: string[]): string[] {
   return Array.from(byLower.values()).sort((a, b) => a.localeCompare(b));
 }
 
+export type NotificationGlobalMode = "spoiler_free" | "scores_ok" | "per_team";
+export type PerTeamNotificationMode = "spoiler_free" | "scores_ok";
+
 interface SettingsState {
   theme: "system" | "light" | "dark";
   scoreRevealMode: "always" | "onMarkRead" | "blacklist";
@@ -58,6 +61,15 @@ interface SettingsState {
   followingLiveAt: number;
   /** Admin-only: show banner when displaying stale cached data. */
   showStaleBanners: boolean;
+
+  notificationGlobalMode: NotificationGlobalMode;
+  preGameReminderMinutes: number | null;
+  notificationsGameStarted: boolean;
+  notificationsGameEnded: boolean;
+  notificationsHalftime: boolean;
+  notificationsDailyDigest: boolean;
+  dailyDigestHour: number;
+  notificationPerTeamOverrides: Record<string, PerTeamNotificationMode>;
 
   setTheme: (t: "system" | "light" | "dark") => void;
   setScoreRevealMode: (m: "always" | "onMarkRead" | "blacklist") => void;
@@ -78,6 +90,15 @@ interface SettingsState {
   setFollowingLive: (v: boolean) => void;
   touchFollowingLive: () => void;
   setShowStaleBanners: (v: boolean) => void;
+  setNotificationGlobalMode: (m: NotificationGlobalMode) => void;
+  setPreGameReminderMinutes: (m: number | null) => void;
+  setNotificationsGameStarted: (v: boolean) => void;
+  setNotificationsGameEnded: (v: boolean) => void;
+  setNotificationsHalftime: (v: boolean) => void;
+  setNotificationsDailyDigest: (v: boolean) => void;
+  setDailyDigestHour: (h: number) => void;
+  setPerTeamOverride: (team: string, mode: PerTeamNotificationMode) => void;
+  removePerTeamOverride: (team: string) => void;
 }
 
 export const useSettings = create<SettingsState>()(
@@ -96,6 +117,15 @@ export const useSettings = create<SettingsState>()(
       followingLive: false,
       followingLiveAt: 0,
       showStaleBanners: true,
+
+      notificationGlobalMode: "spoiler_free",
+      preGameReminderMinutes: 30,
+      notificationsGameStarted: true,
+      notificationsGameEnded: true,
+      notificationsHalftime: false,
+      notificationsDailyDigest: false,
+      dailyDigestHour: 8,
+      notificationPerTeamOverrides: {},
 
       setTheme: (theme) => set({ theme }),
       setScoreRevealMode: (scoreRevealMode) => set({ scoreRevealMode }),
@@ -159,10 +189,37 @@ export const useSettings = create<SettingsState>()(
         set({ followingLive: v, followingLiveAt: v ? Date.now() : 0 }),
       touchFollowingLive: () => set({ followingLiveAt: Date.now() }),
       setShowStaleBanners: (showStaleBanners) => set({ showStaleBanners }),
+      setNotificationGlobalMode: (notificationGlobalMode) =>
+        set({ notificationGlobalMode }),
+      setPreGameReminderMinutes: (preGameReminderMinutes) =>
+        set({ preGameReminderMinutes }),
+      setNotificationsGameStarted: (notificationsGameStarted) =>
+        set({ notificationsGameStarted }),
+      setNotificationsGameEnded: (notificationsGameEnded) =>
+        set({ notificationsGameEnded }),
+      setNotificationsHalftime: (notificationsHalftime) =>
+        set({ notificationsHalftime }),
+      setNotificationsDailyDigest: (notificationsDailyDigest) =>
+        set({ notificationsDailyDigest }),
+      setDailyDigestHour: (h) =>
+        set({ dailyDigestHour: Math.max(0, Math.min(23, Math.round(h))) }),
+      setPerTeamOverride: (team, mode) =>
+        set((s) => ({
+          notificationPerTeamOverrides: {
+            ...s.notificationPerTeamOverrides,
+            [team]: mode,
+          },
+        })),
+      removePerTeamOverride: (team) =>
+        set((s) => {
+          const next = { ...s.notificationPerTeamOverrides };
+          delete next[team];
+          return { notificationPerTeamOverrides: next };
+        }),
     }),
     {
       name: STORAGE_KEYS.SETTINGS,
-      version: 4,
+      version: 5,
       migrate: (persisted: unknown, version: number) => {
         const state = persisted as Record<string, unknown>;
         if (version < 1) {
@@ -188,6 +245,17 @@ export const useSettings = create<SettingsState>()(
           // v3 → v4: add selective score hide lists
           state.scoreHideLeagues = [];
           state.scoreHideTeams = [];
+        }
+        if (version < 5) {
+          // v4 → v5: add notification preferences
+          state.notificationGlobalMode = "spoiler_free";
+          state.preGameReminderMinutes = 30;
+          state.notificationsGameStarted = true;
+          state.notificationsGameEnded = true;
+          state.notificationsHalftime = false;
+          state.notificationsDailyDigest = false;
+          state.dailyDigestHour = 8;
+          state.notificationPerTeamOverrides = {};
         }
         // Auto-expire followingLive if stale
         if (

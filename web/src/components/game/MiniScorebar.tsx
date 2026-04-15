@@ -1,47 +1,36 @@
 "use client";
 
 import type { Game } from "@/lib/types";
-import type { GameCore } from "@/stores/game-data";
+import type { SafeGameCore } from "@/stores/game-data";
 import { isPregame } from "@/lib/types";
-import { useScoreDisplay } from "@/hooks/useScoreDisplay";
-import { useReveal } from "@/stores/reveal";
+import { useSpoilerGate } from "@/hooks/useSpoilerGate";
 import { useSettings } from "@/stores/settings";
-import { pickSnapshot } from "@/lib/score-display";
 import { cn, formatTimeET, resolveTeamColor, teamColorStyle } from "@/lib/utils";
 
 interface MiniScorebarProps {
-  game: Game | GameCore;
+  game: Game | SafeGameCore;
   visible: boolean;
 }
 
 export function MiniScorebar({ game, visible }: MiniScorebarProps) {
-  const display = useScoreDisplay(game.id);
-  const { reveal, hide, isRevealed, acceptUpdate } = useReveal();
+  const gate = useSpoilerGate(game.id);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
 
-  const revealed = isRevealed(game.id);
   const pregame = isPregame(game.status, game);
-  const showScore = display?.visible ?? false;
-  const canToggle = display?.canToggle ?? false;
-  const statusCategory = display?.statusCategory ?? "other";
+  const showScore = gate?.revealed ?? false;
+  const statusCategory = gate?.statusCategory ?? "other";
 
   const awayColor = resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark, "#a3a3a3");
   const homeColor = resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark, "#a3a3a3");
   const awayTextStyle = teamColorStyle(game.awayTeamColorLight, game.awayTeamColorDark, "#a3a3a3");
   const homeTextStyle = teamColorStyle(game.homeTeamColorLight, game.homeTeamColorDark, "#a3a3a3");
 
-  const handleReveal = () => reveal(game.id, pickSnapshot(game as GameCore));
-  const handleHide = () => hide(game.id);
-  const handleAcceptUpdate = () => {
-    acceptUpdate(game.id, pickSnapshot(game as GameCore));
-  };
+  const showToggle = gate?.canToggle && scoreRevealMode !== "always" && !pregame;
 
-  const showToggle = canToggle && scoreRevealMode !== "always" && !pregame;
-
-  const awayScore = display?.awayScore ?? 0;
-  const homeScore = display?.homeScore ?? 0;
-  const awayWinning = showScore && awayScore > homeScore;
-  const homeWinning = showScore && homeScore > awayScore;
+  const awayNum = gate?.awayScore != null ? Number(gate.awayScore) : 0;
+  const homeNum = gate?.homeScore != null ? Number(gate.homeScore) : 0;
+  const awayWinning = showScore && awayNum > homeNum;
+  const homeWinning = showScore && homeNum > awayNum;
 
   return (
     <div
@@ -84,14 +73,14 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                       awayWinning ? "text-neutral-50" : "text-neutral-500",
                     )}
                   >
-                    {awayScore}
+                    {gate?.awayScore}
                   </span>
                 )}
               </div>
 
               {/* Separator */}
               <span className="text-neutral-700 text-xs font-medium shrink-0">
-                {pregame || (!showScore && statusCategory !== "live" && statusCategory !== "live-updated") ? "@" : "—"}
+                {pregame || (!showScore && statusCategory !== "live" && statusCategory !== "live-updated") ? "@" : "\u2014"}
               </span>
 
               {/* Home team */}
@@ -103,7 +92,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                       homeWinning ? "text-neutral-50" : "text-neutral-500",
                     )}
                   >
-                    {homeScore}
+                    {gate?.homeScore}
                   </span>
                 )}
                 <span
@@ -137,7 +126,7 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                   {(game.currentPeriodLabel || game.gameClock) && (
                     <span className="text-xs font-medium text-neutral-300 tabular-nums">
                       {game.currentPeriodLabel ?? ""}
-                      {game.gameClock && game.gameClock !== game.currentPeriodLabel ? ` · ${game.gameClock}` : ""}
+                      {game.gameClock && game.gameClock !== game.currentPeriodLabel ? ` \u00B7 ${game.gameClock}` : ""}
                     </span>
                   )}
                   <span className="flex items-center gap-1">
@@ -152,10 +141,10 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
                 </>
               )}
 
-              {/* Pending update (live or game just went final) → LIVE Update */}
+              {/* Pending update (live or game just went final) */}
               {statusCategory === "live-updated" && (
                 <button
-                  onClick={handleAcceptUpdate}
+                  onClick={() => gate?.acceptUpdate()}
                   className="flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-400/10 text-amber-400 hover:bg-amber-400/20 transition-colors"
                 >
                   <span className="relative flex h-1.5 w-1.5">
@@ -176,15 +165,15 @@ export function MiniScorebar({ game, visible }: MiniScorebarProps) {
               {/* Reveal / Hide toggle */}
               {showToggle && (
                 <button
-                  onClick={revealed ? handleHide : handleReveal}
+                  onClick={gate?.revealed ? () => gate.hide() : () => gate?.reveal()}
                   className={cn(
                     "text-xs font-medium px-2.5 py-1 rounded-full transition-colors",
-                    revealed
+                    gate?.revealed
                       ? "text-neutral-500 bg-neutral-800 hover:text-neutral-300"
                       : "text-blue-400 bg-blue-400/10 hover:bg-blue-400/20",
                   )}
                 >
-                  {revealed ? "Hide" : "Reveal"}
+                  {gate?.revealed ? "Hide" : "Reveal"}
                 </button>
               )}
             </div>

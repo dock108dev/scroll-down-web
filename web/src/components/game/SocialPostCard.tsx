@@ -100,6 +100,7 @@ export function SocialPostCard({ post, mode = "standard" }: SocialPostCardProps)
 
   return (
     <a
+      data-testid="social-embed-card"
       href={post.postUrl}
       target="_blank"
       rel="noopener noreferrer"

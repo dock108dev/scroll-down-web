@@ -36,6 +36,14 @@ interface ServerPreferences {
     timelineDefaultTiers: number[];
     followingLive: boolean;
     followingLiveAt: number;
+    notificationGlobalMode: string;
+    preGameReminderMinutes: number | null;
+    notificationsGameStarted: boolean;
+    notificationsGameEnded: boolean;
+    notificationsHalftime: boolean;
+    notificationsDailyDigest: boolean;
+    dailyDigestHour: number;
+    notificationPerTeamOverrides: Record<string, string>;
   };
   pinnedGameIds: number[];
   revealedGameIds: number[];
@@ -112,6 +120,14 @@ function snapshotLocal(): Omit<ServerPreferences, "updatedAt"> {
       timelineDefaultTiers: settings.timelineDefaultTiers,
       followingLive: settings.followingLive,
       followingLiveAt: settings.followingLiveAt,
+      notificationGlobalMode: settings.notificationGlobalMode,
+      preGameReminderMinutes: settings.preGameReminderMinutes,
+      notificationsGameStarted: settings.notificationsGameStarted,
+      notificationsGameEnded: settings.notificationsGameEnded,
+      notificationsHalftime: settings.notificationsHalftime,
+      notificationsDailyDigest: settings.notificationsDailyDigest,
+      dailyDigestHour: settings.dailyDigestHour,
+      notificationPerTeamOverrides: settings.notificationPerTeamOverrides,
     },
     pinnedGameIds: [...pinned.pinnedIds],
     revealedGameIds: [...reveal.revealedIds],
@@ -144,6 +160,24 @@ function hydrateFromServer(prefs: ServerPreferences) {
   if (s.hideLimitedData !== undefined) setters.setHideLimitedData(s.hideLimitedData);
   if (s.timelineDefaultTiers) setters.setTimelineDefaultTiers(s.timelineDefaultTiers);
   if (s.followingLive !== undefined) setters.setFollowingLive(s.followingLive);
+  if (s.notificationGlobalMode) {
+    setters.setNotificationGlobalMode(
+      s.notificationGlobalMode as "spoiler_free" | "scores_ok" | "per_team",
+    );
+  }
+  if (s.preGameReminderMinutes !== undefined) setters.setPreGameReminderMinutes(s.preGameReminderMinutes);
+  if (s.notificationsGameStarted !== undefined) setters.setNotificationsGameStarted(s.notificationsGameStarted);
+  if (s.notificationsGameEnded !== undefined) setters.setNotificationsGameEnded(s.notificationsGameEnded);
+  if (s.notificationsHalftime !== undefined) setters.setNotificationsHalftime(s.notificationsHalftime);
+  if (s.notificationsDailyDigest !== undefined) setters.setNotificationsDailyDigest(s.notificationsDailyDigest);
+  if (s.dailyDigestHour !== undefined) setters.setDailyDigestHour(s.dailyDigestHour);
+  if (s.notificationPerTeamOverrides && typeof s.notificationPerTeamOverrides === "object") {
+    for (const [team, mode] of Object.entries(s.notificationPerTeamOverrides)) {
+      if (mode === "spoiler_free" || mode === "scores_ok") {
+        setters.setPerTeamOverride(team, mode);
+      }
+    }
+  }
 
   // Pinned games — replace current set with server set.
   // We don't sync pinMeta (derived from game data on render).
@@ -182,6 +216,7 @@ function hydrateFromServer(prefs: ServerPreferences) {
           awayScore: 0,
           status: "unknown",
           snapshotAt: new Date().toISOString(),
+          isFrozen: false,
         },
       })),
     );

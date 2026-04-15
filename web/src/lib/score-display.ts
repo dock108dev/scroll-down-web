@@ -36,6 +36,7 @@ export function differs(
 export function pickSnapshot(core: GameCore): RevealSnapshot {
   // Suppress clock when it duplicates the period label (MLB innings)
   const clock = core.gameClock && core.gameClock !== core.currentPeriodLabel ? core.gameClock : undefined;
+  const frozen = isFinal(core.status, core);
   return {
     homeScore: core.homeScore ?? 0,
     awayScore: core.awayScore ?? 0,
@@ -44,6 +45,7 @@ export function pickSnapshot(core: GameCore): RevealSnapshot {
     period: core.currentPeriod,
     periodLabel: core.currentPeriodLabel,
     snapshotAt: new Date().toISOString(),
+    isFrozen: frozen,
   };
 }
 

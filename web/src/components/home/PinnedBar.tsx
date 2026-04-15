@@ -5,29 +5,23 @@ import type { GameStatus } from "@/lib/types";
 import { isLive, isFinal } from "@/lib/types";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useGameData } from "@/stores/game-data";
-import { useReveal } from "@/stores/reveal";
-import { useScoreDisplay } from "@/hooks/useScoreDisplay";
-import { pickSnapshot } from "@/lib/score-display";
+import { useSpoilerGate } from "@/hooks/useSpoilerGate";
 
 function ChipScore({ gameId }: { gameId: number }) {
-  const display = useScoreDisplay(gameId);
-  const core = useGameData((s) => s.getCore(gameId));
-  const { acceptUpdate } = useReveal();
+  const gate = useSpoilerGate(gameId);
 
-  if (!display?.visible) return null;
+  if (!gate?.revealed) return null;
 
   return (
     <span
       role="button"
       onClick={(e) => {
         e.stopPropagation();
-        if (display.hasUpdate && core) {
-          acceptUpdate(gameId, pickSnapshot(core));
-        }
+        if (gate.hasUpdate) gate.acceptUpdate();
       }}
-      className={`ml-1 text-[10px] tabular-nums ${display.hasUpdate ? "text-amber-400" : "text-neutral-400"}`}
+      className={`ml-1 text-[10px] tabular-nums ${gate.hasUpdate ? "text-amber-400" : "text-neutral-400"}`}
     >
-      {display.awayScore}–{display.homeScore}
+      {gate.awayScore}&ndash;{gate.homeScore}
     </span>
   );
 }
@@ -57,9 +51,6 @@ export function PinnedBar() {
 
   if (pinnedIds.size === 0) return null;
 
-  // Build ordered list from Set iteration order.
-  // Use core data when available, fall back to persisted pinMeta so chips
-  // still render after a page reload that hasn't fetched every game yet.
   const chips: { id: number; awayTeamAbbr: string; homeTeamAbbr: string; status?: GameStatus; isLive?: boolean; isFinal?: boolean }[] = [];
   for (const id of pinnedIds) {
     const entry = games.get(id);
@@ -97,7 +88,7 @@ export function PinnedBar() {
         >
           <StatusDot status={chip.status} game={chip} />
           <span className="whitespace-nowrap">
-            {chip.awayTeamAbbr} – {chip.homeTeamAbbr}
+            {chip.awayTeamAbbr} &ndash; {chip.homeTeamAbbr}
           </span>
           <ChipScore gameId={chip.id} />
           <span

@@ -12,7 +12,9 @@ export function getSections(data: GameDetailResponse): string[] {
   const status = data.game.status;
   const game = data.game;
 
-  const hasPregamePosts = data.socialPosts?.some(
+  const socialEnabled = data.socialEmbedsEnabled !== false;
+
+  const hasPregamePosts = socialEnabled && data.socialPosts?.some(
     (p) =>
       p.gamePhase === "pregame" &&
       (p.tweetText || p.imageUrl || p.videoUrl) &&
@@ -32,7 +34,7 @@ export function getSections(data: GameDetailResponse): string[] {
     (data.mlbAdvancedPlayerStats?.length ?? 0) > 0;
   const hasOdds = (data.odds?.length ?? 0) > 0;
   const hasFlow = data.game.hasFlow;
-  const hasPostgamePosts = data.socialPosts?.some(
+  const hasPostgamePosts = socialEnabled && data.socialPosts?.some(
     (p) => p.gamePhase === "postgame",
   );
   const hasWrapUp =

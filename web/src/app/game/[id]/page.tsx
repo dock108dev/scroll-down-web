@@ -386,7 +386,7 @@ export default function GameDetailPage({
             open={isSectionOpen("Flow")}
             onToggle={() => handleToggle("Flow")}
           >
-            <FlowContainer gameId={gameId} socialPosts={data.socialPosts} />
+            <FlowContainer gameId={gameId} socialPosts={data.socialEmbedsEnabled !== false ? data.socialPosts : undefined} />
           </CollapsibleSection>
         )}
 
@@ -493,6 +493,12 @@ export default function GameDetailPage({
           </CollapsibleSection>
         )}
       </div>
+
+      {data.socialEmbedsEnabled === false && (
+        <div data-testid="social-embeds-disabled-indicator" className="px-4 py-2">
+          <span className="text-xs text-neutral-600">[Social embeds disabled]</span>
+        </div>
+      )}
 
       {!error && <InlineFeedback context="game" />}
     </div>

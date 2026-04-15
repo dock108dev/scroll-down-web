@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type {
+  DataStalenessState,
   GameSummary,
   GameDetailResponse,
   GameFlowResponse,
@@ -66,7 +67,18 @@ export interface GameCore {
   homeTeamXHandle?: string;
   awayTeamXHandle?: string;
   derivedMetrics?: Record<string, unknown>;
+  dataUpdatedAt?: string;
+  dataSourceDelaySeconds?: number;
+  dataStalenessState?: DataStalenessState;
 }
+
+/**
+ * GameCore with score fields removed. Components should use this type
+ * instead of GameCore to enforce that all score rendering goes through
+ * useSpoilerGate. Internal store/lib code that needs raw scores should
+ * use GameCore directly.
+ */
+export type SafeGameCore = Omit<GameCore, "homeScore" | "awayScore">;
 
 export interface GameEntry {
   core: GameCore;
@@ -136,6 +148,7 @@ interface GameDataState {
   // Selectors (stable references when data unchanged)
   getGame: (id: number) => GameEntry | undefined;
   getCore: (id: number) => GameCore | undefined;
+  getSafeCore: (id: number) => SafeGameCore | undefined;
   getDetail: (id: number) => GameDetailResponse | undefined;
   getFlow: (id: number) => GameFlowResponse | undefined;
   isDetailFresh: (id: number) => boolean;
@@ -450,6 +463,12 @@ export const useGameData = create<GameDataState>()((set, get) => ({
 
   getGame: (id) => get().games.get(id),
   getCore: (id) => get().games.get(id)?.core,
+  getSafeCore: (id) => {
+    const core = get().games.get(id)?.core;
+    if (!core) return undefined;
+    const { homeScore: _h, awayScore: _a, ...safe } = core;
+    return safe;
+  },
   getDetail: (id) => get().games.get(id)?.detail?.response,
   getFlow: (id) => get().games.get(id)?.flow?.response,
 

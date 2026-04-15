@@ -72,15 +72,25 @@ export const STORAGE_KEYS = {
   GAMES_CACHE: "sd-games-cache",
   FAIRBET_CACHE: "sd-fairbet-cache",
   GOLF_CACHE: "sd-golf-cache",
+  ONBOARDING: "sd-onboarding",
+  ENTITLEMENT_OVERRIDE: "sd-entitlement-override",
+  PAYWALL: "sd-paywall",
 };
 
 export const STORAGE = {
   MAX_READING_POSITIONS: 50,
   MAX_SECTION_LAYOUTS: 50,
-  MAX_REVEALED_IDS: 500,
-  MAX_SNAPSHOTS: 20,
+  MAX_REVEALED_IDS: 200,
+  MAX_SNAPSHOTS: 50,
   POSITION_MAX_AGE_DAYS: 30,
   LAYOUT_MAX_AGE_DAYS: 30,
+  REVEALED_IDS_TTL_DAYS: 7,
+  SNAPSHOT_POST_FINAL_TTL_HOURS: 72,
+};
+
+export const PAYWALL = {
+  FREQUENCY_CAP_MS: 48 * 60 * 60 * 1000, // 48 hours
+  FREE_DAILY_REVEALS: 5,
 };
 
 export const RENDER = {
