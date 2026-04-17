@@ -45,3 +45,6 @@ secrets/
 test-results/
 playwright-report/
 blob-report/
+
+# AIDLC working directory
+.aidlc/*
