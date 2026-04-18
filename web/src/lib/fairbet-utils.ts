@@ -382,6 +382,18 @@ function titleCaseIfShoutyCaps(str: string, homeTeam?: string, awayTeam?: string
 
 // ── Probability / odds helpers ──────────────────────────────────────
 
+/**
+ * Compute CLV% given placed American odds and closing American odds.
+ * Formula: (closing_implied_prob − placed_implied_prob) / placed_implied_prob × 100
+ * Positive = beat the closing line (good). Returns NaN on invalid inputs.
+ */
+export function computeCLV(placedOdds: number, closingOdds: number): number {
+  const placedProb = americanToImpliedProb(placedOdds);
+  const closingProb = americanToImpliedProb(closingOdds);
+  if (!Number.isFinite(placedProb) || !Number.isFinite(closingProb) || placedProb <= 0) return NaN;
+  return ((closingProb - placedProb) / placedProb) * 100;
+}
+
 /** Convert American odds to implied probability (0-1). */
 function americanToImpliedProb(odds: number): number {
   if (!Number.isFinite(odds) || odds === 0) return NaN;

@@ -2,7 +2,7 @@
  * ISSUE-034: Salient-event extraction pipeline — verified via POST /api/ai/salient-events
  * with mock box scores for NBA, NFL, and MLB.
  */
-import { test, expect } from "@playwright/test";
+import { test, expect, type APIRequestContext } from "@playwright/test";
 import type {
   SalientEvent,
   SalientEventType,
@@ -92,7 +92,7 @@ const MLB_BOX = {
 // ─── Helpers ──────────────────────────────────────────────
 
 async function post(
-  request: Parameters<Parameters<typeof test>[1]>[0]["request"],
+  request: APIRequestContext,
   body: unknown,
 ): Promise<SalientEventResult> {
   const res = await request.post(ENDPOINT, { data: body });

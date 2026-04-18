@@ -31,6 +31,26 @@ const FEATURE_COPY: Record<FeatureGateKey, { title: string; benefit: string }> =
     title: "Advanced Filters",
     benefit: "Filter by league, team, bet type, and EV threshold — your feed, your rules.",
   },
+  line_movement: {
+    title: "Line Movement",
+    benefit: "See the opening line vs. current price so you know whether the market moved in your favor.",
+  },
+  ev_simulator: {
+    title: "EV Simulator",
+    benefit: "Enter any stake and see your projected profit per bet and over 100 bets based on the fair-value edge.",
+  },
+  clv_tracking: {
+    title: "CLV Tracking",
+    benefit: "Log your bets and compare placed odds against the closing line to see if you're consistently finding value.",
+  },
+  win_probability: {
+    title: "Win Probability Simulator",
+    benefit: "Run 10,000 simulations per game to see projected win%, spread cover%, over/under%, and a margin-of-victory distribution — all in seconds.",
+  },
+  history: {
+    title: "Game History Archive",
+    benefit: "Browse every completed game by date, search by team, and review past matchups — your full archive, always available.",
+  },
 };
 
 const FOCUSABLE =

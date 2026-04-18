@@ -11,6 +11,7 @@ import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useReveal } from "@/stores/reveal";
 import { isDegraded } from "@/hooks/useHealthStatus";
+import { startRevealSync, stopRevealSync } from "@/lib/reveal-sync";
 
 const TAG = "[prefs-sync]";
 
@@ -72,6 +73,7 @@ async function fetchPreferences(): Promise<ServerPreferences | null> {
     }
     return null;
   }
+  fetchHasLoggedError = false;
   return res.json();
 }
 
@@ -275,6 +277,7 @@ export async function pullAndStartSync(): Promise<void> {
   }
 
   startSyncing();
+  startRevealSync();
 }
 
 /**
@@ -283,6 +286,7 @@ export async function pullAndStartSync(): Promise<void> {
  */
 export function stopPreferenceSync(): void {
   stopSyncing();
+  stopRevealSync();
 }
 
 /**

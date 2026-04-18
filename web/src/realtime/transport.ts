@@ -217,8 +217,9 @@ class RealtimeTransport {
       if (!this.disposed) this.onWsFail();
     };
 
-    this.ws.onerror = () => {
+    this.ws.onerror = (e) => {
       clearTimeout(connectTimeout);
+      console.warn("[realtime/ws] onerror:", e);
     };
   }
 
@@ -299,6 +300,7 @@ class RealtimeTransport {
     };
 
     this.sse.onerror = () => {
+      console.warn("[realtime/sse] onerror — scheduling reconnect");
       this.teardownSse();
       this.connected = false;
       this.mode = "offline";

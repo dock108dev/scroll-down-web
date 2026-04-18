@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { STORAGE_KEYS } from "@/lib/config";
-import { verifySession } from "@/lib/magic-link";
 import {
+  verifySession,
   buildRefreshedSessionCookie,
   buildSessionCookieHeader,
   buildTierCookieHeader,
-} from "@/app/api/billing/webhook/route";
+} from "@/lib/magic-link";
 
 export async function GET(req: NextRequest) {
   const cookie = req.cookies.get(STORAGE_KEYS.SESSION)?.value;

@@ -175,7 +175,7 @@
 
 ## Research Index
 
-Detailed research backing these phases lives in `docs/research/`:
+Detailed research backing these phases lives in `docs/archived/research/`:
 
 | Topic | File | Informs Phase |
 |-------|------|--------------|

@@ -118,9 +118,10 @@ export function TopNav() {
         )}
         {token ? (
           <Link
-            href="/profile"
+            href="/account"
             className="hidden md:flex items-center justify-center h-8 w-8 min-h-[44px] min-w-[44px] mr-2 rounded-full bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 transition"
             title={email ?? "Account"}
+            data-testid="nav-account-link"
           >
             {(email?.[0] ?? "U").toUpperCase()}
           </Link>

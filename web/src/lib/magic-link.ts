@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual, randomBytes } from "crypto";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import { AUTH } from "@/lib/config";
+import { AUTH, STORAGE_KEYS } from "@/lib/config";
 
 // ─── JWT ────────────────────────────────────────────────────────────────────
 
@@ -102,10 +102,16 @@ export interface Account {
   anonId: string | null;
   /** Stripe customer ID; set after first checkout session */
   stripeCustomerId?: string;
+  /** ISO date string of next billing renewal; synced from Stripe subscription webhooks */
+  nextBillingDate?: string;
 }
 
 function dataDir(): string {
-  return process.env.DATA_DIR ?? "/tmp";
+  const dir = process.env.DATA_DIR ?? "/tmp";
+  if (dir === "/tmp" && process.env.NODE_ENV === "production") {
+    console.warn("[magic-link] DATA_DIR is /tmp — account data will not survive a reboot. Set DATA_DIR to a persistent volume.");
+  }
+  return dir;
 }
 
 function accountsPath(): string {
@@ -118,7 +124,8 @@ function loadAccounts(): Map<string, Account> {
     if (!existsSync(path)) return new Map();
     const arr = JSON.parse(readFileSync(path, "utf8")) as Account[];
     return new Map(arr.map((a) => [a.email.toLowerCase(), a]));
-  } catch {
+  } catch (err) {
+    console.error("[magic-link] loadAccounts failed — returning empty store. Accounts file may be corrupted:", err);
     return new Map();
   }
 }
@@ -160,6 +167,7 @@ export function updateAccountTier(
   email: string,
   tier: "free" | "pro",
   stripeCustomerId?: string,
+  nextBillingDate?: string,
 ): Account | null {
   const accounts = loadAccounts();
   const key = email.toLowerCase();
@@ -169,6 +177,7 @@ export function updateAccountTier(
     ...account,
     tier,
     ...(stripeCustomerId !== undefined && { stripeCustomerId }),
+    ...(nextBillingDate !== undefined && { nextBillingDate }),
   };
   accounts.set(key, updated);
   saveAccounts(accounts);
@@ -180,6 +189,31 @@ export function findAccountByStripeCustomerId(customerId: string): Account | nul
     if (account.stripeCustomerId === customerId) return account;
   }
   return null;
+}
+
+// ─── Session cookie builders ─────────────────────────────────────────────────
+
+export function buildRefreshedSessionCookie(
+  email: string,
+  userId: string,
+): { cookieValue: string; tier: "free" | "pro" } | null {
+  const account = findAccountByEmail(email);
+  if (!account) return null;
+  const token = signSession(
+    { userId, email, tier: account.tier },
+    AUTH.SESSION_TTL_S,
+  );
+  return { cookieValue: token, tier: account.tier };
+}
+
+export function buildTierCookieHeader(tier: "free" | "pro"): string {
+  const maxAge = 365 * 24 * 60 * 60;
+  return `${STORAGE_KEYS.TIER}=${tier}; Max-Age=${maxAge}; Path=/; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
+}
+
+export function buildSessionCookieHeader(token: string): string {
+  const maxAge = AUTH.SESSION_TTL_S;
+  return `${STORAGE_KEYS.SESSION}=${token}; HttpOnly; Max-Age=${maxAge}; Path=/; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`;
 }
 
 // ─── Email ───────────────────────────────────────────────────────────────────

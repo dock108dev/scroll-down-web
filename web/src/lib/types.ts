@@ -538,6 +538,7 @@ export interface APIBet {
   extrapolation_ref_line?: number | null;
   extrapolation_distance?: number | null;
   confidence?: number;
+  opening_line?: number;
   confidence_flags?: string[];
   explanation_steps?: ExplanationStep[] | null;
   // Client-enriched camelCase aliases
@@ -638,6 +639,28 @@ export interface FairbetLiveResponse {
     min_books_for_display?: number;
     ev_color_thresholds?: { strong_positive?: number; positive?: number };
   };
+}
+
+// ─── CLV / My Bets ───────────────────────────────────────
+
+export interface LoggedBet {
+  /** Unique ID: `{game_id}::{market_key}::{selection_key}::{line_value}::{logged_at_ms}` */
+  id: string;
+  gameId: number;
+  leagueCode: string;
+  homeTeam: string;
+  awayTeam: string;
+  gameDate: string;
+  marketKey: string;
+  marketLabel: string;
+  selectionDisplay: string;
+  book: string;
+  placedOdds: number;
+  stake: number;
+  loggedAt: string;
+  closingOdds?: number;
+  clvPercent?: number;
+  outcome?: "win" | "loss" | "push";
 }
 
 // ─── Helpers ────────────────────────────────────────────

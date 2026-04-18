@@ -55,6 +55,27 @@ Deleted:
 
 The underlying `GameStorySection.tsx` component, `api/ai/*` routes, and story utility libs are retained — they represent in-development infrastructure, not legacy code.
 
+### 8. Session cookie builders relocated to `magic-link.ts`
+**Files**: `web/src/lib/magic-link.ts`, `web/src/app/api/billing/webhook/route.ts`, `web/src/app/api/auth/session/route.ts`
+
+`buildRefreshedSessionCookie`, `buildTierCookieHeader`, and `buildSessionCookieHeader` were defined in `billing/webhook/route.ts` and imported from there by `auth/session/route.ts`. Session/auth utilities must not live in a billing file.
+
+Moved all three helpers into `magic-link.ts` (the auth SSOT). Removed the duplicate definitions and the unused re-export from `webhook/route.ts`. Removed the now-unused `findAccountByEmail` import from `webhook/route.ts` (it was only called inside the deleted helpers). Updated `auth/session/route.ts` to import from `magic-link.ts` directly.
+
+### 9. `reveal-sync.ts` legacy JWT injection removed
+**File**: `web/src/lib/reveal-sync.ts`
+
+The new cross-device sync module called `useAuth.getState().token` and injected `Authorization: Bearer <jwt>` headers on every sync request. The SSOT for authentication is the HttpOnly session cookie (magic-link system). Same-origin `fetch` calls automatically include cookies — no manual header injection is required.
+
+Removed the `useAuth` import and the token-injection pattern from `fetchRemoteState` and `pushLocalState`. Both now use `credentials: "same-origin"` (the default) so the browser sends the session cookie without exposure in JS.
+
+### 10. AI story tests for gated-off behavior deleted
+**File**: `web/tests/game/ai-story-e2e.spec.ts`
+
+`STORY_QUALITY_GATE = true` means `GameStorySection` returns `null` before fetching — the story section can never appear in the DOM regardless of API mocks. Three test groups assumed the section would render (groups 1, 3, 7): "section renders when enabled", "feedback widget fires POST", and "required data-testids exist when story visible." These tests would timeout or hit the Playwright `toBeVisible` assertion every run.
+
+Deleted those three groups (5 tests). Retained the four groups that validate current observable behavior: section absent by default, fact-check guard, graceful 5xx degradation, and feedback API contract.
+
 ---
 
 ## SSOT Verification
@@ -64,9 +85,12 @@ The underlying `GameStorySection.tsx` component, `api/ai/*` routes, and story ut
 | Social content visibility | `role === "admin"` inline (no flag) |
 | Team stats rendering | `normalizedStats` from API via `buildGroupsFromNormalized` |
 | NFL player stats columns | `NFL_COLUMNS` in `PlayerStatsTable.tsx` (labels now unique) |
-| Reveal state persistence | `stores/reveal.ts` at version 1 |
+| Reveal state persistence | `stores/reveal.ts` at version 1 (IDB-backed) |
 | Odds section props | `OddsSectionProps` (leagueCode removed) |
 | Game detail sections | `getSections()` in `sections.ts` — "AI Story" removed, "Game Story" is the flow section |
+| Session cookie management | `lib/magic-link.ts` — `signSession`, `buildRefreshedSessionCookie`, `buildTierCookieHeader`, `buildSessionCookieHeader` |
+| Cross-device sync auth | HttpOnly session cookie (no JWT injection in client code) |
+| AI story test coverage | `tests/game/ai-story-e2e.spec.ts` — only tests current observable behavior (gate-on state) |
 
 ---
 
@@ -94,14 +118,18 @@ The `version < 2` migration block (adds empty `pinMeta`, removes legacy `display
 Verified no remaining references to deleted symbols:
 
 ```
-FEATURES.SOCIAL_ADMIN_ONLY  → 0 references (grep clean)
-getGroupsForSport            → 0 references in TeamStatsComparison
-resolveStatValue             → 0 references in TeamStatsComparison
-legacyActiveGroups           → 0 references
-"Loading bets..."            → 0 references in tests
-STORY_QUALITY_GATE           → 0 references in game/[id]/ (only in GameStorySection.tsx, intentional)
-"AI Story"                   → 0 references in game/[id]/
-GameStorySection import      → 0 references in page.tsx
+FEATURES.SOCIAL_ADMIN_ONLY          → 0 references (grep clean)
+getGroupsForSport                   → 0 references in TeamStatsComparison
+resolveStatValue                    → 0 references in TeamStatsComparison
+legacyActiveGroups                  → 0 references
+"Loading bets..."                   → 0 references in tests
+STORY_QUALITY_GATE                  → 0 references in game/[id]/ (only in GameStorySection.tsx, intentional)
+"AI Story"                          → 0 references in game/[id]/
+GameStorySection import             → 0 references in page.tsx
+billing/webhook/route (as import)   → 0 references in src/
+buildRefreshedSessionCookie         → defined only in magic-link.ts, imported only by auth/session/route.ts
+useAuth import in reveal-sync.ts    → 0 references
+AI story "enabled" test groups      → 0 (deleted groups 1, 3, 7)
 ```
 
 `npm run lint` passes with 0 errors, 0 warnings after all changes.

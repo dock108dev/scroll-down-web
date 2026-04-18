@@ -1,14 +1,12 @@
 # Docs Index
 
-## Root-Level Docs
+## Architecture & Design
 
 | File | Purpose |
 |------|---------|
-| [README.md](../README.md) | What this repo is, how to run it |
-| [ARCHITECTURE.md](../ARCHITECTURE.md) | System design: API proxy, realtime, stores, hooks, auth, security |
-| [DESIGN.md](../DESIGN.md) | Design principles, component patterns, naming conventions |
-| [ROADMAP.md](../ROADMAP.md) | Product phases and exit criteria |
-| [CLAUDE.md](../CLAUDE.md) | Developer onboarding: code style, rules, conventions |
+| [architecture.md](architecture.md) | System design: API proxy, realtime, stores, hooks, auth, security, billing |
+| [design.md](design.md) | Design principles, component patterns, naming conventions |
+| [roadmap.md](roadmap.md) | Product phases and exit criteria |
 
 ## Technical Reference
 
@@ -26,6 +24,13 @@
 | [development.md](development.md) | Local setup, QA checklist, common issues |
 | [testing.md](testing.md) | Playwright E2E: helpers, test suites, resilience patterns |
 | [deployment.md](deployment.md) | Docker build, CI/CD pipeline, Hetzner deploy |
+
+## Other Root Files
+
+| File | Purpose |
+|------|---------|
+| [../README.md](../README.md) | What this repo is, how to run it |
+| [../CLAUDE.md](../CLAUDE.md) | Developer onboarding: code style, rules, conventions |
 
 ## Audits
 

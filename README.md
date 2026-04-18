@@ -1,41 +1,47 @@
-# Scroll Down Sports Web
+# Scroll Down Sports
 
-Frontend for Scroll Down Sports, a game-following experience that lets users control when scores are revealed.
+Frontend for Scroll Down Sports — a game-following experience that lets users control when scores are revealed.
 
 ## What This Repo Is
 
-- Next.js web app (`web/`) for game feeds, game detail, FairBet, golf, and analytics views.
-- Thin client over the `sports-data-admin` backend (API proxy routes live in this repo, backend service does the heavy data processing).
+- Next.js web app (`web/`) for game feeds, game detail, FairBet odds, golf, and analytics views.
+- Thin client over the `sports-data-admin` backend (`sda.dock108.dev`). API proxy routes in this repo inject credentials server-side; the backend does all data processing.
 
 ## Run Locally
 
-Requirements:
-- Node.js 22+
+Requirements: Node.js 22+
 
 ```bash
 cd web
-cp .env.local.example .env.local
-npm install
+cp .env.local.example .env.local   # fill in API keys
+npm ci
 npm run dev
 ```
 
 App runs at `http://localhost:3001`.
 
-## Deployment Basics
-
-- Production build:
+## Deployment
 
 ```bash
 cd web
-npm run build
+npm run build   # standalone output in standalone/
 npm run start
 ```
 
-- Docker and CI workflow details are documented in `docs/deployment.md`.
+Docker and CI/CD details: [`docs/deployment.md`](docs/deployment.md)
 
-## More Documentation
+## Documentation
 
-- [`ARCHITECTURE.md`](ARCHITECTURE.md) — System design: API proxy, realtime, stores, auth, security
-- [`DESIGN.md`](DESIGN.md) — Design principles, component patterns, naming conventions
-- [`ROADMAP.md`](ROADMAP.md) — Product roadmap and phase planning
-- [`docs/`](docs/README.md) — Full index: development setup, deployment, testing, state management, realtime, audits
+| Doc | Purpose |
+|-----|---------|
+| [`docs/architecture.md`](docs/architecture.md) | API proxy, realtime transport, Zustand stores, auth, security |
+| [`docs/design.md`](docs/design.md) | Design principles, component patterns, naming conventions |
+| [`docs/roadmap.md`](docs/roadmap.md) | Product phases and exit criteria |
+| [`docs/development.md`](docs/development.md) | Local setup, QA checklist, common issues |
+| [`docs/deployment.md`](docs/deployment.md) | Docker build, CI/CD pipeline, Hetzner deploy |
+| [`docs/testing.md`](docs/testing.md) | Playwright E2E: helpers, test suites, resilience patterns |
+| [`docs/state-management.md`](docs/state-management.md) | Zustand stores in depth: shape, persistence, preference sync |
+| [`docs/realtime.md`](docs/realtime.md) | Realtime transport: WebSocket/SSE failover, subscriptions |
+| [`docs/env-and-config.md`](docs/env-and-config.md) | Environment variables and `src/lib/config.ts` constants |
+| [`docs/client-logic.md`](docs/client-logic.md) | Client-side patterns: score reveal, cache, analytics, etc. |
+| [`docs/`](docs/README.md) | Full docs index |

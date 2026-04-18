@@ -97,6 +97,8 @@ export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T>
 export const api = {
   games: (params?: URLSearchParams, init?: FetchApiInit) =>
     fetchApi<GameListResponse>(`/api/games${params ? `?${params}` : ""}`, init),
+  historyGames: (params?: URLSearchParams, init?: FetchApiInit) =>
+    fetchApi<GameListResponse>(`/api/history${params ? `?${params}` : ""}`, init),
   game: (id: number) => fetchApi<GameDetailResponse>(`/api/games/${id}`),
   flow: (id: number) => fetchApi<GameFlowResponse>(`/api/games/${id}/flow`),
   fairbetOdds: (params?: URLSearchParams, init?: FetchApiInit) =>

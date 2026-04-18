@@ -10,7 +10,11 @@ const STEPS = [
 ] as const;
 
 function hasSeenOnboarding(): boolean {
-  return !!localStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN);
+  try {
+    return !!localStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN);
+  } catch {
+    return false;
+  }
 }
 
 export function RevealOnboarding() {
@@ -35,7 +39,9 @@ export function RevealOnboarding() {
     if (step === 0) {
       setStep(1);
     } else {
-      localStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, "1");
+      try {
+        localStorage.setItem(STORAGE_KEYS.ONBOARDING_SEEN, "1");
+      } catch { /* storage denied — onboarding will reappear next session */ }
       setVisible(false);
     }
   };

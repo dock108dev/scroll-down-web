@@ -124,7 +124,7 @@ The reveal gesture must feel deliberate and satisfying:
 2. User taps Reveal → score appears with brief animation
 3. Score snapshot captured (score + period + clock at that moment)
 4. If live score later changes from snapshot → UPDATE indicator
-5. Revealed state persists across page reloads (localStorage)
+5. Revealed state persists across page reloads (IndexedDB)
 6. Following Live mode overrides: all scores visible, continuous updates
 
 ### FairBet Card Structure

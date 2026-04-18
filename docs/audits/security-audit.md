@@ -304,3 +304,88 @@ In `billing/webhook/route.ts`, `checkout.session.completed` reads the email from
 5. **R-5** — analytics route role check (blocks until role field added to session)
 6. **R-8** — Secure flag on tier/anon cookies (5-minute fix)
 7. **R-6** — billing return URL env var (cleanup)
+
+---
+
+## Addendum — Second-Pass Review (2026-04-18)
+
+Additional findings from deep inspection of new routes added in this branch cycle.
+
+### F-4 · HIGH — Stripe `checkout.session.completed` Grants Pro Without Payment Confirmation
+**File**: `web/src/app/api/billing/webhook/route.ts` (line 35)
+**Status**: **Fixed in this review**
+
+`checkout.session.completed` fires for free trials (payment_status=`"unpaid"`) and other non-payment scenarios, not just completed purchases. The original handler upgraded the account to Pro unconditionally:
+
+```typescript
+// Before fix
+if (email) {
+  updateAccountTier(email, "pro", customerId ?? undefined);
+}
+```
+
+A user starting a free trial without a payment method would be silently upgraded to Pro indefinitely (until `customer.subscription.deleted` fires on trial expiry — which may not happen on all cancellation paths).
+
+**Fix applied**: Added `if (session.payment_status !== "paid") break;` guard before tier upgrade.
+
+> Note: M-6 in the original audit flagged `customer_email` source ambiguity in this same handler — that remains an open item.
+
+---
+
+### F-5 · LOW — Account Store /tmp Warning Missing at Startup
+**File**: `web/src/lib/magic-link.ts`
+**Status**: **Fixed in this review**
+
+R-2 recommended a startup warning when `DATA_DIR` defaults to `/tmp` in production. That warning was not implemented.
+
+**Fix applied**: `dataDir()` now emits a `console.warn` when `DATA_DIR` is `/tmp` and `NODE_ENV === "production"`.
+
+---
+
+### R-11 · MEDIUM — Dev-Mode Auth Bypass via URL Query Parameter
+
+**Files**: `web/src/app/api/sync/reveal/route.ts` (lines 14–22), `web/src/app/api/history/route.ts` (lines 8–17)
+
+Both routes accept `?tier=pro&userId=arbitrary` to bypass session authentication when `NODE_ENV !== "production"`:
+
+```typescript
+if (process.env.NODE_ENV !== "production") {
+  const param = req.nextUrl.searchParams.get("tier");
+  if (param === "pro") {
+    const devUserId = req.nextUrl.searchParams.get("userId") ?? "dev-user";
+    return { userId: devUserId, email: "dev@test.example" };
+  }
+}
+```
+
+Any user who knows this pattern can access Pro-gated reveal sync data and historical game data if a staging/preview environment runs without `NODE_ENV=production`. The `userId` is fully attacker-controlled, meaning any user ID can be impersonated.
+
+**Recommendation**: Ensure all non-localhost deployments (staging, preview, CI) set `NODE_ENV=production`. If dev bypass is needed in staging, gate it behind a separate secret env var (e.g., `DEV_AUTH_BYPASS_KEY`) that is never set in any shared environment.
+
+---
+
+### R-12 · MEDIUM — SSE Proxy Subscribes Channels Without Per-User Authorization
+
+**File**: `web/src/app/api/realtime/sse/route.ts`
+
+The SSE proxy accepts an arbitrary `channels` query parameter and forwards it to the backend with only the server-side `X-API-Key`:
+
+```typescript
+const channels = req.nextUrl.searchParams.get("channels") || "";
+const url = `${BASE_URL}/v1/sse?channels=${encodeURIComponent(channels)}`;
+```
+
+There is no session check — unauthenticated users can subscribe to any channel name. Covered partially in M-5 but worth elevating: if the backend trusts channel subscriptions based only on `X-API-Key` (no per-user scoping), an attacker can subscribe to channels for any game or user by guessing or enumerating channel names.
+
+**Recommendation**: Verify backend channel authorization model (M-5). If channels carry user-private data (e.g., `user:<id>:*` channels for future private features), add session validation in the proxy before forwarding.
+
+---
+
+### Updated Summary Table
+
+| ID | Title | Severity | Status |
+|----|-------|----------|--------|
+| F-4 | Stripe checkout upgrades tier without payment confirmation | HIGH | **Fixed** |
+| F-5 | No /tmp startup warning for account store | LOW | **Fixed** |
+| R-11 | Dev-mode auth bypass via URL param (sync/history routes) | MEDIUM | **Open** |
+| R-12 | SSE proxy subscribes channels without user auth | MEDIUM | Open/verify backend |

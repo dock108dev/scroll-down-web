@@ -177,3 +177,89 @@ Files verified accurate and left untouched:
 - `docs/audits/security-audit.md` — Security review
 - `docs/audits/ssot-cleanup.md` — SSOT cleanup
 - `docs/audits/cleanup-report.md` — Code quality cleanup
+
+---
+
+## Round 3 — 2026-04-18
+
+Full audit + consolidation pass. The main structural change is enforcing "README.md at root, everything else in /docs."
+
+### Files Moved to /docs
+
+| Old Path | New Path | Changes |
+|----------|----------|---------|
+| `ARCHITECTURE.md` | `docs/architecture.md` | Updated with gaps (see below) |
+| `DESIGN.md` | `docs/design.md` | Updated reveal state note (IDB) |
+| `ROADMAP.md` | `docs/roadmap.md` | Updated research index path to `archived/research/` |
+
+`BRAINDUMP.md` was listed in the root docs/README.md but did not exist on disk — no action needed.
+
+### README.md (root) — Rewrote
+
+Now a minimal quick-start pointing to `/docs` for all detail. Corrected env file command (standardized to `cp .env.local.example .env.local`).
+
+### docs/README.md — Updated
+
+Moved architecture/design/roadmap entries from "Root-Level Docs" table into a new "Architecture & Design" section reflecting their new location. Added `docs-consolidation.md` to the audits table.
+
+### docs/architecture.md — Updated (moved from ARCHITECTURE.md)
+
+**Added missing API routes:**
+- `GET /api/history` — historical game list with pagination
+- `GET /api/analytics/forecasts/mlb` — MLB forecast data (admin)
+- `GET /api/billing/info` — billing and subscription status
+- `POST /api/sync/reveal` — Pro-tier cross-device reveal sync
+
+**Added missing Zustand store:**
+- `my-bets` (key: `sd-my-bets`, max 200 bets) — user's saved bets and outcomes
+
+**Added missing hook:**
+- `useProGate` — evaluates Pro feature gates for a given key
+
+**Fixed stale path:**
+- Directory structure listed `profile/` as the user account page; corrected to `account/`
+
+**Added to directory structure:**
+- `app/settings/my-bets/` — bet tracker sub-pages
+- `components/account/` — AccountContent
+- `components/history/` — HistoryGateOverlay
+- Updated store count: 13 → 14, hook count: 14 → 15
+
+**Added new top-level sections:**
+- "My Bets Tracker" — documents `/settings/my-bets`, `my-bets` store, backend routes
+- "PWA & Offline" — consolidates PWA status that was scattered in roadmap
+
+**Other fixes:**
+- Feature gates list updated to all 11 keys (was listing 6)
+- Billing section mentions `/api/billing/info`
+- `robots.ts` entry corrected: `/profile` → `/account`
+- Reveal state persistence note updated to IndexedDB
+
+### docs/design.md — Updated (moved from DESIGN.md)
+
+Score Reveal Interaction pattern step 5: "localStorage" → "IndexedDB" (matches actual `lib/reveal-idb.ts`).
+
+### docs/roadmap.md — No content changes (moved from ROADMAP.md)
+
+Research index path updated: `docs/research/` → `docs/archived/research/` to match actual archive location.
+
+### Nothing Deleted in /docs
+
+All existing docs in `/docs` were accurate and useful. No files deleted from the `/docs` directory.
+
+### Gaps Found and Addressed
+
+| Gap | Resolution |
+|-----|-----------|
+| `/api/history` route undocumented | Added to architecture.md |
+| `/api/analytics/forecasts/mlb` undocumented | Added to architecture.md |
+| `/api/billing/info` undocumented | Added to architecture.md |
+| `/api/sync/reveal` undocumented | Added to architecture.md |
+| `my-bets` store undocumented | Added to architecture.md |
+| `useProGate` hook undocumented | Added to architecture.md |
+| `/account` listed as `/profile/` | Fixed in architecture.md |
+| `/settings/my-bets/` pages unlisted | Added to architecture.md |
+| `components/account/` unlisted | Added to architecture.md |
+| `components/history/` unlisted | Added to architecture.md |
+| Feature gates listed incompletely (6/11) | All 11 keys now listed |
+| PWA status scattered in roadmap only | New "PWA & Offline" section in architecture.md |

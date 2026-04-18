@@ -10,7 +10,7 @@ Browser ──► Next.js App (port 3001) ──► Backend API (sda.dock108.dev
               ├─ API proxy routes           ├─ Game scores & stats
               ├─ WebSocket / SSE            ├─ FairBet odds & EV
               ├─ Zustand stores             ├─ Golf tournaments
-              └─ localStorage               ├─ Auth (JWT)
+              └─ localStorage / IDB         ├─ Auth (JWT)
                                             └─ Preference sync
 ```
 
@@ -63,6 +63,7 @@ All backend calls route through Next.js API routes (`src/app/api/`). The proxy i
 | `/api/analytics/batch-simulate-job/[id]` | `/api/analytics/batch-simulate-jobs/:id` | GET/POST | Job detail & operations |
 | `/api/analytics/record-outcomes` | `/api/analytics/record-outcomes` | POST | Record prediction outcomes |
 | `/api/analytics/prediction-outcomes` | `/api/analytics/prediction-outcomes` | GET | Prediction outcome history |
+| `/api/analytics/forecasts/mlb` | `/api/analytics/forecasts/mlb` | GET | MLB forecast data (admin) |
 
 **Simulator Routes**
 
@@ -70,6 +71,12 @@ All backend calls route through Next.js API routes (`src/app/api/`). The proxy i
 |-------|---------|--------|---------|
 | `/api/simulator/[sport]/teams` | `/api/simulator/:sport/teams` | GET | Team list — sport whitelist: `mlb`, `nba`, `nhl`, `ncaab` (1hr ISR cache) |
 | `/api/simulator/[sport]` | `/api/simulator/:sport` | POST | Run Monte Carlo simulation for any supported sport |
+
+**History Routes**
+
+| Route | Backend | Method | Purpose |
+|-------|---------|--------|---------|
+| `/api/history` | `/api/history` | GET | Historical game list with pagination |
 
 **Tracking & Health**
 
@@ -103,6 +110,13 @@ All backend calls route through Next.js API routes (`src/app/api/`). The proxy i
 | `/api/billing/checkout` | POST | Create Stripe Checkout session for Pro upgrade |
 | `/api/billing/portal` | POST | Open Stripe Customer Portal (manage/cancel subscription) |
 | `/api/billing/webhook` | POST | Handle Stripe webhook events (subscription updates, cancellations) |
+| `/api/billing/info` | GET | Fetch current user's billing and subscription status |
+
+**Sync Routes** (Pro-tier)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/sync/reveal` | POST | Sync revealed game IDs and snapshots cross-device (Pro users only) |
 
 Server-side config: `src/lib/api-server.ts`. Client fetch wrapper: `src/lib/api.ts`.
 
@@ -147,6 +161,7 @@ Implementation: `src/realtime/` (transport.ts, dispatcher.ts, channels.ts, hooks
 | `pinned-games` | `sd-pinned-games` | Yes | Pinned game IDs + team abbreviations | 10 games |
 | `reading-position` | `sd-reading-position` | Yes | Per-game play index for timeline resume | 50 positions, 30-day age |
 | `section-layout` | `sd-section-layout` | Yes | Per-game section expand/collapse state | 50 layouts |
+| `my-bets` | `sd-my-bets` | Yes | Saved bet records with outcomes tracking | 200 bets |
 | `home-scroll` | — | No | Home page scroll Y position | — |
 | `ui` | — | No | Ephemeral UI state (settings drawer) | — |
 | `pro-gate-sheet` | — | No | UI state for Pro upgrade sheet (open/close, triggering feature key) | — |
@@ -163,12 +178,13 @@ Implementation: `src/realtime/` (transport.ts, dispatcher.ts, channels.ts, hooks
 | `useFollowingLive` | Auto-refresh in Following Live mode | 45s poll |
 | `useGolfTournaments` | Golf tournament list | 5m |
 | `useGolfLeaderboard` | Golf leaderboard | 60s poll |
+| `useHistoricalGames` | Historical game pagination | — |
 | `useScoreDisplay` | Compute score visibility from settings | Derived |
 | `useAutoRetry` | Exponential backoff on error | — |
 | `useVisibilityRefresh` | Re-fetch when tab returns after 5+ seconds | — |
 | `useHealthStatus` | Backend health check | — |
 | `useFreshnessLabel` | Compute freshness label from timestamp | Derived |
-| `useHistoricalGames` | Historical game pagination | — |
+| `useProGate` | Evaluate Pro feature gates for a given key | Derived |
 
 ### 5. Score Reveal System
 
@@ -182,6 +198,8 @@ The product's core differentiator. Two modes controlled by `scoreRevealMode` set
 **Blacklist**: Users can hide scores by league or team (`scoreHideLeagues`, `scoreHideTeams`).
 
 **Snapshots**: When a user reveals a game, the current score/period/clock is captured. If the live score later differs from the snapshot, an UPDATE indicator appears — "new data since you last looked."
+
+**Persistence**: Reveal state is stored in IndexedDB (`sd-read-state`) via `lib/reveal-idb.ts`. IndexedDB is accessible to the service worker, enabling offline persistence and future background sync.
 
 Implementation: `src/stores/reveal.ts`, `src/lib/score-display.ts`, `src/lib/score-hide.ts`, `src/hooks/useScoreDisplay.ts`.
 
@@ -286,27 +304,29 @@ Service layer: `src/features/analytics/services/` — one service file per page 
 ```
 web/src/
 ├── app/                    # Next.js App Router
-│   ├── api/                # API proxy routes (games, fairbet, golf, auth, analytics, simulator, billing, ai)
+│   ├── api/                # API proxy routes (games, fairbet, golf, auth, analytics, simulator, billing, ai, history, sync)
 │   ├── game/[id]/          # Game detail page + OG image generation
 │   ├── fairbet/            # Betting odds discovery
 │   ├── golf/               # Golf tournaments & leaderboard
 │   ├── analytics/          # ML analytics (admin/power-user)
 │   ├── auth/               # Login, signup, magic-link, password reset
 │   ├── history/            # Historical games viewer
-│   ├── profile/            # User account
-│   ├── settings/           # User preferences
+│   ├── account/            # User account page
+│   ├── settings/           # User preferences + /settings/my-bets (bet tracker)
 │   └── (legal)             # /privacy, /terms, /contact
 │
 ├── components/
+│   ├── account/            # AccountContent
 │   ├── ads/                # NativeAdCard, DetailBannerAd
 │   ├── auth/               # AuthProvider, AuthGate, SessionProvider
-│   ├── layout/             # TopNav, BottomTabs, Footer, SettingsDrawer, RealtimeProvider, ThemeProvider,
-│   │                       # BetaBanner, OfflineBanner, PWAInstallPrompt, RevealIDBProvider
-│   ├── game/               # GameHeader, Timeline, Stats, Odds, Flow, WrapUp, Social, GameStorySection (22 components)
-│   ├── home/               # GameRow, PinnedBar, SearchBar, TimelineSection, RevealOnboarding
 │   ├── fairbet/            # BetCard, BookFilters, LiveOddsPanel, ParlaySheet, ExplainerSheet,
 │   │                       # BookChip, BookComparisonRow, ProGateSheet
+│   ├── game/               # GameHeader, Timeline, Stats, Odds, Flow, WrapUp, Social, GameStorySection (22 components)
 │   ├── golf/               # Leaderboard, TournamentCard, LeaderboardRow
+│   ├── history/            # HistoryGateOverlay
+│   ├── home/               # GameRow, PinnedBar, SearchBar, TimelineSection, RevealOnboarding
+│   ├── layout/             # TopNav, BottomTabs, Footer, SettingsDrawer, RealtimeProvider, ThemeProvider,
+│   │                       # BetaBanner, OfflineBanner, PWAInstallPrompt, RevealIDBProvider
 │   ├── settings/           # SettingsContent, ScoreHideBlacklistControls
 │   └── shared/             # Spinner, LoadingSkeleton, SectionHeader, CollapsibleSection, StaleBanner
 │
@@ -316,11 +336,11 @@ web/src/
 │       └── services/       # SimulatorService, PublicSimulatorService, ModelsService, BatchService,
 │                           # ForecastsService, ProfilesService
 │
-├── hooks/                  # Data fetching & realtime hooks (14 hooks)
-├── stores/                 # Zustand state management (13 stores)
+├── hooks/                  # Data fetching & realtime hooks (15 hooks)
+├── stores/                 # Zustand state management (14 stores)
 ├── realtime/               # WebSocket/SSE transport, dispatcher, channel naming, hooks
 └── lib/                    # Utilities (api, types, config, date, score-hide, fairbet-utils, pro-gate,
-                            # magic-link, story-templates, story-validator, salient-events, etc.)
+                            # magic-link, story-templates, story-validator, salient-events, reveal-idb, etc.)
 ```
 
 ## Degraded-State Handling
@@ -353,7 +373,7 @@ Implementation: `src/lib/stale-cache.ts`, `src/hooks/useHealthStatus.ts`, `src/c
 
 ### SEO & Discoverability
 
-- `robots.ts` — blocks `/api/`, `/auth/`, `/profile`, `/settings`, `/history`, admin analytics routes
+- `robots.ts` — blocks `/api/`, `/auth/`, `/account`, `/settings`, `/history`, admin analytics routes
 - `sitemap.ts` — lists public pages with priority and change frequency
 - `manifest.ts` — PWA web manifest (installable, standalone display)
 - Game detail pages have dynamic OG images via `opengraph-image.tsx`
@@ -383,13 +403,34 @@ The app has a Pro tier implemented via Stripe alongside an anonymous tier tracki
 
 **Session store** (`stores/session.ts`, not persisted): Hydrated on load by `SessionProvider` via `GET /api/auth/session`. Provides `status`, `email`, `tier`, and `userId` from the HttpOnly session cookie.
 
-**Feature gates** (`FEATURE_GATES` in `src/lib/config.ts`): Canonical keys — `live_odds`, `full_fairbet`, `all_books`, `all_markets`, `cross_device_sync`, `advanced_filters`. All server routes and client hooks that enforce a paywall reference these keys via `lib/pro-gate.ts` and `hooks/useProGate.ts`.
+**Feature gates** (`FEATURE_GATES` in `src/lib/config.ts`): Canonical keys — `live_odds`, `full_fairbet`, `all_books`, `all_markets`, `cross_device_sync`, `advanced_filters`, `line_movement`, `ev_simulator`, `clv_tracking`, `win_probability`, `history`. All server routes and client hooks that enforce a paywall reference these keys via `lib/pro-gate.ts` and `hooks/useProGate.ts`.
 
 **Pro gate sheet** (`components/fairbet/ProGateSheet.tsx`, store: `pro-gate-sheet.ts`): Global bottom-sheet overlay shown when a free-tier user hits a gated feature. Renders the specific feature name as context for the upgrade CTA.
 
-**Billing routes** (Stripe): `POST /api/billing/checkout` creates a Checkout session, `POST /api/billing/portal` opens Customer Portal, `POST /api/billing/webhook` handles subscription lifecycle events.
+**Billing routes** (Stripe): `POST /api/billing/checkout` creates a Checkout session, `POST /api/billing/portal` opens Customer Portal, `POST /api/billing/webhook` handles subscription lifecycle events, `GET /api/billing/info` returns current subscription status.
 
 **Ads** (`components/ads/`): `NativeAdCard` renders as a game-card-shaped list item with an "Ad" badge. `DetailBannerAd` is a 320×50 banner for game detail. Placement rules in `config.ts` (`ADS.NATIVE_AD_INTERVAL: 8`). Ads never appear between live game rows, during the reveal gesture, or on game detail primary sections.
+
+## My Bets Tracker
+
+Users can save and track their own bets via `/settings/my-bets`.
+
+**Store** (`stores/my-bets.ts`, persisted: `sd-my-bets`): Saved bet records with outcomes. Max 200 entries (`MAX_MY_BETS` in `config.ts`).
+
+**Routes**:
+- `/settings/my-bets` — main bet tracker dashboard
+- `/settings/my-bets/dashboard` — detailed outcomes view
+
+**Backend**: Uses `/api/analytics/prediction-outcomes` and `/api/analytics/record-outcomes` for recording and fetching outcomes.
+
+## PWA & Offline
+
+Core PWA infrastructure is live. Background sync and cross-device sync are not yet implemented.
+
+- **Service worker** (`/public/sw.js`): Cache First for static assets, Stale-While-Revalidate for game data.
+- **Reveal state in IndexedDB**: `lib/reveal-idb.ts` migrates reveal state from localStorage to IndexedDB for service-worker accessibility and larger capacity.
+- **Install prompt**: `PWAInstallPrompt` shown after `PWA.INSTALL_MIN_SESSIONS` (2) sessions.
+- **Offline indicator**: `OfflineBanner` auto-dismisses after `PWA.OFFLINE_AUTO_DISMISS_MS` (3s) on reconnect.
 
 ## AI Game Story
 

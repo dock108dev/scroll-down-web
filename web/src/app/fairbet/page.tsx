@@ -15,6 +15,7 @@ import { StaleBanner } from "@/components/shared/StaleBanner";
 import { InlineFeedback } from "@/components/shared/InlineFeedback";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { RENDER } from "@/lib/config";
+import { AdvancedFilters } from "@/components/fairbet/AdvancedFilters";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
@@ -156,26 +157,39 @@ export default function FairBetPage() {
         </div>
 
         {/* ── Filters (pregame only, hidden when error with no data) ── */}
-        {activeTab === "pregame" && !(hook.error && hook.filteredBets.length === 0) && <BookFilters
-          availableLeagues={hook.availableLeagues}
-          selectedLeague={hook.filters.league}
-          onLeagueChange={hook.setLeague}
-          availableMarkets={hook.availableMarkets}
-          selectedMarket={hook.filters.market}
-          onMarketChange={hook.setMarket}
-          searchText={hook.filters.searchText}
-          onSearchChange={hook.setSearchText}
-          sort={hook.filters.sort}
-          onSortChange={hook.setSort}
-          evOnly={hook.filters.evOnly}
-          onEvOnlyChange={hook.setEvOnly}
-          hideThin={hook.filters.hideThin}
-          onHideThinChange={hook.setHideThin}
-          parlayCount={hook.parlayCount}
-          onParlayClick={() => setShowParlay(true)}
-          onRefresh={hook.refetch}
-          disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
-        />}
+        {activeTab === "pregame" && !(hook.error && hook.filteredBets.length === 0) && (
+          <>
+            <BookFilters
+              availableLeagues={hook.availableLeagues}
+              selectedLeague={hook.filters.league}
+              onLeagueChange={hook.setLeague}
+              availableMarkets={hook.availableMarkets}
+              selectedMarket={hook.filters.market}
+              onMarketChange={hook.setMarket}
+              searchText={hook.filters.searchText}
+              onSearchChange={hook.setSearchText}
+              sort={hook.filters.sort}
+              onSortChange={hook.setSort}
+              evOnly={hook.filters.evOnly}
+              onEvOnlyChange={hook.setEvOnly}
+              hideThin={hook.filters.hideThin}
+              onHideThinChange={hook.setHideThin}
+              parlayCount={hook.parlayCount}
+              onParlayClick={() => setShowParlay(true)}
+              onRefresh={hook.refetch}
+              disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
+            />
+            <AdvancedFilters
+              filters={hook.filters}
+              availableSports={hook.availableSports}
+              onConfidenceChange={hook.setConfidence}
+              onMarketChange={hook.setMarket}
+              onSportChange={hook.setSport}
+              onTimeToGameChange={hook.setTimeToGame}
+              disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
+            />
+          </>
+        )}
 
       </div>
 

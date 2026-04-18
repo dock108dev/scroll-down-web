@@ -2,7 +2,6 @@
 
 import { useMemo, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import Link from "next/link";
 import { useHistoricalGames } from "@/hooks/useHistoricalGames";
 import type { GameCore } from "@/stores/game-data";
 
@@ -10,7 +9,9 @@ import { DateNavigator } from "@/components/history/DateNavigator";
 import { SearchBar } from "@/components/home/SearchBar";
 import { GameRow } from "@/components/home/GameRow";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
-import { AuthGate } from "@/components/auth/AuthGate";
+import { HistoryGateOverlay } from "@/components/history/HistoryGateOverlay";
+import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
+import { useSession } from "@/stores/session";
 import { cn } from "@/lib/utils";
 import { easternToday, addDays, fmtDate } from "@/lib/date-utils";
 
@@ -234,14 +235,44 @@ function HistoryPageInner() {
   );
 }
 
-// ── Page export (Suspense boundary for useSearchParams) ────
+// ── Gate wrapper: checks session + Pro tier ────────────────
+
+function HistoryGated() {
+  const { status, tier } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "anonymous") {
+      router.replace("/login?redirect=/history");
+    }
+  }, [status, router]);
+
+  if (status === "loading" || status === "anonymous") {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12 space-y-3">
+        <LoadingSkeleton count={6} variant="timelineRow" />
+      </div>
+    );
+  }
+
+  if (tier !== "pro") {
+    return (
+      <>
+        <HistoryGateOverlay />
+        <ProGateSheet />
+      </>
+    );
+  }
+
+  return (
+    <Suspense>
+      <HistoryPageInner />
+    </Suspense>
+  );
+}
+
+// ── Page export ────────────────────────────────────────────
 
 export default function HistoryPage() {
-  return (
-    <AuthGate minRole="admin" message={<div className="space-y-3"><div className="flex justify-center"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-neutral-500"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><p className="text-sm font-medium text-neutral-200">Game History is coming soon</p><p className="text-xs text-neutral-400 leading-relaxed">Browse past scores, search by team, and review completed matchups. In the meantime, check yesterday&apos;s results on the <Link href="/" className="text-blue-400 hover:text-blue-300 underline">Games page</Link>.</p></div>} showSignup={false}>
-      <Suspense>
-        <HistoryPageInner />
-      </Suspense>
-    </AuthGate>
-  );
+  return <HistoryGated />;
 }

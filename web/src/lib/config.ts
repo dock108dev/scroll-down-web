@@ -51,6 +51,10 @@ export const FAIRBET = {
   ATTRIBUTION_FRESH_MS: 2 * 60_000,         // < 2m: no staleness label
   ATTRIBUTION_STALE_MS: 15 * 60_000,        // > 15m: amber "May be delayed"
   ATTRIBUTION_UPDATE_INTERVAL_MS: 30_000,   // re-evaluate attribution label every 30s
+  // Minimum `confidence` value (proxy for sample size) for each EV confidence tier
+  CONFIDENCE_SAMPLE_HIGH: 30,
+  CONFIDENCE_SAMPLE_MEDIUM: 10,
+  MONTE_CARLO_TRIALS: 10_000,               // simulation iterations for Win Probability sheet
 };
 
 export const REALTIME = {
@@ -85,6 +89,8 @@ export const STORAGE_KEYS = {
   TIER: "sd-tier",
   ANON_ID: "sd-anon-id",
   SESSION: "sd-session",
+  MY_BETS: "sd-my-bets",
+  FAIRBET_FILTERS: "sd-fairbet-filters",
 };
 
 export const PWA = {
@@ -101,6 +107,7 @@ export const STORAGE = {
   MAX_SNAPSHOTS: 20,
   POSITION_MAX_AGE_DAYS: 30,
   LAYOUT_MAX_AGE_DAYS: 30,
+  MAX_MY_BETS: 200,
 };
 
 export const FRESHNESS = {
@@ -155,6 +162,11 @@ export const FEATURE_GATES = {
   ALL_MARKETS: "all_markets",
   CROSS_DEVICE_SYNC: "cross_device_sync",
   ADVANCED_FILTERS: "advanced_filters",
+  LINE_MOVEMENT: "line_movement",
+  EV_SIMULATOR: "ev_simulator",
+  CLV_TRACKING: "clv_tracking",
+  WIN_PROBABILITY: "win_probability",
+  HISTORY: "history",
 } as const;
 
 export type FeatureGateKey = (typeof FEATURE_GATES)[keyof typeof FEATURE_GATES];

@@ -1,229 +1,191 @@
 # Abend Handling Audit
 
-**Date**: 2026-04-18  
-**Branch**: aidlc_1  
-**Auditor**: Claude Sonnet 4.6  
-**Scope**: `web/src/` — all lib, stores, hooks, realtime, and app/api files
+**Date:** 2026-04-18  
+**Branch:** aidlc_1  
+**Scope:** `web/src/` — all TypeScript/TSX source files
 
 ---
 
 ## Executive Summary
 
-The codebase has a mostly sound error-handling philosophy: realtime transport fails over gracefully, stale cache avoids cold blank screens, and analytics are best-effort. However, several blind spots create real reliability and observability risk:
+The codebase has a generally sound error-handling philosophy: API proxy errors surface cleanly, realtime transport degrades gracefully, and preference sync is intentionally non-fatal. However, three **high-severity data-integrity blind spots** were found in the file-based auth/sync layer: `loadAccounts()` and `loadStore()` both swallow filesystem/JSON errors silently and return empty state — meaning a corrupted JSON file causes **permanent silent data loss** (accounts wiped, reveal sync wiped) with no operator log. A related HIGH finding is the missing startup warning when `DATA_DIR` is not set in `sync/reveal/route.ts`. These were fixed in-place.
 
-- **Four Zustand custom storage adapters** (`pinned-games`, `reveal`, `reading-position`, `section-layout`) called `JSON.parse` without try/catch. Corrupt `localStorage` data would throw an unhandled exception during hydration, potentially crashing the app before the first render. **Fixed.**
-- **SSE proxy route** (`/api/realtime/sse/route.ts`) had no try/catch around the upstream `fetch()`. A DNS failure or connection refusal would throw an uncaught exception in a Next.js Route Handler, producing a framework-level 500 instead of a clean 502. **Fixed.**
-- **`useFairBetLive` game discovery** swallowed errors and returned `[]` without setting `error` state, so users silently saw "No live games" during backend failures. **Fixed.**
-- **Realtime transport** swallowed handler exceptions and malformed message parse errors with no log. **Fixed** — added `console.error` to make these visible.
-- **`refreshMe`** in `auth.ts` silently drops non-401 network/server errors, leaving the user in a limbo logged-in state with null `email`/`userId`. **Partially fixed** — added `console.error`; full fix requires a UI-level error signal (tracked below).
-- **`preferences-sync` `fetchPreferences`** had no try/catch around the `fetch()` call itself. Network errors propagated to an outer catch that swallowed them completely. **Fixed.**
+Four additional observability fixes were applied (SSE/WS error logging, preference-sync error-gate reset, localStorage guard in `RevealOnboarding`). Twelve further LOW–MEDIUM findings are annotated with remediation notes.
+
+**Fixed in this audit:** 6 issues  
+**Noted as acceptable:** 8 issues  
+**Require future attention:** 6 issues
 
 ---
 
 ## Findings
 
-### Severity Key
-- **Note**: Acceptable — intentional design, no action needed
-- **Low**: Minor gap, easy to confuse but low blast radius
-- **Medium**: Silent failure that can confuse operators or mislead users
-- **High**: Silent failure with data integrity or user-facing reliability impact
-- **Critical**: Potential for unhandled exception / app crash
+### HIGH — Data-Integrity / Silent Data Loss
+
+| # | File | Lines | Pattern | Risk |
+|---|------|-------|---------|------|
+| H1 | `lib/magic-link.ts` | 127–128 | `loadAccounts()` bare `catch` returns empty `Map` — silent data loss on corrupt `sd-accounts.json` | **HIGH** |
+| H2 | `app/api/sync/reveal/route.ts` | 51–52 | `loadStore()` bare `catch` returns `{}` — silent data loss on corrupt `sd-reveal-sync.json` | **HIGH** |
+| H3 | `app/api/sync/reveal/route.ts` | 43, 57 | `DATA_DIR ?? "/tmp"` used with no warning — reveal-sync data stored in `/tmp` in production silently | **HIGH** |
+| H4 | `lib/api-server.ts` | 5 | `API_KEY` defaults to `""` with no startup warning — 401s cascade to 502s at runtime only | **HIGH** |
+
+**H1 detail:** `loadAccounts()` returns `new Map()` on any `JSON.parse` or filesystem error. The next `findOrCreateAccount()` call overwrites the corrupted file with an empty set, making data loss permanent. Affects user tier, Stripe customer ID, subscription status.  
+**→ Fixed:** added `console.error` before returning empty Map.
+
+**H2 detail:** Same pattern in the reveal-sync file store. A partial write (power loss, disk full) corrupts the JSON; next GET/PUT silently resets all users' cross-device reveal state to empty.  
+**→ Fixed:** added `console.error` before returning `{}`.
+
+**H3 detail:** `syncPath()` in `app/api/sync/reveal/route.ts` uses `process.env.DATA_DIR ?? "/tmp"` with no production warning. `magic-link.ts`'s `dataDir()` already has the `NODE_ENV === "production"` guard; the sync route did not.  
+**→ Fixed:** added equivalent `NODE_ENV` guard to `syncPath()`.
+
+**H4 detail:** Downstream effect is a cascade of 502 responses (since `ApiError.isUpstreamGatewayError` maps 401 → 502). Visible to users but invisible in startup logs.  
+**→ Not fixed here** — requires env validation at startup; tracked in remediation plan.
 
 ---
 
-### A. localStorage / Store Hydration
+### MEDIUM — Observability / Silent Failure Paths
 
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| A1 | `stores/pinned-games.ts` | 76–98 | `JSON.parse` without try/catch in custom `getItem`; `setItem` without try/catch | **Critical** | **Fixed** |
-| A2 | `stores/reveal.ts` | 113–157 | Same pattern; this store holds the product's core reveal invariant | **Critical** | **Fixed** |
-| A3 | `stores/reading-position.ts` | 46–75 | Same pattern | **High** | **Fixed** |
-| A4 | `stores/section-layout.ts` | 66–96 | Same pattern | **High** | **Fixed** |
+| # | File | Lines | Pattern | Risk |
+|---|------|-------|---------|------|
+| M1 | `lib/reveal-sync.ts` | 40–47 | `fetchRemoteState()` bare `catch` returns `null` — no log | MEDIUM |
+| M2 | `lib/reveal-sync.ts` | 135, 138 | `pullAndMerge().catch(() => {})` double-silences M1 | MEDIUM |
+| M3 | `app/api/auth/send-link/route.ts` | 64–69 | Email delivery failure logged then returns 200 — token stored but never delivered, no retry | MEDIUM (intentional) |
+| M4 | `app/api/sync/reveal/route.ts` | 56–59 | `saveStore()` — `writeFileSync` uncaught; throws 500 with no structured log | MEDIUM |
+| M5 | `app/analytics/(mlb)/models/page.tsx` | 135–148 | `catch { /* ignore */ }` on admin cancel/activate — no UI feedback | MEDIUM |
+| M6 | `app/analytics/(mlb)/batch/page.tsx` | 134–150 | `catch { /* ignore */ }` on job detail/outcomes — blank UI, no error | MEDIUM |
 
-**What was missing**: All four stores used custom Zustand persist storage adapters that called `localStorage.getItem()` + `JSON.parse()` with no error handling. A corrupt entry (truncated write from a prior quota error, browser migration, or manual edit) would throw an unhandled exception during Zustand hydration — before any React error boundary could catch it.
+**M1/M2:** When cross-device reveal sync fails (network, 401, malformed JSON), both the inner fetch and the outer callers swallow silently. Pro users lose sync with no indication.  
+**→ Fixed:** added `console.warn` in `fetchRemoteState` catch. Outer `.catch(() => {})` at lines 135/138 are now harmless redundancy (internal warn fires first).
 
-**Fix applied**: Wrapped `getItem` in try/catch that calls `localStorage.removeItem(name)` and returns `null` (treat as cache miss). Wrapped `setItem` in try/catch that silently drops quota/permission errors (data won't persist, but the app keeps running).
+**M3:** Intentional anti-enumeration design — documented with comment. `console.error` already fires. The magic token is stored and will expire naturally (15 min). No retry/dead-letter queue exists.  
+**→ Acceptable.** Future: add metric counter for Resend failures in `/api/health`.
 
----
+**M4:** `saveStore()` calls `writeFileSync` with no try/catch — a full disk throws unhandled into Next.js.  
+**→ Not fixed here.** Tracked in remediation plan.
 
-### B. SSE Proxy Route
-
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| B1 | `app/api/realtime/sse/route.ts` | 12–18 | `fetch()` with no try/catch — DNS/connection failure throws unhandled | **High** | **Fixed** |
-
-**Fix applied**: Wrapped upstream `fetch()` in try/catch; returns a clean 502 with a `console.error` log on failure.
-
----
-
-### C. Auth Store
-
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| C1 | `stores/auth.ts` | 100–104, 125–129, 264–268 | Post-login `refreshMe()` failure caught and downgraded to `trackEvent` only — user has valid token but null email/userId | **High** | Tracked (see below) |
-| C2 | `stores/auth.ts` | 161–166 | `refreshMe` swallows non-401 errors (500, network) — no log | **Medium** | **Fixed** — added `console.error` |
-| C3 | `stores/auth.ts` | 184–192 | `refreshToken` swallows non-404 errors with only `trackEvent` — expired token not cleared, delayed cascade | **Medium** | Note — `trackEvent` provides some signal; 401 from token refresh is handled upstream via per-request 401 → logout |
-
-**C1 detail**: When `refreshMe()` fails after a successful login/signup/magic-link, the user lands with a valid JWT but `email` and `userId` are `null`. Any UI rendering these (settings drawer, admin gate) shows empty/incorrect state. The catch block downgrades to an analytics event (`profile_hydrate_error`) rather than setting UI error state or retrying.
-
-**Recommended follow-up (C1)**: Surface a non-fatal toast: "Signed in — couldn't load your profile. Please refresh." Alternatively, retry `refreshMe()` once after 2 seconds before silently falling through.
+**M5/M6:** Admin-only surfaces. Failed operations show no error in the UI.  
+**→ Not fixed here.** Tracked in remediation plan.
 
 ---
 
-### D. Preferences Sync
+### LOW — Acceptable Patterns with Minor Observability Gaps
 
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| D1 | `lib/preferences-sync.ts` | 56 | `fetch()` inside `fetchPreferences` had no try/catch — network errors propagated to outer catch that swallowed them with no log | **High** | **Fixed** |
-| D2 | `lib/preferences-sync.ts` | 254–258 | Outer catch in `pullAndStartSync` swallows all errors from `fetchPreferences` — comment claimed it was logged inside, but network errors were not | **Medium** | Fixed via D1 |
-| D3 | `lib/preferences-sync.ts` | 61–65 | `console.warn` for HTTP failure, deduplicated to once per login — ongoing failures invisible | **Medium** | Note — acceptable dedup, but consider resetting the flag on successful pull |
-| D4 | `lib/preferences-sync.ts` | 85–88 | `console.warn` for push failure, suppressed after first occurrence | **Medium** | Note — circuit breaker (`MAX_BACKOFF_FAILURES`) stops scheduling after 3 failures; acceptable pattern |
-| D5 | `lib/preferences-sync.ts` | 283–297 | `flushPreferences` (on-unload) drops returned Promise with no `.catch()` — keepalive fetch rejection is unhandled | **Low** | Note — `keepalive: true` is best-effort by spec; unhandled rejection on unload is low-risk |
-| D6 | `lib/preferences-sync.ts` | 202–207 | Debounced push `.catch(() => {})` — after first logged failure, all subsequent push failures are completely silent | **Medium** | Note — circuit breaker bounds runaway; acceptable for now |
+| # | File | Lines | Pattern | Severity |
+|---|------|-------|---------|----------|
+| L1 | `realtime/transport.ts` | 220–222 | `ws.onerror` no-op — WS error type never logged | LOW |
+| L2 | `realtime/transport.ts` | 301–306 | `sse.onerror` — no log before reconnect | LOW |
+| L3 | `lib/stale-cache.ts` | 20–23 | JSON.parse failure returns `null` silently | LOW |
+| L4 | `hooks/useFairBetOdds.ts` | 181–204 | Two `catch { /* ignore */ }` on localStorage filter read/write | LOW |
+| L5 | `hooks/useFairBetOdds.ts` | 270–280 | `Promise.allSettled` page failures set `stale: true` but log nothing | LOW |
+| L6 | `stores/auth.ts` | 186–194 | `refreshToken` non-404 error tracked but token left stale | LOW |
+| L7 | `stores/auth.ts` | 100–103, 267–269 | `profile_hydrate_error` tracks event, drops error object | LOW |
+| L8 | `lib/preferences-sync.ts` | 70–73 | `fetchHasLoggedError` never resets — failures silent after recovery | LOW |
+| L9 | `components/home/RevealOnboarding.tsx` | 12–13, 38 | Raw `localStorage` access — throws `DOMException` in private browsing | LOW |
+| L10 | `lib/reveal-sync.ts` | 163–169 | `flushRevealSync` calls `pushLocalState` directly — errors propagate uncaught | LOW |
+| L11 | `lib/reveal-idb.ts` | 271–276 | Migration parse failure silent — localStorage removed even on error | LOW |
+| L12 | `stores/session.ts` | 47–49 | Network error on session check silently downgrades to anonymous | LOW |
 
----
+**L1:** WebSocket `onerror` always precedes `onclose`; `onclose` handles the failure. Standard WS pattern, but error type unobservable.  
+**→ Fixed:** added `console.warn` in `ws.onerror`.
 
-### E. FairBet Live Odds
+**L2:** SSE `onerror` reconnect loop runs with no log.  
+**→ Fixed:** added `console.warn` in `sse.onerror`.
 
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| E1 | `hooks/useFairBetLive.ts` | 75–86 | `discoverGames` catch returned `[]` without setting `error` state — users saw "No live games" during backend errors | **High** | **Fixed** |
-| E2 | `hooks/useFairBetOdds.ts` | 328–331 | Background silent-refresh failure `.catch(() => {})` — stale cache shown indefinitely | **Medium** | Note — acceptable for silent background refresh; stale banner covers this |
-| E3 | `hooks/useFairBetOdds.ts` | 364–367 | Realtime-triggered refresh failure swallowed — `.catch(clearCounter)` | **Medium** | Note — prevents retry storms; stale banner covers this |
-| E4 | `hooks/useFairBetOdds.ts` | 373–379 | Visibility-triggered refresh failure `.catch(() => {})` | **Medium** | Note — same as E2 |
+**L3:** Corrupt localStorage cache treated as miss with no log. Combined with `writeCache` logging quota errors, cache failures are discoverable for writes but not reads.  
+**→ Acceptable** (cache miss is safe; adding a warn risks noise on malformed old entries).
 
----
+**L4:** Filter persistence failures are completely silent. Corrupt filter data silently resets to defaults.  
+**→ Acceptable** (non-critical UI preference; silent reset is fine UX).
 
-### F. Realtime Transport
+**L5:** FairBet page failures set `stale: true` (user-visible via stale banner) but log nothing about which offsets failed.  
+**→ Tracked in remediation plan** for future observability.
 
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| F1 | `realtime/transport.ts` | 205–212 | WS `onmessage` parse/dispatch errors swallowed with no log | **Medium** | **Fixed** — added `console.error` |
-| F2 | `realtime/transport.ts` | 292–298 | SSE `onmessage` parse/dispatch errors swallowed with no log | **Medium** | **Fixed** — added `console.error` |
-| F3 | `realtime/transport.ts` | 346–354 | `dispatch()` handler exceptions swallowed per-handler with no log | **High** | **Fixed** — added `console.error` |
-| F4 | `realtime/transport.ts` | 174–179 | WS constructor catch → `onWsFail()` — intentional fallback, error details lost | **Low** | Note — fallback is correct; error message would help diagnosis |
-| F5 | `realtime/transport.ts` | 279–283 | SSE constructor catch → offline + reconnect — same as F4 | **Low** | Note |
+**L6:** On non-404 `refreshToken` failure, token stays stale in state. Events are tracked but no corrective action taken.  
+**→ Tracked in remediation plan.**
 
-**F3 detail**: `dispatch()` iterates all registered handlers in a try/catch per handler. A runtime error in the `dispatcher.ts` `handleEvent` function (e.g., unexpected data shape during `applyGamePatch`) would be silently swallowed, leaving game state partially or incorrectly updated. The added `console.error` gives visibility without crashing the transport.
+**L7:** `profile_hydrate_error` drops the error object — analytics event has no detail if `refreshMe` throws unexpectedly.  
+**→ Acceptable** for now; analytic event at least shows occurrence rate.
 
----
+**L8:** `fetchHasLoggedError` gate never resets. If preferences fail, recover, then fail again hours later, the second failure window is completely invisible.  
+**→ Fixed:** reset `fetchHasLoggedError = false` before successful `res.json()` return.
 
-### G. API Layer
+**L9:** `hasSeenOnboarding()` calls `localStorage.getItem` without try/catch. Firefox private browsing throws `DOMException: Access is denied` and crashes the component.  
+**→ Fixed:** wrapped both read and write in try/catch.
 
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| G1 | `lib/api-server.ts` | 17–27 | Upstream 401/403 mapped to 502 with no server-side log — API key misconfiguration indistinguishable from outage | **Medium** | Note |
-| G2 | `lib/api.ts` | 82–85 | Silent logout on 401, then throws generic error — user sees "trouble loading data" not "session expired" | **Medium** | Note |
-| G3 | `app/api/health/route.ts` | 9–14 | All errors (401, 500, timeout, DNS) treated as "degraded" — API key misconfiguration masked as outage | **Medium** | Note |
-| G4 | `app/api/auth/[...path]/route.ts` | 120–126 | Auth proxy catch returns 502 with no server-side log | **Low** | Note |
+**L10:** `flushRevealSync()` (called on tab close) calls `pushLocalState()` directly with no catch. If the push throws, the unhandled promise rejection is reported to the browser console.  
+**→ Acceptable** (tab-close path; errors there are benign and the local IDB is preserved).
 
----
+**L11:** IDB migration parse failure silently removes the localStorage entry — prior reveal state lost with no log.  
+**→ Tracked in remediation plan.**
 
-### H. Stale Cache
-
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| H1 | `lib/stale-cache.ts` | 14–23 | `JSON.parse` catch → `return null` — unmonitored cache corruption | **Low** | Note — correct behavior; no observability into frequency |
-| H2 | `lib/stale-cache.ts` | 27–35 | `localStorage.setItem` catch → silent — quota errors kill stale fallback with no signal | **Medium** | Note — acceptable; could add a sampled `console.warn` |
+**L12:** Any network error during session check downgrades to anonymous/free with no log. A transient blip temporarily revokes Pro features.  
+**→ Acceptable** (retry on next navigation; no durable state change).
 
 ---
 
-### I. Analytics
+### NOTE — Acceptable by Design
 
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| I1 | `lib/analytics.ts` | 17–37 | Outer try/catch + inner `.catch(() => {})` swallow all analytics errors | **Note** | Intentional — analytics must never break the app |
-
----
-
-## Summary by Disposition
-
-### Fixed In This Audit
-
-| Finding | Description |
-|---------|-------------|
-| A1–A4 | Custom store localStorage adapters wrapped with try/catch + corrupt-key eviction |
-| B1 | SSE proxy upstream fetch wrapped in try/catch |
-| C2 | `refreshMe` non-401 errors now log via `console.error` |
-| D1 | `fetchPreferences` network errors now caught and logged |
-| E1 | `discoverGames` now sets `error` state on failure |
-| F1–F3 | Realtime WS/SSE parse errors and handler exceptions now log via `console.error` |
-
-### Recommended Follow-Up (Not Fixed — Requires Product/UX Decision)
-
-| Priority | Finding | Recommendation |
-|----------|---------|----------------|
-| High | C1 — post-login `refreshMe` failure | Add a retry (once, after 2s) before falling through. If still fails, show a non-fatal toast: "Signed in — couldn't load your profile. Please refresh." |
-| Medium | G1/G3 — 401/403 from backend mapped to 502 | Add a server-side `console.error` in the proxy that tags the response as an auth failure vs. generic outage. The client behavior (502) stays the same. |
-| Medium | G2 — silent logout on 401 | Improve the error message surfaced to the user: "Your session has expired. Please sign in again." |
-| Medium | H2 — stale cache quota errors | Add a sampled `console.warn` (once per session) when `writeCache` hits a quota error, so ops can detect storage pressure. |
-| Low | F4/F5 — WS/SSE constructor catch | Log the caught error (`console.error`) before calling `onWsFail()` / going offline. |
-| Low | D5 — `flushPreferences` on-unload | Add `.catch(() => {})` explicitly on the returned Promise to suppress the unhandled rejection warning; document that this is intentional best-effort. |
-
-### Acceptable — No Action Needed
-
-| Finding | Rationale |
-|---------|-----------|
-| I1 — analytics swallowed | Intentional: analytics errors must never break the app |
-| D4 — push failure after circuit breaker | Acceptable: circuit breaker bounds runaway, `trackEvent` provides some signal |
-| H1 — stale cache `JSON.parse` catch | Correct: treat corrupt cache as miss, not a crash |
-| C3 — `refreshToken` non-404 errors tracked | `trackEvent` provides signal; upstream per-request 401 handling provides cleanup |
-| E2–E4 — background/visibility refresh failures | Stale data banner covers the user-visible gap; retry on next poll cycle |
+| # | File | Pattern | Rationale |
+|---|------|---------|-----------|
+| N1 | `lib/analytics.ts` | All errors swallowed | Analytics must never break app stability |
+| N2 | `lib/api-server.ts:fixMojibake` | Returns original on decode failure | Defensive; mojibake preserved vs. crash |
+| N3 | `components/game/GameStorySection.tsx` | `.catch(() => {})` on AI story + vote | Non-critical AI feature; vote loss acceptable |
+| N4 | `lib/preferences-sync.ts` push circuit | First failure logged; subsequent suppressed | 3-failure threshold + 5-min auto-reset is correct |
+| N5 | `realtime/transport.ts` dispatch handler | `catch(err)` logs and continues | Correct defensive isolation |
+| N6 | `app/api/auth/send-link/route.ts` 200 on parse fail | Anti-enumeration design | Documented, intentional |
+| N7 | `stores/auth.ts` authFetch `.catch()` on body parse | Generic message fallback | 502 body may not be JSON |
+| N8 | `lib/reveal-sync.ts` pushLocalState silent catch | Comment documents intent | Local IDB preserved; retries on interval |
 
 ---
 
-## Files Changed (Cycle 1)
+## Changes Applied In This Audit
 
-```
-web/src/app/api/realtime/sse/route.ts   — try/catch around upstream fetch
-web/src/stores/pinned-games.ts          — try/catch in custom storage adapter
-web/src/stores/reveal.ts                — try/catch in custom storage adapter
-web/src/stores/reading-position.ts      — try/catch in custom storage adapter
-web/src/stores/section-layout.ts        — try/catch in custom storage adapter
-web/src/hooks/useFairBetLive.ts         — discoverGames sets error state on failure
-web/src/realtime/transport.ts           — console.error on WS/SSE parse errors and handler throws
-web/src/stores/auth.ts                  — console.error on non-401 refreshMe failure
-web/src/lib/preferences-sync.ts        — try/catch around fetchPreferences network call
-```
+### 1. `lib/magic-link.ts` — `loadAccounts()` error logged
+`catch { return new Map(); }` → `catch (err) { console.error(..., err); return new Map(); }`
+
+### 2. `app/api/sync/reveal/route.ts` — `loadStore()` error logged + DATA_DIR warning
+`catch { return {}; }` → `catch (err) { console.error(..., err); return {}; }`  
+Added `NODE_ENV === "production"` guard to `syncPath()` matching `magic-link.ts`'s pattern.
+
+### 3. `lib/reveal-sync.ts` — `fetchRemoteState()` logs on catch
+`catch { return null; }` → `catch (err) { console.warn(`${TAG} fetchRemoteState network error (non-fatal):`, err); return null; }`
+
+### 4. `realtime/transport.ts` — ws.onerror and sse.onerror log
+Added `console.warn("[realtime/ws] onerror:", e)` and `console.warn("[realtime/sse] onerror — scheduling reconnect")`.
+
+### 5. `lib/preferences-sync.ts` — reset `fetchHasLoggedError` on success
+Added `fetchHasLoggedError = false;` before `return res.json()` so recovery re-enables the error gate.
+
+### 6. `components/home/RevealOnboarding.tsx` — localStorage guarded
+Wrapped `hasSeenOnboarding()` read and dismiss `setItem` in try/catch.
 
 ---
 
-## Cycle 2 — 2026-04-18
+## Remediation Plan
 
-Second-pass audit covering IDB persistence paths, circuit breaker behavior, and server-side auth/health observability.
+### Immediate (before next production deploy)
 
-### New Findings and Fixes
+1. **Validate `API_KEY` at startup** (`lib/api-server.ts`):
+   ```ts
+   if (!API_KEY && process.env.NODE_ENV === "production") {
+     console.error("[api-server] FATAL: No API key env var set. All backend requests will fail.");
+   }
+   ```
 
-| ID | File | Lines | Pattern | Severity | Status |
-|----|------|--------|---------|----------|--------|
-| J1 | `stores/reveal.ts` | 60–64, 117–225 | 8 IDB operations (persistToIDB + all offline-queue enqueues) used `.catch(() => {})` — reveal state silently failed to persist | **Critical** | **Fixed** |
-| J2 | `components/layout/RevealIDBProvider.tsx` | 21 | `flushOfflineQueue().catch(() => {})` — reconnect sync failure invisible | **High** | **Fixed** |
-| J3 | `lib/preferences-sync.ts` | 19–20, 202–213 | Push circuit breaker (`consecutivePushFailures >= MAX_BACKOFF_FAILURES`) had no time-based reset — after 3 push failures prefs silently stopped syncing for the rest of the session | **Critical** | **Fixed** |
-| J4 | `lib/magic-link.ts` | 52–54 | `verifySession` catch returned null with no log — unexpected crypto/parse errors invisible on auth server | **High** | **Fixed** |
-| J5 | `app/api/golf/leaderboard/route.ts` | 75 | `if (!tournamentId) return []` with no log — 200 + empty leaderboard on missing tournament, indistinguishable from zero competitors | **High** | **Fixed** |
-| J6 | `app/api/health/route.ts` | 9–14 | Bare `catch` on backend ping — degradation reason (timeout vs 500 vs DNS) invisible in server logs | **Medium** | **Fixed** |
-| J7 | `lib/stale-cache.ts` | 32–34 | `writeCache` quota/permission error swallowed silently | **Medium** | **Fixed** |
+2. **Wrap `saveStore()` / `saveAccounts()` writes** — `writeFileSync` on a full disk throws unhandled into the Next.js route handler. Add try/catch with `console.error` and rethrow so the handler returns 500 with a structured message.
 
-**J3 detail**: The push circuit breaker previously only reset on `pullAndStartSync()` (i.e., next login). A 10-minute backend outage would permanently halt preference sync for the current session. Fix adds a 5-minute time-based reset in `schedulePush()` and logs both the circuit trip and reset events.
+### Short-term (next sprint)
 
-### Files Changed (Cycle 2)
+3. **Admin analytics pages** — replace `catch { /* ignore */ }` in `models/page.tsx` and `batch/page.tsx` with error state (`setError(String(err))`).
 
-```
-web/src/stores/reveal.ts                       — 8 IDB catches → console.error
-web/src/components/layout/RevealIDBProvider.tsx — flushOfflineQueue catch → console.error
-web/src/lib/preferences-sync.ts               — push circuit breaker: add time-based reset (5 min)
-web/src/lib/magic-link.ts                      — verifySession catch → console.error
-web/src/app/api/golf/leaderboard/route.ts      — missing tournament → console.info before return []
-web/src/app/api/health/route.ts                — backend ping catch → console.error
-web/src/lib/stale-cache.ts                     — writeCache catch → console.warn
-```
+4. **FairBet page failure logging** — in `useFairBetOdds.ts` `Promise.allSettled` loop, log which page offsets failed so operators can correlate stale-banner reports with backend errors.
 
-### Remaining Acceptable Items (Cycle 2)
+5. **`refreshToken` stale-token handling** — on non-404 error, schedule a re-auth or at minimum clear the token so subsequent requests fail fast rather than silently using a stale credential.
 
-| Finding | Rationale |
-|---------|-----------|
-| `lib/analytics.ts` `.catch(() => {})` | Fire-and-forget analytics — intentional by spec |
-| `useFairBetOdds` background refresh swallowed | Silent SWR refresh; stale banner covers user-visible gap |
-| `useFairBetLive` partial game failures not logged | Transient per-game failures during 15s poll; logging would flood console |
-| `loadAccounts` parse failure → empty Map | **Unaddressed risk**: corrupt `sd-accounts.json` silently creates fresh accounts. Should throw rather than return empty Map. Tracked for follow-up. |
-| `preferences-sync` `fetchHasLoggedError` one-shot log | Acceptable anti-flood; first failure logged, subsequent suppressed |
+### Future / Nice-to-Have
+
+6. **Email delivery metric** — count Resend failures in memory and expose via `/api/health` so email degradation is surfaced in monitoring.
+
+7. **`reveal-idb.ts` migration logging** — add `console.warn` on parse failure; consider deferring localStorage removal until IDB write succeeds.
+
+8. **Structured server logging** — replace ad-hoc `console.error/warn` in server routes with a JSON-line logger for production log aggregator compatibility.
