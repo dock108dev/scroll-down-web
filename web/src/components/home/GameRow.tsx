@@ -11,13 +11,13 @@ import { cn, cardDisplayName, formatTimeET, resolveTeamColor } from "@/lib/utils
 import { LeagueBadge } from "@/components/fairbet/LeagueBadge";
 import { APP_TIMEZONE } from "@/lib/date-utils";
 import { pickSnapshot } from "@/lib/score-display";
+import { useFreshnessLabel } from "@/hooks/useFreshnessLabel";
 
 interface GameRowProps {
   game: GameCore;
   showPin?: boolean;
   variant?: "home" | "history";
 }
-
 
 function formatHistoryDateTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -49,15 +49,29 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   const live = isLive(game.status, game);
   const pregame = isPregame(game.status, game);
 
+  const freshness = useFreshnessLabel(game.id, live && !isHistory);
+
   const hasScoreData = game.homeScore != null && game.awayScore != null;
   const canToggle = display?.canToggle ?? false;
   const scoresVisible = display?.visible ?? false;
   const hasNewData = display?.hasUpdate ?? false;
 
+  // Three visual states for read/unread treatment
+  const revealState: "unrevealed" | "revealed" | "updated" =
+    !isHistory && canToggle
+      ? read && hasNewData
+        ? "updated"
+        : read
+        ? "revealed"
+        : "unrevealed"
+      : "revealed";
+
   // ── Score flash animation ─────────────────────────────────────
+  // flashCount increments on each score change; key={flashCount} on the score
+  // span forces a remount that naturally restarts the CSS animation.
   const prevAwayRef = useRef(display?.awayScore);
   const prevHomeRef = useRef(display?.homeScore);
-  const [scoreFlash, setScoreFlash] = useState(false);
+  const [flashCount, setFlashCount] = useState(0);
 
   useEffect(() => {
     const pA = prevAwayRef.current, pH = prevHomeRef.current;
@@ -66,16 +80,9 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     if (scoresVisible && pA != null && pH != null &&
         display?.awayScore != null && display?.homeScore != null &&
         (pA !== display.awayScore || pH !== display.homeScore)) {
-      setScoreFlash(true);
+      setFlashCount((c) => c + 1);
     }
   }, [display?.awayScore, display?.homeScore, scoresVisible]);
-
-  useEffect(() => {
-    if (scoreFlash) {
-      const t = setTimeout(() => setScoreFlash(false), 400);
-      return () => clearTimeout(t);
-    }
-  }, [scoreFlash]);
 
   // ── Hide mode update pulse ──────────────────────────────────
   const prevHasNewRef = useRef(hasNewData);
@@ -140,6 +147,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       if (hasNewData) {
         return (
           <button
+            data-testid="upd-badge"
             onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
             className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
@@ -153,7 +161,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       }
 
       return (
-        <span className="inline-flex items-center gap-1 text-green-400 font-semibold text-xs">
+        <span data-testid="live-badge" className="inline-flex items-center gap-1 text-green-400 font-semibold text-xs">
           <span className="relative flex h-1.5 w-1.5">
             <span className="animate-live-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
@@ -167,6 +175,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       if (hasNewData) {
         return (
           <button
+            data-testid="upd-badge"
             onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
             className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
@@ -195,65 +204,104 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     const hasDisplayScores = display?.homeScore != null && display?.awayScore != null;
     if (pregame || (!hasScoreData && !hasDisplayScores)) return null;
 
-    // Hide mode + unrevealed: reveal button
-    if (canToggle && !scoresVisible) {
+    // Always-visible mode: render score directly (no overlay needed)
+    if (!canToggle) {
+      if (live) {
+        return (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasNewData) acceptUpdate(game.id, pickSnapshot(game));
+            }}
+            className="shrink-0 pl-3 min-w-[96px] min-h-[44px] flex items-center justify-end text-right gap-2"
+          >
+            {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
+            <span key={flashCount} data-testid="score-value" className={cn("text-lg font-bold tabular-nums text-neutral-200", flashCount > 0 && "score-flash")}>{display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}</span>
+          </button>
+        );
+      }
       return (
-        <button
-          onClick={handleReveal}
-          className={cn(
-            "shrink-0 flex items-center gap-1.5 rounded-lg bg-neutral-800/40 border border-neutral-700/30 ml-3 text-blue-400 hover:text-blue-300 transition min-w-[96px] min-h-[44px] justify-center",
-            updatePulse && "update-pulse",
-          )}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-            <circle cx="12" cy="12" r="3" />
-          </svg>
-          <span className="text-xs font-medium">Reveal</span>
-        </button>
+        <span key={flashCount} data-testid="score-value" className={cn(
+          "shrink-0 text-lg font-bold tabular-nums text-neutral-200 pl-3 text-right min-w-[96px]",
+          flashCount > 0 && "score-flash",
+        )}>
+          {display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}
+        </span>
       );
     }
 
-    // Scores visible (normal mode or revealed)
-    // Live games: clicking score refreshes it (or no-op if unchanged), not navigate
-    if (live) {
-      return (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            if (hasNewData) {
-              acceptUpdate(game.id, pickSnapshot(game));
-            }
-          }}
-          className={cn(
-            "shrink-0 pl-3 min-w-[96px] min-h-[44px] flex items-center justify-end text-right gap-2",
-            scoreFlash && "score-flash",
-          )}
-        >
-          {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
-          <span className="text-lg font-bold tabular-nums text-neutral-200">{display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}</span>
-        </button>
-      );
-    }
-
-    return (
-      <span className={cn(
-        "shrink-0 text-lg font-bold tabular-nums text-neutral-200 pl-3 text-right min-w-[96px]",
-        scoreFlash && "score-flash",
-      )}>
+    // Reveal mode: blur overlay over always-rendered score
+    const scoreEl = (
+      <span key={flashCount} data-testid="score-value" className={cn("text-lg font-bold tabular-nums text-neutral-200 text-right", flashCount > 0 && "score-flash")}>
         {display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}
       </span>
+    );
+
+    return (
+      <div className="relative shrink-0 ml-3 min-w-[96px] min-h-[44px]">
+        {/* Score always rendered beneath overlay */}
+        {live ? (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasNewData) acceptUpdate(game.id, pickSnapshot(game));
+            }}
+            className="absolute inset-0 flex items-center justify-end gap-2 w-full"
+            tabIndex={scoresVisible ? 0 : -1}
+          >
+            {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
+            {scoreEl}
+          </button>
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-end">
+            {scoreEl}
+          </div>
+        )}
+
+        {/* Blur overlay — CSS transition fade-out on reveal */}
+        <div
+          data-testid="score-blur-overlay"
+          aria-hidden="true"
+          className={cn(
+            "absolute inset-0 rounded-lg flex items-center justify-center",
+            "transition-opacity duration-200 motion-reduce:transition-none",
+            scoresVisible ? "opacity-0 pointer-events-none" : "opacity-100",
+          )}
+          style={{ backdropFilter: "blur(8px)", background: "rgba(23, 23, 23, 0.75)" }}
+        >
+          <button
+            data-testid="reveal-button"
+            onClick={handleReveal}
+            tabIndex={scoresVisible ? -1 : 0}
+            className={cn(
+              "flex items-center gap-1.5 text-blue-400 hover:text-blue-300 transition",
+              updatePulse && "update-pulse",
+            )}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span className="text-xs font-medium">Reveal</span>
+          </button>
+        </div>
+      </div>
     );
   })();
 
   return (
     <div
       data-testid="game-row"
+      data-reveal-state={revealState}
       onClick={handleNavigate}
       className={cn(
-        "flex items-center min-h-[52px] px-4 py-3 rounded-[var(--ds-radius-game-card)] bg-neutral-800/20 border border-neutral-800/40 transition select-none",
-        !isHistory && read && final && "opacity-70",
-        live && "border-l-2 border-l-green-400",
+        "flex items-center min-h-[52px] px-4 py-3 rounded-[var(--ds-radius-game-card)] bg-neutral-800/20 border border-l-2 border-neutral-800/40 transition select-none",
+        // Left border accent: stable 2px width, only color changes (no layout shift)
+        revealState === "unrevealed" && !live && "border-l-blue-500",
+        revealState === "updated" && "border-l-amber-400",
+        live && revealState !== "updated" && "border-l-green-400",
+        // Settled opacity for revealed rows (no pending update) in reveal mode
+        !isHistory && canToggle && revealState === "revealed" && "opacity-60",
         "cursor-pointer hover:bg-neutral-800/30 active:bg-neutral-800/40",
       )}
     >
@@ -282,6 +330,19 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
           )}
         </span>
         {statusContent}
+        {freshness && (
+          <span
+            data-testid="freshness-label"
+            className={cn(
+              "text-[10px] leading-tight truncate",
+              freshness.severity === "muted" && "text-neutral-500",
+              freshness.severity === "amber" && "text-amber-400",
+              freshness.severity === "red" && "text-red-400",
+            )}
+          >
+            {freshness.text}
+          </span>
+        )}
       </div>
 
       {/* Center: matchup — abbreviations on small screens, display names on sm+ */}

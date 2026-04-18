@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import type { NHLSkaterStat, NHLGoalieStat } from "@/lib/types";
+import { HEADLINE_STATS } from "@/lib/config";
 
 // ─── Name abbreviation ──────────────────────────────────────────
 
@@ -66,9 +70,27 @@ interface NHLSkatersTableProps {
   skaters: NHLSkaterStat[];
 }
 
+const SKATER_HEADLINE = HEADLINE_STATS.nhl_skater; // ["G", "A", "PTS"]
+
 export function NHLSkatersTable({ title, skaters: rawSkaters }: NHLSkatersTableProps) {
+  const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
+
   const skaters = [...rawSkaters].sort((a, b) => parseTOI(b.toi) - parseTOI(a.toi));
   if (skaters.length === 0) return null;
+
+  const headlineSet = new Set(SKATER_HEADLINE);
+
+  function togglePlayer(name: string) {
+    setExpandedPlayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
@@ -76,89 +98,95 @@ export function NHLSkatersTable({ title, skaters: rawSkaters }: NHLSkatersTableP
         {title} - Skaters
       </div>
 
-      <div className="relative overflow-x-auto hide-scrollbar">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="border-b border-neutral-800 text-neutral-500">
-              <th
-                className="text-left px-3 py-2 font-medium bg-neutral-900 sticky left-0 z-10 min-w-[120px] max-w-[140px]"
-                style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.3)" }}
-              >
-                Player
-              </th>
-              <th className="text-right px-2 py-2 font-medium whitespace-nowrap">TOI</th>
-              <th className="text-right px-2 py-2 font-medium">G</th>
-              <th className="text-right px-2 py-2 font-medium">A</th>
-              <th className="text-right px-2 py-2 font-medium">PTS</th>
-              <th className="text-right px-2 py-2 font-medium whitespace-nowrap">+/-</th>
-              <th className="text-right px-2 py-2 font-medium">SOG</th>
-              <th className="text-right px-2 py-2 font-medium">HIT</th>
-              <th className="text-right px-2 py-2 font-medium">BLK</th>
-              <th className="text-right px-2 py-2 font-medium">PIM</th>
-            </tr>
-          </thead>
-          <tbody>
-            {skaters.map((s) => {
-              const plusMinus = s.plusMinus ?? (s.rawStats?.plusMinus as number | undefined);
-              const plusMinusStr =
-                plusMinus != null
-                  ? plusMinus > 0
-                    ? `+${plusMinus}`
-                    : String(plusMinus)
-                  : "-";
+      <div>
+        {skaters.map((s) => {
+          const isExpanded = expandedPlayers.has(s.playerName);
+          const plusMinus = s.plusMinus ?? (s.rawStats?.plusMinus as number | undefined);
+          const plusMinusStr =
+            plusMinus != null
+              ? plusMinus > 0
+                ? `+${plusMinus}`
+                : String(plusMinus)
+              : "-";
 
-              return (
-                <tr
-                  key={s.playerName}
-                  className="border-b border-neutral-800/50 text-neutral-300"
+          // Headline: G, A, PTS
+          const headlineItems = [
+            { label: "G", value: s.goals != null ? String(s.goals) : "-" },
+            { label: "A", value: s.assists != null ? String(s.assists) : "-" },
+            { label: "PTS", value: s.points != null ? String(s.points) : "-" },
+          ].filter((item) => headlineSet.has(item.label));
+
+          // Rest: TOI, +/-, SOG, HIT, BLK, PIM
+          const restItems = [
+            { label: "TOI", value: s.toi ?? "-" },
+            {
+              label: "+/-",
+              value: plusMinusStr,
+              colorClass:
+                plusMinus != null && plusMinus > 0
+                  ? "text-green-400"
+                  : plusMinus != null && plusMinus < 0
+                    ? "text-red-500"
+                    : "",
+            },
+            { label: "SOG", value: s.shotsOnGoal != null ? String(s.shotsOnGoal) : "-" },
+            { label: "HIT", value: s.hits != null ? String(s.hits) : "-" },
+            { label: "BLK", value: s.blockedShots != null ? String(s.blockedShots) : "-" },
+            { label: "PIM", value: s.penaltyMinutes != null ? String(s.penaltyMinutes) : "-" },
+          ];
+
+          return (
+            <div
+              key={s.playerName}
+              className="border-b border-neutral-800/50 last:border-b-0"
+            >
+              <button
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-neutral-800/30 transition-colors"
+                onClick={() => togglePlayer(s.playerName)}
+                aria-expanded={isExpanded}
+                data-testid="player-row"
+              >
+                <span
+                  className="flex-1 truncate text-xs text-neutral-300 min-w-0"
+                  title={s.playerName}
                 >
-                  <td
-                    className="px-3 py-1.5 bg-neutral-900 sticky left-0 z-10 truncate min-w-[120px] max-w-[140px]"
-                    style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.3)" }}
-                    title={s.playerName}
-                  >
-                    {abbreviateName(s.playerName)}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums whitespace-nowrap">
-                    {s.toi ?? "-"}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums">
-                    {s.goals ?? "-"}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums">
-                    {s.assists ?? "-"}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums">
-                    {s.points ?? "-"}
-                  </td>
-                  <td
-                    className={`text-right px-2 py-1.5 tabular-nums ${
-                      plusMinus != null && plusMinus > 0
-                        ? "text-green-400"
-                        : plusMinus != null && plusMinus < 0
-                          ? "text-red-500"
-                          : ""
-                    }`}
-                  >
-                    {plusMinusStr}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums">
-                    {s.shotsOnGoal ?? "-"}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums">
-                    {s.hits ?? "-"}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums">
-                    {s.blockedShots ?? "-"}
-                  </td>
-                  <td className="text-right px-2 py-1.5 tabular-nums">
-                    {s.penaltyMinutes ?? "-"}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                  {abbreviateName(s.playerName)}
+                </span>
+                <div className="flex gap-3 shrink-0">
+                  {headlineItems.map((item) => (
+                    <div key={item.label} className="flex flex-col items-center min-w-[24px]">
+                      <span className="text-[10px] text-neutral-500 leading-tight">{item.label}</span>
+                      <span className="text-xs tabular-nums text-neutral-200 font-medium leading-tight">
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                <span
+                  className={`text-[10px] text-neutral-500 shrink-0 transition-transform duration-150 ${isExpanded ? "" : "-rotate-90"}`}
+                >
+                  &#9660;
+                </span>
+              </button>
+
+              {isExpanded && (
+                <div
+                  className="px-3 pb-2 pt-1 grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-1 text-xs bg-neutral-800/20"
+                  data-testid="player-row-expanded"
+                >
+                  {restItems.map((item) => (
+                    <div key={item.label} className="flex justify-between gap-1">
+                      <span className="text-neutral-500">{item.label}</span>
+                      <span className={`tabular-nums ${item.colorClass ?? "text-neutral-300"}`}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -171,9 +199,27 @@ interface NHLGoaliesTableProps {
   goalies: NHLGoalieStat[];
 }
 
+const GOALIE_HEADLINE = HEADLINE_STATS.nhl_goalie; // ["SV", "GA", "SV%"]
+
 export function NHLGoaliesTable({ title, goalies: rawGoalies }: NHLGoaliesTableProps) {
+  const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
+
   const goalies = [...rawGoalies].sort((a, b) => parseTOI(b.toi) - parseTOI(a.toi));
   if (goalies.length === 0) return null;
+
+  const headlineSet = new Set(GOALIE_HEADLINE);
+
+  function togglePlayer(name: string) {
+    setExpandedPlayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
 
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
@@ -181,57 +227,78 @@ export function NHLGoaliesTable({ title, goalies: rawGoalies }: NHLGoaliesTableP
         {title} - Goalies
       </div>
 
-      <div className="relative overflow-x-auto hide-scrollbar">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="border-b border-neutral-800 text-neutral-500">
-              <th
-                className="text-left px-3 py-2 font-medium bg-neutral-900 sticky left-0 z-10 min-w-[120px] max-w-[140px]"
-                style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.3)" }}
+      <div>
+        {goalies.map((g) => {
+          const isExpanded = expandedPlayers.has(g.playerName);
+          const svPct = formatSvPct(g.savePercentage);
+          const svPctClass = svPctColor(g.savePercentage);
+
+          // All items for this goalie
+          const allItems = [
+            { label: "TOI",  value: g.toi ?? "-",                                          colorClass: "" },
+            { label: "SA",   value: g.shotsAgainst != null ? String(g.shotsAgainst) : "-", colorClass: "" },
+            { label: "SV",   value: g.saves != null ? String(g.saves) : "-",               colorClass: "" },
+            { label: "GA",   value: g.goalsAgainst != null ? String(g.goalsAgainst) : "-", colorClass: "" },
+            { label: "SV%",  value: svPct,                                                  colorClass: `font-semibold ${svPctClass}` },
+          ];
+
+          const headlineItems = allItems.filter((i) => headlineSet.has(i.label));
+          const restItems = allItems.filter((i) => !headlineSet.has(i.label));
+
+          return (
+            <div
+              key={g.playerName}
+              className="border-b border-neutral-800/50 last:border-b-0"
+            >
+              <button
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-neutral-800/30 transition-colors"
+                onClick={() => togglePlayer(g.playerName)}
+                aria-expanded={isExpanded}
+                data-testid="player-row"
               >
-                Player
-              </th>
-              <th className="text-right px-2 py-2 font-medium whitespace-nowrap">TOI</th>
-              <th className="text-right px-2 py-2 font-medium">SA</th>
-              <th className="text-right px-2 py-2 font-medium">SV</th>
-              <th className="text-right px-2 py-2 font-medium">GA</th>
-              <th className="text-right px-2 py-2 font-medium whitespace-nowrap">SV%</th>
-            </tr>
-          </thead>
-          <tbody>
-            {goalies.map((g) => (
-              <tr
-                key={g.playerName}
-                className="border-b border-neutral-800/50 text-neutral-300"
-              >
-                <td
-                  className="px-3 py-1.5 bg-neutral-900 sticky left-0 z-10 truncate min-w-[120px] max-w-[140px]"
-                  style={{ boxShadow: "2px 0 4px rgba(0,0,0,0.3)" }}
+                <span
+                  className="flex-1 truncate text-xs text-neutral-300 min-w-0"
                   title={g.playerName}
                 >
                   {abbreviateName(g.playerName)}
-                </td>
-                <td className="text-right px-2 py-1.5 tabular-nums whitespace-nowrap">
-                  {g.toi ?? "-"}
-                </td>
-                <td className="text-right px-2 py-1.5 tabular-nums">
-                  {g.shotsAgainst ?? "-"}
-                </td>
-                <td className="text-right px-2 py-1.5 tabular-nums">
-                  {g.saves ?? "-"}
-                </td>
-                <td className="text-right px-2 py-1.5 tabular-nums">
-                  {g.goalsAgainst ?? "-"}
-                </td>
-                <td
-                  className={`text-right px-2 py-1.5 tabular-nums font-semibold ${svPctColor(g.savePercentage)}`}
+                </span>
+                <div className="flex gap-3 shrink-0">
+                  {headlineItems.map((item) => (
+                    <div key={item.label} className="flex flex-col items-center min-w-[28px]">
+                      <span className="text-[10px] text-neutral-500 leading-tight">{item.label}</span>
+                      <span className={`text-xs tabular-nums font-medium leading-tight ${item.colorClass || "text-neutral-200"}`}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {restItems.length > 0 && (
+                  <span
+                    className={`text-[10px] text-neutral-500 shrink-0 transition-transform duration-150 ${isExpanded ? "" : "-rotate-90"}`}
+                  >
+                    &#9660;
+                  </span>
+                )}
+              </button>
+
+              {isExpanded && restItems.length > 0 && (
+                <div
+                  className="px-3 pb-2 pt-1 grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs bg-neutral-800/20"
+                  data-testid="player-row-expanded"
                 >
-                  {formatSvPct(g.savePercentage)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  {restItems.map((item) => (
+                    <div key={item.label} className="flex justify-between gap-1">
+                      <span className="text-neutral-500">{item.label}</span>
+                      <span className={`tabular-nums ${item.colorClass || "text-neutral-300"}`}>
+                        {item.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

@@ -77,7 +77,9 @@ export function useFairBetLive(): UseFairBetLiveReturn {
       const games = await api.fairbetLiveGames(league || undefined);
       setLiveGames(games);
       return games;
-    } catch {
+    } catch (err) {
+      console.error("[useFairBetLive] discoverGames failed:", err);
+      setError("Unable to load live games. Please try again.");
       setLiveGames([]);
       return [];
     } finally {

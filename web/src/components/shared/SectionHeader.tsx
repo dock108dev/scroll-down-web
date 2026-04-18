@@ -9,6 +9,7 @@ interface SectionHeaderProps {
   count?: number;
   sticky?: boolean;
   stickyTop?: string;
+  actions?: React.ReactNode;
 }
 
 export function SectionHeader({
@@ -18,28 +19,36 @@ export function SectionHeader({
   count,
   sticky = true,
   stickyTop = "var(--header-h)",
+  actions,
 }: SectionHeaderProps) {
   return (
-    <button
-      onClick={onToggle}
+    <div
       className={cn(
-        "flex w-full items-center gap-2 px-4 py-3 text-[15px] font-bold text-neutral-200 bg-neutral-900/80 backdrop-blur-sm",
+        "flex w-full items-center bg-neutral-900/80 backdrop-blur-sm",
         sticky && "sticky z-20 border-y border-neutral-800",
       )}
       style={sticky ? { top: stickyTop } : undefined}
     >
-      <span
-        className={cn(
-          "text-xs transition-transform duration-200",
-          expanded ? "rotate-90" : "rotate-0",
-        )}
+      <button
+        onClick={onToggle}
+        className="flex flex-1 items-center gap-2 px-4 py-3 text-[15px] font-bold text-neutral-200"
       >
-        ▶
-      </span>
-      {title}
-      {count !== undefined && (
-        <span className="text-xs text-neutral-500">({count})</span>
+        <span
+          className={cn(
+            "text-xs transition-transform duration-200",
+            expanded ? "rotate-90" : "rotate-0",
+          )}
+        >
+          ▶
+        </span>
+        {title}
+        {count !== undefined && (
+          <span className="text-xs text-neutral-500">({count})</span>
+        )}
+      </button>
+      {actions && (
+        <div className="flex items-center gap-1 pr-2 shrink-0">{actions}</div>
       )}
-    </button>
+    </div>
   );
 }

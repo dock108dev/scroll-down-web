@@ -7,12 +7,11 @@ import { formatOdds, formatDate, cn } from "@/lib/utils";
 import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
 import { MiniBookChip } from "./MiniBookChip";
 import { LeagueBadge } from "./LeagueBadge";
-import { FAIRBET } from "@/lib/config";
 import {
-  formatEV,
+  formatEVDollars,
   formatProbability,
   getEVColor,
-  isConfidenceReliable,
+  getEVTier,
   betId,
 } from "@/lib/fairbet-utils";
 
@@ -53,10 +52,10 @@ export const BetCard = memo(function BetCard({
   const otherBooksCount = otherBooks.length;
 
   const ev = bestBook?.display_ev ?? bestBook?.ev_percent ?? 0;
-  const hasHighEV = ev >= FAIRBET.EV_HIGHLIGHT_THRESHOLD && isConfidenceReliable(bet.ev_confidence_tier);
+  const evTier = getEVTier(ev);
   const id = betId(bet);
 
-  // Card border
+  // Card border — tier drives color; parlay overrides all
   let borderStyle: React.CSSProperties = {
     borderWidth: 1,
     borderColor: "var(--fb-card-border)",
@@ -66,11 +65,12 @@ export const BetCard = memo(function BetCard({
       borderWidth: 1.5,
       borderColor: `${FairBetTheme.info}99`,
     };
-  } else if (hasHighEV) {
-    borderStyle = {
-      borderWidth: 1.5,
-      borderColor: `${FairBetTheme.positive}66`,
-    };
+  } else if (evTier === "strong") {
+    borderStyle = { borderWidth: 2, borderColor: "var(--ev-strong-border)" };
+  } else if (evTier === "good") {
+    borderStyle = { borderWidth: 1.5, borderColor: "var(--ev-good-border)" };
+  } else if (evTier === "marginal") {
+    borderStyle = { borderWidth: 1, borderColor: "var(--ev-marginal-border)" };
   }
 
   // Format game time
@@ -101,6 +101,19 @@ export const BetCard = memo(function BetCard({
           </span>
           <div className="flex items-center gap-1.5 shrink-0">
             <LeagueBadge league={bet.league_code} />
+            {evTier !== "no-edge" && (
+              <span
+                data-testid="ev-tier-badge"
+                className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: `var(--ev-${evTier}-bg)`,
+                  color: `var(--ev-${evTier}-text)`,
+                  border: `1px solid var(--ev-${evTier}-border)`,
+                }}
+              >
+                {evTier === "strong" ? "Strong" : evTier === "good" ? "Good" : "Marginal"}
+              </span>
+            )}
             <span className="text-[10px] font-medium text-neutral-500">
               {bet.marketDisplayName ?? bet.market_key}
             </span>
@@ -146,14 +159,19 @@ export const BetCard = memo(function BetCard({
                 Best
               </span>
             )}
-            {(primaryBook.display_ev ?? primaryBook.ev_percent) != null && (
-              <span
-                className="text-xs font-bold"
-                style={{ color: getEVColor(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0) }}
-              >
-                {formatEV(primaryBook.display_ev ?? primaryBook.ev_percent ?? 0)}
-              </span>
-            )}
+            {(primaryBook.display_ev ?? primaryBook.ev_percent) != null && (() => {
+              const evVal = primaryBook.display_ev ?? primaryBook.ev_percent ?? 0;
+              const { label, isNoEdge } = formatEVDollars(evVal);
+              return (
+                <span
+                  data-testid="ev-dollar-label"
+                  className="text-xs font-bold"
+                  style={{ color: isNoEdge ? "var(--ds-text-tertiary)" : getEVColor(evVal) }}
+                >
+                  {label}
+                </span>
+              );
+            })()}
           </div>
         )}
 
@@ -170,11 +188,18 @@ export const BetCard = memo(function BetCard({
             <span className="font-bold text-neutral-50">
               {formatOdds(bestBook.price, oddsFormat)}
             </span>
-            {(bestBook.display_ev ?? bestBook.ev_percent) != null && (
-              <span className="font-bold" style={{ color: getEVColor(bestBook.display_ev ?? bestBook.ev_percent ?? 0) }}>
-                {formatEV(bestBook.display_ev ?? bestBook.ev_percent ?? 0)}
-              </span>
-            )}
+            {(bestBook.display_ev ?? bestBook.ev_percent) != null && (() => {
+              const evVal = bestBook.display_ev ?? bestBook.ev_percent ?? 0;
+              const { label, isNoEdge } = formatEVDollars(evVal);
+              return (
+                <span
+                  className="font-bold"
+                  style={{ color: isNoEdge ? "var(--ds-text-tertiary)" : getEVColor(evVal) }}
+                >
+                  {label}
+                </span>
+              );
+            })()}
           </div>
         )}
 

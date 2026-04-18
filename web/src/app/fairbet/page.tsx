@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useFairBetOdds } from "@/hooks/useFairBetOdds";
-import { BetCard } from "@/components/fairbet/BetCard";
+import { GameBetGroup } from "@/components/fairbet/GameBetGroup";
 import { BookFilters } from "@/components/fairbet/BookFilters";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
 import { LiveOddsPanel } from "@/components/fairbet/LiveOddsPanel";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
-import { betId } from "@/lib/fairbet-utils";
 import { Spinner } from "@/components/shared/Spinner";
 import { StaleBanner } from "@/components/shared/StaleBanner";
 import { InlineFeedback } from "@/components/shared/InlineFeedback";
@@ -43,6 +42,17 @@ export default function FairBetPage() {
     };
   }, [hook.loading, hook.error]);
 
+  // Group filtered bets by game_id (order preserved by first occurrence)
+  const gameGroups = useMemo(() => {
+    const map = new Map<number, APIBet[]>();
+    for (const bet of hook.filteredBets) {
+      const group = map.get(bet.game_id) ?? [];
+      group.push(bet);
+      map.set(bet.game_id, group);
+    }
+    return [...map.values()];
+  }, [hook.filteredBets]);
+
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
   const [prevFilters, setPrevFilters] = useState(hook.filters);
@@ -53,7 +63,7 @@ export default function FairBetPage() {
     setVisibleCount(RENDER.FAIRBET_BATCH);
   }
 
-  // IntersectionObserver to load more cards on scroll
+  // IntersectionObserver to load more game groups on scroll
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -67,7 +77,7 @@ export default function FairBetPage() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hook.filteredBets.length]);
+  }, [gameGroups.length]);
 
   const openExplainer = useCallback((bet: APIBet) => {
     setExplainerBet(bet);
@@ -234,16 +244,20 @@ export default function FairBetPage() {
 
         {/* Empty state */}
         {!hook.loading && !hook.error && hook.filteredBets.length === 0 && (
-          <div className="py-12 text-center space-y-5">
+          <div data-testid="fairbet-empty-state" className="py-12 text-center space-y-5">
             <p className="text-sm text-neutral-400">
-              {hook.filters.evOnly
-                ? "No +EV bets found with current filters"
-                : "No bets available right now"}
+              {hook.filters.evOnly && hook.allBets.length > 0
+                ? "No qualifying value bets right now"
+                : hook.allBets.length === 0
+                  ? "No odds available today"
+                  : "No bets match current filters"}
             </p>
             <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
-              {hook.filters.evOnly
-                ? "Try disabling the +EV filter to see all available odds."
-                : "FairBet compares odds across sportsbooks to find bets where the price is better than the true probability. Odds update every few minutes when games are on the schedule."}
+              {hook.filters.evOnly && hook.allBets.length > 0
+                ? "The market doesn\u2019t have any +EV opportunities at the moment. Try disabling the +EV filter to browse all available odds."
+                : hook.allBets.length === 0
+                  ? "FairBet shows odds when games are on the schedule. Check back closer to tip-off."
+                  : "Try clearing your filters to see all available odds."}
             </p>
             {hook.filters.evOnly && (
               <button
@@ -254,8 +268,8 @@ export default function FairBetPage() {
               </button>
             )}
 
-            {/* Example card */}
-            {!hook.filters.evOnly && (
+            {/* Example card — only shown when API returned no odds at all */}
+            {hook.allBets.length === 0 && (
               <div className="mx-auto max-w-sm text-left rounded-xl p-4 space-y-3 opacity-60 pointer-events-none select-none" style={{ backgroundColor: "var(--fb-card-bg)", border: "1px dashed var(--fb-border-subtle)" }}>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Example</p>
                 <div className="flex items-center justify-between">
@@ -278,28 +292,25 @@ export default function FairBetPage() {
           </div>
         )}
 
-        {/* Bet cards */}
+        {/* Bet groups (one per game, mainlines shown by default) */}
         {!hook.loading &&
-          hook.filteredBets.slice(0, visibleCount).map((bet) => {
-            const id = betId(bet);
-            return (
-              <BetCard
-                key={id}
-                bet={bet}
-                onToggleParlay={hook.toggleParlay}
-                isInParlay={hook.parlayBetIds.has(id)}
-                onShowExplainer={openExplainer}
-              />
-            );
-          })}
+          gameGroups.slice(0, visibleCount).map((bets) => (
+            <GameBetGroup
+              key={bets[0].game_id}
+              bets={bets}
+              onToggleParlay={hook.toggleParlay}
+              parlayBetIds={hook.parlayBetIds}
+              onShowExplainer={openExplainer}
+            />
+          ))}
 
         {/* Sentinel for loading more + count indicator */}
-        {!hook.loading && visibleCount < hook.filteredBets.length && (
+        {!hook.loading && visibleCount < gameGroups.length && (
           <>
             <div ref={sentinelRef} className="h-px" />
             <div className="text-center text-xs text-neutral-500 py-2">
-              Showing {Math.min(visibleCount, hook.filteredBets.length)} of{" "}
-              {hook.filteredBets.length}
+              Showing {Math.min(visibleCount, gameGroups.length)} of{" "}
+              {gameGroups.length} games
             </div>
           </>
         )}

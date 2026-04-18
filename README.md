@@ -35,4 +35,7 @@ npm run start
 
 ## More Documentation
 
-All deeper docs are in [`docs/`](docs/), including architecture, development setup, deployment, testing, realtime behavior, and state management.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — System design: API proxy, realtime, stores, auth, security
+- [`DESIGN.md`](DESIGN.md) — Design principles, component patterns, naming conventions
+- [`ROADMAP.md`](ROADMAP.md) — Product roadmap and phase planning
+- [`docs/`](docs/README.md) — Full index: development setup, deployment, testing, state management, realtime, audits

@@ -151,12 +151,16 @@ export function FlowContainer({ gameId, socialPosts }: FlowContainerProps) {
   const blocks = data?.flow?.blocks ?? data?.blocks;
   const moments = data?.flow?.moments ?? data?.moments;
 
-  if (error || !data || !blocks || blocks.length === 0) {
+  if (error && !data) {
     return (
       <div className="px-4 py-4 text-sm text-neutral-500">
-        {error ?? "No flow data available"}
+        {error}
       </div>
     );
+  }
+
+  if (!data || !blocks || blocks.length === 0) {
+    return null;
   }
 
   return (

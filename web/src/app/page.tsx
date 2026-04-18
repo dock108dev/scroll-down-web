@@ -5,8 +5,17 @@ import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useGamesList, SECTION_ORDER } from "@/hooks/useGamesList";
 import type { GameCore } from "@/stores/game-data";
 
+import dynamic from "next/dynamic";
 import { SearchBar } from "@/components/home/SearchBar";
 import { TimelineSection } from "@/components/home/TimelineSection";
+import { RevealHero } from "@/components/home/RevealHero";
+import { FollowingLiveBanner } from "@/components/home/FollowingLiveBanner";
+
+// Client-only: reads localStorage on first render, no SSR needed.
+const RevealOnboarding = dynamic(
+  () => import("@/components/home/RevealOnboarding").then((m) => ({ default: m.RevealOnboarding })),
+  { ssr: false },
+);
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { isLive, isFinal } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
@@ -60,6 +69,7 @@ function deriveLeagues(games: GameCore[]): string[] {
 export default function HomePage() {
   const [league, setLeague] = useState("");
   const [search, setSearch] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const { sections, allGames, loading, error, stale, staleAt, refetch } = useGamesList(
     league || undefined,
     search || undefined,
@@ -212,6 +222,18 @@ export default function HomePage() {
     clearAllPositions();
   }, [visibleGameIds, reveal, clearAllPositions]);
 
+  const handleSearchChange = useCallback((value: string) => {
+    setSearch(value);
+    if (!value) setSearchOpen(false);
+  }, []);
+
+  const handleSearchToggle = useCallback(() => {
+    setSearchOpen((prev) => {
+      if (prev) setSearch("");
+      return !prev;
+    });
+  }, []);
+
   const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 
   // Track toolbar height for section header sticky offset
@@ -232,31 +254,15 @@ export default function HomePage() {
 
   return (
     <div data-testid="page-home" className="mx-auto max-w-2xl">
-      {/* Hero */}
-      <div className="px-4 pt-6 pb-2">
-        <h1 className="text-xl font-bold text-neutral-50">
-          Follow games your way, with scores shown only when you want them.
-        </h1>
-        <p className="mt-1 text-sm text-neutral-400 leading-relaxed">
-          Live updates, game flow, and momentum so you can stay in it without
-          seeing the result too soon.
-        </p>
-      </div>
-
-      {/* Sticky toolbar */}
-      <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 px-4 py-3 space-y-3 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
-        {(!error || hasAnyGames) && (
-          <SearchBar value={search} onChange={setSearch} />
-        )}
-
-        {/* League pills + batch actions + refresh */}
-        <div className="flex items-center gap-2">
+      {/* Sticky toolbar — row 1: league pills + icons; row 2: search (on demand) */}
+      <div ref={toolbarRef} className="sticky z-30 bg-neutral-950 border-b border-neutral-800" style={{ top: "var(--header-h)" }}>
+        <div className="flex items-center gap-2 px-4 py-2">
           {/* Scrollable league pills */}
-          <div data-testid="league-filter" className="flex gap-1.5 overflow-x-auto scrollbar-none min-w-0">
+          <div data-testid="league-filter" className="flex gap-1.5 overflow-x-auto scrollbar-none min-w-0 flex-1">
             <button
               onClick={() => setLeague("")}
               className={cn(
-                "shrink-0 rounded-full px-3 py-2 min-h-[44px] min-w-[44px] text-xs font-medium transition",
+                "shrink-0 rounded-full px-3 py-2 min-h-[44px] text-xs font-medium transition",
                 league === ""
                   ? "bg-neutral-50 text-neutral-950"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
@@ -269,7 +275,7 @@ export default function HomePage() {
                 key={code}
                 onClick={() => setLeague(code)}
                 className={cn(
-                  "shrink-0 rounded-full px-3 py-2 min-h-[44px] min-w-[44px] text-xs font-medium transition uppercase",
+                  "shrink-0 rounded-full px-3 py-2 min-h-[44px] text-xs font-medium transition uppercase",
                   league === code
                     ? "bg-neutral-50 text-neutral-950"
                     : "bg-neutral-800 text-neutral-400 hover:text-neutral-50",
@@ -280,8 +286,30 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Right-justified: read/unread + refresh */}
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+          {/* Right-justified: search toggle + read (primary) + unread (icon only) + refresh */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Search toggle */}
+            <button
+              data-testid="search-toggle"
+              onClick={handleSearchToggle}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
+              aria-label={searchOpen ? "Close search" : "Search teams"}
+              title={searchOpen ? "Close search" : "Search teams"}
+            >
+              {searchOpen ? (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              )}
+            </button>
+
+            {/* Read — primary CTA */}
             {hasAnyGames && scoreRevealMode !== "always" && !followingLive && catchUpCount > 0 && (
               <button
                 onClick={handleCatchUp}
@@ -297,21 +325,23 @@ export default function HomePage() {
                 </span>
               </button>
             )}
+
+            {/* Unread — icon only (secondary, rarely needed) */}
             {hasAnyGames && scoreRevealMode !== "always" && !followingLive && readCount > 0 && (
               <button
                 onClick={handleReset}
-                className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-2 py-1 text-[11px] font-medium text-neutral-400 hover:text-neutral-50 transition"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
+                title={`Unread ${readCount} game${readCount !== 1 ? "s" : ""}`}
+                aria-label={`Unread ${readCount} game${readCount !== 1 ? "s" : ""}`}
               >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
                   <line x1="1" y1="1" x2="23" y2="23" />
                 </svg>
-                Unread
-                <span className="bg-neutral-700 rounded-full px-1.5 py-0.5 text-[9px] leading-none">
-                  {readCount}
-                </span>
               </button>
             )}
+
+            {/* Refresh */}
             <button
               onClick={() => refetch()}
               className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
@@ -325,7 +355,20 @@ export default function HomePage() {
             </button>
           </div>
         </div>
+
+        {/* Row 2: search input — only when open */}
+        {searchOpen && (
+          <div className="px-4 pb-2">
+            <SearchBar value={search} onChange={handleSearchChange} />
+          </div>
+        )}
       </div>
+
+      <RevealHero />
+
+      <FollowingLiveBanner />
+
+      <RevealOnboarding />
 
       <StaleBanner stale={stale} staleAt={staleAt} onRetry={() => refetch()} />
 

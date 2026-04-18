@@ -1,8 +1,6 @@
 import type { TeamStat } from "@/lib/types";
 import {
-  resolveStatValue,
   formatStatValue,
-  getGroupsForSport,
   buildGroupsFromNormalized,
 } from "@/lib/team-stats-config";
 
@@ -110,7 +108,6 @@ export function TeamStatsComparison({
   teamStats,
   homeTeam,
   awayTeam,
-  leagueCode = "nba",
   homeColor = "var(--ds-team-b)",
   awayColor = "var(--ds-team-a)",
 }: TeamStatsComparisonProps) {
@@ -119,31 +116,13 @@ export function TeamStatsComparison({
 
   if (!home || !away) return null;
 
-  // Prefer normalizedStats when available; fall back to hardcoded groups
-  const useNormalized = !!(home.normalizedStats?.length || away.normalizedStats?.length);
-
-  const normalizedGroups = useNormalized
-    ? buildGroupsFromNormalized(
-        home.normalizedStats ?? [],
-        away.normalizedStats ?? [],
-      )
-    : null;
-
-  const legacyActiveGroups = useNormalized
-    ? []
-    : getGroupsForSport(leagueCode)
-        .map((group) => ({
-          ...group,
-          stats: group.stats.filter((stat) => {
-            const hv = resolveStatValue(home.stats, stat.aliases);
-            const av = resolveStatValue(away.stats, stat.aliases);
-            return hv != null || av != null;
-          }),
-        }))
-        .filter((group) => group.stats.length > 0);
+  const normalizedGroups = buildGroupsFromNormalized(
+    home.normalizedStats ?? [],
+    away.normalizedStats ?? [],
+  );
 
   return (
-    <div className="space-y-3">
+    <div data-testid="team-stats-comparison" className="space-y-3">
       {/* Team header */}
       <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
         <div className="grid grid-cols-3 px-3 py-2 text-xs font-semibold border-b border-neutral-800 bg-neutral-800/50">
@@ -154,8 +133,7 @@ export function TeamStatsComparison({
           </span>
         </div>
 
-        {/* Stat groups — normalized path */}
-        {normalizedGroups?.map((group) => (
+        {normalizedGroups.map((group) => (
           <div key={group.title}>
             <div className="px-3 py-1.5 bg-neutral-800/30 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
               {group.title}
@@ -170,27 +148,6 @@ export function TeamStatsComparison({
                 homeColor={homeColor}
                 lowerIsBetter={row.lowerIsBetter}
                 isPercentage={row.isPercentage}
-              />
-            ))}
-          </div>
-        ))}
-
-        {/* Stat groups — legacy fallback path */}
-        {legacyActiveGroups.map((group) => (
-          <div key={group.title}>
-            <div className="px-3 py-1.5 bg-neutral-800/30 text-xs font-semibold text-neutral-500 uppercase tracking-wider">
-              {group.title}
-            </div>
-            {group.stats.map((stat) => (
-              <ComparisonRow
-                key={stat.key}
-                label={stat.label}
-                awayValue={resolveStatValue(away.stats, stat.aliases)}
-                homeValue={resolveStatValue(home.stats, stat.aliases)}
-                awayColor={awayColor}
-                homeColor={homeColor}
-                lowerIsBetter={stat.lowerIsBetter}
-                isPercentage={stat.isPercentage}
               />
             ))}
           </div>

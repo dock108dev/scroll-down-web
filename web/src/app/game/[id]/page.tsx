@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { use, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useGameDetail } from "@/hooks/useGameDetail";
 import { isFinal } from "@/lib/types";
@@ -23,7 +23,7 @@ import { useReadingPosition } from "@/stores/reading-position";
 import { useReveal } from "@/stores/reveal";
 import { useSettings } from "@/stores/settings";
 import { useGameData } from "@/stores/game-data";
-import { POLLING } from "@/lib/config";
+import { useAuth } from "@/stores/auth";
 import { resolveTeamColor } from "@/lib/utils";
 import { useSectionLayout } from "@/stores/section-layout";
 import { useAutoRetry } from "@/hooks/useAutoRetry";
@@ -45,7 +45,10 @@ export default function GameDetailPage({
   const { data, core, loading, error, refetch: refetchDetail } = useGameDetail(gameId);
   const { retryCount, manualRetry } = useAutoRetry({ error, loading, refetch: refetchDetail });
 
-  const sections = useMemo(() => (data ? getSections(data) : []), [data]);
+  const role = useAuth((s) => s.role);
+  const isAdmin = role === "admin";
+
+  const sections = useMemo(() => (data ? getSections(data, isAdmin) : []), [data, isAdmin]);
   const [activeSection, setActiveSection] = useState<string>("");
   const [showMiniBar, setShowMiniBar] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +96,13 @@ export default function GameDetailPage({
     sections.length === 1
       ? sections
       : (savedLayout ?? defaultExpanded);
+
+  // Stable ref to current expandedSections — lets the resume effect read the
+  // latest value without adding it to deps (which would cancel in-flight RAF).
+  const expandedSectionsRef = useRef<string[]>([]);
+  useLayoutEffect(() => {
+    expandedSectionsRef.current = expandedSections;
+  });
 
   const isSectionOpen = (section: string) =>
     expandedSections.includes(section);
@@ -241,17 +251,39 @@ export default function GameDetailPage({
 
     hasResumed.current = true;
 
-    const timeout = setTimeout(() => {
-      const playEl = document.querySelector(
-        `[data-play-index="${saved.playIndex}"]`,
-      );
+    let cancelled = false;
+
+    // Expand Timeline section so its children render if it isn't already open.
+    // CollapsibleSection conditionally mounts children only when open=true.
+    const currentExpanded = expandedSectionsRef.current;
+    if (
+      sections.includes("Timeline") &&
+      !currentExpanded.includes("Timeline")
+    ) {
+      sectionLayout.toggleSection(gameId, "Timeline", currentExpanded);
+    }
+
+    const targetIndex = saved.playIndex;
+    const deadline = Date.now() + 3000;
+
+    // Poll via RAF until the play element appears or the deadline is reached.
+    // The element may not exist immediately if React hasn't committed the
+    // Timeline children yet after the section was just expanded above.
+    function tryScroll() {
+      if (cancelled) return;
+      const playEl = document.querySelector(`[data-play-index="${targetIndex}"]`);
       if (playEl) {
         playEl.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
       }
-    }, POLLING.READING_RESUME_DELAY_MS);
+      if (Date.now() >= deadline) return;
+      requestAnimationFrame(tryScroll);
+    }
 
-    return () => clearTimeout(timeout);
-  }, [data, autoResumePosition, gameId, getPosition]);
+    requestAnimationFrame(tryScroll);
+
+    return () => { cancelled = true; };
+  }, [data, autoResumePosition, gameId, getPosition, sections, sectionLayout]);
 
   // ─── Mini scorebar: show when GameHeader scrolls out ───────
   useEffect(() => {
@@ -269,21 +301,23 @@ export default function GameDetailPage({
   }, [loading]);
 
   // ─── Loading state ─────────────────────────────────────────
+  const backButton = (
+    <button
+      onClick={() => router.back()}
+      className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
+      aria-label="Go back"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <polyline points="15 18 9 12 15 6" />
+      </svg>
+      Back
+    </button>
+  );
+
   if (loading) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-6 space-y-4">
-        <div className="md:hidden">
-          <button
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
-            aria-label="Go back"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Back
-          </button>
-        </div>
+        <div className="md:hidden">{backButton}</div>
         <LoadingSkeleton className="h-40" />
         <LoadingSkeleton count={3} className="h-24" />
       </div>
@@ -294,18 +328,7 @@ export default function GameDetailPage({
   if (error || !data) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-8 space-y-4">
-        <div className="md:hidden">
-          <button
-            onClick={() => router.back()}
-            className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
-            aria-label="Go back"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Back
-          </button>
-        </div>
+        <div className="md:hidden">{backButton}</div>
         <div className="py-12 text-center space-y-4">
           <p className="text-sm text-neutral-400">
             {retryCount >= 3
@@ -339,18 +362,7 @@ export default function GameDetailPage({
   return (
     <div data-testid="page-game-detail" className="mx-auto max-w-5xl">
       {/* Mobile back button */}
-      <div className="md:hidden px-4 pt-3 pb-1">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-1.5 text-sm text-neutral-400 hover:text-neutral-200 transition-colors min-h-[44px]"
-          aria-label="Go back"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-          Back
-        </button>
-      </div>
+      <div className="md:hidden px-4 pt-3 pb-1">{backButton}</div>
       <div ref={headerRef}>
         <GameHeader game={game} />
       </div>
@@ -379,14 +391,15 @@ export default function GameDetailPage({
           </CollapsibleSection>
         )}
 
-        {/* ─── Flow (Final only) ────────────────────────── */}
-        {sections.includes("Flow") && (
+        {/* ─── Game Story (Final only, AI-generated) ────── */}
+        {sections.includes("Game Story") && (
           <CollapsibleSection
-            title="Flow"
-            open={isSectionOpen("Flow")}
-            onToggle={() => handleToggle("Flow")}
+            title="Game Story"
+            open={isSectionOpen("Game Story")}
+            onToggle={() => handleToggle("Game Story")}
+            beta
           >
-            <FlowContainer gameId={gameId} socialPosts={data.socialPosts} />
+            <FlowContainer gameId={gameId} socialPosts={isAdmin ? data.socialPosts : undefined} />
           </CollapsibleSection>
         )}
 

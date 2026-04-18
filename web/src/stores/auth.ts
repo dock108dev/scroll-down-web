@@ -162,6 +162,8 @@ export const useAuth = create<AuthState>()(
           if (err instanceof AuthError && err.status === 401) {
             // Token expired — clear auth state
             get().logout();
+          } else {
+            console.error("[auth] refreshMe failed with non-401 error:", err);
           }
         }
       },

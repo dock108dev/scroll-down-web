@@ -4,12 +4,15 @@ export function CollapsibleSection({
   open,
   onToggle,
   badge,
+  beta,
   children,
 }: {
   title: string;
   open: boolean;
   onToggle: () => void;
   badge?: React.ReactNode;
+  /** When true, renders a (beta) badge and uses muted secondary styling to signal AI/experimental content. */
+  beta?: boolean;
   children: React.ReactNode;
 }) {
   return (
@@ -18,10 +21,15 @@ export function CollapsibleSection({
         onClick={onToggle}
         aria-expanded={open}
         aria-label={`${open ? "Collapse" : "Expand"} ${title}`}
-        className="flex w-full items-center justify-between px-4 py-3 text-sm font-semibold text-neutral-200 hover:bg-neutral-800/30 transition-colors"
+        className={`flex w-full items-center justify-between px-4 py-3 text-sm hover:bg-neutral-800/30 transition-colors ${beta ? "font-normal text-neutral-400" : "font-semibold text-neutral-200"}`}
       >
         <span className="flex items-center gap-2">
           {title}
+          {beta && (
+            <span className="text-[10px] font-medium text-neutral-500 bg-neutral-800 border border-neutral-700 px-1.5 py-0.5 rounded-full leading-none">
+              beta
+            </span>
+          )}
           {!open && badge}
         </span>
         <span

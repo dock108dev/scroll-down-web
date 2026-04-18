@@ -74,26 +74,35 @@ export const usePinnedGames = create<PinnedGamesState>()(
       },
       storage: {
         getItem: (name) => {
-          const str = localStorage.getItem(name);
-          if (!str) return null;
-          const parsed = JSON.parse(str);
-          parsed.state.pinnedIds = new Set(parsed.state.pinnedIds ?? []);
-          // Restore pinMeta from serialized array-of-entries
-          const raw = parsed.state.pinMeta;
-          parsed.state.pinMeta = new Map(Array.isArray(raw) ? raw : []);
-          return parsed;
+          try {
+            const str = localStorage.getItem(name);
+            if (!str) return null;
+            const parsed = JSON.parse(str);
+            parsed.state.pinnedIds = new Set(parsed.state.pinnedIds ?? []);
+            // Restore pinMeta from serialized array-of-entries
+            const raw = parsed.state.pinMeta;
+            parsed.state.pinMeta = new Map(Array.isArray(raw) ? raw : []);
+            return parsed;
+          } catch {
+            localStorage.removeItem(name);
+            return null;
+          }
         },
         setItem: (name, value) => {
-          const state = value.state as Record<string, unknown>;
-          const serialized = {
-            ...value,
-            state: {
-              ...state,
-              pinnedIds: [...(state.pinnedIds as Set<number>)],
-              pinMeta: [...(state.pinMeta as Map<number, PinMeta>)],
-            },
-          };
-          localStorage.setItem(name, JSON.stringify(serialized));
+          try {
+            const state = value.state as Record<string, unknown>;
+            const serialized = {
+              ...value,
+              state: {
+                ...state,
+                pinnedIds: [...(state.pinnedIds as Set<number>)],
+                pinMeta: [...(state.pinMeta as Map<number, PinMeta>)],
+              },
+            };
+            localStorage.setItem(name, JSON.stringify(serialized));
+          } catch {
+            // Quota exceeded or storage denied — pinned state won't persist
+          }
         },
         removeItem: (name) => localStorage.removeItem(name),
       },

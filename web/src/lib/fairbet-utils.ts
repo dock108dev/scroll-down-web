@@ -27,6 +27,26 @@ export function formatEV(percent: number): string {
   return `${sign}${percent.toFixed(1)}%`;
 }
 
+/** Negligible positive EV threshold in dollar terms (< $0.50 per $100 → "No edge"). */
+export const EV_NO_EDGE_THRESHOLD = 0.5;
+
+/**
+ * Format EV as a dollar value per $100 bet.
+ * Formula: EV_dollars = (EV_percent / 100) * 100 = EV_percent
+ *
+ * Returns:
+ *  - { label: "+$X.XX per $100", isNoEdge: false } for EV ≥ +$0.50
+ *  - { label: "No edge", isNoEdge: true }           for 0 ≤ EV < +$0.50
+ *  - { label: "-$X.XX per $100", isNoEdge: false }  for negative EV
+ */
+export function formatEVDollars(percent: number): { label: string; isNoEdge: boolean } {
+  if (percent >= 0 && percent < EV_NO_EDGE_THRESHOLD) {
+    return { label: "No edge", isNoEdge: true };
+  }
+  const sign = percent > 0 ? "+" : "-";
+  return { label: `${sign}$${Math.abs(percent).toFixed(2)} per $100`, isNoEdge: false };
+}
+
 /** Format probability as percentage: "52.3%" */
 export function formatProbability(prob: number): string {
   return `${(prob * 100).toFixed(1)}%`;
@@ -88,6 +108,16 @@ export function getEVColor(ev: number): string {
   if (ev > 0) return FairBetTheme.positiveMuted;
   if (ev < 0) return FairBetTheme.negative;
   return FairBetTheme.neutral;
+}
+
+export type EVTier = "strong" | "good" | "marginal" | "no-edge";
+
+/** Classify EV into a traffic-light tier based on dollar value per $100. */
+export function getEVTier(ev: number): EVTier {
+  if (ev > FAIRBET.EV_TIER_STRONG) return "strong";
+  if (ev >= FAIRBET.EV_TIER_GOOD) return "good";
+  if (ev >= FAIRBET.EV_TIER_MARGINAL) return "marginal";
+  return "no-edge";
 }
 
 // ── Method display names ───────────────────────────────────────────
@@ -181,6 +211,24 @@ const MARKET_SHORT_LABELS: Record<string, string> = {
 
 function marketKeyToShortLabel(key: string): string {
   return MARKET_SHORT_LABELS[key.toLowerCase()] ?? marketKeyToLabel(key);
+}
+
+// ── Market classification ──────────────────────────────────────────
+
+/**
+ * Returns true for the three mainline markets: spread, total, and moneyline.
+ * Everything else (alt lines, props, team totals) is non-mainline.
+ */
+export function isMainlineMarket(key: string): boolean {
+  const lower = key.toLowerCase();
+  return (
+    lower === "h2h" ||
+    lower === "moneyline" ||
+    lower === "spreads" ||
+    lower === "spread" ||
+    lower === "totals" ||
+    lower === "total"
+  );
 }
 
 // ── Market category mapping ────────────────────────────────────────

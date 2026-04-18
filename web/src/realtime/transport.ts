@@ -206,8 +206,8 @@ class RealtimeTransport {
       try {
         const data = JSON.parse(evt.data) as RealtimeEvent;
         this.dispatch(data);
-      } catch {
-        // Ignore malformed messages
+      } catch (err) {
+        console.error("[realtime/ws] malformed message:", err);
       }
     };
 
@@ -293,8 +293,8 @@ class RealtimeTransport {
       try {
         const data = JSON.parse(evt.data) as RealtimeEvent;
         this.dispatch(data);
-      } catch {
-        // Ignore
+      } catch (err) {
+        console.error("[realtime/sse] malformed message:", err);
       }
     };
 
@@ -347,8 +347,8 @@ class RealtimeTransport {
     for (const handler of this.handlers) {
       try {
         handler(event);
-      } catch {
-        // Handler errors shouldn't crash the transport
+      } catch (err) {
+        console.error("[realtime] dispatch handler threw:", err);
       }
     }
   }

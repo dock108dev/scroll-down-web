@@ -44,6 +44,10 @@ export const API = {
 export const FAIRBET = {
   MIN_BOOKS: 3, // hide bets with fewer books posting a price
   EV_HIGHLIGHT_THRESHOLD: 5, // EV% at which a bet gets the strong-positive color
+  EV_TIER_STRONG: 7,    // > $7 per $100 → dark green
+  EV_TIER_GOOD: 3,      // $3–$7 per $100 → light green
+  EV_TIER_MARGINAL: 1,  // $1–$3 per $100 → amber
+  // < $1 per $100 → no-edge (gray, no highlight)
 };
 
 export const REALTIME = {
@@ -72,6 +76,7 @@ export const STORAGE_KEYS = {
   GAMES_CACHE: "sd-games-cache",
   FAIRBET_CACHE: "sd-fairbet-cache",
   GOLF_CACHE: "sd-golf-cache",
+  ONBOARDING_SEEN: "sd-onboarding-seen",
 };
 
 export const STORAGE = {
@@ -81,6 +86,13 @@ export const STORAGE = {
   MAX_SNAPSHOTS: 20,
   POSITION_MAX_AGE_DAYS: 30,
   LAYOUT_MAX_AGE_DAYS: 30,
+};
+
+export const FRESHNESS = {
+  LABEL_MIN_MS: 30_000,           // <30s: no label
+  AMBER_THRESHOLD_MS: 2 * 60_000, // 30s–2min: "Updated Xs ago" (muted)
+  RED_THRESHOLD_MS: 5 * 60_000,   // 2–5min: "May be delayed" (amber), >5min: "Data delayed" (red)
+  UPDATE_INTERVAL_MS: 10_000,     // re-evaluate label every 10s
 };
 
 export const RENDER = {
@@ -99,4 +111,19 @@ export const DEFAULTS = {
   THEME: "system",
   AWAY_ABBR_FALLBACK: "AWY",
   HOME_ABBR_FALLBACK: "HME",
+};
+
+/** Headline stat labels to show collapsed per sport/position type.
+ *  Keys match leagueCode.toLowerCase() for generic stats, or
+ *  "nhl_skater" / "nhl_goalie" / "mlb_batter" / "mlb_pitcher" for typed tables.
+ *  Labels must match the `label` field of the relevant column definition. */
+export const HEADLINE_STATS: Record<string, readonly string[]> = {
+  nba:         ["PTS", "REB", "AST"],
+  ncaab:       ["PTS", "REB", "AST"],
+  nfl:         ["YDS", "TD"],
+  ncaaf:       ["YDS", "TD"],
+  nhl_skater:  ["G", "A", "PTS"],
+  nhl_goalie:  ["SV", "GA", "SV%"],
+  mlb_batter:  ["H", "RBI", "AVG"],
+  mlb_pitcher: ["IP", "K", "ERA"],
 };

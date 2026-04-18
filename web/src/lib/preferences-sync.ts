@@ -53,9 +53,15 @@ async function fetchPreferences(): Promise<ServerPreferences | null> {
   if (!token) return null;
   if (isDegraded()) return null; // Skip when backend is known-degraded
 
-  const res = await fetch("/api/auth/me/preferences", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let res: Response;
+  try {
+    res = await fetch("/api/auth/me/preferences", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    console.warn(`${TAG} fetchPreferences network error:`, err);
+    return null;
+  }
 
   if (!res.ok) {
     if (!fetchHasLoggedError) {
