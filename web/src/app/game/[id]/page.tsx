@@ -31,6 +31,8 @@ import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gamePbpChannel } from "@/realtime/channels";
 import { trackEvent, initScrollTracking } from "@/lib/analytics";
 import { InlineFeedback } from "@/components/shared/InlineFeedback";
+import { DetailBannerAd } from "@/components/ads/DetailBannerAd";
+import { ATTRIBUTION } from "@/lib/config";
 
 // ─── Main Page Component ───────────────────────────────────────
 
@@ -491,7 +493,13 @@ export default function GameDetailPage({
             open={isSectionOpen("Odds")}
             onToggle={() => handleToggle("Odds")}
           >
-            <OddsSection odds={data.odds} homeTeam={game.homeTeam} awayTeam={game.awayTeam} />
+            <OddsSection
+              odds={data.odds}
+              homeTeam={game.homeTeam}
+              awayTeam={game.awayTeam}
+              homeScore={isFinal(game.status, game) && game.homeScore != null ? game.homeScore : undefined}
+              awayScore={isFinal(game.status, game) && game.awayScore != null ? game.awayScore : undefined}
+            />
           </CollapsibleSection>
         )}
 
@@ -508,6 +516,17 @@ export default function GameDetailPage({
       </div>
 
       {!error && <InlineFeedback context="game" />}
+
+      <div className="flex justify-center py-3">
+        <DetailBannerAd />
+      </div>
+
+      <p
+        data-testid="game-data-attribution"
+        className="px-4 py-3 text-center text-xs text-neutral-600"
+      >
+        Game data provided by {ATTRIBUTION.DATA_SOURCE_LABEL}
+      </p>
     </div>
   );
 }

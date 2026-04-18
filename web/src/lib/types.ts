@@ -558,6 +558,18 @@ export interface ExplanationStep {
   detail_rows?: { label: string; value: string; is_highlight?: boolean }[];
 }
 
+/** Result of multiplicative no-vig devig for a market. */
+export interface DevigedMarket {
+  /** Input American odds per side. */
+  sides: number[];
+  /** Normalized fair probabilities (sum exactly to 1.0). */
+  fairProbs: number[];
+  /** Fair American odds derived from fairProbs. */
+  fairOdds: number[];
+  /** Sum of raw implied probabilities before normalization (>1 = vig present). */
+  overround: number;
+}
+
 export interface BookPrice {
   book: string;
   price: number;
@@ -651,4 +663,17 @@ export function isPregame(status: GameStatus, game?: { isPregame?: boolean }): b
   if (PREGAME_STATUSES.includes(status)) return true;
   if (game?.isPregame !== undefined) return game.isPregame;
   return false;
+}
+
+// ─── Golf ────────────────────────────────────────────────
+
+/** Normalized golf leaderboard entry returned by /api/golf/leaderboard. */
+export interface GolfLeaderboardEntry {
+  playerId: string;
+  name: string;
+  position: string;
+  totalScore: number;
+  todayScore: number;
+  thru: string;
+  status: string;
 }

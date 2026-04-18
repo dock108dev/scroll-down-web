@@ -29,7 +29,7 @@ export function writeCache<T>(key: string, data: T): void {
   try {
     const entry: CacheEntry<T> = { data, savedAt: Date.now() };
     localStorage.setItem(key, JSON.stringify(entry));
-  } catch {
-    // Quota exceeded or storage access denied — silently ignore
+  } catch (err) {
+    console.warn("[stale-cache] writeCache failed (quota exceeded or storage denied):", err);
   }
 }

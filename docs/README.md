@@ -43,4 +43,5 @@ Historical research and external audit notes that informed product decisions but
 | File | Purpose |
 |------|---------|
 | [archived/braindump.md](archived/braindump.md) | External audit notes on product focus and UX critique |
+| [archived/aidlc-futures.md](archived/aidlc-futures.md) | AIDLC run summary (2026-04-18): issues planned/implemented, audit links |
 | [archived/research/](archived/research/) | 13 research docs: APIs, UX patterns, monetization, PWA, etc. |

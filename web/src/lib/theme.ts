@@ -56,3 +56,8 @@ export function bookAbbreviation(name: string): string {
   const key = name.toLowerCase().trim();
   return BOOK_ABBREVIATION_MAP[key] ?? key.slice(0, 3).toUpperCase();
 }
+
+/** Convert a sportsbook name to a URL-safe slug for asset paths. */
+export function bookSlug(name: string): string {
+  return name.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+}

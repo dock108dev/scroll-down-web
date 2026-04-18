@@ -10,6 +10,9 @@ interface OddsSectionProps {
   odds: OddsEntry[];
   homeTeam?: string;
   awayTeam?: string;
+  /** Settled game scores — when provided, outcome badges are shown on mainline markets */
+  homeScore?: number;
+  awayScore?: number;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -68,7 +71,7 @@ function sortByTotalSide(entries: OddsEntry[]): OddsEntry[] {
   });
 }
 
-export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
+export function OddsSection({ odds, homeTeam, awayTeam, homeScore, awayScore }: OddsSectionProps) {
   const hideLimitedData = useSettings((s) => s.hideLimitedData);
 
   // Determine available categories and sort them
@@ -274,6 +277,8 @@ export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
                   groupSides={group.marketType === "moneyline"}
                   homeTeam={homeTeam}
                   awayTeam={awayTeam}
+                  homeScore={homeScore}
+                  awayScore={awayScore}
                 />
               </div>
             ))}

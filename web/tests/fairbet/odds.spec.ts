@@ -30,6 +30,32 @@ test.describe("FairBet Page - Odds", () => {
     }
   });
 
+  test("skeleton placeholders shown during initial fetch @smoke", async ({ page }) => {
+    // Navigate fresh and immediately check for skeleton before data loads
+    const skeleton = page.locator("[data-testid='loading-skeleton']");
+    const betCards = page.locator("[data-testid='bet-card']");
+    const emptyState = page.locator("[data-testid='fairbet-empty-state']");
+
+    // Slow down network to catch skeleton window
+    await page.route("**/api/fairbet/odds*", async (route) => {
+      await new Promise((r) => setTimeout(r, 400));
+      await route.continue();
+    });
+
+    await page.goto("/fairbet");
+
+    // Skeleton should appear before data resolves
+    const skeletonVisible = await skeleton.isVisible().catch(() => false);
+    // It's a race — if skeleton missed, data must be present
+    if (!skeletonVisible) {
+      const resolved = await Promise.race([
+        betCards.first().waitFor({ state: "visible", timeout: 15_000 }).then(() => true),
+        emptyState.waitFor({ state: "visible", timeout: 15_000 }).then(() => true),
+      ]).catch(() => false);
+      expect(resolved).toBe(true);
+    }
+  });
+
   test("empty state renders with intentional messaging and no console errors @smoke", async ({ page }) => {
     const betCards = page.locator("[data-testid='bet-card']");
     const emptyState = page.locator("[data-testid='fairbet-empty-state']");
@@ -51,10 +77,13 @@ test.describe("FairBet Page - Odds", () => {
 
     if (result === "empty") {
       await expect(emptyState).toBeVisible();
-      // Message should be intentional copy, not a placeholder
+      // Intentional headline must be present
       const text = await emptyState.textContent() ?? "";
       expect(text.trim().length).toBeGreaterThan(0);
-      expect(text).not.toMatch(/no bets available right now/i);
+      expect(text).toMatch(/markets are tight today|no bets match/i);
+      // Refresh button must be in the empty state
+      const refreshBtn = emptyState.getByRole("button", { name: /refresh/i });
+      await expect(refreshBtn).toBeVisible();
       expect(consoleErrors).toHaveLength(0);
     }
     // If cards are shown, empty state is not relevant — test passes

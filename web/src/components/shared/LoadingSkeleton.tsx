@@ -5,7 +5,8 @@ type SkeletonVariant =
   | "timelineRow"
   | "socialPost"
   | "textBlock"
-  | "list";
+  | "list"
+  | "fairbetCard";
 
 interface LoadingSkeletonProps {
   className?: string;
@@ -79,6 +80,31 @@ function TextBlockSkeleton() {
   );
 }
 
+/** FairBet card skeleton — mirrors BetCard layout */
+function FairBetCardSkeleton() {
+  return (
+    <div className="rounded-xl p-4 space-y-3 skeleton-shimmer" style={{ minHeight: 110 }}>
+      <div className="flex items-center justify-between">
+        <div className="space-y-1.5 flex-1">
+          <Bar className="h-3.5 w-2/5" />
+          <Bar className="h-2.5 w-1/4" />
+        </div>
+        <Bar className="h-6 w-14 rounded-full" />
+      </div>
+      <div className="flex items-center gap-3">
+        <Bar className="h-3 w-24" />
+        <Bar className="h-3 w-16" />
+        <Bar className="h-3 w-12 ml-auto" />
+      </div>
+      <div className="flex items-center gap-2">
+        <Bar className="h-2.5 w-8 rounded-full" />
+        <Bar className="h-2.5 w-8 rounded-full" />
+        <Bar className="h-2.5 w-8 rounded-full" />
+      </div>
+    </div>
+  );
+}
+
 /** List skeleton (generic repeated rows) */
 function ListSkeleton({ count }: { count: number }) {
   return (
@@ -143,6 +169,16 @@ export function LoadingSkeleton({
 
   if (variant === "list") {
     return <ListSkeleton count={count} />;
+  }
+
+  if (variant === "fairbetCard") {
+    return (
+      <div className="space-y-3" data-testid="loading-skeleton">
+        {Array.from({ length: count }, (_, i) => (
+          <FairBetCardSkeleton key={i} />
+        ))}
+      </div>
+    );
   }
 
   // Default: simple rectangles

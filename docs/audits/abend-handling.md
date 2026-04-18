@@ -172,7 +172,7 @@ The codebase has a mostly sound error-handling philosophy: realtime transport fa
 
 ---
 
-## Files Changed
+## Files Changed (Cycle 1)
 
 ```
 web/src/app/api/realtime/sse/route.ts   — try/catch around upstream fetch
@@ -185,3 +185,45 @@ web/src/realtime/transport.ts           — console.error on WS/SSE parse errors
 web/src/stores/auth.ts                  — console.error on non-401 refreshMe failure
 web/src/lib/preferences-sync.ts        — try/catch around fetchPreferences network call
 ```
+
+---
+
+## Cycle 2 — 2026-04-18
+
+Second-pass audit covering IDB persistence paths, circuit breaker behavior, and server-side auth/health observability.
+
+### New Findings and Fixes
+
+| ID | File | Lines | Pattern | Severity | Status |
+|----|------|--------|---------|----------|--------|
+| J1 | `stores/reveal.ts` | 60–64, 117–225 | 8 IDB operations (persistToIDB + all offline-queue enqueues) used `.catch(() => {})` — reveal state silently failed to persist | **Critical** | **Fixed** |
+| J2 | `components/layout/RevealIDBProvider.tsx` | 21 | `flushOfflineQueue().catch(() => {})` — reconnect sync failure invisible | **High** | **Fixed** |
+| J3 | `lib/preferences-sync.ts` | 19–20, 202–213 | Push circuit breaker (`consecutivePushFailures >= MAX_BACKOFF_FAILURES`) had no time-based reset — after 3 push failures prefs silently stopped syncing for the rest of the session | **Critical** | **Fixed** |
+| J4 | `lib/magic-link.ts` | 52–54 | `verifySession` catch returned null with no log — unexpected crypto/parse errors invisible on auth server | **High** | **Fixed** |
+| J5 | `app/api/golf/leaderboard/route.ts` | 75 | `if (!tournamentId) return []` with no log — 200 + empty leaderboard on missing tournament, indistinguishable from zero competitors | **High** | **Fixed** |
+| J6 | `app/api/health/route.ts` | 9–14 | Bare `catch` on backend ping — degradation reason (timeout vs 500 vs DNS) invisible in server logs | **Medium** | **Fixed** |
+| J7 | `lib/stale-cache.ts` | 32–34 | `writeCache` quota/permission error swallowed silently | **Medium** | **Fixed** |
+
+**J3 detail**: The push circuit breaker previously only reset on `pullAndStartSync()` (i.e., next login). A 10-minute backend outage would permanently halt preference sync for the current session. Fix adds a 5-minute time-based reset in `schedulePush()` and logs both the circuit trip and reset events.
+
+### Files Changed (Cycle 2)
+
+```
+web/src/stores/reveal.ts                       — 8 IDB catches → console.error
+web/src/components/layout/RevealIDBProvider.tsx — flushOfflineQueue catch → console.error
+web/src/lib/preferences-sync.ts               — push circuit breaker: add time-based reset (5 min)
+web/src/lib/magic-link.ts                      — verifySession catch → console.error
+web/src/app/api/golf/leaderboard/route.ts      — missing tournament → console.info before return []
+web/src/app/api/health/route.ts                — backend ping catch → console.error
+web/src/lib/stale-cache.ts                     — writeCache catch → console.warn
+```
+
+### Remaining Acceptable Items (Cycle 2)
+
+| Finding | Rationale |
+|---------|-----------|
+| `lib/analytics.ts` `.catch(() => {})` | Fire-and-forget analytics — intentional by spec |
+| `useFairBetOdds` background refresh swallowed | Silent SWR refresh; stale banner covers user-visible gap |
+| `useFairBetLive` partial game failures not logged | Transient per-game failures during 15s poll; logging would flood console |
+| `loadAccounts` parse failure → empty Map | **Unaddressed risk**: corrupt `sd-accounts.json` silently creates fresh accounts. Should throw rather than return empty Map. Tracked for follow-up. |
+| `preferences-sync` `fetchHasLoggedError` one-shot log | Acceptable anti-flood; first failure logged, subsequent suppressed |

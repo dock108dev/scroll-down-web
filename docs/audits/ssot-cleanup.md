@@ -41,6 +41,20 @@ Two test cases used `page.getByText("Loading bets...")` as a skip condition. Tha
 - **"loading state appears then resolves"**: The dead skip guard was removed. A timeout now correctly throws (the intended behavior).
 - **"bet cards render after loading or empty state shown"**: The `loadingText` variable and its dead `if (stillLoading)` check were removed. The test now skips directly on timeout.
 
+### 7. `STORY_QUALITY_GATE` dead branch removed
+**Files**: `web/src/app/game/[id]/sections.ts`, `web/src/app/game/[id]/page.tsx`
+
+`STORY_QUALITY_GATE` is hardcoded `true` in `config.ts`, making `!STORY_QUALITY_GATE` permanently `false`. The "AI Story" section was never pushed onto the sections list, so `sections.includes("AI Story")` in `page.tsx` was always false.
+
+Deleted:
+- `import { STORY_QUALITY_GATE }` from `sections.ts`
+- `if (!STORY_QUALITY_GATE) s.push("AI Story");` from `sections.ts`
+- `case "AI Story":` dead fall-through in `getDefaultExpanded`
+- The entire `{/* AI Story */}` `CollapsibleSection` block from `page.tsx` (lines 507–517)
+- `import { GameStorySection }` from `page.tsx` (import had no remaining consumer)
+
+The underlying `GameStorySection.tsx` component, `api/ai/*` routes, and story utility libs are retained — they represent in-development infrastructure, not legacy code.
+
 ---
 
 ## SSOT Verification
@@ -52,6 +66,7 @@ Two test cases used `page.getByText("Loading bets...")` as a skip condition. Tha
 | NFL player stats columns | `NFL_COLUMNS` in `PlayerStatsTable.tsx` (labels now unique) |
 | Reveal state persistence | `stores/reveal.ts` at version 1 |
 | Odds section props | `OddsSectionProps` (leagueCode removed) |
+| Game detail sections | `getSections()` in `sections.ts` — "AI Story" removed, "Game Story" is the flow section |
 
 ---
 
@@ -84,6 +99,9 @@ getGroupsForSport            → 0 references in TeamStatsComparison
 resolveStatValue             → 0 references in TeamStatsComparison
 legacyActiveGroups           → 0 references
 "Loading bets..."            → 0 references in tests
+STORY_QUALITY_GATE           → 0 references in game/[id]/ (only in GameStorySection.tsx, intentional)
+"AI Story"                   → 0 references in game/[id]/
+GameStorySection import      → 0 references in page.tsx
 ```
 
 `npm run lint` passes with 0 errors, 0 warnings after all changes.

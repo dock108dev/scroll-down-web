@@ -11,6 +11,11 @@ import { Footer } from "@/components/layout/Footer";
 import { BetaBanner } from "@/components/layout/BetaBanner";
 import { DegradedBanner } from "@/components/layout/DegradedBanner";
 import { AnalyticsProvider } from "@/components/layout/AnalyticsProvider";
+import { RevealIDBProvider } from "@/components/layout/RevealIDBProvider";
+import { SessionProvider } from "@/components/auth/SessionProvider";
+import { OfflineBanner } from "@/components/layout/OfflineBanner";
+import { PWAInstallPrompt } from "@/components/layout/PWAInstallPrompt";
+import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
 
 const SITE_URL = "https://scrolldownsports.dev";
 
@@ -70,6 +75,15 @@ export default function RootLayout({
           data-domain="scrolldownsports.dev"
           src="https://plausible.io/js/script.js"
         />
+        <Script id="sw-register" strategy="afterInteractive">{`
+          if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function () {
+              navigator.serviceWorker.register('/sw.js').catch(function (err) {
+                console.warn('SW registration failed:', err);
+              });
+            });
+          }
+        `}</Script>
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -94,9 +108,13 @@ export default function RootLayout({
       <body className="bg-neutral-950 text-neutral-50 antialiased">
         <ThemeProvider>
           <AuthProvider />
+          <SessionProvider />
           <RealtimeProvider />
           <AnalyticsProvider />
+          <RevealIDBProvider />
           <div className="min-h-screen flex flex-col">
+            <OfflineBanner />
+            <PWAInstallPrompt />
             <BetaBanner />
             <DegradedBanner />
             <TopNav />
@@ -108,6 +126,7 @@ export default function RootLayout({
             <Footer />
             <BottomTabs />
             <SettingsDrawer />
+            <ProGateSheet />
           </div>
         </ThemeProvider>
       </body>

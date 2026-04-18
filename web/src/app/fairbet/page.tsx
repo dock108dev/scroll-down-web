@@ -13,6 +13,7 @@ import type { APIBet } from "@/lib/types";
 import { Spinner } from "@/components/shared/Spinner";
 import { StaleBanner } from "@/components/shared/StaleBanner";
 import { InlineFeedback } from "@/components/shared/InlineFeedback";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { RENDER } from "@/lib/config";
 
 export default function FairBetPage() {
@@ -185,15 +186,12 @@ export default function FairBetPage() {
         {activeTab === "pregame" && <div role="tabpanel" id="tabpanel-pregame" aria-labelledby="tab-pregame">
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
-        {/* Loading state */}
+        {/* Loading state — skeleton cards to avoid blank screen */}
         {hook.loading && !hook.error && !loadingTimedOut && (
-          <div className="py-20 flex flex-col items-center gap-3">
-            <div className="text-sm text-neutral-500">
-              {loadingSlow ? "Taking longer than expected…" : "Fetching odds from sportsbooks…"}
-            </div>
-            <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
+          <div className="pt-3 space-y-3">
+            <LoadingSkeleton variant="fairbetCard" count={4} />
             {loadingSlow && (
-              <p className="text-xs text-neutral-600 mt-1">The server may be slow to respond. We&apos;ll show an error if it doesn&apos;t connect.</p>
+              <p className="text-xs text-neutral-600 text-center pt-1">Taking longer than expected… We&apos;ll show an error if it doesn&apos;t connect.</p>
             )}
           </div>
         )}
@@ -244,29 +242,45 @@ export default function FairBetPage() {
 
         {/* Empty state */}
         {!hook.loading && !hook.error && hook.filteredBets.length === 0 && (
-          <div data-testid="fairbet-empty-state" className="py-12 text-center space-y-5">
-            <p className="text-sm text-neutral-400">
-              {hook.filters.evOnly && hook.allBets.length > 0
-                ? "No qualifying value bets right now"
-                : hook.allBets.length === 0
-                  ? "No odds available today"
-                  : "No bets match current filters"}
+          <div data-testid="fairbet-empty-state" className="py-12 text-center space-y-4">
+            <p className="text-base font-semibold text-neutral-300">
+              {hook.allBets.length > 0 && !hook.filters.evOnly
+                ? "No bets match your filters"
+                : "Markets are tight today"}
             </p>
-            <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
-              {hook.filters.evOnly && hook.allBets.length > 0
-                ? "The market doesn\u2019t have any +EV opportunities at the moment. Try disabling the +EV filter to browse all available odds."
-                : hook.allBets.length === 0
-                  ? "FairBet shows odds when games are on the schedule. Check back closer to tip-off."
-                  : "Try clearing your filters to see all available odds."}
+            <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
+              {hook.allBets.length > 0 && !hook.filters.evOnly
+                ? "Try clearing your filters to see all available odds."
+                : hook.filters.evOnly && hook.allBets.length > 0
+                  ? "No +EV opportunities at the moment. Try disabling the +EV filter to browse all odds."
+                  : "No edges found across tracked markets. Check back closer to game time."}
             </p>
-            {hook.filters.evOnly && (
+            <div className="flex flex-col items-center gap-3 pt-1">
+              {hook.filters.evOnly && (
+                <button
+                  onClick={() => hook.setEvOnly(false)}
+                  className="text-xs font-medium px-4 py-2 min-h-[40px] rounded-lg transition"
+                  style={{
+                    backgroundColor: "var(--fb-surface-secondary)",
+                    color: "var(--ds-text-secondary)",
+                    border: "1px solid var(--fb-border-subtle)",
+                  }}
+                >
+                  Show all bets
+                </button>
+              )}
               <button
-                onClick={() => hook.setEvOnly(false)}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={hook.refetch}
+                className="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 min-h-[40px] rounded-lg transition"
+                style={{
+                  backgroundColor: "var(--fb-surface-secondary)",
+                  color: "var(--ds-text-tertiary)",
+                  border: "1px solid var(--fb-border-subtle)",
+                }}
               >
-                Show all bets
+                Refresh
               </button>
-            )}
+            </div>
 
             {/* Example card — only shown when API returned no odds at all */}
             {hook.allBets.length === 0 && (

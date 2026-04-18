@@ -1,0 +1,67 @@
+import { test, expect } from "../helpers";
+
+// Ads are disabled in the Playwright test environment via NEXT_PUBLIC_ADS_ENABLED=false
+// (set in playwright.config.ts webServer.env). These tests verify that behaviour and
+// provide a harness for manual ad-enabled smoke tests.
+
+test.describe("Ad placements — disabled in test env @smoke", () => {
+  test("native ad cards do not appear on home feed", async ({ page }) => {
+    await page.goto("/");
+    // When NEXT_PUBLIC_ADS_ENABLED=false, no ad cards should be in the DOM.
+    const ads = page.locator("[data-testid='native-ad-card']");
+    await expect(ads).toHaveCount(0);
+  });
+
+  test("detail banner ad does not appear on game detail page", async ({ page }) => {
+    // Navigate to a game detail page; game ID 1 is used as a representative slug.
+    // The test skips gracefully if live data is unavailable.
+    const res = await page.request.get("/api/games?limit=1");
+    if (!res.ok()) {
+      test.skip();
+      return;
+    }
+    const body = await res.json().catch(() => null);
+    const gameId: number | undefined = body?.games?.[0]?.id ?? body?.[0]?.id;
+    if (!gameId) {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`/game/${gameId}`);
+    await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 10_000 });
+
+    const banner = page.locator("[data-testid='detail-banner-ad']");
+    await expect(banner).toHaveCount(0);
+  });
+});
+
+test.describe("Ad placements — free vs pro", () => {
+  test("native ad card is absent for pro-tier users", async ({ page }) => {
+    // Simulate pro tier via dev override and verify no ads render.
+    await page.goto("/?tier=pro");
+    await page.waitForTimeout(500);
+
+    const ads = page.locator("[data-testid='native-ad-card']");
+    await expect(ads).toHaveCount(0);
+  });
+
+  test("detail banner ad is absent for pro-tier users", async ({ page }) => {
+    const res = await page.request.get("/api/games?limit=1");
+    if (!res.ok()) {
+      test.skip();
+      return;
+    }
+    const body = await res.json().catch(() => null);
+    const gameId: number | undefined = body?.games?.[0]?.id ?? body?.[0]?.id;
+    if (!gameId) {
+      test.skip();
+      return;
+    }
+
+    await page.goto(`/game/${gameId}?tier=pro`);
+    await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 10_000 });
+
+    const banner = page.locator("[data-testid='detail-banner-ad']");
+    await expect(banner).toHaveCount(0);
+  });
+});

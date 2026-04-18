@@ -2,32 +2,34 @@
 
 import { useState } from "react";
 import { STORAGE_KEYS } from "@/lib/config";
+import { useReveal } from "@/stores/reveal";
 
 const STEPS = [
   "Scores are hidden — tap a game to reveal when you're ready.",
   "Your reveals are saved. Come back anytime without seeing spoilers.",
 ] as const;
 
-function shouldShowBanner(): boolean {
-  if (localStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN)) return false;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.READ_STATE);
-    if (raw) {
-      const ids = JSON.parse(raw)?.state?.revealedIds;
-      if (Array.isArray(ids) && ids.length > 0) return false;
-    }
-  } catch {
-    // ignore parse errors
-  }
-  return true;
+function hasSeenOnboarding(): boolean {
+  return !!localStorage.getItem(STORAGE_KEYS.ONBOARDING_SEEN);
 }
 
 export function RevealOnboarding() {
-  // Lazy initializer: runs client-side only (component loaded with ssr:false).
-  const [visible, setVisible] = useState(() => shouldShowBanner());
+  const isHydrated = useReveal((s) => s.isHydrated);
+  const revealedCount = useReveal((s) => s.revealedIds.size);
+
+  const [visible, setVisible] = useState<boolean | null>(null);
   const [step, setStep] = useState<0 | 1>(0);
 
-  if (!visible) return null;
+  // Defer visibility decision until IDB hydration completes so we don't flash
+  // the banner for users who already have reveals in IndexedDB.
+  if (!isHydrated) return null;
+
+  const shouldShow =
+    visible !== null
+      ? visible
+      : !hasSeenOnboarding() && revealedCount === 0;
+
+  if (!shouldShow) return null;
 
   const handleAction = () => {
     if (step === 0) {

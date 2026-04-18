@@ -52,5 +52,8 @@ export default defineConfig({
     url: BASE_URL,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    env: {
+      NEXT_PUBLIC_ADS_ENABLED: "false",
+    },
   },
 });

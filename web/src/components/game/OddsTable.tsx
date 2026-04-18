@@ -3,7 +3,13 @@
 import type { OddsEntry } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
 import { formatOdds, cn } from "@/lib/utils";
-import { bookAbbreviation } from "@/lib/theme";
+import { bookAbbreviation, bookSlug } from "@/lib/theme";
+import {
+  calcSpreadOutcome,
+  calcTotalOutcome,
+  calcMoneylineOutcome,
+  type BetOutcome,
+} from "@/lib/fairbet-utils";
 
 interface OddsTableProps {
   odds: OddsEntry[];
@@ -14,6 +20,53 @@ interface OddsTableProps {
   /** Team names for context in labels */
   homeTeam?: string;
   awayTeam?: string;
+  /** When provided, show settled outcome badges per row */
+  homeScore?: number;
+  awayScore?: number;
+}
+
+const OUTCOME_LABEL: Record<BetOutcome, string> = {
+  covered: "Covered",
+  won: "Won",
+  pushed: "Pushed",
+  lost: "Lost",
+};
+
+const OUTCOME_CLASS: Record<BetOutcome, string> = {
+  covered: "bg-green-500/15 text-green-400",
+  won: "bg-green-500/15 text-green-400",
+  pushed: "bg-neutral-700 text-neutral-400",
+  lost: "bg-red-500/15 text-red-400",
+};
+
+function BetOutcomeBadge({ outcome, marketType }: { outcome: BetOutcome; marketType: string }) {
+  return (
+    <span
+      data-testid={`bet-outcome-${marketType}`}
+      className={cn("ml-2 inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold leading-none", OUTCOME_CLASS[outcome])}
+    >
+      {OUTCOME_LABEL[outcome]}
+    </span>
+  );
+}
+
+function BookLogoHeader({ book }: { book: string }) {
+  const abbr = bookAbbreviation(book);
+  const slug = bookSlug(book);
+  return (
+    <span className="flex flex-col items-center gap-0.5">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={`/books/${slug}.svg`}
+        alt={book}
+        width={28}
+        height={16}
+        className="shrink-0"
+        onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+      />
+      <span>{abbr}</span>
+    </span>
+  );
 }
 
 /** Build a row key from an odds entry */
@@ -96,7 +149,7 @@ function groupIntoPairs(
   return Object.values(pairMap);
 }
 
-export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps) {
+export function OddsTable({ odds, groupSides, showPlayerNames, homeTeam, awayTeam, homeScore, awayScore }: OddsTableProps) {
   const oddsFormat = useSettings((s) => s.oddsFormat);
   const preferredBook = useSettings((s) => s.preferredSportsbook);
 
@@ -128,7 +181,6 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
               Market
             </th>
             {books.map((book) => {
-              const abbr = bookAbbreviation(book);
               const isPreferred =
                 preferredBook !== "" &&
                 book.toLowerCase().replace(/\s+/g, "") === preferredBook;
@@ -140,7 +192,7 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
                     isPreferred && "text-blue-400",
                   )}
                 >
-                  {abbr}
+                  <BookLogoHeader book={book} />
                 </th>
               );
             })}
@@ -156,6 +208,10 @@ export function OddsTable({ odds, groupSides, showPlayerNames }: OddsTableProps)
               preferredBook={preferredBook}
               showPlayerNames={showPlayerNames}
               isFirstPair={pairIdx === 0}
+              homeTeam={homeTeam}
+              awayTeam={awayTeam}
+              homeScore={homeScore}
+              awayScore={awayScore}
             />
           ))}
         </tbody>
@@ -171,6 +227,10 @@ function PairGroup({
   preferredBook,
   showPlayerNames,
   isFirstPair,
+  homeTeam,
+  awayTeam: _awayTeam,
+  homeScore,
+  awayScore,
 }: {
   rows: [string, OddsEntry[]][];
   books: string[];
@@ -178,7 +238,13 @@ function PairGroup({
   preferredBook: string;
   showPlayerNames?: boolean;
   isFirstPair: boolean;
+  homeTeam?: string;
+  awayTeam?: string;
+  homeScore?: number;
+  awayScore?: number;
 }) {
+  const hasScores = homeScore != null && awayScore != null && homeTeam != null;
+
   return (
     <>
       {rows.map(([key, entries], rowIdx) => {
@@ -186,6 +252,18 @@ function PairGroup({
         const bestPrice = findBestPrice(entries);
 
         const label = buildLabel(first, showPlayerNames);
+
+        let outcome: BetOutcome | null = null;
+        if (hasScores && first.side != null && first.line != null) {
+          const mt = first.marketType;
+          if (mt === "spread") {
+            outcome = calcSpreadOutcome(first.side, first.line, homeTeam!, homeScore!, awayScore!);
+          } else if (mt === "total" || mt === "team_total") {
+            outcome = calcTotalOutcome(first.side, first.line, homeScore!, awayScore!);
+          }
+        } else if (hasScores && first.side != null && first.marketType === "moneyline") {
+          outcome = calcMoneylineOutcome(first.side, homeTeam!, homeScore!, awayScore!);
+        }
 
         return (
           <tr
@@ -210,7 +288,12 @@ function PairGroup({
                   : "truncate max-w-[260px]",
               )}
             >
-              <span className="truncate block max-w-[260px]">{label}</span>
+              <span className="truncate block max-w-[260px]">
+                {label}
+                {outcome != null && (
+                  <BetOutcomeBadge outcome={outcome} marketType={first.marketType} />
+                )}
+              </span>
             </td>
             {books.map((book) => {
               const entry = entries.find(

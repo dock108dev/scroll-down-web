@@ -89,15 +89,17 @@
 
 **This phase is conditional.** If story quality does not meet the bar, skip to Phase 6.
 
-- [ ] Build content selection pipeline: extract 8-15 salient events from box score (lead changes, big performances, largest runs)
+**Infrastructure is complete. Stories are hidden behind `STORY_QUALITY_GATE = true` pending quality review.**
+
+- [x] Build content selection pipeline: `lib/salient-events.ts` extracts key events from box score
 - [ ] Classify narrative type: comeback, dominant performance, blowout, back-and-forth, defensive battle
-- [ ] Create slot-filled prompt templates: structured facts in template, not raw box scores to LLM
-- [ ] Implement anti-filler rules: ban generic phrases ("both teams fought hard", "thrilling contest"). Test: "Would this sentence be false if the score reversed?"
-- [ ] Add sentence budgets: allocate X sentences per section (prevents padding)
-- [ ] Build fact verification: extract all numbers from output, verify against source box score data
-- [ ] Design story UI: lighter typography than factual data, "beta" label, positioned below timeline/stats
-- [ ] Add inline feedback: "Was this useful?" thumbs up/down on game stories (already exists for other sections)
-- [ ] Quality gate: review 50+ generated stories across sports. If >20% have filler or inaccuracies, do not ship to public
+- [x] Create slot-filled prompt templates: `lib/story-templates.ts`
+- [x] Implement anti-filler rules: `AI_STORY.BANNED_PHRASES` in config.ts; `lib/story-validator.ts`
+- [x] Add sentence budgets: `AI_STORY.MAX_SENTENCES` (6), `MAX_SENTENCES_PER_SECTION` (2), `MAX_WORDS` (150) in config.ts
+- [x] Build fact verification: `lib/story-numeric-verifier.ts` checks all numbers against box score
+- [x] Design story UI: `GameStorySection.tsx` — lighter typography, "beta" label, below timeline/stats
+- [x] Add inline feedback: `POST /api/story-feedback` implemented
+- [ ] **Quality gate**: Review 50+ generated stories across sports. If <20% filler/inaccuracy rate, set `STORY_QUALITY_GATE = false` in `config.ts`.
 - [ ] Test: E2E for story rendering, feedback submission
 
 ## Phase 6 — PWA & Offline
@@ -106,14 +108,16 @@
 
 **Exit criteria**: App installable from browser. Reveal state works offline. Cached game data shown when disconnected.
 
-- [ ] Implement service worker with cache strategies: Cache First for static assets, Stale-While-Revalidate for game data
-- [ ] Migrate reveal state persistence to IndexedDB (service worker accessible, larger capacity than localStorage)
-- [ ] Build offline queue: buffer reveal actions, setting changes during offline → sync on reconnect
-- [ ] Add install prompt: subtle, non-modal, shown after 2+ sessions
+**Core PWA infrastructure is live. Background sync and cross-device sync are not yet implemented.**
+
+- [x] Implement service worker: `/public/sw.js` registered in `layout.tsx`; Cache First for static assets, Stale-While-Revalidate for game data
+- [x] Migrate reveal state to IndexedDB: `lib/reveal-idb.ts`, `RevealIDBProvider` in layout
+- [ ] Build offline queue: buffer reveal actions and setting changes during offline → sync on reconnect
+- [x] Add install prompt: `PWAInstallPrompt` component, shown after `PWA.INSTALL_MIN_SESSIONS` (2) sessions
 - [ ] Implement background sync: service worker `sync` event flushes offline queue
-- [ ] Add offline indicator: subtle banner when disconnected, auto-dismiss on reconnect
+- [x] Add offline indicator: `OfflineBanner` component, auto-dismiss after `PWA.OFFLINE_AUTO_DISMISS_MS` (3s)
 - [ ] Handle IndexedDB versioning: incremental migrations in `openDB()` upgrade function
-- [ ] Consider cross-device sync via anonymous token + free KV store (Upstash or Cloudflare Workers KV)
+- [ ] Consider cross-device sync via anonymous token + KV store
 - [ ] Test: E2E for offline data display, online recovery, install prompt
 
 ## Phase 7 — Freemium Monetization
@@ -122,16 +126,16 @@
 
 **Exit criteria**: Free/Pro tiers live. Pro has clear value. Ads (if any) are non-intrusive and never interrupt score/reveal moments.
 
-- [ ] Define tier structure:
-  - **Free**: Core games feed, reveal mode, basic FairBet (limited markets/books), ad-supported
-  - **Pro** (~$4.99-9.99/mo): Full FairBet access, all books/markets, real-time odds, no ads, cross-device sync, advanced filters
-- [ ] Implement feature gates: real-time vs. delayed data as primary conversion lever
+**Core infrastructure is live (tier system, Stripe billing, feature gates, ads components). Gate UX and ad placement need polish.**
+
+- [x] Define tier structure: `stores/tier.ts` with `free` / `pro` tiers
+- [x] Implement feature gates: `FEATURE_GATES` constants, `lib/pro-gate.ts`, `hooks/useProGate.ts`
 - [ ] Add "see what you're missing" preview: blurred FairBet cards with EV visible but details gated
-- [ ] Design upgrade flow: inline upgrade prompts at natural gate points, not modal interruptions
-- [ ] If ads: native list-item format only (renders as game card with "Ad" badge), no interstitials, no video, no layout shift
-- [ ] Ad placement rules: never between game rows during live action, never during reveal gesture, never on game detail primary sections
+- [x] Design upgrade flow: `ProGateSheet` global overlay triggered at gate points
+- [x] If ads: `components/ads/NativeAdCard.tsx` (game-card format with "Ad" badge), `components/ads/DetailBannerAd.tsx`; `ADS` config governs placement interval
+- [ ] Enforce ad placement rules at runtime: never between live game rows, never during reveal gesture, never on game detail primary sections
 - [ ] Consider sportsbook affiliate integration: native card format, CPA-based revenue, age-gated
-- [ ] Add subscription management: Stripe integration, pause/cancel flow, retention offer at cancellation
+- [x] Add subscription management: Stripe via `/api/billing/checkout`, `/api/billing/portal`, `/api/billing/webhook`
 - [ ] Test: E2E for gate behavior, upgrade flow, ad rendering (if applicable)
 
 ## Phase 8 — Golf (Conditional)

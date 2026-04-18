@@ -8,7 +8,13 @@
 
 ## Dead Code Removed
 
-None found. All exports in `lib/`, `hooks/`, `stores/`, and `realtime/` are imported by at least one consumer. No commented-out blocks were present. No `TODO`/`FIXME`/`HACK` annotations exist in the codebase.
+### Unexported private symbols — `web/src/lib/fairbet-utils.ts`
+
+**`EV_NO_EDGE_THRESHOLD`** — Removed `export`. The constant was exported but had zero external importers; only used internally by `formatEVDollars`. Making it module-private removes it from the public API and avoids confusion.
+
+**`isConfidenceReliable`** — Removed `export`. The function was exported but had zero external importers; only called internally by `isReliablyPositive`. No behavioral change.
+
+No other dead exports, commented-out blocks, or `TODO`/`FIXME`/`HACK` annotations were found. All remaining exports in `lib/`, `hooks/`, `stores/`, and `realtime/` are imported by at least one consumer.
 
 ---
 
@@ -46,13 +52,19 @@ Removed a stray double blank line (two newlines instead of one) between the `Gam
 
 | File | Lines | Justification |
 |------|-------|---------------|
-| `src/lib/types.ts` | 654 | Single-source-of-truth for all API response types per CLAUDE.md rule 6. Expected to be large. |
+| `src/lib/types.ts` | 679 | Single-source-of-truth for all API response types per CLAUDE.md rule 6. Expected to be large. |
 | `src/hooks/useFairBetOdds.ts` | 645 | Orchestrates multi-page concurrent fetch, abort/retry logic, parlay state, filter state, and realtime subscription — all tightly coupled. Splitting would scatter the abort controller and cache invalidation logic. |
-| `src/lib/fairbet-utils.ts` | 540 | FairBet domain utilities: formatting, EV classification, selection display, parlay math, bet enrichment. Cohesive domain boundary; no obvious seam to split. |
-| `src/app/game/[id]/page.tsx` | 533 | Game detail page orchestrates ~10 collapsible sections, realtime subscription, reading-position save/restore, and IntersectionObserver for section nav. High inherent complexity. |
-| `src/app/fairbet/page.tsx` | 476 | Fairbet page manages progressive rendering, parlay, live/pregame tabs, filter state, and loading-timeout UX. Genuinely complex. |
+| `src/lib/fairbet-utils.ts` | 624 | FairBet domain utilities: formatting, EV classification, selection display, parlay math, bet enrichment. Cohesive domain boundary. If it grows further, extracting `odds-math.ts` for the probability/devig functions is the natural seam. |
+| `src/app/game/[id]/page.tsx` | 532 | Game detail page orchestrates ~10 collapsible sections, realtime subscription, reading-position save/restore, and IntersectionObserver for section nav. High inherent complexity. |
+| `src/lib/salient-events.ts` | 509 | Full salient-event extraction pipeline for MLB/NBA/NHL/NFL. Sport-specific rule tables belong together. |
 
 None of these files are flagged for follow-up — their size reflects real complexity, not accidental accumulation.
+
+---
+
+## Documentation Issues Found (Not Changed)
+
+**Missing `web/.env.local.example`** — `CLAUDE.md` Dev Setup documents `cp .env.local.example .env.local` but no such file exists in the repo. The required variables are documented in `docs/env-and-config.md`. A `.env.local.example` with commented-out stubs would make the onboarding step functional for new developers.
 
 ---
 

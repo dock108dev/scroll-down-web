@@ -1,6 +1,147 @@
 import { test, expect } from "../helpers";
 import { waitForLoad } from "../helpers";
 
+// ─── /api/golf/leaderboard (flat, admin-toggled endpoint) ─────────────────────
+
+test.describe("Golf: /api/golf/leaderboard", () => {
+  test("returns 404 when GOLF_ENABLED is not set", async ({ request }) => {
+    // In test environments GOLF_ENABLED is unset by default, so the route must 404.
+    const res = await request.get("/api/golf/leaderboard");
+    // If an operator has set GOLF_ENABLED=true in their local env, skip gracefully.
+    if (res.status() === 200) {
+      test.skip(true, "GOLF_ENABLED=true in this environment — 404 test skipped");
+      return;
+    }
+    expect(res.status()).toBe(404);
+  });
+
+  test("returns GolfLeaderboardEntry[] shape when enabled", async ({
+    request,
+  }) => {
+    const res = await request.get("/api/golf/leaderboard");
+    if (res.status() === 404) {
+      test.skip(true, "GOLF_ENABLED not set — leaderboard shape test skipped");
+      return;
+    }
+    if (!res.ok()) {
+      test.skip(true, "Golf leaderboard API unavailable");
+      return;
+    }
+    const data = await res.json();
+    expect(Array.isArray(data)).toBe(true);
+    if (data.length === 0) return; // no active tournament — shape is still valid
+    const entry = data[0];
+    expect(typeof entry.playerId).toBe("string");
+    expect(typeof entry.name).toBe("string");
+    expect(typeof entry.position).toBe("string");
+    expect(typeof entry.totalScore).toBe("number");
+    expect(typeof entry.todayScore).toBe("number");
+    expect(typeof entry.thru).toBe("string");
+    expect(typeof entry.status).toBe("string");
+  });
+});
+
+// ─── /golf page UI (reveal-mode leaderboard) ─────────────────────────────────
+
+test.describe("Golf: /golf page", () => {
+  test("returns 404 when GOLF_ENABLED is not set", async ({ page }) => {
+    const res = await page.request.get("/api/golf/leaderboard");
+    if (res.status() === 200) {
+      test.skip(true, "GOLF_ENABLED=true — 404 page test skipped");
+      return;
+    }
+    const response = await page.goto("/golf");
+    expect(response?.status()).toBe(404);
+  });
+
+  test("renders golf leaderboard when GOLF_ENABLED=true", async ({
+    authedPage: page,
+    request,
+  }) => {
+    const res = await request.get("/api/golf/leaderboard");
+    if (res.status() === 404) {
+      test.skip(true, "GOLF_ENABLED not set — /golf page test skipped");
+      return;
+    }
+    if (!res.ok()) {
+      test.skip(true, "Golf leaderboard API unavailable");
+      return;
+    }
+
+    await page.goto("/golf");
+    await waitForLoad(page);
+
+    await expect(page.locator("[data-testid='page-golf']")).toBeVisible();
+    await expect(page.locator("[data-testid='golf-leaderboard']")).toBeVisible();
+  });
+
+  test("scores are blurred by default and revealed on row tap", async ({
+    authedPage: page,
+    request,
+  }) => {
+    const res = await request.get("/api/golf/leaderboard");
+    if (res.status() === 404) {
+      test.skip(true, "GOLF_ENABLED not set — reveal test skipped");
+      return;
+    }
+    if (!res.ok()) {
+      test.skip(true, "Golf leaderboard API unavailable");
+      return;
+    }
+    const data = await res.json();
+    if (!Array.isArray(data) || data.length === 0) {
+      test.skip(true, "No leaderboard entries available");
+      return;
+    }
+
+    await page.goto("/golf");
+    await waitForLoad(page);
+
+    // First row score should be blurred before tap
+    const firstRow = page.locator("[data-testid='golf-leaderboard-row']").first();
+    await expect(firstRow).toBeVisible();
+    const blurred = firstRow.locator("[data-testid='golf-score-blurred']");
+    await expect(blurred).toBeVisible();
+
+    // Tap to reveal
+    await firstRow.click();
+    const revealed = firstRow.locator("[data-testid='golf-score-revealed']");
+    await expect(revealed).toBeVisible();
+    await expect(blurred).not.toBeVisible();
+  });
+
+  test("cut line separator appears when missed-cut players exist", async ({
+    authedPage: page,
+    request,
+  }) => {
+    const res = await request.get("/api/golf/leaderboard");
+    if (res.status() === 404) {
+      test.skip(true, "GOLF_ENABLED not set — cut line test skipped");
+      return;
+    }
+    if (!res.ok()) {
+      test.skip(true, "Golf leaderboard API unavailable");
+      return;
+    }
+    const data = await res.json();
+    const cutStatuses = new Set(["CUT", "WD", "DQ", "MDF"]);
+    const hasMissedCut = Array.isArray(data) && data.some(
+      (e: { status: string }) => cutStatuses.has(e.status.toUpperCase()),
+    );
+    if (!hasMissedCut) {
+      test.skip(true, "No missed-cut players in current data — cut line test skipped");
+      return;
+    }
+
+    await page.goto("/golf");
+    await waitForLoad(page);
+
+    await expect(page.locator("[data-testid='cut-line']")).toBeVisible();
+  });
+});
+
+// ─── /api/golf/tournaments/[eventId]/leaderboard (per-event) ─────────────────
+
 test.describe("Golf: Leaderboard", () => {
   test("leaderboard loads on event page", async ({
     authedPage: page,

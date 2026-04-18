@@ -16,7 +16,7 @@ A clean web app for following games on your own terms — trusted scores, contro
 ```bash
 cd web
 npm ci
-cp .env.example .env.local   # fill in API keys
+cp .env.local.example .env.local   # fill in API keys
 npm run dev                   # localhost:3001
 ```
 

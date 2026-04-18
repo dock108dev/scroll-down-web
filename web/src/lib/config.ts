@@ -48,6 +48,9 @@ export const FAIRBET = {
   EV_TIER_GOOD: 3,      // $3–$7 per $100 → light green
   EV_TIER_MARGINAL: 1,  // $1–$3 per $100 → amber
   // < $1 per $100 → no-edge (gray, no highlight)
+  ATTRIBUTION_FRESH_MS: 2 * 60_000,         // < 2m: no staleness label
+  ATTRIBUTION_STALE_MS: 15 * 60_000,        // > 15m: amber "May be delayed"
+  ATTRIBUTION_UPDATE_INTERVAL_MS: 30_000,   // re-evaluate attribution label every 30s
 };
 
 export const REALTIME = {
@@ -77,6 +80,18 @@ export const STORAGE_KEYS = {
   FAIRBET_CACHE: "sd-fairbet-cache",
   GOLF_CACHE: "sd-golf-cache",
   ONBOARDING_SEEN: "sd-onboarding-seen",
+  PWA_INSTALL_DISMISSED: "sd-pwa-install-dismissed",
+  PWA_SESSION_COUNT: "sd-pwa-session-count",
+  TIER: "sd-tier",
+  ANON_ID: "sd-anon-id",
+  SESSION: "sd-session",
+};
+
+export const PWA = {
+  /** Show install prompt after this many sessions. */
+  INSTALL_MIN_SESSIONS: 2,
+  /** Auto-dismiss offline banner this many ms after reconnection. */
+  OFFLINE_AUTO_DISMISS_MS: 3_000,
 };
 
 export const STORAGE = {
@@ -102,6 +117,62 @@ export const RENDER = {
 export const VALIDATION = {
   EMAIL_RE: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   PASSWORD_MIN_LENGTH: 8,
+};
+
+export const ATTRIBUTION = {
+  /** Displayed in the game detail page footer: "Game data provided by <LABEL>" */
+  DATA_SOURCE_LABEL: "SportsDataAPI",
+};
+
+export const AI_STORY = {
+  BANNED_PHRASES: [
+    "both teams fought hard",
+    "thrilling contest",
+    "back and forth",
+    "hard fought",
+  ] as readonly string[],
+  MAX_SENTENCES: 6,
+  MAX_SENTENCES_PER_SECTION: 2,
+  MAX_WORDS: 150,
+  MODEL: "claude-haiku-4-5-20251001",
+};
+
+/**
+ * When true, the AI game story section is hidden for all games.
+ * Default is true until 50+ stories are reviewed and filler/inaccuracy rate is confirmed <20%.
+ */
+export const STORY_QUALITY_GATE = true;
+
+/**
+ * Canonical list of Pro-gated feature keys. Every server route and client hook
+ * that enforces a paywall must reference one of these keys so the gate surface
+ * stays in sync. All values below require a Pro subscription.
+ */
+export const FEATURE_GATES = {
+  LIVE_ODDS: "live_odds",
+  FULL_FAIRBET: "full_fairbet",
+  ALL_BOOKS: "all_books",
+  ALL_MARKETS: "all_markets",
+  CROSS_DEVICE_SYNC: "cross_device_sync",
+  ADVANCED_FILTERS: "advanced_filters",
+} as const;
+
+export type FeatureGateKey = (typeof FEATURE_GATES)[keyof typeof FEATURE_GATES];
+
+export const AUTH = {
+  /** Magic-link token lifetime */
+  MAGIC_TOKEN_TTL_MS: 15 * 60_000,
+  /** Session cookie + JWT lifetime */
+  SESSION_TTL_S: 30 * 24 * 60 * 60,
+  /** Max magic-link requests per IP per window */
+  SEND_LINK_RATE_MAX: 5,
+  SEND_LINK_RATE_WINDOW_MS: 10 * 60_000,
+};
+
+export const ADS = {
+  NATIVE_AD_INTERVAL: 8,
+  BANNER_WIDTH: 320,
+  BANNER_HEIGHT: 50,
 };
 
 export const DEFAULTS = {

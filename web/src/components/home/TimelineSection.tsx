@@ -1,13 +1,15 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, Fragment } from "react";
 import type { GameCore } from "@/stores/game-data";
 import { useSettings } from "@/stores/settings";
 import { useReveal } from "@/stores/reveal";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { GameRow } from "./GameRow";
+import { NativeAdCard } from "@/components/ads/NativeAdCard";
 import { isFinal, isLive } from "@/lib/types";
 import { pickSnapshot } from "@/lib/score-display";
+import { ADS } from "@/lib/config";
 
 interface TimelineSectionProps {
   title: string;
@@ -164,8 +166,13 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
       {/* All games (pinned appear here too, in their normal position) */}
       {expanded && (
         <div className="space-y-1.5 px-3 py-1.5">
-          {games.map((game) => (
-            <GameRow key={game.id} game={game} />
+          {games.map((game, index) => (
+            <Fragment key={game.id}>
+              <GameRow game={game} />
+              {(index + 1) % ADS.NATIVE_AD_INTERVAL === 0 && (
+                <NativeAdCard slotIndex={Math.floor((index + 1) / ADS.NATIVE_AD_INTERVAL)} />
+              )}
+            </Fragment>
           ))}
         </div>
       )}

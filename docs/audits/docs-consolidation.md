@@ -1,6 +1,6 @@
 # Docs Consolidation Audit
 
-**Date**: 2026-04-18
+**Date**: 2026-04-18 (Round 1), updated 2026-04-18 (Round 2)
 
 ## What Changed
 
@@ -89,3 +89,91 @@ All claims in the rewritten `ARCHITECTURE.md` were verified against:
 - `web/src/realtime/transport.ts` (failover thresholds)
 - `web/next.config.ts` (CSP, security headers)
 - `.github/workflows/` (CI/CD pipeline)
+
+---
+
+## Round 2 — 2026-04-18
+
+Full documentation audit against current codebase. The previous round left a significant gap: billing, magic-link auth, PWA, AI story, and ads infrastructure were all implemented in code but absent from every doc file.
+
+### ARCHITECTURE.md — Updated
+
+**New API routes documented**:
+- Local auth routes (magic-link system): `send-link`, `verify`, `session`, `sign-out` — these are direct Next.js routes, not proxied to the backend
+- AI story routes: `/api/ai/story`, `/api/ai/salient-events`, `/api/ai/verify`, `/api/story-feedback`
+- Billing routes: `/api/billing/checkout`, `/api/billing/portal`, `/api/billing/webhook`
+
+**New Zustand stores** (3 undocumented stores added to table):
+- `session` — HttpOnly cookie session state (magic-link system)
+- `tier` — free/pro tier tracking + anonymous ID + `isAllowed()` gate
+- `pro-gate-sheet` — ephemeral UI state for Pro upgrade bottom sheet
+
+**Analytics tabs**: Added Forecasts tab (`/analytics/forecasts`, admin role).
+
+**Auth section**: Restructured to document both systems. The legacy JWT proxy and the new magic-link/session-cookie system now coexist. The proxy path whitelist and rate limits apply only to the legacy JWT flow.
+
+**CSP**: Updated to reflect actual `next.config.ts`. Previously documented as connecting only to `sda.dock108.dev` and `plausible.io`. Actual CSP also allows `partners.draftkings.com`, `affiliates.betmgm.com` (script + connect), and Stripe domains (`api.stripe.com`, `js.stripe.com`, `hooks.stripe.com`). The `'unsafe-inline'` on scripts is an open risk documented in the security audit (R-4).
+
+**Directory structure**: Added `components/ads/`, `components/auth/SessionProvider`, `components/layout/` additions (BetaBanner, OfflineBanner, PWAInstallPrompt, RevealIDBProvider), `components/fairbet/` additions (BookChip, BookComparisonRow, ProGateSheet), `components/game/GameStorySection`, `features/analytics/services/` additions (ForecastsService, ProfilesService). Store count corrected from 10 to 13.
+
+**New sections added**: "Billing & Freemium Tier" and "AI Game Story" — both document infrastructure that is live in code but was entirely absent from documentation.
+
+### CLAUDE.md — Fixed
+
+`cp .env.example .env.local` corrected to `cp .env.local.example .env.local` (filename mismatch with README.md and development.md).
+
+### docs/state-management.md — Updated
+
+Three new stores documented in detail: `session`, `tier`, `pro-gate-sheet`. Includes field descriptions, action signatures, and dev override behavior (`?tier=pro` query param).
+
+Note: `reveal` store now persists to IndexedDB (via `RevealIDBProvider`) in addition to localStorage. Table updated to reflect this.
+
+### docs/env-and-config.md — Updated
+
+**New optional env vars**: `ANTHROPIC_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `MAGIC_LINK_SECRET`, `DATABASE_URL`.
+
+**New config sections documented** (all previously missing):
+- `FAIRBET` — EV tier thresholds, attribution freshness/staleness windows
+- `FRESHNESS` — freshness label timing thresholds
+- `RENDER` — FairBet batch render size
+- `VALIDATION` — email regex, password min length
+- `ATTRIBUTION` — data source label
+- `AI_STORY` — banned phrases, sentence budgets, model name, quality gate
+- `FEATURE_GATES` — canonical Pro feature keys
+- `AUTH` — magic-link token TTL, session lifetime, rate limits
+- `ADS` — native ad interval, banner dimensions
+- `DEFAULTS` — home page, timeline, odds format, theme, abbreviation fallbacks
+- `HEADLINE_STATS` — per-sport collapsed stat labels
+- `PWA` — install prompt session threshold, offline banner dismiss delay
+
+**Additional localStorage keys**: `sd-tier`, `sd-anon-id`, `sd-session`, `sd-onboarding-seen`, `sd-pwa-install-dismissed`, `sd-pwa-session-count`.
+
+### ROADMAP.md — Updated
+
+Phases 5, 6, and 7 previously showed all items as unchecked when substantial infrastructure was already implemented. Updated to mark completed items with `[x]` and add status notes.
+
+- **Phase 5 (AI Story)**: 7 of 9 items complete. Infrastructure is done; quality gate (`STORY_QUALITY_GATE = true`) blocks public exposure until 50+ story review passes.
+- **Phase 6 (PWA)**: 4 of 8 items complete. Service worker, IndexedDB reveal persistence, offline banner, and install prompt are live. Background sync and cross-device sync are not yet implemented.
+- **Phase 7 (Freemium)**: 5 of 8 items complete. Tier system, feature gates, Stripe billing, Pro gate sheet, and ads components are live. Ad placement enforcement and "see what you're missing" preview are not yet done.
+
+### AIDLC_FUTURES.md — Archived
+
+Moved from root to `docs/archived/aidlc-futures.md`. This file is auto-generated process tracking from the AIDLC tool, not developer documentation. It does not belong in the root alongside README, ARCHITECTURE, DESIGN, and ROADMAP.
+
+### docs/README.md — Updated
+
+Added `archived/aidlc-futures.md` to the Archived table.
+
+### What Was Not Changed
+
+Files verified accurate and left untouched:
+- `DESIGN.md` — Design principles and patterns
+- `docs/client-logic.md` — 37 client-side patterns
+- `docs/development.md` — Local setup and QA checklist
+- `docs/deployment.md` — Docker, CI/CD, Hetzner
+- `docs/realtime.md` — Realtime transport details
+- `docs/testing.md` — Playwright E2E guide
+- `docs/audits/abend-handling.md` — Error handling audit
+- `docs/audits/security-audit.md` — Security review
+- `docs/audits/ssot-cleanup.md` — SSOT cleanup
+- `docs/audits/cleanup-report.md` — Code quality cleanup

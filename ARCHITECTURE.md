@@ -78,6 +78,32 @@ All backend calls route through Next.js API routes (`src/app/api/`). The proxy i
 | `POST /api/analytics-event` | Self-hosted analytics. Logs structured JSON to stdout (Docker captures). IPs anonymized. |
 | `GET /api/health` | Returns `{ status, timestamp }`. Returns `"degraded"` if backend unreachable. |
 
+**Local Auth Routes** (magic-link system — direct Next.js routes, not proxied to backend)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/auth/send-link` | POST | Send magic-link email to the provided address |
+| `/api/auth/verify` | GET | Verify magic-link token; create HttpOnly session cookie on success |
+| `/api/auth/session` | GET | Return current session status from HttpOnly cookie |
+| `/api/auth/sign-out` | POST | Invalidate session and clear cookie |
+
+**AI Story Routes** (auth + rate-limited)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/ai/story` | POST | Generate AI game narrative (uses `claude-haiku-4-5-20251001`) |
+| `/api/ai/salient-events` | POST | Extract key events (lead changes, big plays) from box score |
+| `/api/ai/verify` | POST | Fact-check story numbers against source box score data |
+| `/api/story-feedback` | POST | Submit thumbs-up/down on a game story |
+
+**Billing Routes** (Stripe)
+
+| Route | Method | Purpose |
+|-------|--------|---------|
+| `/api/billing/checkout` | POST | Create Stripe Checkout session for Pro upgrade |
+| `/api/billing/portal` | POST | Open Stripe Customer Portal (manage/cancel subscription) |
+| `/api/billing/webhook` | POST | Handle Stripe webhook events (subscription updates, cancellations) |
+
 Server-side config: `src/lib/api-server.ts`. Client fetch wrapper: `src/lib/api.ts`.
 
 ### 2. Realtime Transport
@@ -113,14 +139,17 @@ Implementation: `src/realtime/` (transport.ts, dispatcher.ts, channels.ts, hooks
 |-------|-----|-----------|---------|--------|
 | `game-data` | — | No | Normalized game cache + realtime sequence state | 8 detail, 8 flow entries |
 | `game-core` | — | No | Core game data structure (supporting store) | — |
-| `auth` | `sd-auth` | Yes | JWT token, role, email, userId | — |
+| `auth` | `sd-auth` | Yes | JWT token, role, email, userId (legacy JWT system) | — |
+| `session` | — | No | HttpOnly cookie session: status, email, tier, userId (magic-link system) | — |
+| `tier` | `sd-tier` | Yes | Free/pro tier, anonymous ID, `isAllowed(feature)` gate evaluation | — |
 | `settings` | `sd-settings` | Yes | Theme, reveal mode, odds format, sportsbook, etc. | 20 leagues, 100 teams |
-| `reveal` | `sd-read-state` | Yes | Revealed game IDs + score snapshots | 500 IDs, 20 snapshots |
+| `reveal` | `sd-read-state` | Yes (IDB) | Revealed game IDs + score snapshots | 500 IDs, 20 snapshots |
 | `pinned-games` | `sd-pinned-games` | Yes | Pinned game IDs + team abbreviations | 10 games |
 | `reading-position` | `sd-reading-position` | Yes | Per-game play index for timeline resume | 50 positions, 30-day age |
 | `section-layout` | `sd-section-layout` | Yes | Per-game section expand/collapse state | 50 layouts |
 | `home-scroll` | — | No | Home page scroll Y position | — |
 | `ui` | — | No | Ephemeral UI state (settings drawer) | — |
+| `pro-gate-sheet` | — | No | UI state for Pro upgrade sheet (open/close, triggering feature key) | — |
 
 ### 4. Data Fetching Hooks
 
@@ -158,12 +187,15 @@ Implementation: `src/stores/reveal.ts`, `src/lib/score-display.ts`, `src/lib/sco
 
 ### 6. Auth Model
 
-- JWT Bearer tokens stored in Zustand (`sd-auth` localStorage key)
-- Roles: `guest` (unauthenticated), `user`, `admin`
-- Token validated on app load via `GET /api/auth/me`; invalid → auto-logout
-- Preference sync starts after successful login, stops on logout
+The app has two coexisting auth systems:
 
-**Auth Proxy Security**
+**Legacy JWT system** (`stores/auth.ts`): JWT Bearer tokens in localStorage (`sd-auth`). Token validated on load via `GET /api/auth/me`; invalid → auto-logout. Used by the `/api/auth/[...path]` proxy which forwards to the backend.
+
+**Magic-link / session cookie system** (`stores/session.ts`, `stores/tier.ts`): Email magic-link auth handled entirely within Next.js (no backend proxy). Session stored in an HttpOnly cookie. On load, `SessionProvider` calls `GET /api/auth/session` to hydrate the `session` store. Roles/tier available from the `tier` store.
+
+Both systems run in parallel during transition. New sign-in flows use the magic-link system.
+
+**Auth Proxy Security** (legacy JWT proxy)
 
 Path whitelist — only these backend paths are forwarded; all others return 404:
 
@@ -180,6 +212,8 @@ Rate limiting (in-memory sliding-window per IP):
 | Standard | 30 req/min | `me`, `me/email`, `me/password`, `me/preferences`, `refresh` |
 
 Returns `429 Too Many Requests` with `Retry-After` header when exceeded. Implementation: `src/lib/rate-limit.ts`.
+
+**Magic-link Auth Rate Limiting**: `POST /api/auth/send-link` allows 5 requests per IP per 10 minutes (`AUTH.SEND_LINK_RATE_MAX`). Magic-link tokens expire after 15 minutes (`AUTH.MAGIC_TOKEN_TTL_MS`). Sessions last 30 days (`AUTH.SESSION_TTL_S`).
 
 ### 7. Preference Sync
 
@@ -201,6 +235,7 @@ The analytics section lives under a `(mlb)` Next.js route group sharing a tab na
 |-----|-------|----------|
 | Simulator | `/analytics/simulator` | user |
 | Profiles | `/analytics/profiles` | user |
+| Forecasts | `/analytics/forecasts` | admin |
 | Models | `/analytics/models` | admin |
 | Batch Sims | `/analytics/batch` | admin |
 
@@ -251,7 +286,7 @@ Service layer: `src/features/analytics/services/` — one service file per page 
 ```
 web/src/
 ├── app/                    # Next.js App Router
-│   ├── api/                # API proxy routes (games, fairbet, golf, auth, analytics, simulator)
+│   ├── api/                # API proxy routes (games, fairbet, golf, auth, analytics, simulator, billing, ai)
 │   ├── game/[id]/          # Game detail page + OG image generation
 │   ├── fairbet/            # Betting odds discovery
 │   ├── golf/               # Golf tournaments & leaderboard
@@ -263,11 +298,14 @@ web/src/
 │   └── (legal)             # /privacy, /terms, /contact
 │
 ├── components/
-│   ├── auth/               # AuthProvider, AuthGate
-│   ├── layout/             # TopNav, BottomTabs, Footer, SettingsDrawer, RealtimeProvider, ThemeProvider
-│   ├── game/               # GameHeader, Timeline, Stats, Odds, Flow, WrapUp, Social (21 components)
-│   ├── home/               # GameRow, PinnedBar, SearchBar, TimelineSection
-│   ├── fairbet/            # BetCard, BookFilters, LiveOddsPanel, ParlaySheet, ExplainerSheet
+│   ├── ads/                # NativeAdCard, DetailBannerAd
+│   ├── auth/               # AuthProvider, AuthGate, SessionProvider
+│   ├── layout/             # TopNav, BottomTabs, Footer, SettingsDrawer, RealtimeProvider, ThemeProvider,
+│   │                       # BetaBanner, OfflineBanner, PWAInstallPrompt, RevealIDBProvider
+│   ├── game/               # GameHeader, Timeline, Stats, Odds, Flow, WrapUp, Social, GameStorySection (22 components)
+│   ├── home/               # GameRow, PinnedBar, SearchBar, TimelineSection, RevealOnboarding
+│   ├── fairbet/            # BetCard, BookFilters, LiveOddsPanel, ParlaySheet, ExplainerSheet,
+│   │                       # BookChip, BookComparisonRow, ProGateSheet
 │   ├── golf/               # Leaderboard, TournamentCard, LeaderboardRow
 │   ├── settings/           # SettingsContent, ScoreHideBlacklistControls
 │   └── shared/             # Spinner, LoadingSkeleton, SectionHeader, CollapsibleSection, StaleBanner
@@ -275,12 +313,14 @@ web/src/
 ├── features/
 │   └── analytics/          # MLB analytics feature
 │       ├── components/     # AnalyticsTabNav, ProbabilityBar, ScoreCard, LineupBuilder, SimulatorResults
-│       └── services/       # SimulatorService, PublicSimulatorService, ModelsService, BatchService
+│       └── services/       # SimulatorService, PublicSimulatorService, ModelsService, BatchService,
+│                           # ForecastsService, ProfilesService
 │
 ├── hooks/                  # Data fetching & realtime hooks (14 hooks)
-├── stores/                 # Zustand state management (10 stores)
+├── stores/                 # Zustand state management (13 stores)
 ├── realtime/               # WebSocket/SSE transport, dispatcher, channel naming, hooks
-└── lib/                    # Utilities (api, types, config, date, score-hide, fairbet-utils, etc.)
+└── lib/                    # Utilities (api, types, config, date, score-hide, fairbet-utils, pro-gate,
+                            # magic-link, story-templates, story-validator, salient-events, etc.)
 ```
 
 ## Degraded-State Handling
@@ -302,7 +342,7 @@ Implementation: `src/lib/stale-cache.ts`, `src/hooks/useHealthStatus.ts`, `src/c
 
 | Header | Value |
 |--------|-------|
-| `Content-Security-Policy` | `default-src 'self'`; connect to `sda.dock108.dev`; scripts from `plausible.io` |
+| `Content-Security-Policy` | `default-src 'self'`; `script-src` adds `plausible.io`, `partners.draftkings.com`, `affiliates.betmgm.com`; `connect-src` adds `sda.dock108.dev`, `wss://sda.dock108.dev`, `api.stripe.com`, `partners.draftkings.com`, `affiliates.betmgm.com`; `frame-src` adds `js.stripe.com`, `hooks.stripe.com`; `'unsafe-inline'` on scripts (open risk R-4 in security audit) |
 | `X-Content-Type-Options` | `nosniff` |
 | `X-Frame-Options` | `DENY` |
 | `Strict-Transport-Security` | 2 years, includeSubDomains, preload |
@@ -334,3 +374,38 @@ Events tracked: `reveal_score`, `game_view`, `scroll_50`, `scroll_90`, `feedback
 NBA, NCAAB, NFL, NCAAF, MLB, NHL, PGA Tour (Golf).
 
 Sport-specific stat groups configured in `src/lib/team-stats-config.ts`. Stat display supports normalized path (`buildGroupsFromNormalized()`) and a legacy fallback using hardcoded stat group definitions.
+
+## Billing & Freemium Tier
+
+The app has a Pro tier implemented via Stripe alongside an anonymous tier tracking system.
+
+**Tier store** (`stores/tier.ts`, persisted: `sd-tier`): Tracks `tier: "free" | "pro"` and `anonId` (UUID). On hydration, syncs both values to cookies for server-side access. `isAllowed(feature)` evaluates Pro feature gates against `FEATURE_GATES` keys.
+
+**Session store** (`stores/session.ts`, not persisted): Hydrated on load by `SessionProvider` via `GET /api/auth/session`. Provides `status`, `email`, `tier`, and `userId` from the HttpOnly session cookie.
+
+**Feature gates** (`FEATURE_GATES` in `src/lib/config.ts`): Canonical keys — `live_odds`, `full_fairbet`, `all_books`, `all_markets`, `cross_device_sync`, `advanced_filters`. All server routes and client hooks that enforce a paywall reference these keys via `lib/pro-gate.ts` and `hooks/useProGate.ts`.
+
+**Pro gate sheet** (`components/fairbet/ProGateSheet.tsx`, store: `pro-gate-sheet.ts`): Global bottom-sheet overlay shown when a free-tier user hits a gated feature. Renders the specific feature name as context for the upgrade CTA.
+
+**Billing routes** (Stripe): `POST /api/billing/checkout` creates a Checkout session, `POST /api/billing/portal` opens Customer Portal, `POST /api/billing/webhook` handles subscription lifecycle events.
+
+**Ads** (`components/ads/`): `NativeAdCard` renders as a game-card-shaped list item with an "Ad" badge. `DetailBannerAd` is a 320×50 banner for game detail. Placement rules in `config.ts` (`ADS.NATIVE_AD_INTERVAL: 8`). Ads never appear between live game rows, during the reveal gesture, or on game detail primary sections.
+
+## AI Game Story
+
+Infrastructure is implemented but hidden behind `STORY_QUALITY_GATE = true` in `config.ts`. No stories are shown until a quality review passes.
+
+**Routes** (auth + rate-limited):
+- `POST /api/ai/story` — generates a short game narrative using `claude-haiku-4-5-20251001`
+- `POST /api/ai/salient-events` — extracts key events (lead changes, big plays) from box score
+- `POST /api/ai/verify` — fact-checks all numbers in a story against source box score
+- `POST /api/story-feedback` — submits thumbs-up/down feedback on a story
+
+**Client libraries**: `lib/story-templates.ts`, `lib/story-validator.ts`, `lib/story-numeric-verifier.ts`, `lib/salient-events.ts`.
+
+**Quality controls** (`AI_STORY` in `config.ts`):
+- `BANNED_PHRASES` — generic filler phrases that cause immediate rejection
+- `MAX_SENTENCES: 6`, `MAX_SENTENCES_PER_SECTION: 2`, `MAX_WORDS: 150` — output budgets
+- `STORY_QUALITY_GATE: true` — when true, `GameStorySection` renders nothing
+
+To enable stories: review 50+ generated stories. If filler/inaccuracy rate is <20%, set `STORY_QUALITY_GATE = false` in `config.ts`.

@@ -9,7 +9,8 @@ export async function GET() {
   try {
     // Ping backend with a lightweight endpoint; short timeout so health never hangs
     await apiFetch("/api/admin/sports/games?limit=1", { revalidate: 0, timeoutMs: 4_000 });
-  } catch {
+  } catch (err) {
+    console.error("[health] backend ping failed:", err);
     backendStatus = "degraded";
   }
 

@@ -1,11 +1,12 @@
 "use client";
 
-import { memo, useState } from "react";
+import { memo, useState, useRef, useEffect } from "react";
 import type { APIBet } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
 import { formatOdds, formatDate, cn } from "@/lib/utils";
 import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
-import { MiniBookChip } from "./MiniBookChip";
+import { FAIRBET } from "@/lib/config";
+import { BookComparisonRow } from "./BookComparisonRow";
 import { LeagueBadge } from "./LeagueBadge";
 import {
   formatEVDollars,
@@ -14,6 +15,36 @@ import {
   getEVTier,
   betId,
 } from "@/lib/fairbet-utils";
+
+function getLatestObservedAt(books: APIBet["books"]): number {
+  let latest = 0;
+  for (const b of books) {
+    const t = b.observed_at ? new Date(b.observed_at).getTime() : 0;
+    if (t > latest) latest = t;
+  }
+  return latest;
+}
+
+function buildAttributionLabel(
+  bookCount: number,
+  latestMs: number,
+  nowMs: number
+): { text: string; isStale: boolean } {
+  if (latestMs === 0) return { text: `From ${bookCount} book${bookCount !== 1 ? "s" : ""}`, isStale: false };
+  const ageMs = nowMs - latestMs;
+  const ageMin = Math.floor(ageMs / 60_000);
+  const bookLabel = `From ${bookCount} book${bookCount !== 1 ? "s" : ""}`;
+  if (ageMs < FAIRBET.ATTRIBUTION_FRESH_MS) {
+    return { text: bookLabel, isStale: false };
+  }
+  if (ageMs < FAIRBET.ATTRIBUTION_STALE_MS) {
+    return { text: `${bookLabel} · Updated ${ageMin}m ago`, isStale: false };
+  }
+  return { text: `${bookLabel} · May be delayed · ${ageMin}m ago`, isStale: true };
+}
+
+const EXPLANATION_TEXT =
+  "This is the estimated fair price for this bet based on removing the book's margin. If the market price is better than this, the bet has positive expected value.";
 
 interface BetCardProps {
   bet: APIBet;
@@ -30,8 +61,41 @@ export const BetCard = memo(function BetCard({
 }: BetCardProps) {
   const oddsFormat = useSettings((s) => s.oddsFormat);
   const preferredBook = useSettings((s) => s.preferredSportsbook);
-  const [showOtherBooks, setShowOtherBooks] = useState(false);
   const [showFullBookName, setShowFullBookName] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+  const explanationRef = useRef<HTMLDivElement>(null);
+
+  const latestObservedAt = getLatestObservedAt(bet.books);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), FAIRBET.ATTRIBUTION_UPDATE_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+  const attribution = buildAttributionLabel(bet.books.length, latestObservedAt, now);
+
+  useEffect(() => {
+    if (!showExplanation) return;
+    const handler = (e: MouseEvent | TouchEvent) => {
+      if (explanationRef.current && !explanationRef.current.contains(e.target as Node)) {
+        setShowExplanation(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    document.addEventListener("touchstart", handler);
+    return () => {
+      document.removeEventListener("mousedown", handler);
+      document.removeEventListener("touchstart", handler);
+    };
+  }, [showExplanation]);
+
+  useEffect(() => {
+    if (!showExplanation) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setShowExplanation(false);
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [showExplanation]);
 
   // Best book from API
   const bestBook = bet.bestBook
@@ -46,10 +110,6 @@ export const BetCard = memo(function BetCard({
   // Primary display: preferred if available, else best
   const primaryBook = preferredBookPrice ?? bestBook;
   const isPrimaryBest = primaryBook === bestBook;
-
-  // Other books (exclude primary)
-  const otherBooks = bet.books.filter((b) => b !== primaryBook);
-  const otherBooksCount = otherBooks.length;
 
   const ev = bestBook?.display_ev ?? bestBook?.ev_percent ?? 0;
   const evTier = getEVTier(ev);
@@ -203,69 +263,87 @@ export const BetCard = memo(function BetCard({
           </div>
         )}
 
-        {/* Fair Reference Row - shows fair odds from API */}
-        {bet.has_fair && bet.fairAmericanOdds != null && (
-          <button
-            onClick={() => onShowExplainer?.(bet)}
-            className="flex items-center gap-2 text-xs px-2 py-1 rounded-lg w-full text-left"
-            style={{
-              backgroundColor: "var(--fb-surface-tint)",
-              border: "1px solid var(--fb-border-subtle)",
-            }}
-          >
-            <span className="text-neutral-500">Est. fair</span>
-            <span className="font-semibold text-neutral-50">
-              {formatOdds(bet.fairAmericanOdds, oddsFormat)}
-            </span>
-            {bet.true_prob != null && (
-              <span className="text-[10px] text-neutral-500">
-                ({formatProbability(bet.true_prob)})
-              </span>
-            )}
-            <span
-              className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+        {/* Fair Reference Row + inline explanation */}
+        <div ref={explanationRef}>
+          {bet.has_fair && bet.fairAmericanOdds != null ? (
+            <button
+              data-testid="fairbet-explanation"
+              aria-expanded={showExplanation}
+              onClick={() => setShowExplanation((p) => !p)}
+              className="flex items-center gap-2 text-xs px-2 py-1 rounded-lg w-full text-left"
               style={{
-                backgroundColor: `${FairBetTheme.info}20`,
-                color: FairBetTheme.info,
+                backgroundColor: "var(--fb-surface-tint)",
+                border: "1px solid var(--fb-border-subtle)",
               }}
             >
-              i
-            </span>
-          </button>
-        )}
-
-        {/* Other Books Disclosure */}
-        {otherBooksCount > 0 && (
-          <div>
-            <button
-              onClick={() => setShowOtherBooks((p) => !p)}
-              className="flex items-center gap-1 text-xs py-1 text-neutral-500"
-            >
-              <svg
-                className={cn("w-3 h-3 transition-transform", showOtherBooks && "rotate-90")}
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
+              <span className="text-neutral-500">Est. fair</span>
+              <span className="font-semibold text-neutral-50">
+                {formatOdds(bet.fairAmericanOdds, oddsFormat)}
+              </span>
+              {bet.true_prob != null && (
+                <span className="text-[10px] text-neutral-500">
+                  ({formatProbability(bet.true_prob)})
+                </span>
+              )}
+              <span
+                className="ml-auto w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                style={{
+                  backgroundColor: `${FairBetTheme.info}20`,
+                  color: FairBetTheme.info,
+                }}
               >
-                <path d="M9 5l7 7-7 7" />
-              </svg>
-              Other books ({otherBooksCount})
+                i
+              </span>
             </button>
-            {showOtherBooks && (
-              <div className="flex flex-wrap gap-1.5 mt-1.5">
-                {otherBooks.map((bp) => (
-                  <MiniBookChip
-                    key={bp.book}
-                    book={bp.book}
-                    price={formatOdds(bp.price, oddsFormat)}
-                    ev={bp.display_ev ?? bp.ev_percent}
-                    isSharp={bp.is_sharp}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+          ) : (
+            <button
+              data-testid="fairbet-explanation"
+              aria-expanded={showExplanation}
+              onClick={() => setShowExplanation((p) => !p)}
+              className="flex items-center gap-1 text-xs py-0.5 text-neutral-500"
+            >
+              <span
+                className="w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0"
+                style={{
+                  backgroundColor: `${FairBetTheme.info}20`,
+                  color: FairBetTheme.info,
+                }}
+              >
+                i
+              </span>
+              <span>How is this calculated?</span>
+            </button>
+          )}
+
+          {showExplanation && (
+            <div
+              role="region"
+              aria-label="Fair price explanation"
+              className="mt-1 rounded-lg px-3 py-2 space-y-2"
+              style={{
+                backgroundColor: "var(--fb-surface-tint)",
+                border: "1px solid var(--fb-border-subtle)",
+              }}
+            >
+              <p className="text-xs text-neutral-400 leading-relaxed">
+                {EXPLANATION_TEXT}
+              </p>
+              {onShowExplainer && bet.has_fair && (
+                <button
+                  onClick={() => { onShowExplainer(bet); setShowExplanation(false); }}
+                  className="text-[11px] font-medium"
+                  style={{ color: FairBetTheme.info }}
+                >
+                  See full breakdown →
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Book Comparison Row */}
+        {bet.books.length > 0 && (
+          <BookComparisonRow books={bet.books} />
         )}
 
         {/* Parlay button */}
@@ -292,6 +370,15 @@ export const BetCard = memo(function BetCard({
             {isInParlay ? "\u2713 Parlay" : "+ Parlay"}
           </button>
         )}
+
+        {/* Attribution */}
+        <p
+          data-testid="fairbet-source-attribution"
+          className="text-[10px] pt-0.5"
+          style={{ color: attribution.isStale ? "rgb(245, 158, 11)" : "var(--ds-text-tertiary)" }}
+        >
+          {attribution.text}
+        </p>
       </div>
     </div>
   );

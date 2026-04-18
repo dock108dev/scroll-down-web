@@ -9,7 +9,7 @@
 
 import { FairBetTheme } from "./theme";
 import { FAIRBET } from "./config";
-import type { APIBet } from "./types";
+import type { APIBet, DevigedMarket } from "./types";
 
 // ── Parlay leg snapshot ─────────────────────────────────────────────
 
@@ -28,7 +28,7 @@ export function formatEV(percent: number): string {
 }
 
 /** Negligible positive EV threshold in dollar terms (< $0.50 per $100 → "No edge"). */
-export const EV_NO_EDGE_THRESHOLD = 0.5;
+const EV_NO_EDGE_THRESHOLD = 0.5;
 
 /**
  * Format EV as a dollar value per $100 bet.
@@ -95,7 +95,7 @@ export function getConfidenceColor(tier?: string): string {
 }
 
 /** Check if a confidence tier qualifies as reliable (not thin/none). */
-export function isConfidenceReliable(tier?: string): boolean {
+function isConfidenceReliable(tier?: string): boolean {
   return tier === "full" || tier === "sharp" || tier === "high" ||
     tier === "decent" || tier === "market" || tier === "medium";
 }
@@ -443,6 +443,31 @@ export function evPct(trueProb: number, offeredAmerican: number): number {
 }
 
 /**
+ * Multiplicative no-vig devig for a market with 2+ sides.
+ *
+ * Converts each American odds input to its implied probability, normalises
+ * the set so they sum to exactly 1.0 (removing the book's overround), then
+ * converts the fair probabilities back to American odds.
+ *
+ * Returns null when:
+ *  - input is null/undefined
+ *  - fewer than 2 sides (single-outcome markets can't be deviggged)
+ *  - any side contains a non-finite or zero value
+ */
+export function devig(sides: number[]): DevigedMarket | null {
+  if (!sides || sides.length < 2) return null;
+
+  const rawProbs = sides.map(americanToImpliedProb);
+  if (rawProbs.some((p) => !Number.isFinite(p) || p <= 0)) return null;
+
+  const overround = rawProbs.reduce((sum, p) => sum + p, 0);
+  const fairProbs = rawProbs.map((p) => p / overround);
+  const fairOdds = fairProbs.map(impliedProbToAmerican);
+
+  return { sides, fairProbs, fairOdds, overround };
+}
+
+/**
  * Extract the fair probability for a single leg.
  * Prefers true_prob; falls back to deriving from fair_american_odds.
  */
@@ -537,4 +562,63 @@ export function enrichBet(bet: APIBet): APIBet {
   }
 
   return enriched;
+}
+
+// ── Bet outcome (game detail settled games) ─────────────────────────
+
+export type BetOutcome = "covered" | "pushed" | "lost" | "won";
+
+/**
+ * Compute spread outcome for one side.
+ * A bet on `side` with `line` wins when (side_score + line) > opponent_score.
+ */
+export function calcSpreadOutcome(
+  side: string,
+  line: number,
+  homeTeam: string,
+  homeScore: number,
+  awayScore: number,
+): BetOutcome {
+  const isHome = side === homeTeam;
+  const sideScore = isHome ? homeScore : awayScore;
+  const oppScore = isHome ? awayScore : homeScore;
+  const margin = sideScore + line - oppScore;
+  if (margin > 0) return "covered";
+  if (margin === 0) return "pushed";
+  return "lost";
+}
+
+/**
+ * Compute total (over/under) outcome.
+ * `side` is "Over" or "Under" (case-insensitive).
+ */
+export function calcTotalOutcome(
+  side: string,
+  line: number,
+  homeScore: number,
+  awayScore: number,
+): BetOutcome {
+  const combined = homeScore + awayScore;
+  if (combined === line) return "pushed";
+  const overHit = combined > line;
+  const isOver = side.toLowerCase() === "over";
+  return isOver === overHit ? "covered" : "lost";
+}
+
+/**
+ * Compute moneyline outcome for one side.
+ * Returns "won", "pushed", or "lost".
+ */
+export function calcMoneylineOutcome(
+  side: string,
+  homeTeam: string,
+  homeScore: number,
+  awayScore: number,
+): BetOutcome {
+  const isHome = side === homeTeam;
+  const sideScore = isHome ? homeScore : awayScore;
+  const oppScore = isHome ? awayScore : homeScore;
+  if (sideScore > oppScore) return "won";
+  if (sideScore === oppScore) return "pushed";
+  return "lost";
 }
