@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import os from "os";
 
 const PORT = 3001;
 const BASE_URL = `http://localhost:${PORT}`;
@@ -17,8 +18,10 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
-  reporter: process.env.CI ? "github" : "html",
+  // CI runner is dedicated to this job — use full parallelism.
+  workers: process.env.CI ? Math.max(1, os.availableParallelism()) : undefined,
+  // Keep GitHub annotations, plus line-by-line progress in CI logs.
+  reporter: process.env.CI ? [["github"], ["line"]] : "html",
   timeout: 30_000,
   expect: { timeout: 10_000 },
 

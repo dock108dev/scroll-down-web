@@ -46,11 +46,11 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
 
   # ────────────────────────────────────────────────────────
-  # Playwright — smoke E2E tests (~2 min)
+  # Playwright — smoke E2E (many @smoke cases × chromium + mobile; allow headroom)
   # ────────────────────────────────────────────────────────
   playwright-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: web
