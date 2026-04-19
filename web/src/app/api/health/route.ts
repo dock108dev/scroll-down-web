@@ -4,6 +4,13 @@ import { API } from "@/lib/config";
 
 export const dynamic = "force-dynamic";
 
+/**
+ * Playwright's `webServer` sets this so `/api/health` does not block on a WAN
+ * upstream for every poll (DegradedBanner hits this often). Production and
+ * normal `npm run dev` never set this — only `playwright.config.ts` webServer.
+ */
+const SKIP_UPSTREAM_HEALTH = process.env.SCROLLDOWN_PLAYWRIGHT_WEB_SERVER === "1";
+
 function healthPingLogMessage(err: unknown): string {
   if (err instanceof Error && err.name === "AbortError") {
     return `upstream ping timed out after ${API.HEALTH_BACKEND_PING_TIMEOUT_MS}ms`;
@@ -13,6 +20,13 @@ function healthPingLogMessage(err: unknown): string {
 }
 
 export async function GET() {
+  if (SKIP_UPSTREAM_HEALTH) {
+    return NextResponse.json(
+      { status: "ok", timestamp: new Date().toISOString() },
+      { status: 200 },
+    );
+  }
+
   let backendStatus: "ok" | "degraded" = "ok";
 
   try {

@@ -59,10 +59,14 @@ export default defineConfig({
   webServer: {
     command: process.env.CI ? "npm start" : "npm run dev",
     url: BASE_URL,
+    // When something already listens on :3001, Playwright reuses it and this `env` is not applied.
+    // For E2E then, set `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER=1` in `web/.env.local` (never in production).
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     env: {
       NEXT_PUBLIC_ADS_ENABLED: "false",
+      // Fast `/api/health` without WAN upstream (see `src/app/api/health/route.ts`)
+      SCROLLDOWN_PLAYWRIGHT_WEB_SERVER: "1",
       ...SPORTS_API_KEY_ENV,
     },
   },
