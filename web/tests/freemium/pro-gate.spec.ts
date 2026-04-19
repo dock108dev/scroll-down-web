@@ -1,4 +1,4 @@
-import { test, expect } from "../helpers";
+import { test, expect, waitForTierPersist } from "../helpers";
 import type { Page } from "@playwright/test";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -32,6 +32,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f
 test.describe("Pro gate — tier store", () => {
   test("generates and persists a stable anon ID @smoke", async ({ page }) => {
     await page.goto("/");
+    await waitForTierPersist(page);
 
     const state1 = await getStoredTier(page);
     expect(state1).not.toBeNull();
@@ -39,12 +40,14 @@ test.describe("Pro gate — tier store", () => {
 
     // Reload — ID must be the same
     await page.reload();
+    await waitForTierPersist(page);
     const state2 = await getStoredTier(page);
     expect(state2!.anonId).toBe(state1!.anonId);
   });
 
   test("sd-anon-id cookie is set after page load @smoke", async ({ page }) => {
     await page.goto("/");
+    await waitForTierPersist(page);
 
     const anonCookie = await getAnonCookie(page);
     expect(anonCookie).not.toBeNull();
@@ -53,6 +56,7 @@ test.describe("Pro gate — tier store", () => {
 
   test("sd-tier cookie is set to free by default @smoke", async ({ page }) => {
     await page.goto("/");
+    await waitForTierPersist(page);
 
     const tierCookie = await getTierCookie(page);
     expect(tierCookie).toBe("free");
@@ -60,6 +64,7 @@ test.describe("Pro gate — tier store", () => {
 
   test("default tier is free", async ({ page }) => {
     await page.goto("/");
+    await waitForTierPersist(page);
 
     const state = await getStoredTier(page);
     expect(state!.tier).toBe("free");
@@ -67,6 +72,7 @@ test.describe("Pro gate — tier store", () => {
 
   test("anon ID in cookie matches localStorage value", async ({ page }) => {
     await page.goto("/");
+    await waitForTierPersist(page);
 
     const anonCookie = await getAnonCookie(page);
     const state = await getStoredTier(page);
@@ -77,6 +83,7 @@ test.describe("Pro gate — tier store", () => {
 
   test("?tier=pro query param sets tier cookie in dev mode @smoke", async ({ page }) => {
     await page.goto("/?tier=pro");
+    await waitForTierPersist(page);
 
     const tierCookie = await getTierCookie(page);
     const state = await getStoredTier(page);

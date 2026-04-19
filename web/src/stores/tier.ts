@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { STORAGE_KEYS, FEATURE_GATES } from "@/lib/config";
+import { STORAGE_KEYS, FEATURE_GATES, allowDevTierUrlOverrides } from "@/lib/config";
 import type { FeatureGateKey } from "@/lib/config";
 
 export type Tier = "free" | "pro";
@@ -35,7 +35,7 @@ function syncCookies(anonId: string, tier: Tier): void {
 
 function resolveDevTierOverride(current: Tier): Tier {
   if (typeof window === "undefined") return current;
-  if (process.env.NODE_ENV === "production") return current;
+  if (!allowDevTierUrlOverrides()) return current;
   const param = new URLSearchParams(window.location.search).get("tier");
   if (param === "pro") return "pro";
   if (param === "free") return "free";
@@ -74,11 +74,9 @@ export const useTier = create<TierState>()(
         tier: state.tier,
         anonId: state.anonId,
       }),
-      onRehydrateStorage: () => (state) => {
-        if (state) {
-          // Sync cookies and apply dev override after localStorage hydration
-          state.initialize();
-        }
+      onRehydrateStorage: () => (_state, error) => {
+        if (error) return;
+        useTier.getState().initialize();
       },
     },
   ),

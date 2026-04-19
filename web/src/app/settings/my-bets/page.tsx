@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { Suspense, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useMyBets } from "@/stores/my-bets";
 import { useTier } from "@/stores/tier";
+import { allowDevTierUrlOverrides } from "@/lib/config";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { formatOdds } from "@/lib/utils";
 import { useSettings } from "@/stores/settings";
 import type { LoggedBet } from "@/lib/types";
@@ -70,8 +73,12 @@ function BetRow({ bet, oddsFormat, onRemove }: {
   );
 }
 
-export default function MyBetsPage() {
-  const isPro = useTier((s) => s.tier) === "pro";
+function MyBetsPageInner() {
+  const searchParams = useSearchParams();
+  const storeTier = useTier((s) => s.tier);
+  const tierParam = allowDevTierUrlOverrides() ? searchParams.get("tier") : null;
+  const isPro =
+    tierParam === "pro" ? true : tierParam === "free" ? false : storeTier === "pro";
   const { bets, removeBet, clearAll, updateClosingOdds } = useMyBets();
   const oddsFormat = useSettings((s) => s.oddsFormat);
 
@@ -212,5 +219,19 @@ export default function MyBetsPage() {
         Up to {200} bets stored locally. Closing line fetched from the FairBet odds feed.
       </p>
     </div>
+  );
+}
+
+export default function MyBetsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-2xl px-4 py-6 space-y-3">
+          <LoadingSkeleton count={6} variant="timelineRow" />
+        </div>
+      }
+    >
+      <MyBetsPageInner />
+    </Suspense>
   );
 }

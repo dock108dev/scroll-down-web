@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
 import { verifySession } from "@/lib/magic-link";
-import { STORAGE_KEYS } from "@/lib/config";
+import { STORAGE_KEYS, allowDevTierUrlOverrides } from "@/lib/config";
 import type { GameListResponse } from "@/lib/types";
 
 function checkPro(req: NextRequest): NextResponse | null {
-  if (process.env.NODE_ENV !== "production") {
+  if (allowDevTierUrlOverrides()) {
     const param = req.nextUrl.searchParams.get("tier");
     if (param === "pro") return null;
     if (param === "free") return NextResponse.json({ error: "pro_required" }, { status: 403 });

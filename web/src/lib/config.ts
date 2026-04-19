@@ -6,6 +6,23 @@
 
 export const BACKEND_BASE_URL = "https://sda.dock108.dev";
 
+/**
+ * `?tier=free|pro` URL overrides for dev and Playwright (`npm start` uses
+ * NODE_ENV=production, so we also enable when NEXT_PUBLIC_SCROLLDOWN_E2E is set
+ * at build time — see playwright.config webServer.env + CI build env).
+ */
+export function allowDevTierUrlOverrides(): boolean {
+  return (
+    process.env.NODE_ENV !== "production" ||
+    process.env.NEXT_PUBLIC_SCROLLDOWN_E2E === "1"
+  );
+}
+
+/** Playwright `webServer` sets this — use for CI-only behavior (rate limits, etc.). */
+export function isPlaywrightServerEnv(): boolean {
+  return process.env.SCROLLDOWN_PLAYWRIGHT_WEB_SERVER === "1";
+}
+
 export const CACHE = {
   GAMES_TTL_MS: 90_000,
   GAMES_FRESH_MS: 45_000, // skip network if cache is younger than this

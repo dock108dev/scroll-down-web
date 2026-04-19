@@ -16,6 +16,7 @@ import { SessionProvider } from "@/components/auth/SessionProvider";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/layout/PWAInstallPrompt";
 import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
+import { TierBootstrap } from "@/components/layout/TierBootstrap";
 
 const SITE_URL = "https://scrolldownsports.dev";
 
@@ -109,6 +110,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider />
           <SessionProvider />
+          <TierBootstrap />
           <RealtimeProvider />
           <AnalyticsProvider />
           <RevealIDBProvider />

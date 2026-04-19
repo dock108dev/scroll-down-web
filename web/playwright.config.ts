@@ -68,8 +68,13 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       NEXT_PUBLIC_ADS_ENABLED: "false",
+      // Enables `?tier=` overrides under `npm start` (production NODE_ENV); see `allowDevTierUrlOverrides`.
+      NEXT_PUBLIC_SCROLLDOWN_E2E: "1",
       // Fast `/api/health` without WAN upstream (see `src/app/api/health/route.ts`)
       SCROLLDOWN_PLAYWRIGHT_WEB_SERVER: "1",
+      MAGIC_LINK_SECRET:
+        process.env.MAGIC_LINK_SECRET ||
+        "scroll-down-local-playwright-default-magic-secret-key-48chars-x",
       ...SPORTS_API_KEY_ENV,
     },
   },

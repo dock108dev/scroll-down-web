@@ -1,6 +1,4 @@
-import { test, expect } from "../helpers";
-
-// ─── helpers ────────────────────────────────────────────────────────────────
+import { test, expect, waitForProGateTestHook } from "../helpers";
 
 /** Sign in via magic-link dev flow and return the session cookie value. */
 async function signInAs(
@@ -143,6 +141,7 @@ test.describe("ProGateSheet — checkout CTA", () => {
     page,
   }) => {
     await page.goto("/");
+    await waitForProGateTestHook(page);
     // Open the sheet via the test helper exposed on window
     await page.evaluate(() => {
       (window as unknown as Record<string, (f: string) => void>).__openProGateSheet(
@@ -159,6 +158,7 @@ test.describe("ProGateSheet — checkout CTA", () => {
     page,
   }) => {
     await page.goto("/");
+    await waitForProGateTestHook(page);
     await page.evaluate(() => {
       (window as unknown as Record<string, (f: string) => void>).__openProGateSheet(
         "live_odds",

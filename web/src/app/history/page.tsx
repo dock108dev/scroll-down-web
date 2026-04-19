@@ -2,6 +2,7 @@
 
 import { useMemo, useCallback, useEffect, useRef, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import { allowDevTierUrlOverrides } from "@/lib/config";
 import { useHistoricalGames } from "@/hooks/useHistoricalGames";
 import type { GameCore } from "@/stores/game-data";
 
@@ -238,16 +239,24 @@ function HistoryPageInner() {
 // ── Gate wrapper: checks session + Pro tier ────────────────
 
 function HistoryGated() {
-  const { status, tier } = useSession();
+  const searchParams = useSearchParams();
+  const { status, tier: sessionTier } = useSession();
   const router = useRouter();
 
+  const tierParam = allowDevTierUrlOverrides() ? searchParams.get("tier") : null;
+  const devAnonBypass =
+    allowDevTierUrlOverrides() && (tierParam === "free" || tierParam === "pro");
+
+  const effectiveTier: "free" | "pro" =
+    tierParam === "pro" ? "pro" : tierParam === "free" ? "free" : sessionTier;
+
   useEffect(() => {
-    if (status === "anonymous") {
+    if (status === "anonymous" && !devAnonBypass) {
       router.replace("/login?redirect=/history");
     }
-  }, [status, router]);
+  }, [status, router, devAnonBypass]);
 
-  if (status === "loading" || status === "anonymous") {
+  if (status === "loading") {
     return (
       <div className="mx-auto max-w-2xl px-4 py-12 space-y-3">
         <LoadingSkeleton count={6} variant="timelineRow" />
@@ -255,7 +264,15 @@ function HistoryGated() {
     );
   }
 
-  if (tier !== "pro") {
+  if (status === "anonymous" && !devAnonBypass) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12 space-y-3">
+        <LoadingSkeleton count={6} variant="timelineRow" />
+      </div>
+    );
+  }
+
+  if (effectiveTier !== "pro") {
     return (
       <>
         <HistoryGateOverlay />
@@ -274,5 +291,15 @@ function HistoryGated() {
 // ── Page export ────────────────────────────────────────────
 
 export default function HistoryPage() {
-  return <HistoryGated />;
+  return (
+    <Suspense
+      fallback={
+        <div className="mx-auto max-w-2xl px-4 py-12 space-y-3">
+          <LoadingSkeleton count={6} variant="timelineRow" />
+        </div>
+      }
+    >
+      <HistoryGated />
+    </Suspense>
+  );
 }

@@ -35,8 +35,10 @@ export function signSession(
 }
 
 export function verifySession(token: string): SessionPayload | null {
+  const secret = process.env.MAGIC_LINK_SECRET;
+  if (!secret) return null;
+
   try {
-    const secret = getSecret();
     const parts = token.split(".");
     if (parts.length !== 3) return null;
     const [header, body, sig] = parts;

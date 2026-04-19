@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRateLimiter } from "@/lib/rate-limit";
-import { VALIDATION, AUTH } from "@/lib/config";
+import { VALIDATION, AUTH, allowDevTierUrlOverrides, isPlaywrightServerEnv } from "@/lib/config";
 import {
   generateMagicToken,
   storeMagicToken,
@@ -30,15 +30,18 @@ function baseUrl(req: NextRequest): string {
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req);
-  const limit = limiter.check(ip);
-  if (!limit.ok) {
-    return NextResponse.json(
-      { error: "rate_limited" },
-      {
-        status: 429,
-        headers: { "Retry-After": String(Math.ceil(limit.resetMs / 1000)) },
-      },
-    );
+  // Parallel Playwright workers share one runner IP; skip the tight prod limiter in E2E only.
+  if (!isPlaywrightServerEnv() && process.env.NEXT_PUBLIC_SCROLLDOWN_E2E !== "1") {
+    const limit = limiter.check(ip);
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: "rate_limited" },
+        {
+          status: 429,
+          headers: { "Retry-After": String(Math.ceil(limit.resetMs / 1000)) },
+        },
+      );
+    }
   }
 
   let email: string;
@@ -70,8 +73,8 @@ export async function POST(req: NextRequest) {
 
   const responseBody: Record<string, unknown> = { ok: true };
 
-  // Expose token in non-production so E2E tests can verify without email
-  if (process.env.NODE_ENV !== "production") {
+  // Expose token in dev and Playwright CI (`npm start` is production NODE_ENV).
+  if (allowDevTierUrlOverrides()) {
     responseBody.devToken = token;
   }
 

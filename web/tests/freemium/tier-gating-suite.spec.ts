@@ -1,4 +1,4 @@
-import { test, expect } from "../helpers";
+import { test, expect, waitForProGateTestHook, waitForTierPersist } from "../helpers";
 import type { Page } from "@playwright/test";
 
 // ISSUE-047: consolidated freemium E2E suite.
@@ -7,6 +7,7 @@ import type { Page } from "@playwright/test";
 // cookie and redirects home; (4) sign-out reverts to anonymous and gate re-applies.
 
 async function openGate(page: Page, feature = "live_odds"): Promise<void> {
+  await waitForProGateTestHook(page);
   await page.evaluate((f) => {
     const fn = (window as unknown as Record<string, unknown>).__openProGateSheet as
       | ((feature: string) => void)
@@ -28,6 +29,7 @@ test.describe("ISSUE-047 / free tier gated feature", () => {
     page,
   }) => {
     await page.goto("/?tier=free");
+    await waitForTierPersist(page);
     expect(await cookieValue(page, "sd-tier")).toBe("free");
 
     await openGate(page, "live_odds");
@@ -50,6 +52,7 @@ test.describe("ISSUE-047 / free tier gated feature", () => {
 test.describe("ISSUE-047 / ?tier=pro suppresses gate + ads", () => {
   test("pro tier override hides native ad cards on home feed @smoke", async ({ page }) => {
     await page.goto("/?tier=pro");
+    await waitForTierPersist(page);
 
     const tier = await cookieValue(page, "sd-tier");
     if (tier !== "pro") {
@@ -85,6 +88,7 @@ test.describe("ISSUE-047 / ?tier=pro suppresses gate + ads", () => {
 
   test("pro tier does not open ProGateSheet for gated feature", async ({ page }) => {
     await page.goto("/?tier=pro");
+    await waitForTierPersist(page);
     const tier = await cookieValue(page, "sd-tier");
     if (tier !== "pro") {
       test.skip(true, "tier override not honored in this environment");
@@ -161,6 +165,7 @@ test.describe("ISSUE-047 / sign-out restores gate", () => {
 
     // Navigate as free and re-trigger gated feature — sheet re-appears
     await page.goto("/?tier=free");
+    await waitForTierPersist(page);
     await openGate(page, "full_fairbet");
     await expect(page.locator("[data-testid='pro-gate-sheet']")).toBeVisible({
       timeout: 3_000,

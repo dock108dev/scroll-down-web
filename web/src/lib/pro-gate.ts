@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { STORAGE_KEYS } from "@/lib/config";
+import { STORAGE_KEYS, allowDevTierUrlOverrides } from "@/lib/config";
 import { verifySession } from "@/lib/magic-link";
 
 /**
@@ -14,8 +14,8 @@ import { verifySession } from "@/lib/magic-link";
  * client-writable sd-tier cookie — so it cannot be spoofed by the browser.
  */
 export function requirePro(req: NextRequest): NextResponse | null {
-  // Dev/test override: ?tier=pro bypasses the gate without a session cookie.
-  if (process.env.NODE_ENV !== "production") {
+  // Dev / Playwright: ?tier=pro bypasses the gate without a session cookie.
+  if (allowDevTierUrlOverrides()) {
     const param = req.nextUrl.searchParams.get("tier");
     if (param === "pro") return null;
   }

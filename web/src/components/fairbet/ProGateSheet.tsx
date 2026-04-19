@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useCallback, useState } from "react";
 import Link from "next/link";
 import { useProGateSheet } from "@/stores/pro-gate-sheet";
 import { useSession } from "@/stores/session";
@@ -97,8 +97,8 @@ export function ProGateSheet() {
     }
   }
 
-  // Expose openSheet on window for E2E test access
-  useEffect(() => {
+  // Expose openSheet on window for E2E test access (layout phase so Playwright does not race useEffect)
+  useLayoutEffect(() => {
     if (typeof window === "undefined") return;
     (window as unknown as Record<string, unknown>).__openProGateSheet = openSheet;
     return () => {
