@@ -46,4 +46,5 @@ blob-report/
 # AIDLC working directory
 .aidlc/*
 docs/archived/*
-
+playwright*.log
+playwright*.txt
