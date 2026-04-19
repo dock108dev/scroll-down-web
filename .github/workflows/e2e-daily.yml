@@ -29,10 +29,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify sports API key is available to this job
+        run: |
+          if [ -z "${SPORTS_DATA_API_KEY:-}" ]; then
+            echo "::error::SPORTS_DATA_API_KEY is empty. Add repository secret SPORTS_DATA_API_KEY or grant repo access to the org secret."
+            exit 1
+          fi
+          echo "SPORTS_DATA_API_KEY is set (length ${#SPORTS_DATA_API_KEY})"
+        env:
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+
       - name: Build
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium

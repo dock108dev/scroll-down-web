@@ -67,10 +67,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify sports API key is available to this job
+        run: |
+          if [ -z "${SPORTS_DATA_API_KEY:-}" ]; then
+            echo "::error::SPORTS_DATA_API_KEY is empty. Add a repository Actions secret with that exact name, or grant this repo access if it is an organization secret."
+            exit 1
+          fi
+          echo "SPORTS_DATA_API_KEY is set (length ${#SPORTS_DATA_API_KEY})"
+        env:
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+
       - name: Build
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -78,8 +89,6 @@ jobs:
       - name: Run smoke tests
         run: npx playwright test --grep "@smoke"
         env:
-          # Required for Next API routes that proxy to the sports backend (X-API-Key).
-          # Repository secret: Settings → Secrets and variables → Actions → SPORTS_DATA_API_KEY
           SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
 
       - uses: actions/upload-artifact@v7

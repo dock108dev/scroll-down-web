@@ -1,8 +1,13 @@
 import { BACKEND_BASE_URL } from "@/lib/config";
 
-// Server-side fetches prefer the internal Docker URL (avoids hairpin NAT).
-export const BASE_URL = process.env.SPORTS_API_INTERNAL_URL || BACKEND_BASE_URL;
-export const API_KEY = process.env.SPORTS_DATA_API_KEY || process.env.SPORTS_API_KEY || process.env.API_KEY || "";
+/** Read at call time so CI/Playwright always see the current process env (not a stale module snapshot). */
+export function sportsApiBaseUrl(): string {
+  return process.env.SPORTS_API_INTERNAL_URL || BACKEND_BASE_URL;
+}
+
+export function sportsApiKey(): string {
+  return process.env.SPORTS_DATA_API_KEY || process.env.SPORTS_API_KEY || process.env.API_KEY || "";
+}
 
 export class ApiError extends Error {
   constructor(
@@ -75,7 +80,7 @@ export async function apiFetch<T>(
   path: string,
   options?: RequestInit & { revalidate?: number; timeoutMs?: number },
 ): Promise<T> {
-  const url = `${BASE_URL}${path}`;
+  const url = `${sportsApiBaseUrl()}${path}`;
   const timeoutMs = options?.timeoutMs ?? 5_000;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -84,7 +89,7 @@ export async function apiFetch<T>(
       ...options,
       signal: controller.signal,
       headers: {
-        "X-API-Key": API_KEY,
+        "X-API-Key": sportsApiKey(),
         "Content-Type": "application/json",
         ...options?.headers,
       },
