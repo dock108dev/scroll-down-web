@@ -50,6 +50,7 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      # Includes @live-upstream (real games / FairBet / golf payloads). PR smoke excludes those; see web/tests/SDA_HANDOFF.md
       - name: Run all E2E tests
         run: npx playwright test
         env:

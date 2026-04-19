@@ -1,6 +1,6 @@
 import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
-test.describe("Game Detail Reading Position", () => {
+test.describe("Game Detail Reading Position @live-upstream", () => {
   test.beforeEach(async ({ authedPage }) => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);

@@ -89,7 +89,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Run smoke tests
-        run: npx playwright test --grep "@smoke"
+        # Exclude @live-upstream (real schedules / FairBet cards / golf payloads); daily E2E runs those.
+        run: npx playwright test --grep "@smoke" --grep-invert "@live-upstream"
         env:
           SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
           NEXT_PUBLIC_SCROLLDOWN_E2E: "1"

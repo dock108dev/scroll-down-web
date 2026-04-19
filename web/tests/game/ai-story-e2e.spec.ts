@@ -30,7 +30,7 @@ async function gotoFirstGame(page: Page): Promise<boolean> {
 
 // ─── 2. Story section absent when disabled ────────────────────────────────────
 
-test.describe("AI game story — section absent when disabled @smoke", () => {
+test.describe("AI game story — section absent when disabled @smoke @live-upstream", () => {
   test("game-story-section not in DOM when quality gate is on (default)", async ({ page }) => {
     const reached = await gotoFirstGame(page);
     if (!reached) {

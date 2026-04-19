@@ -1,6 +1,6 @@
 import { test, expect, waitForLoad } from "../helpers";
 
-test.describe("FairBet Page - Odds", () => {
+test.describe("FairBet Page - Odds @live-upstream", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/fairbet");
     await waitForLoad(page);

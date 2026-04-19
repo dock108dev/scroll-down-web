@@ -1,6 +1,6 @@
 import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
-test.describe("Live badge indicator on game rows and game detail", () => {
+test.describe("Live badge indicator on game rows and game detail @live-upstream", () => {
   test.beforeEach(async ({ authedPage }) => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);

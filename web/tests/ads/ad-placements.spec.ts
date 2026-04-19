@@ -12,7 +12,7 @@ test.describe("Ad placements — disabled in test env @smoke", () => {
     await expect(ads).toHaveCount(0);
   });
 
-  test("detail banner ad does not appear on game detail page", async ({ page }) => {
+  test("detail banner ad does not appear on game detail page @live-upstream", async ({ page }) => {
     // Navigate to a game detail page; game ID 1 is used as a representative slug.
     // The test skips gracefully if live data is unavailable.
     const res = await page.request.get("/api/games?limit=1");
@@ -35,7 +35,7 @@ test.describe("Ad placements — disabled in test env @smoke", () => {
   });
 });
 
-test.describe("Ad placements — free vs pro", () => {
+test.describe("Ad placements — free vs pro @live-upstream", () => {
   test("native ad card is absent for pro-tier users", async ({ page }) => {
     // Simulate pro tier via dev override and verify no ads render.
     await page.goto("/?tier=pro");

@@ -1,7 +1,7 @@
 import { type Page } from "@playwright/test";
 import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
-test.describe("Team Stats Comparison", () => {
+test.describe("Team Stats Comparison @live-upstream", () => {
   async function navigateToFirstGame(authedPage: Page) {
     await authedPage.goto("/");
     await waitForLoad(authedPage);

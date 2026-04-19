@@ -131,7 +131,7 @@ async function putIDBRevealState(
 // Suite
 // ---------------------------------------------------------------------------
 
-test.describe("Reveal state — persistence and mode transitions @smoke", () => {
+test.describe("Reveal state — persistence and mode transitions @smoke @live-upstream", () => {
   test.beforeEach(async ({ authedPage }) => {
     await authedPage.goto("/");
     await clearRevealState(authedPage);

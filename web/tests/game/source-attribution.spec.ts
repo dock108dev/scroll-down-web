@@ -4,7 +4,7 @@
  */
 import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
-test.describe("Game detail source attribution", () => {
+test.describe("Game detail source attribution @live-upstream", () => {
   test.beforeEach(async ({ authedPage }) => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);

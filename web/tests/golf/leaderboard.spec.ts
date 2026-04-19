@@ -3,7 +3,7 @@ import { waitForLoad } from "../helpers";
 
 // ─── /api/golf/leaderboard (flat, admin-toggled endpoint) ─────────────────────
 
-test.describe("Golf: /api/golf/leaderboard", () => {
+test.describe("Golf: /api/golf/leaderboard @live-upstream", () => {
   test("returns 404 when GOLF_ENABLED is not set", async ({ request }) => {
     // In test environments GOLF_ENABLED is unset by default, so the route must 404.
     const res = await request.get("/api/golf/leaderboard");
@@ -43,7 +43,7 @@ test.describe("Golf: /api/golf/leaderboard", () => {
 
 // ─── /golf page UI (reveal-mode leaderboard) ─────────────────────────────────
 
-test.describe("Golf: /golf page", () => {
+test.describe("Golf: /golf page @live-upstream", () => {
   test("returns 404 when GOLF_ENABLED is not set", async ({ page }) => {
     const res = await page.request.get("/api/golf/leaderboard");
     if (res.status() === 200) {
@@ -221,7 +221,7 @@ test.describe("Golf: /golf page", () => {
 
 // ─── /api/golf/tournaments/[eventId]/leaderboard (per-event) ─────────────────
 
-test.describe("Golf: Leaderboard", () => {
+test.describe("Golf: Leaderboard @live-upstream", () => {
   test("leaderboard loads on event page", async ({
     authedPage: page,
     request,

@@ -4,7 +4,7 @@
  */
 import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
-test.describe("Bet outcome badges on settled game odds", () => {
+test.describe("Bet outcome badges on settled game odds @live-upstream", () => {
   test.beforeEach(async ({ authedPage }) => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);

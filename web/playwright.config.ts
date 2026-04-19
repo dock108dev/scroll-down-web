@@ -13,6 +13,11 @@ const SPORTS_API_KEY_ENV = (["SPORTS_DATA_API_KEY", "SPORTS_API_KEY", "API_KEY"]
   return acc;
 }, {});
 
+/**
+ * Tags: tests or describes whose title includes `@live-upstream` need real upstream
+ * sports payloads. PR CI runs `npx playwright test --grep "@smoke" --grep-invert "@live-upstream"`
+ * (see `.github/workflows/ci.yml`). See `tests/SDA_HANDOFF.md`.
+ */
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,

@@ -1,7 +1,7 @@
 import { test, expect } from "../helpers";
 import { waitForLoad } from "../helpers";
 
-test.describe("Golf: Tournaments page", () => {
+test.describe("Golf: Tournaments page @live-upstream", () => {
   test("page loads with tournament cards", async ({ authedPage: page }) => {
     await page.goto("/golf");
     await waitForLoad(page);

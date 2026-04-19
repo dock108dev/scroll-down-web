@@ -19,7 +19,7 @@ async function waitForCardsOrEmpty(
   ]).catch(() => "timeout" as const);
 }
 
-test.describe("FairBet E2E Suite", () => {
+test.describe("FairBet E2E Suite @live-upstream", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/fairbet");
     await waitForLoad(page);

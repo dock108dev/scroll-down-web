@@ -1,6 +1,6 @@
 import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
-test.describe("Player Stats — headline and expansion", () => {
+test.describe("Player Stats — headline and expansion @live-upstream", () => {
   async function navigateToGame(page: Parameters<typeof waitForLoad>[0]) {
     await page.goto("/");
     await waitForLoad(page);

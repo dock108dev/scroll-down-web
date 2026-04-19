@@ -9,7 +9,7 @@ test.describe("Page Load Performance", () => {
     expect(ms).toBeLessThan(5000);
   });
 
-  test("FairBet page loads within 5 seconds", async ({ authedPage }) => {
+  test("FairBet page loads within 5 seconds @live-upstream", async ({ authedPage }) => {
     const ms = await measureMs(async () => {
       await authedPage.goto("/fairbet");
       await waitForLoad(authedPage);
@@ -48,7 +48,7 @@ test.describe("Page Load Performance", () => {
     expect(ms).toBeLessThan(3000);
   });
 
-  test("Game detail page loads after clicking a game row (< 5 seconds)", async ({
+  test("Game detail page loads after clicking a game row (< 5 seconds) @live-upstream", async ({
     authedPage,
   }) => {
     await authedPage.goto("/");

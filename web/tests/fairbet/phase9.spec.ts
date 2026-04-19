@@ -28,7 +28,7 @@ async function waitForCardsOrEmpty(
   ]).catch(() => "timeout" as const);
 }
 
-test.describe("Phase 9 FairBet Pro E2E", () => {
+test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
   // ── Line Movement (ISSUE-050) ────────────────────────────────────
 
   test("line movement: pro sees arrow and direction on at least one card @smoke", async ({

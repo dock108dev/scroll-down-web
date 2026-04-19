@@ -59,7 +59,7 @@ test.describe("Tab visibility refresh", () => {
     expect(newRequests).toBeGreaterThanOrEqual(1);
   });
 
-  test("page remains usable and shows data after visibility refresh @smoke", async ({ page }) => {
+  test("page remains usable and shows data after visibility refresh @smoke @live-upstream", async ({ page }) => {
     await page.route("**/api/health", (route) => {
       route.fulfill({
         status: 200,
@@ -211,7 +211,7 @@ test.describe("Transport fallback visible behavior", () => {
     await expect(banner).not.toContainText(/offline/i);
   });
 
-  test("game rows still render when WS is blocked (HTTP fallback) @smoke", async ({ page }) => {
+  test("game rows still render when WS is blocked (HTTP fallback) @smoke @live-upstream", async ({ page }) => {
     await page.routeWebSocket(/.*/, (ws) => {
       ws.close();
     });
@@ -230,7 +230,7 @@ test.describe("Transport fallback visible behavior", () => {
 });
 
 test.describe("Stale-data state UI (mocked)", () => {
-  test("freshness label absent immediately after load (data is fresh) @smoke", async ({ page }) => {
+  test("freshness label absent immediately after load (data is fresh) @smoke @live-upstream", async ({ page }) => {
     await page.goto("/");
     const hasData = await waitForGameData(page);
     if (!hasData) {
@@ -243,7 +243,7 @@ test.describe("Stale-data state UI (mocked)", () => {
     await expect(labels).toHaveCount(0);
   });
 
-  test("muted staleness label appears after store coreUpdatedAt backdated 60s", async ({ page }) => {
+  test("muted staleness label appears after store coreUpdatedAt backdated 60s @live-upstream", async ({ page }) => {
     await page.goto("/");
     const hasData = await waitForGameData(page);
     if (!hasData) {
@@ -289,7 +289,7 @@ test.describe("Stale-data state UI (mocked)", () => {
     expect(text).toMatch(/\d+s ago/);
   });
 
-  test("'May be delayed' label appears when data is 3 minutes stale", async ({ page }) => {
+  test("'May be delayed' label appears when data is 3 minutes stale @live-upstream", async ({ page }) => {
     await page.goto("/");
     const hasData = await waitForGameData(page);
     if (!hasData) {
@@ -335,7 +335,7 @@ test.describe("Stale-data state UI (mocked)", () => {
     expect(text).toBe("May be delayed");
   });
 
-  test("'Data delayed' label appears when data is >5 minutes stale", async ({ page }) => {
+  test("'Data delayed' label appears when data is >5 minutes stale @live-upstream", async ({ page }) => {
     await page.goto("/");
     const hasData = await waitForGameData(page);
     if (!hasData) {

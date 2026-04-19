@@ -63,7 +63,7 @@ test.describe("ISSUE-047 / ?tier=pro suppresses gate + ads", () => {
     await expect(page.locator("[data-testid='native-ad-card']")).toHaveCount(0);
   });
 
-  test("pro tier override hides detail banner ad on game detail @smoke", async ({
+  test("pro tier override hides detail banner ad on game detail @smoke @live-upstream", async ({
     page,
   }) => {
     const res = await page.request.get("/api/games?limit=1");
