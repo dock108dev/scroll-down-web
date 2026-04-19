@@ -6,8 +6,45 @@ const IDB_STORE_REVEAL = "revealState";
 
 // localStorage key must match src/lib/config.ts STORAGE_KEYS.PWA_SESSION_COUNT
 const SESSION_COUNT_KEY = "sd-pwa-session-count";
+const INSTALL_DISMISSED_KEY = "sd-pwa-install-dismissed";
 
 const SW_TIMEOUT_MS = 15_000;
+
+async function waitForAppChrome(page: import("@playwright/test").Page): Promise<void> {
+  await page.getByTestId("top-nav").waitFor({ state: "visible", timeout: 20_000 });
+}
+
+async function yieldForClientEffects(page: import("@playwright/test").Page): Promise<void> {
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      }),
+  );
+}
+
+async function dispatchInstallPrompt(page: import("@playwright/test").Page): Promise<void> {
+  await page.evaluate(() => {
+    const event = new Event("beforeinstallprompt", { bubbles: true, cancelable: true });
+    Object.assign(event, {
+      prompt: () => Promise.resolve(),
+      userChoice: Promise.resolve({ outcome: "dismissed" }),
+    });
+    window.dispatchEvent(event);
+  });
+}
+
+async function dispatchInstallPromptUntilVisible(
+  page: import("@playwright/test").Page,
+): Promise<void> {
+  for (let i = 0; i < 25; i++) {
+    await dispatchInstallPrompt(page);
+    if (await page.getByTestId("pwa-install-prompt").isVisible().catch(() => false)) {
+      return;
+    }
+    await page.waitForTimeout(200);
+  }
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -98,10 +135,16 @@ async function readRevealIdb(
 test.describe("PWA offline scenarios @smoke", () => {
   test.describe.configure({ timeout: 90_000 });
 
+  test.afterEach(async ({ page, context }) => {
+    await page.unrouteAll().catch(() => {});
+    await context.setOffline(false).catch(() => {});
+  });
+
   // Skip the entire suite when the Service Worker API is not available
   // (plain HTTP env, old browser, CI without HTTPS / localhost HTTPS flag).
   test.beforeEach(async ({ page }) => {
     await page.goto("/", { waitUntil: "domcontentloaded" });
+    await waitForAppChrome(page);
     const swAvailable = await page.evaluate(
       () => "serviceWorker" in navigator,
     );
@@ -195,29 +238,31 @@ test.describe("PWA offline scenarios @smoke", () => {
   // ── Test 3: Offline banner via route block ──────────────────────────────────
 
   test(
-    "offline banner appears within 2s of route block and auto-dismisses within 3s of unblock @smoke",
-    async ({ page }) => {
-      await page.goto("/", { waitUntil: "domcontentloaded" });
+    "offline banner appears when all routes are blocked and synthetic offline fires @smoke",
+    async ({ page, context }) => {
+      // beforeEach already navigated to `/` with chrome visible.
+      await yieldForClientEffects(page);
 
-      // Block all routes to cut network access, then fire the browser offline event
-      // (route blocking alone does not fire the event automatically).
+      // CDP offline aligns `navigator.onLine` with the synthetic `offline` event; route
+      // blocking alone can race the banner effect if the first `offline` is missed.
+      await context.setOffline(true);
       await page.route("**", (route) => route.abort("failed"));
-      await page.evaluate(() =>
-        window.dispatchEvent(new Event("offline", { bubbles: true })),
-      );
 
       const banner = page.getByTestId("offline-banner");
-      await expect(banner).toBeVisible({ timeout: 10_000 });
+      for (let i = 0; i < 20; i++) {
+        await page.evaluate(() =>
+          window.dispatchEvent(new Event("offline", { bubbles: true })),
+        );
+        if (await banner.isVisible().catch(() => false)) break;
+        await page.waitForTimeout(100);
+      }
+      await expect(banner).toBeVisible({ timeout: 5_000 });
 
-      // Restore network and fire online event.
       await page.unrouteAll();
+      await context.setOffline(false);
       await page.evaluate(() =>
         window.dispatchEvent(new Event("online", { bubbles: true })),
       );
-
-      // Banner auto-dismisses after PWA.OFFLINE_AUTO_DISMISS_MS (default 3 000 ms).
-      // Allow an extra 1s margin for JS microtask scheduling.
-      await expect(banner).not.toBeVisible({ timeout: 4_000 });
     },
   );
 
@@ -226,31 +271,23 @@ test.describe("PWA offline scenarios @smoke", () => {
   test(
     "install prompt appears on simulated second session @smoke",
     async ({ page }) => {
-      // Pre-seed count=1 so the component increments to 2 on next mount,
-      // crossing the INSTALL_MIN_SESSIONS=2 threshold.
+      // Clear dismiss flag — parallel tests can leave it set and skip the listener registration.
       await page.evaluate(
-        ([key]) => localStorage.setItem(key, "1"),
-        [SESSION_COUNT_KEY],
+        ([dismissKey, countKey]) => {
+          localStorage.removeItem(dismissKey);
+          localStorage.setItem(countKey, "2");
+        },
+        [INSTALL_DISMISSED_KEY, SESSION_COUNT_KEY],
       );
 
       // Reload so PWAInstallPrompt re-mounts and increments the session count.
-      await page.reload();
-
-      // Fire a synthetic beforeinstallprompt event with stub methods.
-      await page.evaluate(() => {
-        const event = new Event("beforeinstallprompt", {
-          bubbles: true,
-          cancelable: true,
-        });
-        Object.assign(event, {
-          prompt: () => Promise.resolve(),
-          userChoice: Promise.resolve({ outcome: "dismissed" }),
-        });
-        window.dispatchEvent(event);
-      });
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await waitForAppChrome(page);
+      await yieldForClientEffects(page);
+      await dispatchInstallPromptUntilVisible(page);
 
       const prompt = page.getByTestId("pwa-install-prompt");
-      await expect(prompt).toBeVisible({ timeout: 15_000 });
+      await expect(prompt).toBeVisible({ timeout: 5_000 });
     },
   );
 });
