@@ -77,6 +77,10 @@ jobs:
 
       - name: Run smoke tests
         run: npx playwright test --grep "@smoke"
+        env:
+          # Required for Next API routes that proxy to the sports backend (X-API-Key).
+          # Repository secret: Settings → Secrets and variables → Actions → SPORTS_DATA_API_KEY
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}

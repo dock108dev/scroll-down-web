@@ -3,6 +3,15 @@ import { defineConfig, devices } from "@playwright/test";
 const PORT = 3001;
 const BASE_URL = `http://localhost:${PORT}`;
 
+/** Forward backend API key into the webServer child (CI + local); matches `src/lib/api-server.ts`. */
+const SPORTS_API_KEY_ENV = (["SPORTS_DATA_API_KEY", "SPORTS_API_KEY", "API_KEY"] as const).reduce<
+  Record<string, string>
+>((acc, key) => {
+  const v = process.env[key];
+  if (v) acc[key] = v;
+  return acc;
+}, {});
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
@@ -54,6 +63,7 @@ export default defineConfig({
     timeout: 60_000,
     env: {
       NEXT_PUBLIC_ADS_ENABLED: "false",
+      ...SPORTS_API_KEY_ENV,
     },
   },
 });
