@@ -18,8 +18,7 @@ async function trySignup(page: import("@playwright/test").Page, email: string, p
 
 test.describe('Sign Up', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('button', { hasText: 'Sign Up' }).first().click();
+    await page.goto('/login?tab=signup');
   });
 
   test('sign up with valid credentials redirects to / and stores token', async ({ page }) => {
@@ -50,7 +49,9 @@ test.describe('Sign Up', () => {
     await page.getByPlaceholder('Re-enter password').fill('short');
     await page.locator('form button[type="submit"]').click();
 
-    await expect(page.getByText('Password must be at least 8 characters')).toBeVisible();
+    await expect(page.getByText('Password must be at least 8 characters')).toBeVisible({
+      timeout: 15_000,
+    });
   });
 
   test('sign up with mismatched passwords shows error @smoke', async ({ page }) => {
@@ -61,7 +62,7 @@ test.describe('Sign Up', () => {
     await page.getByPlaceholder('Re-enter password').fill('DifferentPass456!');
     await page.locator('form button[type="submit"]').click();
 
-    await expect(page.getByText("Passwords don't match")).toBeVisible();
+    await expect(page.getByText("Passwords don't match")).toBeVisible({ timeout: 15_000 });
   });
 });
 

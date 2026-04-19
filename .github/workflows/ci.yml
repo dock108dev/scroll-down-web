@@ -46,11 +46,11 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
 
   # ────────────────────────────────────────────────────────
-  # Playwright — smoke E2E tests (~2 min)
+  # Playwright — smoke E2E (many @smoke cases × chromium + mobile; allow headroom)
   # ────────────────────────────────────────────────────────
   playwright-smoke:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: web
@@ -67,16 +67,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify sports API key is available to this job
+        run: |
+          if [ -z "${SPORTS_DATA_API_KEY:-}" ]; then
+            echo "::error::SPORTS_DATA_API_KEY is empty. Add a repository Actions secret with that exact name, or grant this repo access if it is an organization secret."
+            exit 1
+          fi
+          echo "SPORTS_DATA_API_KEY is set (length ${#SPORTS_DATA_API_KEY})"
+        env:
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+
       - name: Build
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+          NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
+          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Run smoke tests
-        run: npx playwright test --grep "@smoke"
+        # Exclude @live-upstream (real schedules / FairBet cards / golf payloads); daily E2E runs those.
+        run: npx playwright test --grep "@smoke" --grep-invert "@live-upstream"
+        env:
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+          NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
+          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}

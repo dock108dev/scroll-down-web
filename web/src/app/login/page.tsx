@@ -33,13 +33,14 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login, signup, requestMagicLink, isLoading } = useAuth();
+  const { login, signup, isLoading } = useAuth();
+  const [isSendingLink, setIsSendingLink] = useState(false);
 
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const reason = searchParams.get("reason");
   const rawRedirect = searchParams.get("redirect");
-  // Only allow safe internal paths — prevent open redirects
-  const redirectTo = rawRedirect && /^\/[^/]/.test(rawRedirect) ? rawRedirect : null;
+  // Only allow safe internal paths — prevent open redirects (including backslash-bypass like /\evil.com)
+  const redirectTo = rawRedirect && /^\/[^/\\]/.test(rawRedirect) ? rawRedirect : null;
   const [tab, setTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -124,7 +125,7 @@ function LoginForm() {
     if (tab === "signup" && password !== confirmPassword) {
       errs.confirmPassword = "Passwords don't match";
     }
-    setFieldErrors(errs); // eslint-disable-line react-hooks/set-state-in-effect -- re-validate form fields as user types after first submit
+    setFieldErrors(errs);
   }, [submitted, email, password, confirmPassword, tab]);
 
   const handleSubmit = useCallback(
@@ -182,13 +183,20 @@ function LoginForm() {
       setFieldErrors({ email: "Enter a valid email address" });
       return;
     }
+    setIsSendingLink(true);
     try {
-      await requestMagicLink(email);
+      await fetch("/api/auth/send-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
       setMagicLinkSent(true);
     } catch {
       setError("Something went wrong. Try again.");
+    } finally {
+      setIsSendingLink(false);
     }
-  }, [email, requestMagicLink]);
+  }, [email]);
 
   return (
     <div className="mx-auto max-w-sm md:max-w-md px-4 py-12">
@@ -381,10 +389,10 @@ function LoginForm() {
             <button
               type="button"
               onClick={handleMagicLink}
-              disabled={isLoading}
+              disabled={isLoading || isSendingLink}
               className="w-full text-sm font-medium rounded-lg px-4 py-2.5 bg-neutral-800 text-neutral-200 transition-colors hover:bg-neutral-700 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              Send me a sign-in link
+              {isSendingLink ? "Sending…" : "Send me a sign-in link"}
             </button>
           </>
         )}

@@ -12,7 +12,7 @@ concurrency:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 120
     defaults:
       run:
         working-directory: web
@@ -29,16 +29,34 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify sports API key is available to this job
+        run: |
+          if [ -z "${SPORTS_DATA_API_KEY:-}" ]; then
+            echo "::error::SPORTS_DATA_API_KEY is empty. Add repository secret SPORTS_DATA_API_KEY or grant repo access to the org secret."
+            exit 1
+          fi
+          echo "SPORTS_DATA_API_KEY is set (length ${#SPORTS_DATA_API_KEY})"
+        env:
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+
       - name: Build
         run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: 1
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+          NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
+          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      # Includes @live-upstream (real games / FairBet / golf payloads). PR smoke excludes those; see web/tests/SDA_HANDOFF.md
       - name: Run all E2E tests
         run: npx playwright test
+        env:
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+          NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
+          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}

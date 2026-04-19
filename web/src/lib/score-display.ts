@@ -111,11 +111,11 @@ export function computeScoreDisplay(
     };
   }
 
-  // Revealed but no snapshot (e.g. migrated from old format) — show from core
+  // Revealed but no snapshot — marked read without explicit score reveal; keep hidden
   return {
-    visible: !pregame && hasScoreData,
-    homeScore: core.homeScore,
-    awayScore: core.awayScore,
+    visible: false,
+    homeScore: null,
+    awayScore: null,
     frozen: false,
     hasUpdate: false,
     canToggle,

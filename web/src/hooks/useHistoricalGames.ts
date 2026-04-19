@@ -83,7 +83,7 @@ export function useHistoricalGames(
       const cacheKey = `history:${startDate}:${endDate}:${league ?? ""}:${pageOffset}`;
 
       try {
-        const data = await api.games(params);
+        const data = await api.historyGames(params);
         const summaries = data.games;
         setTotal(data.total ?? summaries.length);
 

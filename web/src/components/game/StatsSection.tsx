@@ -47,11 +47,7 @@ export function PlayerStatsSection({
   const hasAnyData = hasPlayerStats || hasNHLSkaters || hasNHLGoalies || hasMLBBatters || hasMLBPitchers;
 
   if (!hasAnyData) {
-    return (
-      <div className="px-4 py-4 text-sm text-neutral-500">
-        No player stats available
-      </div>
-    );
+    return null;
   }
 
   const homeSkaters = nhlSkaters?.filter((s) => s.team === homeTeam) ?? [];
@@ -138,11 +134,7 @@ export function TeamStatsSection({
   awayColor,
 }: TeamStatsSectionProps) {
   if (teamStats.length === 0) {
-    return (
-      <div className="px-4 py-4 text-sm text-neutral-500">
-        No team stats available
-      </div>
-    );
+    return null;
   }
 
   return (

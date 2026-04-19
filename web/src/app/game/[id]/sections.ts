@@ -8,17 +8,16 @@ import type { GameDetailResponse, GameStatus } from "@/lib/types";
 import { isFinal, isLive, isPregame } from "@/lib/types";
 
 /** Build the ordered list of sections to display based on game status and data. */
-export function getSections(data: GameDetailResponse): string[] {
+export function getSections(data: GameDetailResponse, isAdmin = false): string[] {
   const status = data.game.status;
   const game = data.game;
 
-  const hasPregamePosts = data.socialPosts?.some(
+  const hasBuzz = !!(isAdmin && data.socialPosts?.some(
     (p) =>
       p.gamePhase === "pregame" &&
       (p.tweetText || p.imageUrl || p.videoUrl) &&
       p.revealLevel !== "post",
-  );
-  const hasBuzz = !!hasPregamePosts;
+  ));
   const hasTimeline = (data.plays?.length ?? 0) > 0;
   const hasPlayerStats =
     (data.playerStats?.length ?? 0) > 0 ||
@@ -32,7 +31,7 @@ export function getSections(data: GameDetailResponse): string[] {
     (data.mlbAdvancedPlayerStats?.length ?? 0) > 0;
   const hasOdds = (data.odds?.length ?? 0) > 0;
   const hasFlow = data.game.hasFlow;
-  const hasPostgamePosts = data.socialPosts?.some(
+  const hasPostgamePosts = isAdmin && data.socialPosts?.some(
     (p) => p.gamePhase === "postgame",
   );
   const hasWrapUp =
@@ -60,12 +59,12 @@ export function getSections(data: GameDetailResponse): string[] {
   if (isFinal(status, game)) {
     const s: string[] = [];
     if (hasBuzz) s.push("Pregame Buzz");
-    if (hasFlow) s.push("Flow");
     if (hasTimeline) s.push("Timeline");
     if (hasPlayerStats) s.push("Player Stats");
     if (hasTeamStats) s.push("Team Stats");
     if (hasAdvanced) s.push("Advanced Stats");
     if (hasOdds) s.push("Odds");
+    if (hasFlow) s.push("Game Story");
     if (hasWrapUp) s.push("Wrap-Up");
     return s;
   }
@@ -92,8 +91,8 @@ export function getDefaultExpanded(
   switch (section) {
     case "Pregame Buzz":
       return isPregame(status);
-    case "Flow":
-      return true;
+    case "Game Story":
+      return false;
     case "Timeline":
       return !hasFlow;
     case "Player Stats":

@@ -78,6 +78,41 @@ Saves home page scroll Y position for restoration on back navigation. In-memory 
 
 Transient UI state: `settingsOpen` boolean for the settings drawer.
 
+### `session` (not persisted)
+
+Magic-link / HttpOnly cookie auth state. Hydrated on app load by `SessionProvider` via `GET /api/auth/session`.
+
+- `status: "loading" | "authenticated" | "anonymous"` — current auth state
+- `email: string | null` — authenticated user's email
+- `tier: "free" | "pro"` — subscription tier from session
+- `userId: string | null` — authenticated user ID
+- `refresh()` — re-fetches `/api/auth/session` and updates store
+- `signOut()` — POSTs to `/api/auth/sign-out`, clears cookie, resets to anonymous
+
+This store coexists with the legacy `auth` store during transition. New sign-in flows use magic-link.
+
+### `tier` (persisted: `sd-tier`)
+
+Free/Pro tier tracking with anonymous identity.
+
+- `tier: "free" | "pro"` — subscription tier
+- `anonId: string` — stable UUID for anonymous users (generated on first load, persists)
+- `initialized: boolean` — hydration flag
+- `initialize()` — generates anonId if missing, syncs tier + anonId to cookies for server-side access, applies dev override (`?tier=pro` query param in non-production)
+- `isAllowed(feature: FeatureGateKey)` — returns `true` only if `tier === "pro"` and the key is in `FEATURE_GATES`
+
+In non-production environments, `?tier=pro` or `?tier=free` in the URL overrides the persisted tier for testing.
+
+### `pro-gate-sheet` (not persisted)
+
+Ephemeral UI state for the Pro upgrade bottom sheet.
+
+- `open: boolean` — whether the sheet is visible
+- `feature: FeatureGateKey | null` — which gated feature triggered the sheet
+- `show(feature)` / `hide()` — open/close actions
+
+The sheet is a global overlay rendered in the root layout. Any component can trigger it via the store without prop drilling.
+
 ## Preference Sync
 
 For authenticated users, preferences sync bidirectionally with the server via `src/lib/preferences-sync.ts`.

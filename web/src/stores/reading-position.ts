@@ -44,30 +44,39 @@ export const useReadingPosition = create<ReadingPositionState>()(
       name: STORAGE_KEYS.READING_POSITION,
       storage: {
         getItem: (name) => {
-          const str = localStorage.getItem(name);
-          if (!str) return null;
-          const parsed = JSON.parse(str);
-          // Strip score fields from old persisted entries
-          const positions = parsed.state?.positions;
-          if (positions) {
-            for (const key of Object.keys(positions)) {
-              delete positions[key].homeScore;
-              delete positions[key].awayScore;
+          try {
+            const str = localStorage.getItem(name);
+            if (!str) return null;
+            const parsed = JSON.parse(str);
+            // Strip score fields from old persisted entries
+            const positions = parsed.state?.positions;
+            if (positions) {
+              for (const key of Object.keys(positions)) {
+                delete positions[key].homeScore;
+                delete positions[key].awayScore;
+              }
             }
+            return parsed;
+          } catch {
+            localStorage.removeItem(name);
+            return null;
           }
-          return parsed;
         },
         setItem: (name, value) => {
-          const pruned = pruneByAge(
-            value.state.positions,
-            STORAGE.MAX_READING_POSITIONS,
-            STORAGE.POSITION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
-          );
-          const serialized = {
-            ...value,
-            state: { ...value.state, positions: pruned },
-          };
-          localStorage.setItem(name, JSON.stringify(serialized));
+          try {
+            const pruned = pruneByAge(
+              value.state.positions,
+              STORAGE.MAX_READING_POSITIONS,
+              STORAGE.POSITION_MAX_AGE_DAYS * 24 * 60 * 60 * 1000,
+            );
+            const serialized = {
+              ...value,
+              state: { ...value.state, positions: pruned },
+            };
+            localStorage.setItem(name, JSON.stringify(serialized));
+          } catch {
+            // Quota exceeded or storage denied — reading position won't persist this write
+          }
         },
         removeItem: (name) => localStorage.removeItem(name),
       },

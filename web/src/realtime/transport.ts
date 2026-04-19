@@ -206,8 +206,8 @@ class RealtimeTransport {
       try {
         const data = JSON.parse(evt.data) as RealtimeEvent;
         this.dispatch(data);
-      } catch {
-        // Ignore malformed messages
+      } catch (err) {
+        console.error("[realtime/ws] malformed message:", err);
       }
     };
 
@@ -217,8 +217,9 @@ class RealtimeTransport {
       if (!this.disposed) this.onWsFail();
     };
 
-    this.ws.onerror = () => {
+    this.ws.onerror = (e) => {
       clearTimeout(connectTimeout);
+      console.warn("[realtime/ws] onerror:", e);
     };
   }
 
@@ -293,12 +294,13 @@ class RealtimeTransport {
       try {
         const data = JSON.parse(evt.data) as RealtimeEvent;
         this.dispatch(data);
-      } catch {
-        // Ignore
+      } catch (err) {
+        console.error("[realtime/sse] malformed message:", err);
       }
     };
 
     this.sse.onerror = () => {
+      console.warn("[realtime/sse] onerror — scheduling reconnect");
       this.teardownSse();
       this.connected = false;
       this.mode = "offline";
@@ -347,8 +349,8 @@ class RealtimeTransport {
     for (const handler of this.handlers) {
       try {
         handler(event);
-      } catch {
-        // Handler errors shouldn't crash the transport
+      } catch (err) {
+        console.error("[realtime] dispatch handler threw:", err);
       }
     }
   }

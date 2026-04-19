@@ -538,6 +538,7 @@ export interface APIBet {
   extrapolation_ref_line?: number | null;
   extrapolation_distance?: number | null;
   confidence?: number;
+  opening_line?: number;
   confidence_flags?: string[];
   explanation_steps?: ExplanationStep[] | null;
   // Client-enriched camelCase aliases
@@ -556,6 +557,18 @@ export interface ExplanationStep {
   title: string;
   description?: string;
   detail_rows?: { label: string; value: string; is_highlight?: boolean }[];
+}
+
+/** Result of multiplicative no-vig devig for a market. */
+export interface DevigedMarket {
+  /** Input American odds per side. */
+  sides: number[];
+  /** Normalized fair probabilities (sum exactly to 1.0). */
+  fairProbs: number[];
+  /** Fair American odds derived from fairProbs. */
+  fairOdds: number[];
+  /** Sum of raw implied probabilities before normalization (>1 = vig present). */
+  overround: number;
 }
 
 export interface BookPrice {
@@ -628,6 +641,28 @@ export interface FairbetLiveResponse {
   };
 }
 
+// ─── CLV / My Bets ───────────────────────────────────────
+
+export interface LoggedBet {
+  /** Unique ID: `{game_id}::{market_key}::{selection_key}::{line_value}::{logged_at_ms}` */
+  id: string;
+  gameId: number;
+  leagueCode: string;
+  homeTeam: string;
+  awayTeam: string;
+  gameDate: string;
+  marketKey: string;
+  marketLabel: string;
+  selectionDisplay: string;
+  book: string;
+  placedOdds: number;
+  stake: number;
+  loggedAt: string;
+  closingOdds?: number;
+  clvPercent?: number;
+  outcome?: "win" | "loss" | "push";
+}
+
 // ─── Helpers ────────────────────────────────────────────
 
 export const TERMINAL_STATUSES: GameStatus[] = ["final", "completed", "archived", "postponed", "canceled"];
@@ -651,4 +686,17 @@ export function isPregame(status: GameStatus, game?: { isPregame?: boolean }): b
   if (PREGAME_STATUSES.includes(status)) return true;
   if (game?.isPregame !== undefined) return game.isPregame;
   return false;
+}
+
+// ─── Golf ────────────────────────────────────────────────
+
+/** Normalized golf leaderboard entry returned by /api/golf/leaderboard. */
+export interface GolfLeaderboardEntry {
+  playerId: string;
+  name: string;
+  position: string;
+  totalScore: number;
+  todayScore: number;
+  thru: string;
+  status: string;
 }

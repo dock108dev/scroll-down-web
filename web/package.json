@@ -9,13 +9,16 @@
     "lint": "eslint",
     "test": "npx playwright test",
     "test:smoke": "npx playwright test --grep @smoke",
+    "test:smoke:pr": "npm run build && CI=1 npx playwright test --grep \"@smoke\" --grep-invert \"@live-upstream\"",
     "test:ui": "npx playwright test --ui",
     "test:headed": "npx playwright test --headed"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
     "next": "16.2.3",
     "react": "19.2.5",
     "react-dom": "19.2.5",
+    "stripe": "^22.0.2",
     "zustand": "^5.0.12"
   },
   "devDependencies": {

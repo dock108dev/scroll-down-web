@@ -3,6 +3,7 @@
 import type { GameDetailResponse, OddsEntry } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
 import { useReveal } from "@/stores/reveal";
+import { useAuth } from "@/stores/auth";
 import { formatOdds } from "@/lib/utils";
 import { SocialSection } from "./SocialSection";
 
@@ -137,6 +138,8 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const isRevealed = useReveal((s) => s.isRevealed);
   const outcomeRevealed = scoreRevealMode === "always" || isRevealed(data.game.id);
+  const role = useAuth((s) => s.role);
+  const showSocial = role === "admin";
 
   const game = data.game;
   const awayLabel = game.awayTeamAbbr ?? game.awayTeam;
@@ -155,11 +158,7 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
     data.socialPosts?.length > 0;
 
   if (!hasContent) {
-    return (
-      <div className="px-4 py-4 text-sm text-neutral-500">
-        No wrap-up data available
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -271,12 +270,14 @@ export function WrapUpSection({ data }: WrapUpSectionProps) {
         </div>
       )}
 
-      {/* Postgame Reactions */}
-      <SocialSection
-        posts={data.socialPosts}
-        phase="postgame"
-        outcomeRevealed={outcomeRevealed}
-      />
+      {/* Postgame Reactions — admin only */}
+      {showSocial && (
+        <SocialSection
+          posts={data.socialPosts}
+          phase="postgame"
+          outcomeRevealed={outcomeRevealed}
+        />
+      )}
     </div>
   );
 }

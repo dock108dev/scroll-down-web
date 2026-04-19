@@ -33,7 +33,7 @@ test.describe("Mobile Responsive Layout", () => {
     expect(authedPage.url()).toContain("/fairbet");
   });
 
-  test("Game rows render at mobile width", async ({ authedPage }) => {
+  test("Game rows render at mobile width @live-upstream", async ({ authedPage }) => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);
 

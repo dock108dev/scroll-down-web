@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useFairBetOdds } from "@/hooks/useFairBetOdds";
-import { BetCard } from "@/components/fairbet/BetCard";
+import { GameBetGroup } from "@/components/fairbet/GameBetGroup";
 import { BookFilters } from "@/components/fairbet/BookFilters";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
 import { LiveOddsPanel } from "@/components/fairbet/LiveOddsPanel";
 import { FairBetTheme } from "@/lib/theme";
 import type { APIBet } from "@/lib/types";
-import { betId } from "@/lib/fairbet-utils";
 import { Spinner } from "@/components/shared/Spinner";
 import { StaleBanner } from "@/components/shared/StaleBanner";
 import { InlineFeedback } from "@/components/shared/InlineFeedback";
+import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { RENDER } from "@/lib/config";
+import { AdvancedFilters } from "@/components/fairbet/AdvancedFilters";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
@@ -43,6 +44,17 @@ export default function FairBetPage() {
     };
   }, [hook.loading, hook.error]);
 
+  // Group filtered bets by game_id (order preserved by first occurrence)
+  const gameGroups = useMemo(() => {
+    const map = new Map<number, APIBet[]>();
+    for (const bet of hook.filteredBets) {
+      const group = map.get(bet.game_id) ?? [];
+      group.push(bet);
+      map.set(bet.game_id, group);
+    }
+    return [...map.values()];
+  }, [hook.filteredBets]);
+
   // Progressive rendering — reset visible count when filters change
   const [visibleCount, setVisibleCount] = useState(RENDER.FAIRBET_BATCH);
   const [prevFilters, setPrevFilters] = useState(hook.filters);
@@ -53,7 +65,7 @@ export default function FairBetPage() {
     setVisibleCount(RENDER.FAIRBET_BATCH);
   }
 
-  // IntersectionObserver to load more cards on scroll
+  // IntersectionObserver to load more game groups on scroll
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -67,7 +79,7 @@ export default function FairBetPage() {
     );
     observer.observe(el);
     return () => observer.disconnect();
-  }, [hook.filteredBets.length]);
+  }, [gameGroups.length]);
 
   const openExplainer = useCallback((bet: APIBet) => {
     setExplainerBet(bet);
@@ -145,26 +157,39 @@ export default function FairBetPage() {
         </div>
 
         {/* ── Filters (pregame only, hidden when error with no data) ── */}
-        {activeTab === "pregame" && !(hook.error && hook.filteredBets.length === 0) && <BookFilters
-          availableLeagues={hook.availableLeagues}
-          selectedLeague={hook.filters.league}
-          onLeagueChange={hook.setLeague}
-          availableMarkets={hook.availableMarkets}
-          selectedMarket={hook.filters.market}
-          onMarketChange={hook.setMarket}
-          searchText={hook.filters.searchText}
-          onSearchChange={hook.setSearchText}
-          sort={hook.filters.sort}
-          onSortChange={hook.setSort}
-          evOnly={hook.filters.evOnly}
-          onEvOnlyChange={hook.setEvOnly}
-          hideThin={hook.filters.hideThin}
-          onHideThinChange={hook.setHideThin}
-          parlayCount={hook.parlayCount}
-          onParlayClick={() => setShowParlay(true)}
-          onRefresh={hook.refetch}
-          disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
-        />}
+        {activeTab === "pregame" && !(hook.error && hook.filteredBets.length === 0) && (
+          <>
+            <BookFilters
+              availableLeagues={hook.availableLeagues}
+              selectedLeague={hook.filters.league}
+              onLeagueChange={hook.setLeague}
+              availableMarkets={hook.availableMarkets}
+              selectedMarket={hook.filters.market}
+              onMarketChange={hook.setMarket}
+              searchText={hook.filters.searchText}
+              onSearchChange={hook.setSearchText}
+              sort={hook.filters.sort}
+              onSortChange={hook.setSort}
+              evOnly={hook.filters.evOnly}
+              onEvOnlyChange={hook.setEvOnly}
+              hideThin={hook.filters.hideThin}
+              onHideThinChange={hook.setHideThin}
+              parlayCount={hook.parlayCount}
+              onParlayClick={() => setShowParlay(true)}
+              onRefresh={hook.refetch}
+              disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
+            />
+            <AdvancedFilters
+              filters={hook.filters}
+              availableSports={hook.availableSports}
+              onConfidenceChange={hook.setConfidence}
+              onMarketChange={hook.setMarket}
+              onSportChange={hook.setSport}
+              onTimeToGameChange={hook.setTimeToGame}
+              disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
+            />
+          </>
+        )}
 
       </div>
 
@@ -175,15 +200,12 @@ export default function FairBetPage() {
         {activeTab === "pregame" && <div role="tabpanel" id="tabpanel-pregame" aria-labelledby="tab-pregame">
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
-        {/* Loading state */}
+        {/* Loading state — skeleton cards to avoid blank screen */}
         {hook.loading && !hook.error && !loadingTimedOut && (
-          <div className="py-20 flex flex-col items-center gap-3">
-            <div className="text-sm text-neutral-500">
-              {loadingSlow ? "Taking longer than expected…" : "Fetching odds from sportsbooks…"}
-            </div>
-            <div className="w-48 h-1.5 rounded-full overflow-hidden skeleton-shimmer" style={{ backgroundColor: "var(--fb-surface-secondary)" }} />
+          <div className="pt-3 space-y-3">
+            <LoadingSkeleton variant="fairbetCard" count={4} />
             {loadingSlow && (
-              <p className="text-xs text-neutral-600 mt-1">The server may be slow to respond. We&apos;ll show an error if it doesn&apos;t connect.</p>
+              <p className="text-xs text-neutral-600 text-center pt-1">Taking longer than expected… We&apos;ll show an error if it doesn&apos;t connect.</p>
             )}
           </div>
         )}
@@ -234,28 +256,48 @@ export default function FairBetPage() {
 
         {/* Empty state */}
         {!hook.loading && !hook.error && hook.filteredBets.length === 0 && (
-          <div className="py-12 text-center space-y-5">
-            <p className="text-sm text-neutral-400">
-              {hook.filters.evOnly
-                ? "No +EV bets found with current filters"
-                : "No bets available right now"}
+          <div data-testid="fairbet-empty-state" className="py-12 text-center space-y-4">
+            <p className="text-base font-semibold text-neutral-300">
+              {hook.allBets.length > 0 && !hook.filters.evOnly
+                ? "No bets match your filters"
+                : "Markets are tight today"}
             </p>
-            <p className="text-xs text-neutral-600 leading-relaxed max-w-sm mx-auto">
-              {hook.filters.evOnly
-                ? "Try disabling the +EV filter to see all available odds."
-                : "FairBet compares odds across sportsbooks to find bets where the price is better than the true probability. Odds update every few minutes when games are on the schedule."}
+            <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
+              {hook.allBets.length > 0 && !hook.filters.evOnly
+                ? "Try clearing your filters to see all available odds."
+                : hook.filters.evOnly && hook.allBets.length > 0
+                  ? "No +EV opportunities at the moment. Try disabling the +EV filter to browse all odds."
+                  : "No edges found across tracked markets. Check back closer to game time."}
             </p>
-            {hook.filters.evOnly && (
+            <div className="flex flex-col items-center gap-3 pt-1">
+              {hook.filters.evOnly && (
+                <button
+                  onClick={() => hook.setEvOnly(false)}
+                  className="text-xs font-medium px-4 py-2 min-h-[40px] rounded-lg transition"
+                  style={{
+                    backgroundColor: "var(--fb-surface-secondary)",
+                    color: "var(--ds-text-secondary)",
+                    border: "1px solid var(--fb-border-subtle)",
+                  }}
+                >
+                  Show all bets
+                </button>
+              )}
               <button
-                onClick={() => hook.setEvOnly(false)}
-                className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                onClick={hook.refetch}
+                className="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 min-h-[40px] rounded-lg transition"
+                style={{
+                  backgroundColor: "var(--fb-surface-secondary)",
+                  color: "var(--ds-text-tertiary)",
+                  border: "1px solid var(--fb-border-subtle)",
+                }}
               >
-                Show all bets
+                Refresh
               </button>
-            )}
+            </div>
 
-            {/* Example card */}
-            {!hook.filters.evOnly && (
+            {/* Example card — only shown when API returned no odds at all */}
+            {hook.allBets.length === 0 && (
               <div className="mx-auto max-w-sm text-left rounded-xl p-4 space-y-3 opacity-60 pointer-events-none select-none" style={{ backgroundColor: "var(--fb-card-bg)", border: "1px dashed var(--fb-border-subtle)" }}>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Example</p>
                 <div className="flex items-center justify-between">
@@ -278,28 +320,25 @@ export default function FairBetPage() {
           </div>
         )}
 
-        {/* Bet cards */}
+        {/* Bet groups (one per game, mainlines shown by default) */}
         {!hook.loading &&
-          hook.filteredBets.slice(0, visibleCount).map((bet) => {
-            const id = betId(bet);
-            return (
-              <BetCard
-                key={id}
-                bet={bet}
-                onToggleParlay={hook.toggleParlay}
-                isInParlay={hook.parlayBetIds.has(id)}
-                onShowExplainer={openExplainer}
-              />
-            );
-          })}
+          gameGroups.slice(0, visibleCount).map((bets) => (
+            <GameBetGroup
+              key={bets[0].game_id}
+              bets={bets}
+              onToggleParlay={hook.toggleParlay}
+              parlayBetIds={hook.parlayBetIds}
+              onShowExplainer={openExplainer}
+            />
+          ))}
 
         {/* Sentinel for loading more + count indicator */}
-        {!hook.loading && visibleCount < hook.filteredBets.length && (
+        {!hook.loading && visibleCount < gameGroups.length && (
           <>
             <div ref={sentinelRef} className="h-px" />
             <div className="text-center text-xs text-neutral-500 py-2">
-              Showing {Math.min(visibleCount, hook.filteredBets.length)} of{" "}
-              {hook.filteredBets.length}
+              Showing {Math.min(visibleCount, gameGroups.length)} of{" "}
+              {gameGroups.length} games
             </div>
           </>
         )}

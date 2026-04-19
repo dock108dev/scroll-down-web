@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { APIBet } from "@/lib/types";
 import { CACHE, API, FAIRBET, STORAGE_KEYS } from "@/lib/config";
+import { sportForLeague } from "@/lib/fairbet-filters";
 import { readCache, writeCache } from "@/lib/stale-cache";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { fairbetChannel } from "@/realtime/channels";
@@ -25,12 +26,14 @@ import {
 import {
   type SortMode,
   type FairBetFilters,
+  type ConfidenceLevel,
+  type TimeToGame,
   DEFAULT_FILTERS,
   bestEVForBet,
   filterAndSortBets,
 } from "@/lib/fairbet-filters";
 
-export type { SortMode, FairBetFilters };
+export type { SortMode, FairBetFilters, ConfidenceLevel, TimeToGame };
 
 export interface UseFairBetOddsReturn {
   /** All bets from all pages (raw from API). */
@@ -64,11 +67,15 @@ export interface UseFairBetOddsReturn {
   setHideThin: (v: boolean) => void;
   setHideStarted: (v: boolean) => void;
   setSort: (v: SortMode) => void;
+  setConfidence: (v: ConfidenceLevel) => void;
+  setSport: (v: string) => void;
+  setTimeToGame: (v: TimeToGame) => void;
 
   // ── Available options (from raw data) ──
   availableLeagues: string[];
   availableBooks: string[];
   availableMarkets: string[]; // high-level categories present in data
+  availableSports: string[];
 
   // ── Computed stats ──
   totalBetsCount: number;
@@ -167,6 +174,34 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
 
   // Filters
   const [filters, setFilters] = useState<FairBetFilters>(DEFAULT_FILTERS);
+
+  // Load persisted advanced filters from localStorage after mount
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = localStorage.getItem(STORAGE_KEYS.FAIRBET_FILTERS);
+      if (!stored) return;
+      const parsed = JSON.parse(stored) as Partial<Pick<FairBetFilters, "confidence" | "sport" | "timeToGame">>;
+      setFilters((prev) => ({
+        ...prev,
+        confidence: parsed.confidence ?? "",
+        sport: parsed.sport ?? "",
+        timeToGame: parsed.timeToGame ?? "",
+      }));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Persist advanced filter state when it changes
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      localStorage.setItem(STORAGE_KEYS.FAIRBET_FILTERS, JSON.stringify({
+        confidence: filters.confidence,
+        sport: filters.sport,
+        timeToGame: filters.timeToGame,
+      }));
+    } catch { /* ignore */ }
+  }, [filters.confidence, filters.sport, filters.timeToGame]);
 
   // Parlay — snapshot-based to survive odds refreshes
   const [parlayLegs, setParlayLegs] = useState<Map<string, ParlayLeg>>(new Map());
@@ -418,6 +453,14 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     return Array.from(set).sort();
   }, [allBets]);
 
+  const availableSports = useMemo(() => {
+    const set = new Set<string>();
+    for (const bet of allBets) {
+      set.add(sportForLeague(bet.league_code));
+    }
+    return Array.from(set).sort();
+  }, [allBets]);
+
   // ── Client-side filtering + sorting ──────────────────────────────
 
   const filteredBets = useMemo(
@@ -597,6 +640,9 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   const setHideThin = useCallback((v: boolean) => setFilters((p) => ({ ...p, hideThin: v })), []);
   const setHideStarted = useCallback((v: boolean) => setFilters((p) => ({ ...p, hideStarted: v })), []);
   const setSort = useCallback((v: SortMode) => setFilters((p) => ({ ...p, sort: v })), []);
+  const setConfidence = useCallback((v: ConfidenceLevel) => setFilters((p) => ({ ...p, confidence: v })), []);
+  const setSport = useCallback((v: string) => setFilters((p) => ({ ...p, sport: v })), []);
+  const setTimeToGame = useCallback((v: TimeToGame) => setFilters((p) => ({ ...p, timeToGame: v })), []);
 
   return {
     allBets,
@@ -619,10 +665,14 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     setHideThin,
     setHideStarted,
     setSort,
+    setConfidence,
+    setSport,
+    setTimeToGame,
 
     availableLeagues,
     availableBooks,
     availableMarkets,
+    availableSports,
 
     totalBetsCount,
     positiveEVCount,

@@ -5,6 +5,7 @@ test.describe("Analytics navigation @smoke", () => {
     authedPage,
   }) => {
     await authedPage.goto("/analytics/mlb");
+    await waitForLoad(authedPage);
     await authedPage.waitForURL("/analytics/simulator", { timeout: 10_000 });
     expect(authedPage.url()).toContain("/analytics/simulator");
   });

@@ -1,9 +1,19 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
-import { STORAGE_KEYS, STORAGE } from "@/lib/config";
 import { trackEvent } from "@/lib/analytics";
+import { STORAGE } from "@/lib/config";
+import {
+  idbGetRevealState,
+  idbSetRevealState,
+  idbEnqueueAction,
+  idbGetQueue,
+  idbClearQueue,
+  idbMigrateFromLocalStorage,
+  applyQueueEntry,
+  enforcedRevealedIds,
+  enforcedSnapshots,
+} from "@/lib/reveal-idb";
 
-// ─── Types ────────────────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface RevealSnapshot {
   homeScore: number;
@@ -18,146 +28,240 @@ export interface RevealSnapshot {
 interface RevealState {
   revealedIds: Set<number>;
   snapshots: Map<number, RevealSnapshot>;
+  isHydrated: boolean;
+
+  // Lifecycle
+  initialize: () => Promise<void>;
 
   // Actions
   reveal: (gameId: number, snapshot: RevealSnapshot) => void;
   acceptUpdate: (gameId: number, snapshot: RevealSnapshot) => void;
   markRead: (gameId: number) => void;
+  markReadBatch: (gameIds: number[]) => void;
   hide: (gameId: number) => void;
   revealBatch: (entries: { gameId: number; snapshot: RevealSnapshot }[]) => void;
   hideBatch: (gameIds: number[]) => void;
+
+  // Called by RevealIDBProvider when the browser comes back online
+  flushOfflineQueue: () => Promise<void>;
 
   // Selectors
   isRevealed: (gameId: number) => boolean;
   getSnapshot: (gameId: number) => RevealSnapshot | undefined;
 }
 
-// ─── Store ────────────────────────────────────────────────────────
+// ─── IDB helpers ─────────────────────────────────────────────────────────────
 
-export const useReveal = create<RevealState>()(
-  persist(
-    (set, get) => ({
-      revealedIds: new Set<number>(),
-      snapshots: new Map<number, RevealSnapshot>(),
+function persistToIDB(
+  revealedIds: Set<number>,
+  snapshots: Map<number, RevealSnapshot>,
+): void {
+  if (typeof window === "undefined") return;
+  idbSetRevealState({
+    id: "main",
+    revealedIds: enforcedRevealedIds([...revealedIds]),
+    snapshots: enforcedSnapshots([...snapshots]),
+  }).catch((err) => {
+    console.error("[reveal] idbSetRevealState failed — reveal state may not persist:", err);
+  });
+}
 
-      reveal: (gameId, snapshot) => {
-        if (!get().revealedIds.has(gameId)) {
-          trackEvent("reveal_score", { gameId: String(gameId) });
-        }
-        set((s) => ({
-          revealedIds: new Set(s.revealedIds).add(gameId),
-          snapshots: new Map(s.snapshots).set(gameId, snapshot),
-        }));
-      },
+function isOffline(): boolean {
+  return typeof navigator !== "undefined" && !navigator.onLine;
+}
 
-      acceptUpdate: (gameId, snapshot) => {
-        set((s) => ({
-          snapshots: new Map(s.snapshots).set(gameId, snapshot),
-        }));
-      },
+// ─── Store ────────────────────────────────────────────────────────────────────
 
-      markRead: (gameId) => {
-        set((s) => ({
-          revealedIds: new Set(s.revealedIds).add(gameId),
-        }));
-      },
+export const useReveal = create<RevealState>()((set, get) => ({
+  revealedIds: new Set<number>(),
+  snapshots: new Map<number, RevealSnapshot>(),
+  isHydrated: false,
 
-      hide: (gameId) => {
-        set((s) => {
-          const next = new Set(s.revealedIds);
-          next.delete(gameId);
-          // Keep snapshot for quick re-reveal
-          return { revealedIds: next };
-        });
-      },
+  initialize: async () => {
+    if (get().isHydrated) return;
+    if (typeof window === "undefined") return;
 
-      revealBatch: (entries) => {
-        set((s) => {
-          const nextIds = new Set(s.revealedIds);
-          const nextSnaps = new Map(s.snapshots);
-          for (const { gameId, snapshot } of entries) {
-            nextIds.add(gameId);
-            nextSnaps.set(gameId, snapshot);
-          }
-          return { revealedIds: nextIds, snapshots: nextSnaps };
-        });
-      },
+    // One-time migration from localStorage (idempotent)
+    await idbMigrateFromLocalStorage();
 
-      hideBatch: (gameIds) => {
-        set((s) => {
-          const nextIds = new Set(s.revealedIds);
-          for (const id of gameIds) {
-            nextIds.delete(id);
-          }
-          // Keep snapshots for quick re-reveal
-          return { revealedIds: nextIds };
-        });
-      },
+    // Load persisted state + pending offline queue
+    const stored = await idbGetRevealState();
+    const queue = await idbGetQueue();
 
-      isRevealed: (gameId) => get().revealedIds.has(gameId),
-      getSnapshot: (gameId) => get().snapshots.get(gameId),
-    }),
-    {
-      name: STORAGE_KEYS.READ_STATE,
-      version: 1,
-      migrate: (persisted: unknown, version: number) => {
-        const state = persisted as Record<string, unknown>;
-        if (version === 0 || !version) {
-          // v0 → v1: old format had readGameIds: number[]
-          const oldIds = state.readGameIds as number[] | undefined;
-          if (oldIds) {
-            return {
-              revealedIds: new Set(oldIds),
-              snapshots: new Map<number, RevealSnapshot>(),
-            } as never;
-          }
-        }
-        return state as never;
-      },
-      storage: {
-        getItem: (name) => {
-          const str = localStorage.getItem(name);
-          if (!str) return null;
-          const parsed = JSON.parse(str);
-          const s = parsed.state;
-          // Deserialize Set and Map from arrays
-          s.revealedIds = new Set(s.revealedIds ?? []);
-          s.snapshots = new Map(
-            Array.isArray(s.snapshots) ? s.snapshots : [],
-          );
-          return parsed;
-        },
-        setItem: (name, value) => {
-          const s = value.state as Record<string, unknown>;
-          const snapMap = s.snapshots as Map<number, RevealSnapshot>;
-          const revSet = s.revealedIds as Set<number>;
-          // Cap snapshot entries to prevent unbounded growth
-          let snapshotEntries = [...snapMap];
-          if (snapshotEntries.length > STORAGE.MAX_SNAPSHOTS) {
-            snapshotEntries.sort(
-              (a, b) =>
-                new Date(b[1].snapshotAt).getTime() -
-                new Date(a[1].snapshotAt).getTime(),
-            );
-            snapshotEntries = snapshotEntries.slice(0, STORAGE.MAX_SNAPSHOTS);
-          }
-          // Cap revealed IDs
-          let revealedArr = [...revSet];
-          if (revealedArr.length > STORAGE.MAX_REVEALED_IDS) {
-            revealedArr = revealedArr.slice(-STORAGE.MAX_REVEALED_IDS);
-          }
-          const serialized = {
-            ...value,
-            state: {
-              ...s,
-              revealedIds: revealedArr,
-              snapshots: snapshotEntries,
-            },
-          };
-          localStorage.setItem(name, JSON.stringify(serialized));
-        },
-        removeItem: (name) => localStorage.removeItem(name),
-      },
-    },
-  ),
-);
+    const mutable: {
+      revealedIds: number[];
+      snapshots: [number, RevealSnapshot][];
+    } = {
+      revealedIds: stored?.revealedIds ?? [],
+      snapshots: stored?.snapshots ?? [],
+    };
+
+    for (const entry of queue) {
+      applyQueueEntry(mutable, entry);
+    }
+
+    set({
+      revealedIds: new Set(mutable.revealedIds),
+      snapshots: new Map(mutable.snapshots),
+      isHydrated: true,
+    });
+  },
+
+  reveal: (gameId, snapshot) => {
+    if (!get().revealedIds.has(gameId)) {
+      trackEvent("reveal_score", { gameId: String(gameId) });
+    }
+    set((s) => ({
+      revealedIds: new Set(s.revealedIds).add(gameId),
+      snapshots: new Map(s.snapshots).set(gameId, snapshot),
+    }));
+    if (isOffline()) {
+      idbEnqueueAction({
+        action: "reveal",
+        gameId,
+        snapshot,
+        queuedAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error("[reveal] idbEnqueueAction(reveal) failed:", err);
+      });
+    } else {
+      persistToIDB(get().revealedIds, get().snapshots);
+    }
+  },
+
+  acceptUpdate: (gameId, snapshot) => {
+    set((s) => ({
+      snapshots: new Map(s.snapshots).set(gameId, snapshot),
+    }));
+    if (isOffline()) {
+      idbEnqueueAction({
+        action: "acceptUpdate",
+        gameId,
+        snapshot,
+        queuedAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error("[reveal] idbEnqueueAction(acceptUpdate) failed:", err);
+      });
+    } else {
+      persistToIDB(get().revealedIds, get().snapshots);
+    }
+  },
+
+  markRead: (gameId) => {
+    set((s) => ({
+      revealedIds: new Set(s.revealedIds).add(gameId),
+    }));
+    if (isOffline()) {
+      idbEnqueueAction({
+        action: "markRead",
+        gameId,
+        queuedAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error("[reveal] idbEnqueueAction(markRead) failed:", err);
+      });
+    } else {
+      persistToIDB(get().revealedIds, get().snapshots);
+    }
+  },
+
+  markReadBatch: (gameIds) => {
+    set((s) => {
+      const next = new Set(s.revealedIds);
+      for (const id of gameIds) next.add(id);
+      return { revealedIds: next };
+    });
+    if (isOffline()) {
+      idbEnqueueAction({
+        action: "markReadBatch",
+        gameIds,
+        queuedAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error("[reveal] idbEnqueueAction(markReadBatch) failed:", err);
+      });
+    } else {
+      persistToIDB(get().revealedIds, get().snapshots);
+    }
+  },
+
+  hide: (gameId) => {
+    set((s) => {
+      const next = new Set(s.revealedIds);
+      next.delete(gameId);
+      return { revealedIds: next };
+    });
+    if (isOffline()) {
+      idbEnqueueAction({
+        action: "hide",
+        gameId,
+        queuedAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error("[reveal] idbEnqueueAction(hide) failed:", err);
+      });
+    } else {
+      persistToIDB(get().revealedIds, get().snapshots);
+    }
+  },
+
+  revealBatch: (entries) => {
+    set((s) => {
+      const nextIds = new Set(s.revealedIds);
+      const nextSnaps = new Map(s.snapshots);
+      for (const { gameId, snapshot } of entries) {
+        nextIds.add(gameId);
+        nextSnaps.set(gameId, snapshot);
+      }
+      return { revealedIds: nextIds, snapshots: nextSnaps };
+    });
+    if (isOffline()) {
+      idbEnqueueAction({
+        action: "revealBatch",
+        entries,
+        queuedAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error("[reveal] idbEnqueueAction(revealBatch) failed:", err);
+      });
+    } else {
+      persistToIDB(get().revealedIds, get().snapshots);
+    }
+  },
+
+  hideBatch: (gameIds) => {
+    set((s) => {
+      const nextIds = new Set(s.revealedIds);
+      for (const id of gameIds) nextIds.delete(id);
+      return { revealedIds: nextIds };
+    });
+    if (isOffline()) {
+      idbEnqueueAction({
+        action: "hideBatch",
+        gameIds,
+        queuedAt: new Date().toISOString(),
+      }).catch((err) => {
+        console.error("[reveal] idbEnqueueAction(hideBatch) failed:", err);
+      });
+    } else {
+      persistToIDB(get().revealedIds, get().snapshots);
+    }
+  },
+
+  flushOfflineQueue: async () => {
+    if (typeof window === "undefined") return;
+    const { revealedIds, snapshots } = get();
+    await idbSetRevealState({
+      id: "main",
+      revealedIds: enforcedRevealedIds([...revealedIds]),
+      snapshots: enforcedSnapshots([...snapshots]),
+    });
+    await idbClearQueue();
+  },
+
+  isRevealed: (gameId) => get().revealedIds.has(gameId),
+  getSnapshot: (gameId) => get().snapshots.get(gameId),
+}));
+
+// ─── Cap constants re-export for consumers ───────────────────────────────────
+
+export const REVEAL_CAPS = {
+  MAX_REVEALED_IDS: STORAGE.MAX_REVEALED_IDS,
+  MAX_SNAPSHOTS: STORAGE.MAX_SNAPSHOTS,
+} as const;

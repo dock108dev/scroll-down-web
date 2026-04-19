@@ -11,13 +11,16 @@ import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useReveal } from "@/stores/reveal";
 import { isDegraded } from "@/hooks/useHealthStatus";
+import { startRevealSync, stopRevealSync } from "@/lib/reveal-sync";
 
 const TAG = "[prefs-sync]";
 
 // ─── Backoff state ─────────────────────────────────────────────────
 
 let consecutivePushFailures = 0;
+let pushCircuitTripAt = 0;
 const MAX_BACKOFF_FAILURES = 3; // stop pushing after 3 consecutive failures
+const PUSH_CIRCUIT_RESET_MS = 5 * 60 * 1000; // auto-reset circuit after 5 min
 let fetchHasLoggedError = false;
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -53,9 +56,15 @@ async function fetchPreferences(): Promise<ServerPreferences | null> {
   if (!token) return null;
   if (isDegraded()) return null; // Skip when backend is known-degraded
 
-  const res = await fetch("/api/auth/me/preferences", {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  let res: Response;
+  try {
+    res = await fetch("/api/auth/me/preferences", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (err) {
+    console.warn(`${TAG} fetchPreferences network error:`, err);
+    return null;
+  }
 
   if (!res.ok) {
     if (!fetchHasLoggedError) {
@@ -64,6 +73,7 @@ async function fetchPreferences(): Promise<ServerPreferences | null> {
     }
     return null;
   }
+  fetchHasLoggedError = false;
   return res.json();
 }
 
@@ -85,6 +95,10 @@ async function pushPreferences(prefs: Omit<ServerPreferences, "updatedAt">): Pro
     // Only log the first failure — subsequent ones are suppressed to avoid flooding console
     if (consecutivePushFailures === 1) {
       console.warn(`${TAG} pushPreferences failed: ${res.status} ${res.statusText} (further errors suppressed)`);
+    }
+    if (consecutivePushFailures >= MAX_BACKOFF_FAILURES) {
+      pushCircuitTripAt = Date.now();
+      console.warn(`${TAG} push circuit tripped after ${MAX_BACKOFF_FAILURES} failures; will auto-reset in ${PUSH_CIRCUIT_RESET_MS / 1000}s`);
     }
     throw new Error(`Push failed: ${res.status}`);
   }
@@ -195,8 +209,13 @@ const PUSH_DEBOUNCE_MS = 2_000;
 
 function schedulePush() {
   if (isHydrating) return;
-  // Stop pushing when backend is degraded or after repeated failures
-  if (isDegraded() || consecutivePushFailures >= MAX_BACKOFF_FAILURES) return;
+  if (isDegraded()) return;
+  // Auto-reset circuit breaker after cooldown so transient outages self-heal
+  if (consecutivePushFailures >= MAX_BACKOFF_FAILURES) {
+    if (Date.now() - pushCircuitTripAt < PUSH_CIRCUIT_RESET_MS) return;
+    console.info(`${TAG} push circuit reset after ${PUSH_CIRCUIT_RESET_MS / 1000}s cooldown`);
+    consecutivePushFailures = 0;
+  }
 
   if (pushTimer) clearTimeout(pushTimer);
   pushTimer = setTimeout(() => {
@@ -240,6 +259,7 @@ function stopSyncing() {
 export async function pullAndStartSync(): Promise<void> {
   // Reset backoff so a fresh login gets a clean slate
   consecutivePushFailures = 0;
+  pushCircuitTripAt = 0;
   fetchHasLoggedError = false;
 
   try {
@@ -257,6 +277,7 @@ export async function pullAndStartSync(): Promise<void> {
   }
 
   startSyncing();
+  startRevealSync();
 }
 
 /**
@@ -265,6 +286,7 @@ export async function pullAndStartSync(): Promise<void> {
  */
 export function stopPreferenceSync(): void {
   stopSyncing();
+  stopRevealSync();
 }
 
 /**

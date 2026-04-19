@@ -1,7 +1,7 @@
 import { test, expect } from "../helpers";
 import { waitForLoad } from "../helpers";
 
-test.describe("History page", () => {
+test.describe("History page @live-upstream", () => {
   test("page loads for admin user", async ({ authedPage: page }) => {
     await page.goto("/history");
     await waitForLoad(page);

@@ -110,6 +110,17 @@
   --fb-card-border: rgba(0, 0, 0, 0.08);
   --fb-border-subtle: rgba(0, 0, 0, 0.06);
 
+  /* ── EV tier traffic-light colours (light mode) ─────── */
+  --ev-strong-border: rgba(20, 83, 45, 0.65);
+  --ev-strong-bg: rgba(20, 83, 45, 0.08);
+  --ev-strong-text: rgb(20, 83, 45);
+  --ev-good-border: rgba(22, 101, 52, 0.50);
+  --ev-good-bg: rgba(22, 101, 52, 0.06);
+  --ev-good-text: rgb(22, 101, 52);
+  --ev-marginal-border: rgba(133, 77, 14, 0.50);
+  --ev-marginal-bg: rgba(133, 77, 14, 0.07);
+  --ev-marginal-text: rgb(133, 77, 14);
+
   /* ── Default team colours (light mode) ───────────── */
   --ds-team-a: rgb(124, 58, 237);
   --ds-team-a-bg: rgba(124, 58, 237, 0.08);
@@ -178,6 +189,17 @@
   --fb-surface-secondary: rgb(46, 51, 64);
   --fb-card-border: rgba(255, 255, 255, 0.08);
   --fb-border-subtle: rgba(255, 255, 255, 0.12);
+
+  /* ── EV tier traffic-light colours (dark mode) ─────── */
+  --ev-strong-border: rgba(74, 222, 128, 0.60);
+  --ev-strong-bg: rgba(74, 222, 128, 0.10);
+  --ev-strong-text: rgb(74, 222, 128);
+  --ev-good-border: rgba(134, 239, 172, 0.45);
+  --ev-good-bg: rgba(134, 239, 172, 0.08);
+  --ev-good-text: rgb(134, 239, 172);
+  --ev-marginal-border: rgba(251, 191, 36, 0.45);
+  --ev-marginal-bg: rgba(251, 191, 36, 0.08);
+  --ev-marginal-text: rgb(234, 179, 8);
 
   /* ── Default team colours (dark mode) ────────────── */
   --ds-team-a: rgb(160, 130, 255);
@@ -265,14 +287,17 @@ body {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Score change flash — 400ms amber highlight on score update
+   Score change flash — 600ms amber highlight on score update
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @keyframes score-flash {
   0%   { background-color: transparent; }
-  20%  { background-color: rgba(251, 191, 36, 0.10); }
+  15%  { background-color: rgba(251, 191, 36, 0.30); }
   100% { background-color: transparent; }
 }
-.score-flash { animation: score-flash 400ms ease-out; }
+.score-flash { animation: score-flash 600ms ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .score-flash { animation: none; }
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Hide mode update pulse — 500ms pulse on reveal area
@@ -293,6 +318,9 @@ body {
   100% { transform: scale(2); opacity: 0; }
 }
 .animate-live-dot { animation: live-dot-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-live-dot { animation: none; }
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Scroll depth gradients

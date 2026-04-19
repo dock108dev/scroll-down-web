@@ -1,6 +1,6 @@
 import { test, expect, waitForLoad } from "../helpers";
 
-test.describe("Cache Staleness Behavior", () => {
+test.describe("Cache Staleness Behavior @live-upstream", () => {
   test("First visit fetches data and page loads successfully", async ({
     authedPage,
   }) => {

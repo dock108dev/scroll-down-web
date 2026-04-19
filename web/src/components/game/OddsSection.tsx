@@ -8,9 +8,11 @@ import { useSettings } from "@/stores/settings";
 
 interface OddsSectionProps {
   odds: OddsEntry[];
-  leagueCode?: string;
   homeTeam?: string;
   awayTeam?: string;
+  /** Settled game scores — when provided, outcome badges are shown on mainline markets */
+  homeScore?: number;
+  awayScore?: number;
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -69,7 +71,7 @@ function sortByTotalSide(entries: OddsEntry[]): OddsEntry[] {
   });
 }
 
-export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
+export function OddsSection({ odds, homeTeam, awayTeam, homeScore, awayScore }: OddsSectionProps) {
   const hideLimitedData = useSettings((s) => s.hideLimitedData);
 
   // Determine available categories and sort them
@@ -222,11 +224,7 @@ export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
   }, [activeCategory, filtered, awayTeam, homeTeam]);
 
   if (odds.length === 0) {
-    return (
-      <div className="px-4 py-4 text-sm text-neutral-500">
-        No odds data available
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -279,13 +277,15 @@ export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
                   groupSides={group.marketType === "moneyline"}
                   homeTeam={homeTeam}
                   awayTeam={awayTeam}
+                  homeScore={homeScore}
+                  awayScore={awayScore}
                 />
               </div>
             ))}
           </div>
         ) : (
           <div className="text-sm text-neutral-500 py-2">
-            No game lines available
+            Lines aren&apos;t available for this matchup.
           </div>
         )
       ) : activeCategory === "player_prop" ? (
@@ -307,7 +307,7 @@ export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
           </div>
         ) : (
           <div className="text-sm text-neutral-500 py-2">
-            No data for this category
+            No player props available for this game.
           </div>
         )
       ) : activeCategory === "team_prop" && homeTeam && awayTeam ? (
@@ -335,7 +335,7 @@ export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
           </div>
         ) : (
           <div className="text-sm text-neutral-500 py-2">
-            No data for this category
+            No alternate lines available.
           </div>
         )
       ) : filtered.length > 0 ? (
@@ -346,7 +346,7 @@ export function OddsSection({ odds, homeTeam, awayTeam }: OddsSectionProps) {
         />
       ) : (
         <div className="text-sm text-neutral-500 py-2">
-          No data for this category
+          No odds available for this category.
         </div>
       )}
     </div>

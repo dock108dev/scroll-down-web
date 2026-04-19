@@ -12,6 +12,9 @@ import { betId, isReliablyPositive, marketKeyToCategory } from "@/lib/fairbet-ut
 
 export type SortMode = "bestEV" | "gameTime" | "league";
 
+export type ConfidenceLevel = "" | "low" | "medium" | "high";
+export type TimeToGame = "" | "1h" | "3h" | "today";
+
 export interface FairBetFilters {
   league: string;
   market: string; // moneyline | spread | total | player_props | team_props | ""
@@ -21,6 +24,10 @@ export interface FairBetFilters {
   hideThin: boolean;
   hideStarted: boolean;
   sort: SortMode;
+  // Pro-only advanced filters
+  confidence: ConfidenceLevel;
+  sport: string;
+  timeToGame: TimeToGame;
 }
 
 export const DEFAULT_FILTERS: FairBetFilters = {
@@ -32,13 +39,80 @@ export const DEFAULT_FILTERS: FairBetFilters = {
   hideThin: false,
   hideStarted: false,
   sort: "bestEV",
+  confidence: "",
+  sport: "",
+  timeToGame: "",
 };
+
+// ── Sport mapping ─────────────────────────────────────────────────
+
+const SPORT_BY_LEAGUE: Record<string, string> = {
+  nba: "Basketball",
+  ncaab: "Basketball",
+  wnba: "Basketball",
+  nba_g_league: "Basketball",
+  nfl: "Football",
+  ncaaf: "Football",
+  mlb: "Baseball",
+  nhl: "Hockey",
+  mls: "Soccer",
+  nwsl: "Soccer",
+  pga: "Golf",
+  lpga: "Golf",
+  ufc: "MMA",
+  boxing: "Boxing",
+  tennis: "Tennis",
+};
+
+export function sportForLeague(league: string): string {
+  return SPORT_BY_LEAGUE[league.toLowerCase()] ?? league.toUpperCase();
+}
 
 // ── Helpers ────────────────────────────────────────────────────────
 
 /** Best EV percent for a bet from the API-provided field. */
 export function bestEVForBet(bet: APIBet): number {
   return bet.bestEvPercent ?? 0;
+}
+
+const HIGH_CONFIDENCE_TIERS = new Set(["full", "sharp", "high"]);
+const MEDIUM_CONFIDENCE_TIERS = new Set(["full", "sharp", "high", "decent", "market", "medium"]);
+
+function meetsConfidenceFilter(bet: APIBet, level: ConfidenceLevel): boolean {
+  if (!level || level === "low") return true;
+  const tier = bet.ev_confidence_tier ?? "";
+  const sample = bet.confidence;
+
+  if (level === "high") {
+    const tierOk = HIGH_CONFIDENCE_TIERS.has(tier);
+    const sampleOk = sample == null || sample >= FAIRBET.CONFIDENCE_SAMPLE_HIGH;
+    return tierOk && sampleOk;
+  }
+  // "medium"
+  const tierOk = MEDIUM_CONFIDENCE_TIERS.has(tier);
+  const sampleOk = sample == null || sample >= FAIRBET.CONFIDENCE_SAMPLE_MEDIUM;
+  return tierOk && sampleOk;
+}
+
+const easternFmt = new Intl.DateTimeFormat("en-US", {
+  timeZone: "America/New_York",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+function meetsTimeToGame(bet: APIBet, window: TimeToGame): boolean {
+  if (!window) return true;
+  const gameTime = new Date(bet.game_date).getTime();
+  if (isNaN(gameTime)) return true; // can't filter malformed dates
+  const now = Date.now();
+
+  if (window === "1h") return gameTime <= now + 3_600_000;
+  if (window === "3h") return gameTime <= now + 10_800_000;
+  if (window === "today") {
+    return easternFmt.format(gameTime) === easternFmt.format(now);
+  }
+  return true;
 }
 
 // ── Filter + Sort ──────────────────────────────────────────────────
@@ -102,6 +176,19 @@ export function filterAndSortBets(allBets: APIBet[], filters: FairBetFilters): A
 
   if (filters.hideStarted) {
     result = result.filter((b) => new Date(b.game_date) > now);
+  }
+
+  // Pro-only advanced filters
+  if (filters.sport) {
+    result = result.filter((b) => sportForLeague(b.league_code) === filters.sport);
+  }
+
+  if (filters.confidence) {
+    result = result.filter((b) => meetsConfidenceFilter(b, filters.confidence));
+  }
+
+  if (filters.timeToGame) {
+    result = result.filter((b) => meetsTimeToGame(b, filters.timeToGame));
   }
 
   // Sort

@@ -1,20 +1,11 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useId } from "react";
 import type { PlayEntry } from "@/lib/types";
 import { TimelineRow } from "./TimelineRow";
 import { CollapsedPlayGroup } from "./CollapsedPlayGroup";
-import { useSettings } from "@/stores/settings";
 import { useSectionLayout } from "@/stores/section-layout";
 import { cn } from "@/lib/utils";
-
-// ─── Tier filter config ─────────────────────────────────────
-
-const TIER_FILTERS = [
-  { tier: 1, label: "Key" },
-  { tier: 2, label: "Secondary" },
-  { tier: 3, label: "Minor" },
-] as const;
 
 // ─── Types ──────────────────────────────────────────────────
 
@@ -68,7 +59,6 @@ function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
       map.set(key, [play]);
     }
   }
-  // Sort each period chronologically: total score ASC, then playIndex ASC
   for (const periodPlays of map.values()) {
     periodPlays.sort((a, b) => {
       const totalA = (a.homeScore ?? 0) + (a.awayScore ?? 0);
@@ -90,18 +80,14 @@ function isTier3(play: PlayEntry): boolean {
 /**
  * Converts an array of plays within a period into renderable items.
  * Consecutive tier 3 plays are collapsed into a single tier3-group.
+ * Used for the full play-by-play view.
  */
-function buildPeriodItems(
-  periodPlays: PlayEntry[],
-): PeriodItem[] {
+function buildPeriodItems(periodPlays: PlayEntry[]): PeriodItem[] {
   const items: PeriodItem[] = [];
   let i = 0;
-
   while (i < periodPlays.length) {
     const play = periodPlays[i];
-
     if (isTier3(play)) {
-      // Collect consecutive tier 3 plays
       const group: PlayEntry[] = [play];
       let j = i + 1;
       while (j < periodPlays.length && isTier3(periodPlays[j])) {
@@ -115,18 +101,41 @@ function buildPeriodItems(
       i++;
     }
   }
-
   return items;
 }
 
 /**
- * Filters period items by visible tiers.
+ * Builds the highlights-only view for a period.
+ *
+ * Priority order:
+ *  1. If tier metadata exists (any play with tier 1 or 2): show tier 1+2.
+ *  2. Else if scoring plays exist: show scoring plays.
+ *  3. Else: deterministic sample — first + last + every ~5th play.
  */
-function filterItems(items: PeriodItem[], visibleTiers: number[]): PeriodItem[] {
-  return items.filter((item) => {
-    if (item.kind === "tier3-group") return visibleTiers.includes(3);
-    return visibleTiers.includes(item.play.tier ?? 3);
-  });
+function buildHighlightItems(
+  periodPlays: PlayEntry[],
+  hasTierData: boolean,
+): PeriodItem[] {
+  if (hasTierData) {
+    const high = periodPlays.filter(p => (p.tier ?? 3) <= 2);
+    return high.map(p => ({ kind: "play", play: p }));
+  }
+
+  // Fallback 1: scoring plays
+  const scoring = periodPlays.filter(p => p.scoreChanged === true);
+  if (scoring.length >= 1) {
+    return scoring.map(p => ({ kind: "play", play: p }));
+  }
+
+  // Fallback 2: deterministic sample — always include first and last
+  const n = periodPlays.length;
+  if (n <= 5) return periodPlays.map(p => ({ kind: "play" as const, play: p }));
+  const step = Math.max(2, Math.floor(n / 5));
+  const indices = new Set<number>([0, n - 1]);
+  for (let i = step; i < n - 1; i += step) indices.add(i);
+  return [...indices]
+    .sort((a, b) => a - b)
+    .map(i => ({ kind: "play" as const, play: periodPlays[i] }));
 }
 
 // ─── Period Card ────────────────────────────────────────────
@@ -134,33 +143,33 @@ function filterItems(items: PeriodItem[], visibleTiers: number[]): PeriodItem[] 
 interface PeriodCardProps {
   period: string;
   items: PeriodItem[];
-  visibleTiers: number[];
   open: boolean;
   onToggle: () => void;
   homeTeamAbbr?: string;
   awayTeamAbbr?: string;
   homeColor?: string;
   awayColor?: string;
+  contentId: string;
 }
 
 function PeriodCard({
   period,
   items,
-  visibleTiers,
   open,
   onToggle,
   homeTeamAbbr,
   awayTeamAbbr,
   homeColor,
   awayColor,
+  contentId,
 }: PeriodCardProps) {
-  const filtered = useMemo(() => filterItems(items, visibleTiers), [items, visibleTiers]);
-
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
       {/* Sticky period header */}
       <button
         onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={contentId}
         className={cn(
           "flex w-full items-center justify-between px-4 py-3",
           "text-sm font-semibold text-neutral-200",
@@ -174,6 +183,7 @@ function PeriodCard({
             "text-xs text-neutral-500 transition-transform duration-200",
             !open && "-rotate-90",
           )}
+          aria-hidden="true"
         >
           {"\u25BC"}
         </span>
@@ -181,6 +191,9 @@ function PeriodCard({
 
       {/* Collapsible content */}
       <div
+        id={contentId}
+        role="region"
+        aria-label={`${period} plays`}
         className={cn(
           "grid transition-[grid-template-rows] duration-200",
           open ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
@@ -188,10 +201,10 @@ function PeriodCard({
       >
         <div className="overflow-hidden">
           <div className="px-2 py-2 space-y-0.5">
-            {filtered.length === 0 ? (
-              <p className="text-xs text-neutral-600 px-3 py-2">No plays match filters</p>
+            {items.length === 0 ? (
+              <p className="text-xs text-neutral-600 px-3 py-2">No plays available</p>
             ) : (
-              filtered.map((item) =>
+              items.map((item) =>
                 item.kind === "tier3-group" ? (
                   <CollapsedPlayGroup
                     key={`tier3-${item.plays[0].playIndex}`}
@@ -230,60 +243,59 @@ export function TimelineSection({
   homeColor,
   awayColor,
 }: TimelineSectionProps) {
-  const defaultTiers = useSettings((s) => s.timelineDefaultTiers);
-  const [visibleTiers, setVisibleTiers] = useState<number[]>(defaultTiers);
+  const [showAll, setShowAll] = useState(false);
+  const toggleId = useId();
 
   // Per-game period expand/collapse persistence
   const { getPeriods, togglePeriod } = useSectionLayout();
   const expandedPeriods = getPeriods(gameId) ?? [];
 
-  const toggleTier = (tier: number) => {
-    setVisibleTiers((prev) =>
-      prev.includes(tier)
-        ? prev.filter((t) => t !== tier)
-        : [...prev, tier].sort(),
-    );
-  };
+  // True if any play carries explicit tier 1 or 2 metadata from the backend
+  const hasTierData = useMemo(
+    () => plays.some(p => p.tier != null && p.tier <= 2),
+    [plays],
+  );
+
+  const periods = useMemo(() => {
+    const periodMap = groupByPeriod(plays);
+    return Array.from(periodMap.entries()).map(([period, periodPlays]) => ({
+      period,
+      items: showAll
+        ? buildPeriodItems(periodPlays)
+        : buildHighlightItems(periodPlays, hasTierData),
+    }));
+  }, [plays, showAll, hasTierData]);
 
   if (plays.length === 0) {
     return (
-      <div className="px-4 py-4 text-sm text-neutral-500">
-        No play-by-play data available
+      <div data-testid="timeline-empty" className="px-4 py-4 text-sm text-neutral-500">
+        Play-by-play isn&apos;t available for this game yet.
       </div>
     );
   }
 
-  const periodMap = groupByPeriod(plays);
-
-  // Build renderable items for each period
-  const periods = Array.from(periodMap.entries()).map(
-    ([period, periodPlays]) => ({
-      period,
-      items: buildPeriodItems(periodPlays),
-    }),
-  );
-
   return (
     <div data-testid="timeline-section" className="px-4 space-y-2">
-      {/* Tier filter pills */}
-      <div className="flex items-center gap-1.5">
-        {TIER_FILTERS.map(({ tier, label }) => {
-          const active = visibleTiers.includes(tier);
-          return (
-            <button
-              key={tier}
-              onClick={() => toggleTier(tier)}
-              className={cn(
-                "rounded-full px-2.5 py-1 text-[11px] font-medium transition",
-                active
-                  ? "bg-neutral-700 text-neutral-200"
-                  : "bg-transparent text-neutral-600 ring-1 ring-neutral-700/60",
-              )}
-            >
-              {label}
-            </button>
-          );
-        })}
+      {/* Mode toggle */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-neutral-500">
+          {showAll ? "Full play-by-play" : "Key plays"}
+        </span>
+        <button
+          id={toggleId}
+          onClick={() => setShowAll(s => !s)}
+          aria-pressed={showAll}
+          aria-label={showAll ? "Switch to key plays view" : "Show full play-by-play"}
+          data-testid="timeline-toggle"
+          className={cn(
+            "rounded-full px-3 py-1 text-xs font-medium transition",
+            showAll
+              ? "bg-neutral-700 text-neutral-200"
+              : "bg-transparent text-neutral-400 ring-1 ring-neutral-700/60 hover:ring-neutral-500",
+          )}
+        >
+          {showAll ? "Key plays" : "All plays"}
+        </button>
       </div>
 
       {periods.map(({ period, items }) => (
@@ -291,13 +303,13 @@ export function TimelineSection({
           key={period}
           period={period}
           items={items}
-          visibleTiers={visibleTiers}
           open={expandedPeriods.includes(period)}
           onToggle={() => togglePeriod(gameId, period)}
           homeTeamAbbr={homeTeamAbbr}
           awayTeamAbbr={awayTeamAbbr}
           homeColor={homeColor}
           awayColor={awayColor}
+          contentId={`timeline-period-${gameId}-${period.replace(/\s+/g, "-")}`}
         />
       ))}
     </div>

@@ -172,6 +172,7 @@ export function TimelineRow({
   if (tier === 1) {
     return (
       <div
+        data-play-index={play.playIndex}
         className="flex items-start gap-3 py-2 px-3 rounded-md bg-neutral-800/40"
         style={{ borderLeft: `4px solid ${accentColor}` }}
       >
@@ -227,7 +228,7 @@ export function TimelineRow({
   // ── Tier 2: Secondary / contextual — no border, no colored badge, no time ──
   if (tier === 2) {
     return (
-      <div className="flex items-start gap-3 py-1.5 px-3 rounded">
+      <div data-play-index={play.playIndex} className="flex items-start gap-3 py-1.5 px-3 rounded">
         {/* Plain team abbreviation (no colored badge) */}
         {play.teamAbbreviation && (
           <span className="shrink-0 text-xs font-medium uppercase text-neutral-500">
@@ -252,7 +253,7 @@ export function TimelineRow({
 
   // ── Tier 3: Tertiary / low-signal — no time label ──
   return (
-    <div className="flex items-start gap-2 py-1 px-2 ml-8">
+    <div data-play-index={play.playIndex} className="flex items-start gap-2 py-1 px-2 ml-8">
       {/* Dot indicator */}
       <span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-neutral-600" />
 

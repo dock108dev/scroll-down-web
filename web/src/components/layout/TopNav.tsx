@@ -15,9 +15,8 @@ import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
   { href: "/", label: "Games" },
-  { href: "/golf", label: "Golf" },
   { href: "/fairbet", label: "FairBet" },
-  { href: "/analytics", label: "Analytics" },
+  { href: "/analytics", label: "Analytics", adminOnly: true },
   { href: "/history", label: "History", adminOnly: true },
 ];
 
@@ -84,6 +83,7 @@ export function TopNav() {
             </span>
           ) : (
             <button
+              data-testid="live-toggle"
               onClick={toggleLive}
               className={cn(
                 "flex items-center gap-2 mr-3 px-3 py-2 min-h-[44px] rounded-full text-xs font-medium transition",
@@ -91,8 +91,8 @@ export function TopNav() {
                   ? "bg-green-600/20 text-green-400 hover:bg-green-600/30"
                   : "bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:bg-neutral-700",
               )}
-              aria-label={followingLive ? "Live scores on — click to freeze scores" : "Live scores off — click to follow live scores"}
-              title={followingLive ? "Following live — click to freeze scores" : "Click to follow live scores"}
+              aria-label={followingLive ? "Following Live on — score hiding paused, click to turn off" : "Live scores off — click to follow live scores"}
+              title={followingLive ? "Following live — score hiding paused" : "Click to follow live scores"}
             >
               <span
                 className={cn(
@@ -110,7 +110,7 @@ export function TopNav() {
               <span className="flex flex-col items-start leading-none">
                 <span>LIVE</span>
                 <span className={cn("text-[9px] font-normal", followingLive ? "text-green-400/70" : "text-neutral-500")}>
-                  {followingLive ? "Auto-updating" : "Updates paused"}
+                  {followingLive ? "Scores visible" : "Updates paused"}
                 </span>
               </span>
             </button>
@@ -118,9 +118,10 @@ export function TopNav() {
         )}
         {token ? (
           <Link
-            href="/profile"
+            href="/account"
             className="hidden md:flex items-center justify-center h-8 w-8 min-h-[44px] min-w-[44px] mr-2 rounded-full bg-blue-600 text-xs font-semibold text-white hover:bg-blue-500 transition"
             title={email ?? "Account"}
+            data-testid="nav-account-link"
           >
             {(email?.[0] ?? "U").toUpperCase()}
           </Link>

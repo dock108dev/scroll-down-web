@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { BASE_URL } from "@/lib/api-server";
+import { sportsApiBaseUrl } from "@/lib/api-server";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 // ── Path whitelist ──────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ async function proxy(
   }
 
   // ── Forward to backend ───────────────────────────────────────
-  const url = `${BASE_URL}/auth/${resolvedPath}`;
+  const url = `${sportsApiBaseUrl()}/auth/${resolvedPath}`;
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",

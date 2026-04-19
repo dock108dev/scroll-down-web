@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import type { PlayerStat } from "@/lib/types";
+import { HEADLINE_STATS } from "@/lib/config";
 
 // ─── Sport-specific column definitions ──────────────────────────
 
@@ -55,13 +59,13 @@ const NFL_COLUMNS: StatColumn[] = [
   { label: "P-YDS", aliases: ["passingYards", "passing_yards", "passYds"] },
   { label: "R-YDS", aliases: ["rushingYards", "rushing_yards", "rushYds"] },
   { label: "REC", aliases: ["receptions", "rec"] },
-  { label: "R-YDS", aliases: ["receivingYards", "receiving_yards", "recYds"] },
+  { label: "REC-YDS", aliases: ["receivingYards", "receiving_yards", "recYds"] },
   { label: "INT", aliases: ["interceptions", "int"] },
   { label: "TCK", aliases: ["tackles", "tck", "totalTackles"] },
   { label: "SCK", aliases: ["sacks", "sck"] },
 ];
 
-// ─── Stat alias helpers ─────────────────────────────────────────
+// ─── Stat alias helpers ─────────────────────────────────────────────
 
 /** Aliases for field-goal made */
 const FGM_ALIASES = ["fgm", "fg", "fg_made", "fgMade", "fieldGoalsMade"];
@@ -124,7 +128,7 @@ function resolveStatValue(raw: Record<string, unknown>, col: StatColumn): string
   return String(value);
 }
 
-// ─── Name abbreviation ──────────────────────────────────────────
+// ─── Name abbreviation ──────────────────────────────────────────────
 
 function abbreviateName(fullName: string): string {
   const parts = fullName.trim().split(/\s+/);
@@ -152,7 +156,7 @@ function abbreviateName(fullName: string): string {
   return `${firstName[0]}. ${lastName}${suffix}`;
 }
 
-// ─── Column detection ───────────────────────────────────────────
+// ─── Column detection ───────────────────────────────────────────────
 
 function getColumnsForSport(leagueCode: string): StatColumn[] {
   switch (leagueCode.toLowerCase()) {
@@ -182,7 +186,7 @@ function detectActiveColumns(
   );
 }
 
-// ─── Also check top-level fields on PlayerStat for fallback ─────
+// ─── Also check top-level fields on PlayerStat for fallback ─────────
 
 function getDisplayValue(player: PlayerStat, col: StatColumn): string {
   const raw = player.rawStats ?? {};
@@ -202,7 +206,24 @@ function getDisplayValue(player: PlayerStat, col: StatColumn): string {
   return "-";
 }
 
-// ─── Component ──────────────────────────────────────────────────
+// ─── Headline / rest split ──────────────────────────────────────────
+
+/** Split active columns into headline (shown collapsed) and rest (shown expanded). */
+function splitColumns(
+  activeColumns: StatColumn[],
+  headlineLabels: readonly string[],
+): { headline: StatColumn[]; rest: StatColumn[] } {
+  const headlineSet = new Set(headlineLabels);
+  const headline = activeColumns.filter((c) => headlineSet.has(c.label));
+  const rest = activeColumns.filter((c) => !headlineSet.has(c.label));
+  // Fallback: no headline cols matched data — show first 3 active cols
+  if (headline.length === 0 && activeColumns.length > 0) {
+    return { headline: activeColumns.slice(0, 3), rest: activeColumns.slice(3) };
+  }
+  return { headline, rest };
+}
+
+// ─── Component ──────────────────────────────────────────────────────
 
 interface PlayerStatsTableProps {
   title: string;
@@ -261,12 +282,28 @@ export function PlayerStatsTable({
   players: rawPlayers,
   leagueCode = "nba",
 }: PlayerStatsTableProps) {
+  const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
+
   const players = deduplicatePlayers(rawPlayers)
     .sort((a, b) => getMinutesValue(b) - getMinutesValue(a));
   if (players.length === 0) return null;
 
   const sportColumns = getColumnsForSport(leagueCode);
   const activeColumns = detectActiveColumns(sportColumns, players);
+  const headlineLabels = HEADLINE_STATS[leagueCode.toLowerCase()] ?? HEADLINE_STATS.nba;
+  const { headline: headlineCols, rest: restCols } = splitColumns(activeColumns, headlineLabels);
+
+  function togglePlayer(name: string) {
+    setExpandedPlayers((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) {
+        next.delete(name);
+      } else {
+        next.add(name);
+      }
+      return next;
+    });
+  }
 
   return (
     <div data-testid="player-stats-table" className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
@@ -275,60 +312,66 @@ export function PlayerStatsTable({
         {title}
       </div>
 
-      {/* Scrollable table wrapper */}
-      <div className="relative overflow-x-auto hide-scrollbar">
-        <table className="w-full text-sm border-collapse">
-          <thead>
-            <tr className="border-b border-neutral-800 text-neutral-500">
-              {/* Frozen player name column */}
-              <th
-                className="text-left px-3 py-2 font-medium bg-neutral-900 sticky left-0 z-10 min-w-[120px] max-w-[140px]"
-                style={{
-                  boxShadow: "2px 0 4px rgba(0,0,0,0.1)",
-                }}
+      {/* Player rows */}
+      <div>
+        {players.map((p, idx) => {
+          const isExpanded = expandedPlayers.has(p.playerName);
+          return (
+            <div
+              key={`${p.playerName}-${idx}`}
+              className="border-b border-neutral-800/50 last:border-b-0"
+            >
+              {/* Collapsed row — always visible */}
+              <button
+                className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-neutral-800/30 transition-colors"
+                onClick={() => togglePlayer(p.playerName)}
+                aria-expanded={isExpanded}
+                data-testid="player-row"
               >
-                Player
-              </th>
-              {/* Stat columns */}
-              {activeColumns.map((col) => (
-                <th
-                  key={col.label}
-                  className="text-right px-2 py-2 font-medium whitespace-nowrap"
-                >
-                  {col.label}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {players.map((p, idx) => (
-              <tr
-                key={`${p.playerName}-${idx}`}
-                className="border-b border-neutral-800/50 text-neutral-300"
-              >
-                {/* Frozen player name cell */}
-                <td
-                  className="px-3 py-1.5 bg-neutral-900 sticky left-0 z-10 truncate min-w-[120px] max-w-[140px]"
-                  style={{
-                    boxShadow: "2px 0 4px rgba(0,0,0,0.1)",
-                  }}
+                <span
+                  className="flex-1 truncate text-sm text-neutral-300 min-w-0"
                   title={p.playerName}
                 >
                   {abbreviateName(p.playerName)}
-                </td>
-                {/* Stat cells */}
-                {activeColumns.map((col) => (
-                  <td
-                    key={col.label}
-                    className="text-right px-2 py-1.5 tabular-nums whitespace-nowrap"
+                </span>
+                <div className="flex gap-3 shrink-0">
+                  {headlineCols.map((col) => (
+                    <div key={col.label} className="flex flex-col items-center min-w-[28px]">
+                      <span className="text-[10px] text-neutral-500 leading-tight">{col.label}</span>
+                      <span className="text-sm tabular-nums text-neutral-200 font-medium leading-tight">
+                        {getDisplayValue(p, col)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {restCols.length > 0 && (
+                  <span
+                    className={`text-[10px] text-neutral-500 shrink-0 transition-transform duration-150 ${isExpanded ? "" : "-rotate-90"}`}
                   >
-                    {getDisplayValue(p, col)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                    &#9660;
+                  </span>
+                )}
+              </button>
+
+              {/* Expanded extra stats */}
+              {isExpanded && restCols.length > 0 && (
+                <div
+                  className="px-3 pb-2 pt-1 grid grid-cols-3 sm:grid-cols-5 gap-x-4 gap-y-1 text-xs bg-neutral-800/20"
+                  data-testid="player-row-expanded"
+                >
+                  {restCols.map((col) => (
+                    <div key={col.label} className="flex justify-between gap-1">
+                      <span className="text-neutral-500">{col.label}</span>
+                      <span className="tabular-nums text-neutral-300">
+                        {getDisplayValue(p, col)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

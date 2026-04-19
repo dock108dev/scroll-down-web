@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { Game } from "@/lib/types";
 import type { GameCore } from "@/stores/game-data";
 import { isPregame } from "@/lib/types";
@@ -45,6 +45,30 @@ export function GameHeader({ game }: GameHeaderProps) {
   const canHideAnyTeam = !awayAlreadyHidden || !homeAlreadyHidden;
   const teamsAtLimit = scoreHideTeams.length >= SCORE_HIDE_LIMITS.TEAMS;
   const openHidePickerDisabled = !canHideAnyTeam || teamsAtLimit;
+
+  // ── Score flash animation ─────────────────────────────────────
+  // Direct classList manipulation avoids setState-in-effect. The reflow trick
+  // (offsetWidth read) restarts the CSS animation for rapid score changes.
+  const prevAwayRef = useRef<number | null | undefined>(display?.awayScore);
+  const prevHomeRef = useRef<number | null | undefined>(display?.homeScore);
+  const awayScoreRef = useRef<HTMLDivElement>(null);
+  const homeScoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const pA = prevAwayRef.current, pH = prevHomeRef.current;
+    prevAwayRef.current = display?.awayScore;
+    prevHomeRef.current = display?.homeScore;
+    if (showScore && pA != null && pH != null &&
+        display?.awayScore != null && display?.homeScore != null &&
+        (pA !== display.awayScore || pH !== display.homeScore)) {
+      [awayScoreRef.current, homeScoreRef.current].forEach((el) => {
+        if (!el) return;
+        el.classList.remove("score-flash");
+        void el.offsetWidth; // restart CSS animation
+        el.classList.add("score-flash");
+      });
+    }
+  }, [display?.awayScore, display?.homeScore, showScore]);
 
   const handleScoreToggle = () => {
     if (!hasScoreData) return;
@@ -125,9 +149,9 @@ export function GameHeader({ game }: GameHeaderProps) {
               </button>
             )}
             {statusCategory === "live" && (
-              <span className="inline-flex items-center gap-1.5 text-xs font-semibold">
+              <span data-testid="live-badge" className="inline-flex items-center gap-1.5 text-xs font-semibold">
                 <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                  <span className="animate-live-dot absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
                 </span>
                 <span className="text-green-400">LIVE</span>
@@ -223,7 +247,7 @@ export function GameHeader({ game }: GameHeaderProps) {
               {game.awayTeam}
             </div>
             {showScore ? (
-              <div className="text-4xl font-extrabold tabular-nums mt-2">
+              <div ref={awayScoreRef} data-testid="score-away" className="text-4xl font-extrabold tabular-nums mt-2">
                 {display?.awayScore}
               </div>
             ) : (
@@ -285,7 +309,7 @@ export function GameHeader({ game }: GameHeaderProps) {
               {game.homeTeam}
             </div>
             {showScore ? (
-              <div className="text-4xl font-extrabold tabular-nums mt-2">
+              <div ref={homeScoreRef} data-testid="score-home" className="text-4xl font-extrabold tabular-nums mt-2">
                 {display?.homeScore}
               </div>
             ) : (

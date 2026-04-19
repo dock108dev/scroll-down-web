@@ -64,35 +64,44 @@ export const useSectionLayout = create<SectionLayoutState>()(
       name: STORAGE_KEYS.SECTION_LAYOUT,
       storage: {
         getItem: (name) => {
-          const str = localStorage.getItem(name);
-          if (!str) return null;
-          return JSON.parse(str);
+          try {
+            const str = localStorage.getItem(name);
+            if (!str) return null;
+            return JSON.parse(str);
+          } catch {
+            localStorage.removeItem(name);
+            return null;
+          }
         },
         setItem: (name, value) => {
-          // Cap stored layouts/periods to MAX_SECTION_LAYOUTS entries (newest first by key)
-          const max = STORAGE.MAX_SECTION_LAYOUTS;
-          const state = value.state as unknown as Record<string, unknown>;
-          let layouts = state.layouts as Record<string, string[]>;
-          let periods = state.periods as Record<string, string[]>;
-          const layoutKeys = Object.keys(layouts);
-          if (layoutKeys.length > max) {
-            const keep = layoutKeys.slice(-max);
-            const pruned: Record<string, string[]> = {};
-            for (const k of keep) pruned[k] = layouts[k];
-            layouts = pruned;
+          try {
+            // Cap stored layouts/periods to MAX_SECTION_LAYOUTS entries (newest first by key)
+            const max = STORAGE.MAX_SECTION_LAYOUTS;
+            const state = value.state as unknown as Record<string, unknown>;
+            let layouts = state.layouts as Record<string, string[]>;
+            let periods = state.periods as Record<string, string[]>;
+            const layoutKeys = Object.keys(layouts);
+            if (layoutKeys.length > max) {
+              const keep = layoutKeys.slice(-max);
+              const pruned: Record<string, string[]> = {};
+              for (const k of keep) pruned[k] = layouts[k];
+              layouts = pruned;
+            }
+            const periodKeys = Object.keys(periods);
+            if (periodKeys.length > max) {
+              const keep = periodKeys.slice(-max);
+              const pruned: Record<string, string[]> = {};
+              for (const k of keep) pruned[k] = periods[k];
+              periods = pruned;
+            }
+            const serialized = {
+              ...value,
+              state: { ...state, layouts, periods },
+            };
+            localStorage.setItem(name, JSON.stringify(serialized));
+          } catch {
+            // Quota exceeded or storage denied — section layout won't persist this write
           }
-          const periodKeys = Object.keys(periods);
-          if (periodKeys.length > max) {
-            const keep = periodKeys.slice(-max);
-            const pruned: Record<string, string[]> = {};
-            for (const k of keep) pruned[k] = periods[k];
-            periods = pruned;
-          }
-          const serialized = {
-            ...value,
-            state: { ...state, layouts, periods },
-          };
-          localStorage.setItem(name, JSON.stringify(serialized));
         },
         removeItem: (name) => localStorage.removeItem(name),
       },

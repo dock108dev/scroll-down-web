@@ -63,6 +63,33 @@ export async function signupViaUI(
   await page.waitForURL("/", { timeout: 10_000 });
 }
 
+/** `window.__openProGateSheet` is assigned in layout; wait so `page.goto` does not race it. */
+export async function waitForProGateTestHook(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () =>
+      typeof (window as unknown as { __openProGateSheet?: unknown }).__openProGateSheet ===
+      "function",
+    { timeout: 15_000 },
+  );
+}
+
+/** Tier persist seeds `sd-tier` in localStorage after async rehydration. */
+export async function waitForTierPersist(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => {
+      const raw = localStorage.getItem("sd-tier");
+      if (!raw) return false;
+      try {
+        const anonId = JSON.parse(raw)?.state?.anonId;
+        return typeof anonId === "string" && anonId.length > 0;
+      } catch {
+        return false;
+      }
+    },
+    { timeout: 15_000 },
+  );
+}
+
 /** Wait for loading skeletons / spinners to disappear. */
 export async function waitForLoad(page: Page): Promise<void> {
   // Wait for any animated pulse (skeleton) elements to disappear

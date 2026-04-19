@@ -9,7 +9,7 @@
 
 import { FairBetTheme } from "./theme";
 import { FAIRBET } from "./config";
-import type { APIBet } from "./types";
+import type { APIBet, DevigedMarket } from "./types";
 
 // ── Parlay leg snapshot ─────────────────────────────────────────────
 
@@ -25,6 +25,26 @@ export interface ParlayLeg {
 export function formatEV(percent: number): string {
   const sign = percent > 0 ? "+" : "";
   return `${sign}${percent.toFixed(1)}%`;
+}
+
+/** Negligible positive EV threshold in dollar terms (< $0.50 per $100 → "No edge"). */
+const EV_NO_EDGE_THRESHOLD = 0.5;
+
+/**
+ * Format EV as a dollar value per $100 bet.
+ * Formula: EV_dollars = (EV_percent / 100) * 100 = EV_percent
+ *
+ * Returns:
+ *  - { label: "+$X.XX per $100", isNoEdge: false } for EV ≥ +$0.50
+ *  - { label: "No edge", isNoEdge: true }           for 0 ≤ EV < +$0.50
+ *  - { label: "-$X.XX per $100", isNoEdge: false }  for negative EV
+ */
+export function formatEVDollars(percent: number): { label: string; isNoEdge: boolean } {
+  if (percent >= 0 && percent < EV_NO_EDGE_THRESHOLD) {
+    return { label: "No edge", isNoEdge: true };
+  }
+  const sign = percent > 0 ? "+" : "-";
+  return { label: `${sign}$${Math.abs(percent).toFixed(2)} per $100`, isNoEdge: false };
 }
 
 /** Format probability as percentage: "52.3%" */
@@ -75,7 +95,7 @@ export function getConfidenceColor(tier?: string): string {
 }
 
 /** Check if a confidence tier qualifies as reliable (not thin/none). */
-export function isConfidenceReliable(tier?: string): boolean {
+function isConfidenceReliable(tier?: string): boolean {
   return tier === "full" || tier === "sharp" || tier === "high" ||
     tier === "decent" || tier === "market" || tier === "medium";
 }
@@ -88,6 +108,16 @@ export function getEVColor(ev: number): string {
   if (ev > 0) return FairBetTheme.positiveMuted;
   if (ev < 0) return FairBetTheme.negative;
   return FairBetTheme.neutral;
+}
+
+export type EVTier = "strong" | "good" | "marginal" | "no-edge";
+
+/** Classify EV into a traffic-light tier based on dollar value per $100. */
+export function getEVTier(ev: number): EVTier {
+  if (ev > FAIRBET.EV_TIER_STRONG) return "strong";
+  if (ev >= FAIRBET.EV_TIER_GOOD) return "good";
+  if (ev >= FAIRBET.EV_TIER_MARGINAL) return "marginal";
+  return "no-edge";
 }
 
 // ── Method display names ───────────────────────────────────────────
@@ -181,6 +211,24 @@ const MARKET_SHORT_LABELS: Record<string, string> = {
 
 function marketKeyToShortLabel(key: string): string {
   return MARKET_SHORT_LABELS[key.toLowerCase()] ?? marketKeyToLabel(key);
+}
+
+// ── Market classification ──────────────────────────────────────────
+
+/**
+ * Returns true for the three mainline markets: spread, total, and moneyline.
+ * Everything else (alt lines, props, team totals) is non-mainline.
+ */
+export function isMainlineMarket(key: string): boolean {
+  const lower = key.toLowerCase();
+  return (
+    lower === "h2h" ||
+    lower === "moneyline" ||
+    lower === "spreads" ||
+    lower === "spread" ||
+    lower === "totals" ||
+    lower === "total"
+  );
 }
 
 // ── Market category mapping ────────────────────────────────────────
@@ -334,6 +382,18 @@ function titleCaseIfShoutyCaps(str: string, homeTeam?: string, awayTeam?: string
 
 // ── Probability / odds helpers ──────────────────────────────────────
 
+/**
+ * Compute CLV% given placed American odds and closing American odds.
+ * Formula: (closing_implied_prob − placed_implied_prob) / placed_implied_prob × 100
+ * Positive = beat the closing line (good). Returns NaN on invalid inputs.
+ */
+export function computeCLV(placedOdds: number, closingOdds: number): number {
+  const placedProb = americanToImpliedProb(placedOdds);
+  const closingProb = americanToImpliedProb(closingOdds);
+  if (!Number.isFinite(placedProb) || !Number.isFinite(closingProb) || placedProb <= 0) return NaN;
+  return ((closingProb - placedProb) / placedProb) * 100;
+}
+
 /** Convert American odds to implied probability (0-1). */
 function americanToImpliedProb(odds: number): number {
   if (!Number.isFinite(odds) || odds === 0) return NaN;
@@ -392,6 +452,31 @@ export function evPct(trueProb: number, offeredAmerican: number): number {
   const d = americanToDecimal(offeredAmerican);
   if (!Number.isFinite(trueProb) || !Number.isFinite(d)) return NaN;
   return (trueProb * d - 1) * 100;
+}
+
+/**
+ * Multiplicative no-vig devig for a market with 2+ sides.
+ *
+ * Converts each American odds input to its implied probability, normalises
+ * the set so they sum to exactly 1.0 (removing the book's overround), then
+ * converts the fair probabilities back to American odds.
+ *
+ * Returns null when:
+ *  - input is null/undefined
+ *  - fewer than 2 sides (single-outcome markets can't be deviggged)
+ *  - any side contains a non-finite or zero value
+ */
+export function devig(sides: number[]): DevigedMarket | null {
+  if (!sides || sides.length < 2) return null;
+
+  const rawProbs = sides.map(americanToImpliedProb);
+  if (rawProbs.some((p) => !Number.isFinite(p) || p <= 0)) return null;
+
+  const overround = rawProbs.reduce((sum, p) => sum + p, 0);
+  const fairProbs = rawProbs.map((p) => p / overround);
+  const fairOdds = fairProbs.map(impliedProbToAmerican);
+
+  return { sides, fairProbs, fairOdds, overround };
 }
 
 /**
@@ -489,4 +574,63 @@ export function enrichBet(bet: APIBet): APIBet {
   }
 
   return enriched;
+}
+
+// ── Bet outcome (game detail settled games) ─────────────────────────
+
+export type BetOutcome = "covered" | "pushed" | "lost" | "won";
+
+/**
+ * Compute spread outcome for one side.
+ * A bet on `side` with `line` wins when (side_score + line) > opponent_score.
+ */
+export function calcSpreadOutcome(
+  side: string,
+  line: number,
+  homeTeam: string,
+  homeScore: number,
+  awayScore: number,
+): BetOutcome {
+  const isHome = side === homeTeam;
+  const sideScore = isHome ? homeScore : awayScore;
+  const oppScore = isHome ? awayScore : homeScore;
+  const margin = sideScore + line - oppScore;
+  if (margin > 0) return "covered";
+  if (margin === 0) return "pushed";
+  return "lost";
+}
+
+/**
+ * Compute total (over/under) outcome.
+ * `side` is "Over" or "Under" (case-insensitive).
+ */
+export function calcTotalOutcome(
+  side: string,
+  line: number,
+  homeScore: number,
+  awayScore: number,
+): BetOutcome {
+  const combined = homeScore + awayScore;
+  if (combined === line) return "pushed";
+  const overHit = combined > line;
+  const isOver = side.toLowerCase() === "over";
+  return isOver === overHit ? "covered" : "lost";
+}
+
+/**
+ * Compute moneyline outcome for one side.
+ * Returns "won", "pushed", or "lost".
+ */
+export function calcMoneylineOutcome(
+  side: string,
+  homeTeam: string,
+  homeScore: number,
+  awayScore: number,
+): BetOutcome {
+  const isHome = side === homeTeam;
+  const sideScore = isHome ? homeScore : awayScore;
+  const oppScore = isHome ? awayScore : homeScore;
+  if (sideScore > oppScore) return "won";
+  if (sideScore === oppScore) return "pushed";
+  return "lost";
 }
