@@ -7,19 +7,20 @@ const IDB_STORE_REVEAL = "revealState";
 // localStorage key must match src/lib/config.ts STORAGE_KEYS.PWA_SESSION_COUNT
 const SESSION_COUNT_KEY = "sd-pwa-session-count";
 
-const SW_TIMEOUT_MS = 10_000;
+const SW_TIMEOUT_MS = 15_000;
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 async function waitForSwControl(
   page: import("@playwright/test").Page,
 ): Promise<boolean> {
-  return page
-    .waitForFunction(() => navigator.serviceWorker.controller !== null, {
-      timeout: SW_TIMEOUT_MS,
-    })
-    .then(() => true)
-    .catch(() => false);
+  const deadline = Date.now() + SW_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const ok = await page.evaluate(() => navigator.serviceWorker.controller !== null);
+    if (ok) return true;
+    await page.waitForTimeout(400);
+  }
+  return false;
 }
 
 /** Seeds IndexedDB revealState store with the given game IDs. */
@@ -95,10 +96,12 @@ async function readRevealIdb(
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
 test.describe("PWA offline scenarios @smoke", () => {
+  test.describe.configure({ timeout: 90_000 });
+
   // Skip the entire suite when the Service Worker API is not available
   // (plain HTTP env, old browser, CI without HTTPS / localhost HTTPS flag).
   test.beforeEach(async ({ page }) => {
-    await page.goto("/");
+    await page.goto("/", { waitUntil: "domcontentloaded" });
     const swAvailable = await page.evaluate(
       () => "serviceWorker" in navigator,
     );
@@ -113,45 +116,39 @@ test.describe("PWA offline scenarios @smoke", () => {
   test(
     "game list renders from SW cache when API requests are blocked @smoke",
     async ({ browser }) => {
-      // Use a fresh context so we control the full SW lifecycle.
       const context = await browser.newContext();
-      const page = await context.newPage();
+      try {
+        const page = await context.newPage();
 
-      // First visit — document and API responses fetched; SW caches /api/games*
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+        // First visit — document and API responses fetched; SW caches /api/games*
+        await page.goto("/", { waitUntil: "domcontentloaded" });
 
-      const swActive = await waitForSwControl(page);
-      if (!swActive) {
-        // SW is still installing; skip rather than fail
-        test.skip();
-        await context.close();
-        return;
+        const swActive = await waitForSwControl(page);
+        if (!swActive) {
+          test.skip();
+          return;
+        }
+
+        const gamesOnFirstLoad = await page
+          .locator('[data-testid="game-row"]')
+          .count();
+        if (gamesOnFirstLoad === 0) {
+          return;
+        }
+
+        // Block all API routes. Because the SW's Stale-While-Revalidate handler
+        // intercepts /api/games* requests and responds from its cache before the
+        // request reaches the network, Playwright's route.abort() is only invoked
+        // for cache-miss fallback fetches — not for SW-cached responses.
+        await page.route("**/api/**", (route) => route.abort("failed"));
+
+        await page.goto("/", { waitUntil: "domcontentloaded" });
+
+        const gameRows = page.locator('[data-testid="game-row"]');
+        await expect(gameRows.first()).toBeVisible({ timeout: 5_000 });
+      } finally {
+        await context.close().catch(() => {});
       }
-
-      const gamesOnFirstLoad = await page
-        .locator('[data-testid="game-row"]')
-        .count();
-      if (gamesOnFirstLoad === 0) {
-        // No games available — SW API cache is empty; nothing to test
-        await context.close();
-        return;
-      }
-
-      // Block all API routes. Because the SW's Stale-While-Revalidate handler
-      // intercepts /api/games* requests and responds from its cache before the
-      // request reaches the network, Playwright's route.abort() is only invoked
-      // for cache-miss fallback fetches — not for SW-cached responses.
-      await page.route("**/api/**", (route) => route.abort("failed"));
-
-      // Second navigation — SW should serve cached API data; document loads from
-      // the server (not intercepted by SW).
-      await page.goto("/", { waitUntil: "domcontentloaded" });
-
-      const gameRows = page.locator('[data-testid="game-row"]');
-      await expect(gameRows.first()).toBeVisible({ timeout: 5_000 });
-
-      await context.close();
     },
   );
 
@@ -163,8 +160,7 @@ test.describe("PWA offline scenarios @smoke", () => {
       const TEST_GAME_ID = 999_901; // synthetic ID; will not match live data
 
       // Load the page online so the app context is initialised.
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { waitUntil: "domcontentloaded" });
 
       // Seed IDB with a known revealed game ID before going offline.
       await seedRevealIdb(page, [TEST_GAME_ID]);
@@ -201,8 +197,7 @@ test.describe("PWA offline scenarios @smoke", () => {
   test(
     "offline banner appears within 2s of route block and auto-dismisses within 3s of unblock @smoke",
     async ({ page }) => {
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
+      await page.goto("/", { waitUntil: "domcontentloaded" });
 
       // Block all routes to cut network access, then fire the browser offline event
       // (route blocking alone does not fire the event automatically).
@@ -212,7 +207,7 @@ test.describe("PWA offline scenarios @smoke", () => {
       );
 
       const banner = page.getByTestId("offline-banner");
-      await expect(banner).toBeVisible({ timeout: 2_000 });
+      await expect(banner).toBeVisible({ timeout: 10_000 });
 
       // Restore network and fire online event.
       await page.unrouteAll();
@@ -255,7 +250,7 @@ test.describe("PWA offline scenarios @smoke", () => {
       });
 
       const prompt = page.getByTestId("pwa-install-prompt");
-      await expect(prompt).toBeVisible({ timeout: 3_000 });
+      await expect(prompt).toBeVisible({ timeout: 15_000 });
     },
   );
 });

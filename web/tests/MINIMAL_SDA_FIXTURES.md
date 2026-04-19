@@ -35,3 +35,7 @@ Date ranges in tests may be **fixed** (e.g. single day) — SDA fixtures should 
 ## Web stubbing (for future CI hardening)
 
 [`errors/api-errors.spec.ts`](./errors/api-errors.spec.ts) already shows **`page.route("**/api/games**", …)`** patterns. A shared **fixture JSON** file (checked into `web/tests/fixtures/`) plus route interception would remove `@live-upstream` from specific tests without changing SDA contracts.
+
+## 4. Phase 9 book-details blur (daily E2E)
+
+[`fairbet/phase9.spec.ts`](./fairbet/phase9.spec.ts) **FairBet book-details blur (ISSUE-061)** installs a `page.route("**/api/fairbet/odds**", …)` `beforeEach` that returns a minimal [`BetsResponse`](../src/lib/types.ts)-shaped JSON (`bets[]` with multi-book `books`, `has_fair`, `fair_american_odds`, `best_ev_percent`). That keeps blur / pro / layout-shift tests stable in `npx playwright test` when the real odds feed is empty. **SDA** should still satisfy section 2 for production; the stub documents the minimum card shape those assertions need.

@@ -4,8 +4,25 @@
  * Tests skip gracefully when ANTHROPIC_API_KEY is not configured (503 response).
  */
 import { test, expect, type APIRequestContext } from "@playwright/test";
+import { signInWithMagicLink } from "../api-auth";
 
 const ENDPOINT = "/api/ai/story";
+
+/** Cached `sd-session` for `/api/ai/story` (route requires verifySession). */
+let storySessionCookie: string | undefined;
+
+async function ensureStorySessionCookie(request: APIRequestContext): Promise<boolean> {
+  if (storySessionCookie) return true;
+  try {
+    storySessionCookie = await signInWithMagicLink(
+      request,
+      `story-e2e-${Date.now()}@test.scrolldown.dev`,
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const BANNED_PHRASES = [
   "both teams fought hard",
@@ -206,7 +223,14 @@ async function postStory(
   request: APIRequestContext,
   box: unknown,
 ): Promise<StoryResponse | null> {
-  const res = await request.post(ENDPOINT, { data: box });
+  if (!(await ensureStorySessionCookie(request))) {
+    return null;
+  }
+
+  const res = await request.post(ENDPOINT, {
+    data: box,
+    headers: { Cookie: `sd-session=${storySessionCookie!}` },
+  });
 
   if (res.status() === 503) {
     // ANTHROPIC_API_KEY not configured — skip gracefully
@@ -324,13 +348,25 @@ test.describe("story-generation — MLB", () => {
 
 test.describe("story API — validation contract @smoke", () => {
   test("returns 400 for missing required fields", async ({ request }) => {
-    const res = await request.post(ENDPOINT, { data: { sport: "NBA" } });
+    if (!(await ensureStorySessionCookie(request))) {
+      return test.skip(true, "Magic-link auth unavailable for API tests");
+    }
+    const res = await request.post(ENDPOINT, {
+      data: { sport: "NBA" },
+      headers: { Cookie: `sd-session=${storySessionCookie!}` },
+    });
     expect(res.status()).toBe(400);
   });
 
   test("returns 503 or a valid story structure", async ({ request }) => {
-    const res = await request.post(ENDPOINT, { data: NBA_COMEBACK });
-    expect([200, 503]).toContain(res.status());
+    if (!(await ensureStorySessionCookie(request))) {
+      return test.skip(true, "Magic-link auth unavailable for API tests");
+    }
+    const res = await request.post(ENDPOINT, {
+      data: NBA_COMEBACK,
+      headers: { Cookie: `sd-session=${storySessionCookie!}` },
+    });
+    expect([200, 502, 503]).toContain(res.status());
     if (res.status() === 200) {
       const body = (await res.json()) as Record<string, unknown>;
       expect(typeof body.story).toBe("string");

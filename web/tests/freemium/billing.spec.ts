@@ -1,28 +1,5 @@
 import { test, expect, waitForProGateTestHook } from "../helpers";
-
-/** Sign in via magic-link dev flow and return the session cookie value. */
-async function signInAs(
-  request: import("@playwright/test").APIRequestContext,
-  email: string,
-): Promise<string> {
-  const sendRes = await request.post("/api/auth/send-link", {
-    data: { email },
-  });
-  expect(sendRes.status()).toBe(200);
-  const { devToken } = (await sendRes.json()) as { devToken?: string };
-  expect(devToken).toBeTruthy();
-
-  const verifyRes = await request.get(`/api/auth/verify?token=${devToken}`, {
-    maxRedirects: 0,
-  });
-  // Expect a redirect (302/303) to the home page
-  expect([302, 303, 307, 308]).toContain(verifyRes.status());
-
-  const cookies = await request.storageState();
-  const session = cookies.cookies.find((c) => c.name === "sd-session");
-  expect(session).toBeTruthy();
-  return session!.value;
-}
+import { signInWithMagicLink } from "../api-auth";
 
 // ─── POST /api/billing/checkout ──────────────────────────────────────────────
 
@@ -68,7 +45,7 @@ test.describe("GET /api/billing/portal", () => {
     request,
   }) => {
     // Sign in first to get a valid session cookie
-    await signInAs(request, `portal-nostripe-${Date.now()}@example.com`);
+    await signInWithMagicLink(request, `portal-nostripe-${Date.now()}@example.com`);
 
     const res = await request.get("/api/billing/portal", {
       maxRedirects: 0,
@@ -119,7 +96,7 @@ test.describe("Session tier refresh", () => {
     request,
   }) => {
     const email = `session-tier-${Date.now()}@example.com`;
-    await signInAs(request, email);
+    await signInWithMagicLink(request, email);
 
     const res = await request.get("/api/auth/session");
     expect(res.status()).toBe(200);

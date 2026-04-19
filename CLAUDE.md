@@ -43,6 +43,7 @@ npm run dev                   # localhost:3001
 
 - E2E only with Playwright (`npm test`)
 - `@smoke` tag for CI subset (`npm run test:smoke`)
+- **PR smoke parity (matches `.github/workflows/ci.yml`):** from `web/`, run `npm run test:smoke:pr` — builds standalone, sets `CI=1` so Playwright starts `npm start` (not `dev`), and runs `@smoke` excluding `@live-upstream`. Use `SPORTS_DATA_API_KEY` (and optionally `MAGIC_LINK_SECRET`) like CI. Avoid leaving another server on port 3001 without `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER=1` or you will get a stale server and flaky health/auth.
 - Tests skip gracefully when live data is unavailable — never hard-fail on API variance
 - Auth fixture: `authedPage` from `tests/helpers.ts`
 - All interactive elements need `data-testid` for selectors

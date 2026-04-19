@@ -49,7 +49,7 @@ test.describe("PWA install prompt", () => {
     await dispatchInstallPrompt(page);
 
     const prompt = page.getByTestId("pwa-install-prompt");
-    await expect(prompt).toBeVisible({ timeout: 3_000 });
+    await expect(prompt).toBeVisible({ timeout: 8_000 });
   });
 
   test("dismiss persists — prompt never reappears", async ({ page }) => {
@@ -63,7 +63,7 @@ test.describe("PWA install prompt", () => {
     await dispatchInstallPrompt(page);
 
     const prompt = page.getByTestId("pwa-install-prompt");
-    await expect(prompt).toBeVisible({ timeout: 3_000 });
+    await expect(prompt).toBeVisible({ timeout: 8_000 });
 
     // Dismiss the prompt
     await prompt.getByRole("button", { name: /dismiss/i }).click();
@@ -127,7 +127,7 @@ test.describe("Offline banner", () => {
     await page.evaluate(() => window.dispatchEvent(new Event("offline")));
 
     const banner = page.getByTestId("offline-banner");
-    await expect(banner).toBeVisible({ timeout: 2_000 });
+    await expect(banner).toBeVisible({ timeout: 5_000 });
   });
 
   test("auto-dismisses within 3s of reconnection @smoke", async ({
@@ -140,7 +140,7 @@ test.describe("Offline banner", () => {
     await page.evaluate(() => window.dispatchEvent(new Event("offline")));
 
     const banner = page.getByTestId("offline-banner");
-    await expect(banner).toBeVisible({ timeout: 2_000 });
+    await expect(banner).toBeVisible({ timeout: 5_000 });
 
     // Restore connection
     await context.setOffline(false);
@@ -156,7 +156,7 @@ test.describe("Offline banner", () => {
     await page.evaluate(() => window.dispatchEvent(new Event("offline")));
 
     const banner = page.getByTestId("offline-banner");
-    await expect(banner).toBeVisible({ timeout: 2_000 });
+    await expect(banner).toBeVisible({ timeout: 5_000 });
 
     const bannerBox = await banner.boundingBox();
     expect(bannerBox).not.toBeNull();

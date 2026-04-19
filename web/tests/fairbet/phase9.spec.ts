@@ -1,4 +1,4 @@
-import { test, expect, waitForLoad } from "../helpers";
+import { test, expect, waitForLoad, waitForProGateTestHook } from "../helpers";
 import type { Page } from "@playwright/test";
 
 /**
@@ -27,6 +27,44 @@ async function waitForCardsOrEmpty(
     emptyState.waitFor({ state: "visible", timeout }).then(() => "empty" as const),
   ]).catch(() => "timeout" as const);
 }
+
+/** Deterministic `/api/fairbet/odds` payload so ISSUE-061 UI tests do not depend on upstream cards. */
+const PHASE9_FAIRBET_ODDS_STUB = {
+  bets: [
+    {
+      game_id: 9_000_001,
+      league_code: "nba",
+      home_team: "Celtics",
+      away_team: "Knicks",
+      game_date: "2026-04-10T23:00:00.000Z",
+      market_key: "spread",
+      selection_key: "nyk-2.5",
+      selection_display: "Knicks -2.5",
+      market_display_name: "Spread",
+      has_fair: true,
+      fair_american_odds: -108,
+      best_book: "draftkings",
+      best_ev_percent: 4.5,
+      books: [
+        {
+          book: "draftkings",
+          price: -105,
+          observed_at: "2026-04-10T12:00:00.000Z",
+          ev_percent: 4.5,
+          display_ev: 4.5,
+        },
+        {
+          book: "fanduel",
+          price: -110,
+          observed_at: "2026-04-10T12:00:00.000Z",
+          ev_percent: 1.2,
+        },
+      ],
+    },
+  ],
+  total: 1,
+  books_available: ["draftkings", "fanduel"],
+};
 
 test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
   // ── Line Movement (ISSUE-050) ────────────────────────────────────
@@ -296,7 +334,7 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
 
 // ── History Gate (ISSUE-058) ─────────────────────────────────────────────────
 
-test.describe("History Pro Gate (ISSUE-058)", () => {
+test.describe("History Pro Gate (ISSUE-058) @live-upstream", () => {
   test("free user sees gate overlay with upgrade CTA on /history @smoke", async ({ page }) => {
     await page.goto("/history?tier=free");
     await waitForLoad(page);
@@ -314,6 +352,8 @@ test.describe("History Pro Gate (ISSUE-058)", () => {
   test("free user clicking upgrade CTA opens the pro gate sheet @smoke", async ({ page }) => {
     await page.goto("/history?tier=free");
     await waitForLoad(page);
+
+    await waitForProGateTestHook(page);
 
     const cta = page.locator("[data-testid='history-upgrade-cta']");
     await expect(cta).toBeVisible({ timeout: 5_000 });
@@ -353,7 +393,17 @@ test.describe("History Pro Gate (ISSUE-058)", () => {
 
 // ── FairBet book-details blur (ISSUE-061) ────────────────────────────────────
 
-test.describe("FairBet book-details blur (ISSUE-061)", () => {
+test.describe("FairBet book-details blur (ISSUE-061) @live-upstream", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route("**/api/fairbet/odds**", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(PHASE9_FAIRBET_ODDS_STUB),
+      }),
+    );
+  });
+
   test("free-tier: book details are blurred and ev-dollar-label is visible @smoke", async ({
     page,
   }) => {

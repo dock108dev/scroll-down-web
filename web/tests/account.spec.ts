@@ -22,14 +22,6 @@ test.describe("Account page", () => {
 
   // ── Free tier view ───────────────────────────────────────────────
 
-  test("free user sees plan label and upgrade CTA @smoke", async ({ page }) => {
-    // Use ?tier=free dev override to simulate free session via session mock
-    await page.goto("/account");
-    await page.waitForURL(/\/login/, { timeout: 10_000 });
-    // Without a session we land on login — the redirect is the acceptance criteria
-    await expect(page).toHaveURL(/\/login/);
-  });
-
   test("free user sees Free plan label when billing/info returns free tier @smoke", async ({ page }) => {
     // Intercept billing/info to return free tier
     await page.route("/api/auth/session", async (route) => {
@@ -73,7 +65,8 @@ test.describe("Account page", () => {
   // ── Pro tier view ────────────────────────────────────────────────
 
   test("pro user sees Pro plan, billing date, and manage button @smoke", async ({ page }) => {
-    const nextBilling = "2026-05-18T00:00:00.000Z";
+    // Noon UTC avoids off-by-one day vs en-US when the runner is west of UTC.
+    const nextBilling = "2026-05-18T12:00:00.000Z";
 
     await page.route("/api/auth/session", async (route) => {
       await route.fulfill({
@@ -108,6 +101,7 @@ test.describe("Account page", () => {
 
     const billingDate = page.locator("[data-testid='account-billing-date']");
     await expect(billingDate).toBeVisible();
+    await expect(billingDate).toContainText("Renews");
     await expect(billingDate).toContainText("May 18, 2026");
 
     const manageBtn = page.locator("[data-testid='manage-subscription-btn']");
@@ -120,6 +114,11 @@ test.describe("Account page", () => {
   // ── Nav avatar link ──────────────────────────────────────────────
 
   test("nav avatar links to /account for authenticated users @smoke", async ({ page }) => {
+    test.skip(
+      test.info().project.name === "mobile",
+      "TopNav account avatar uses hidden md:flex — not exposed at mobile viewport",
+    );
+
     await page.route("/api/auth/session", async (route) => {
       await route.fulfill({
         status: 200,

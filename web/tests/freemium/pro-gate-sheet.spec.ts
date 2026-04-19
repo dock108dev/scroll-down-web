@@ -1,9 +1,10 @@
-import { test, expect, waitForProGateTestHook } from "../helpers";
+import { test, expect, waitForProGateTestHook, waitForTierPersist } from "../helpers";
 import type { Page } from "@playwright/test";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
 async function openSheet(page: Page, feature = "live_odds"): Promise<void> {
+  await waitForTierPersist(page);
   await waitForProGateTestHook(page);
   await page.evaluate((f) => {
     const fn = (window as unknown as Record<string, unknown>).__openProGateSheet as

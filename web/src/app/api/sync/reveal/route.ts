@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 import { verifySession } from "@/lib/magic-link";
-import { STORAGE_KEYS, STORAGE } from "@/lib/config";
+import { allowDevTierUrlOverrides, STORAGE_KEYS, STORAGE } from "@/lib/config";
 import type { RevealSnapshot } from "@/stores/reveal";
 
 // ─── Session helper ───────────────────────────────────────────────────────────
@@ -13,7 +13,9 @@ interface ProSession {
 }
 
 function getProSession(req: NextRequest): ProSession | null {
-  if (process.env.NODE_ENV !== "production") {
+  // Match `allowDevTierUrlOverrides`: Playwright uses `npm start` (production NODE_ENV)
+  // with `NEXT_PUBLIC_SCROLLDOWN_E2E=1` so `?tier=pro&userId=` still works in CI.
+  if (allowDevTierUrlOverrides()) {
     const param = req.nextUrl.searchParams.get("tier");
     if (param === "free") return null;
     if (param === "pro") {
