@@ -35,6 +35,8 @@ export const API = {
   GAMES_LIMIT: 200,
   FAIRBET_PAGE_SIZE: 100,
   FAIRBET_MAX_CONCURRENT: 3,
+  /** `/api/health` upstream ping — generous for CI cold start + parallel E2E load */
+  HEALTH_BACKEND_PING_TIMEOUT_MS: 15_000,
   FAIRBET_REQUEST_TIMEOUT_MS: 12_000,
   FAIRBET_PAGE_RETRY_ATTEMPTS: 2,
   FAIRBET_PAGE_RETRY_DELAY_MS: 800,
