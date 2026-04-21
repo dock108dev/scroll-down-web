@@ -200,9 +200,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   // ── Score zone ────────────────────────────────────────────────
 
   const scoreZone = (() => {
-    // Pregame: nothing. Also hide if no score data anywhere (core or display snapshot).
     const hasDisplayScores = display?.homeScore != null && display?.awayScore != null;
-    if (pregame || (!hasScoreData && !hasDisplayScores)) return null;
+    // Pregame: nothing to reveal yet.
+    if (pregame) return null;
+    // Always-visible mode with no score data: nothing to show.
+    if (!canToggle && !hasScoreData && !hasDisplayScores) return null;
 
     // Always-visible mode: render score directly (no overlay needed)
     if (!canToggle) {
@@ -231,11 +233,14 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     }
 
     // Reveal mode: blur overlay over always-rendered score
-    const scoreEl = (
+    const awayForDisplay = display?.awayScore ?? game.awayScore;
+    const homeForDisplay = display?.homeScore ?? game.homeScore;
+    const hasAnyScore = awayForDisplay != null && homeForDisplay != null;
+    const scoreEl = hasAnyScore ? (
       <span key={flashCount} data-testid="score-value" className={cn("text-lg font-bold tabular-nums text-neutral-200 text-right", flashCount > 0 && "score-flash")}>
-        {display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}
+        {awayForDisplay} <span className="text-neutral-600">&ndash;</span> {homeForDisplay}
       </span>
-    );
+    ) : null;
 
     return (
       <div className="relative shrink-0 ml-3 min-w-[96px] min-h-[44px]">
@@ -253,9 +258,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
             {scoreEl}
           </button>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-end">
-            {scoreEl}
-          </div>
+          scoreEl ? (
+            <div className="absolute inset-0 flex items-center justify-end">
+              {scoreEl}
+            </div>
+          ) : null
         )}
 
         {/* Blur overlay — CSS transition fade-out on reveal */}

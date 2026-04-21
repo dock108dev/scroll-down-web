@@ -59,7 +59,11 @@ export function computeScoreDisplay(
   const final = isFinal(core.status, core);
   const pregame = isPregame(core.status, core);
   const hasScoreData = core.homeScore != null && core.awayScore != null;
-  const canToggle = (final || live) && hasScoreData && scoreRevealMode !== "always";
+  // canToggle drives whether the UI renders a Reveal/Hide affordance. We
+  // allow it even when scores aren't yet present on core — the button should
+  // still be visible on Final/Live games so the user can mark read, and
+  // scores will fill in when data arrives.
+  const canToggle = (final || live) && scoreRevealMode !== "always";
 
   // mode=always → render from core (canonical live), never frozen
   if (scoreRevealMode === "always") {

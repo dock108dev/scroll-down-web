@@ -31,7 +31,6 @@ export function GameHeader({ game }: GameHeaderProps) {
   const read = isRevealed(game.id);
   const pregame = isPregame(game.status, game);
 
-  const hasScoreData = game.homeScore != null && game.awayScore != null;
   const showScore = display?.visible ?? false;
   const hasScoreUpdate = display?.hasUpdate ?? false;
   const statusCategory = display?.statusCategory ?? "other";
@@ -71,7 +70,6 @@ export function GameHeader({ game }: GameHeaderProps) {
   }, [display?.awayScore, display?.homeScore, showScore]);
 
   const handleScoreToggle = () => {
-    if (!hasScoreData) return;
     // Only use acceptUpdate when already revealed and there's a pending update.
     // For first-time reveals, always use reveal() so the game is added to
     // revealedIds (acceptUpdate only updates the snapshot).
@@ -260,7 +258,7 @@ export function GameHeader({ game }: GameHeaderProps) {
           {/* Center: toggle reveal */}
           <div className="text-center shrink-0 flex flex-col items-center gap-2">
             <span className="text-neutral-600 text-sm font-medium">{showScore ? "@" : "vs"}</span>
-            {!pregame && hasScoreData && (
+            {!pregame && (
               showScore ? (
                 hasScoreUpdate ? (
                   <button
