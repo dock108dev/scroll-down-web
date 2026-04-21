@@ -12,6 +12,7 @@ import { usePinnedGames } from "@/stores/pinned-games";
 import { useReveal } from "@/stores/reveal";
 import { isDegraded } from "@/hooks/useHealthStatus";
 import { startRevealSync, stopRevealSync } from "@/lib/reveal-sync";
+import { POLLING } from "@/lib/config";
 
 const TAG = "[prefs-sync]";
 
@@ -48,6 +49,7 @@ interface ServerPreferences {
 // ─── Hydration guard ────────────────────────────────────────────────
 
 let isHydrating = false;
+let hydrationNeedsCorrectionPush = false;
 
 // ─── API helpers ────────────────────────────────────────────────────
 
@@ -157,7 +159,24 @@ function hydrateFromServer(prefs: ServerPreferences) {
   if (s.homeExpandedSections) setters.setHomeExpandedSections(s.homeExpandedSections);
   if (s.hideLimitedData !== undefined) setters.setHideLimitedData(s.hideLimitedData);
   if (s.timelineDefaultTiers) setters.setTimelineDefaultTiers(s.timelineDefaultTiers);
-  if (s.followingLive !== undefined) setters.setFollowingLive(s.followingLive);
+  // followingLive has a 2-hour TTL (see settings.ts merge()). The server can
+  // hold a stale `true` from a prior session forever, so enforce the same
+  // expiry on hydrate and push a correction back so the server stops serving
+  // it. Preserve the server's followingLiveAt when still valid so a tab
+  // refresh doesn't accidentally extend the window.
+  if (s.followingLive !== undefined) {
+    const incomingAt = typeof s.followingLiveAt === "number" ? s.followingLiveAt : 0;
+    const stale =
+      !incomingAt || Date.now() - incomingAt >= POLLING.FOLLOWING_LIVE_TTL_MS;
+    const next = s.followingLive && !stale;
+    setters.setFollowingLive(next, next ? { timestamp: incomingAt } : undefined);
+    if (s.followingLive && !next) {
+      // Server held stale followingLive=true past its TTL. Subscriptions
+      // aren't wired until after hydration, so record that the post-hydrate
+      // step needs to push the correction.
+      hydrationNeedsCorrectionPush = true;
+    }
+  }
 
   // Pinned games — replace current set with server set.
   // We don't sync pinMeta (derived from game data on render).
@@ -278,6 +297,11 @@ export async function pullAndStartSync(): Promise<void> {
 
   startSyncing();
   startRevealSync();
+
+  if (hydrationNeedsCorrectionPush) {
+    hydrationNeedsCorrectionPush = false;
+    schedulePush();
+  }
 }
 
 /**

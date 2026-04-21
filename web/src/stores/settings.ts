@@ -75,7 +75,7 @@ interface SettingsState {
   setTimelineDefaultTiers: (tiers: number[]) => void;
   toggleTimelineTier: (tier: number) => void;
   toggleHomeSection: (section: string) => void;
-  setFollowingLive: (v: boolean) => void;
+  setFollowingLive: (v: boolean, opts?: { preserveTimestamp?: boolean; timestamp?: number }) => void;
   touchFollowingLive: () => void;
   setShowStaleBanners: (v: boolean) => void;
 }
@@ -155,8 +155,17 @@ export const useSettings = create<SettingsState>()(
           : [...current, section];
         set({ homeExpandedSections: next });
       },
-      setFollowingLive: (v) =>
-        set({ followingLive: v, followingLiveAt: v ? Date.now() : 0 }),
+      setFollowingLive: (v, opts) =>
+        set({
+          followingLive: v,
+          followingLiveAt: v
+            ? (typeof opts?.timestamp === "number"
+              ? opts.timestamp
+              : opts?.preserveTimestamp
+                ? get().followingLiveAt
+                : Date.now())
+            : 0,
+        }),
       touchFollowingLive: () => set({ followingLiveAt: Date.now() }),
       setShowStaleBanners: (showStaleBanners) => set({ showStaleBanners }),
     }),
