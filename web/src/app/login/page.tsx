@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth, AuthError } from "@/stores/auth";
-import { VALIDATION } from "@/lib/config";
+import { VALIDATION, isValidEmailFormat } from "@/lib/config";
 import { cn } from "@/lib/utils";
 import { trackEvent } from "@/lib/analytics";
 
@@ -65,7 +65,7 @@ function LoginForm() {
     const errs: Record<string, string> = {};
     if (!email) {
       errs.email = "Email is required";
-    } else if (!VALIDATION.EMAIL_RE.test(email)) {
+    } else if (!isValidEmailFormat(email)) {
       errs.email = "Enter a valid email address";
     }
     if (!password) {
@@ -84,7 +84,7 @@ function LoginForm() {
     setFieldErrors((prev) => {
       const next = { ...prev };
       if (field === "email") {
-        if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+        if (!email || !isValidEmailFormat(email)) {
           next.email = !email ? "Email is required" : "Enter a valid email address";
         } else {
           delete next.email;
@@ -114,7 +114,7 @@ function LoginForm() {
     const errs: Record<string, string> = {};
     if (!email) {
       errs.email = "Email is required";
-    } else if (!VALIDATION.EMAIL_RE.test(email)) {
+    } else if (!isValidEmailFormat(email)) {
       errs.email = "Enter a valid email address";
     }
     if (!password) {
@@ -141,7 +141,7 @@ function LoginForm() {
         setShaking(true);
         if (shakeTimer.current) clearTimeout(shakeTimer.current);
         shakeTimer.current = setTimeout(() => setShaking(false), 500);
-        if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+        if (!email || !isValidEmailFormat(email)) {
           emailRef.current?.focus();
         } else if (password.length < VALIDATION.PASSWORD_MIN_LENGTH) {
           passwordRef.current?.focus();
@@ -179,7 +179,7 @@ function LoginForm() {
 
   const handleMagicLink = useCallback(async () => {
     setError(null);
-    if (!email || !VALIDATION.EMAIL_RE.test(email)) {
+    if (!email || !isValidEmailFormat(email)) {
       setFieldErrors({ email: "Enter a valid email address" });
       return;
     }

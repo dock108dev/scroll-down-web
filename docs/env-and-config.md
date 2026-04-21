@@ -131,7 +131,7 @@ Note: `home-scroll` store is in-memory only (not persisted to localStorage). Cac
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `VALIDATION.EMAIL_RE` | `/^[^\s@]+@[^\s@]+\.[^\s@]+$/` | Email format validation regex |
+| `isValidEmailFormat()` | `(email: string) => boolean` | Email format guard (replaces the old `VALIDATION.EMAIL_RE` regex): linear-time, no ReDoS; requires exactly one `@`, non-empty local part ≤64 chars, domain with at least one `.` with non-empty sides, no whitespace/`@` in local or domain, total length ≤254. |
 | `VALIDATION.PASSWORD_MIN_LENGTH` | 8 | Minimum password length |
 
 ### Attribution

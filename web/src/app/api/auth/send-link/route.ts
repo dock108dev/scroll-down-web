@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRateLimiter } from "@/lib/rate-limit";
-import { VALIDATION, AUTH, allowDevTierUrlOverrides, isPlaywrightServerEnv } from "@/lib/config";
+import { isValidEmailFormat, AUTH, allowDevTierUrlOverrides, isPlaywrightServerEnv } from "@/lib/config";
 import {
   generateMagicToken,
   storeMagicToken,
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Always return 200 even for invalid email — no user enumeration
-  if (!VALIDATION.EMAIL_RE.test(email)) {
+  if (!isValidEmailFormat(email)) {
     return NextResponse.json({ ok: true });
   }
 

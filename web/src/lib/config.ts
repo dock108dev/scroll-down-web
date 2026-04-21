@@ -140,8 +140,26 @@ export const RENDER = {
   FAIRBET_BATCH: 25,
 };
 
+/**
+ * Same shape as the old /^[^\s@]+@[^\s@]+\.[^\s@]+$/ check, without nested quantifiers
+ * (avoids polynomial ReDoS on hostile input).
+ */
+export function isValidEmailFormat(email: string): boolean {
+  if (email.length === 0 || email.length > 254) return false;
+  const at = email.indexOf("@");
+  if (at <= 0) return false;
+  if (email.indexOf("@", at + 1) !== -1) return false;
+  const local = email.slice(0, at);
+  const domain = email.slice(at + 1);
+  if (local.length > 64) return false;
+  if (domain.length === 0) return false;
+  if (/[\s@]/.test(local) || /[\s@]/.test(domain)) return false;
+  const dot = domain.indexOf(".");
+  if (dot <= 0 || dot === domain.length - 1) return false;
+  return true;
+}
+
 export const VALIDATION = {
-  EMAIL_RE: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
   PASSWORD_MIN_LENGTH: 8,
 };
 
