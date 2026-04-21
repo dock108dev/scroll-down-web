@@ -90,7 +90,12 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
             data-testid={`reveal-all-${title.toLowerCase()}`}
             onClick={handleRevealAll}
             aria-label={`Reveal all scores in ${title}`}
-            className="rounded-full bg-blue-600/20 px-2.5 py-1 text-[11px] font-medium text-blue-300 hover:bg-blue-600/30 transition min-h-[32px]"
+            className="rounded-full px-2.5 py-1 text-[11px] font-medium transition min-h-[32px] border hover:opacity-90"
+            style={{
+              color: "var(--ds-accent)",
+              background: "var(--ds-accent-bg)",
+              borderColor: "color-mix(in srgb, var(--ds-accent) 25%, transparent)",
+            }}
           >
             Reveal All
           </button>
@@ -100,7 +105,8 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
             data-testid={`mark-all-read-${title.toLowerCase()}`}
             onClick={handleMarkAllRead}
             aria-label={`Mark all ${title} games as read`}
-            className="rounded-full px-2.5 py-1 text-[11px] font-medium text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800 transition min-h-[32px]"
+            className="rounded-full px-2.5 py-1 text-[11px] font-medium transition min-h-[32px]"
+            style={{ color: "var(--ds-text-tertiary)" }}
           >
             Mark read
           </button>

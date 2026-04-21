@@ -258,42 +258,51 @@ export function GameHeader({ game }: GameHeaderProps) {
           </div>
 
           {/* Center: toggle reveal */}
-          <div
-            onClick={handleScoreToggle}
-            className={cn(
-              "text-center shrink-0",
-              !pregame && hasScoreData && "cursor-pointer",
-            )}
-          >
-            {showScore ? (
-              <>
-                <span className="text-neutral-600 text-sm font-medium">@</span>
-                {hasScoreUpdate ? (
-                  <p className="text-xs text-amber-400 mt-1 font-medium hover:text-amber-300 transition-colors">
+          <div className="text-center shrink-0 flex flex-col items-center gap-2">
+            <span className="text-neutral-600 text-sm font-medium">{showScore ? "@" : "vs"}</span>
+            {!pregame && hasScoreData && (
+              showScore ? (
+                hasScoreUpdate ? (
+                  <button
+                    data-testid="reveal-button"
+                    onClick={handleScoreToggle}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition min-h-[32px] border hover:opacity-90"
+                    style={{
+                      color: "rgb(217, 119, 6)",
+                      background: "rgba(217, 119, 6, 0.12)",
+                      borderColor: "rgba(217, 119, 6, 0.30)",
+                    }}
+                  >
                     Update
-                  </p>
+                  </button>
                 ) : display?.canToggle ? (
-                  <p className="text-xs text-neutral-700 mt-1 hover:text-neutral-500 transition-colors">
+                  <button
+                    data-testid="hide-button"
+                    onClick={handleScoreToggle}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition min-h-[32px]"
+                    style={{ color: "var(--ds-text-tertiary)" }}
+                  >
                     Hide score
-                  </p>
-                ) : null}
-              </>
-            ) : (
-              <>
-                <span
-                  className={cn(
-                    "text-2xl font-bold text-neutral-600",
-                    !pregame && hasScoreData && "hover:text-neutral-400 transition-colors",
-                  )}
+                  </button>
+                ) : null
+              ) : (
+                <button
+                  data-testid="reveal-button"
+                  onClick={handleScoreToggle}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition min-h-[36px] border hover:opacity-90"
+                  style={{
+                    color: "var(--ds-accent)",
+                    background: "var(--ds-accent-bg)",
+                    borderColor: "color-mix(in srgb, var(--ds-accent) 25%, transparent)",
+                  }}
                 >
-                  vs
-                </span>
-                {!pregame && hasScoreData && (
-                  <p className="text-xs text-neutral-700 mt-1">
-                    Click to reveal
-                  </p>
-                )}
-              </>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  Reveal score
+                </button>
+              )
             )}
           </div>
 

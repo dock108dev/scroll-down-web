@@ -267,22 +267,31 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
             "transition-opacity duration-200 motion-reduce:transition-none",
             scoresVisible ? "opacity-0 pointer-events-none" : "opacity-100",
           )}
-          style={{ backdropFilter: "blur(8px)", background: "rgba(23, 23, 23, 0.75)" }}
+          style={{
+            backdropFilter: "blur(8px)",
+            background: "color-mix(in srgb, var(--ds-card-bg) 75%, transparent)",
+          }}
         >
           <button
             data-testid="reveal-button"
             onClick={handleReveal}
             tabIndex={scoresVisible ? -1 : 0}
             className={cn(
-              "flex items-center gap-1.5 text-blue-400 hover:text-blue-300 transition",
+              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition min-h-[32px] border",
+              "hover:opacity-90 active:opacity-80",
               updatePulse && "update-pulse",
             )}
+            style={{
+              color: "var(--ds-accent)",
+              background: "var(--ds-accent-bg)",
+              borderColor: "color-mix(in srgb, var(--ds-accent) 25%, transparent)",
+            }}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <span className="text-xs font-medium">Reveal</span>
+            <span>Reveal</span>
           </button>
         </div>
       </div>
