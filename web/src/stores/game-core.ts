@@ -11,6 +11,21 @@ export function coreFromSummary(g: GameSummary): GameCore {
   const rawClock = g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? g.gameClock;
   // MLB has no running clock — timeLabel duplicates the inning label, so suppress it
   const gameClock = rawClock && rawClock === periodLabel ? undefined : rawClock;
+  // Backend sends scores as nested { score: { home, away } } both at the
+  // top level and under liveSnapshot. Flat homeScore/awayScore is kept as a
+  // fallback for older fixtures and tests.
+  const home =
+    g.score?.home ??
+    g.liveSnapshot?.score?.home ??
+    g.homeScore ??
+    g.liveSnapshot?.homeScore ??
+    null;
+  const away =
+    g.score?.away ??
+    g.liveSnapshot?.score?.away ??
+    g.awayScore ??
+    g.liveSnapshot?.awayScore ??
+    null;
   return {
     id: g.id,
     leagueCode: g.leagueCode,
@@ -18,8 +33,8 @@ export function coreFromSummary(g: GameSummary): GameCore {
     status: g.status,
     homeTeam: g.homeTeam,
     awayTeam: g.awayTeam,
-    homeScore: g.homeScore ?? g.liveSnapshot?.homeScore ?? null,
-    awayScore: g.awayScore ?? g.liveSnapshot?.awayScore ?? null,
+    homeScore: home,
+    awayScore: away,
     currentPeriod: g.currentPeriod,
     gameClock,
     currentPeriodLabel: periodLabel,
@@ -60,6 +75,22 @@ export function coreFromGame(
   const rawClock = g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? clockFromPlay ?? g.gameClock;
   // MLB has no running clock — timeLabel duplicates the inning label, so suppress it
   const gameClock = rawClock && rawClock === periodLabel ? undefined : rawClock;
+  // Priority: last play (PBP is authoritative for live) → nested g.score →
+  // nested liveSnapshot.score → flat fallbacks.
+  const home =
+    lastPlay?.homeScore ??
+    g.score?.home ??
+    g.liveSnapshot?.score?.home ??
+    g.homeScore ??
+    g.liveSnapshot?.homeScore ??
+    null;
+  const away =
+    lastPlay?.awayScore ??
+    g.score?.away ??
+    g.liveSnapshot?.score?.away ??
+    g.awayScore ??
+    g.liveSnapshot?.awayScore ??
+    null;
   return {
     id: g.id,
     leagueCode: g.leagueCode,
@@ -67,8 +98,8 @@ export function coreFromGame(
     status: g.status,
     homeTeam: g.homeTeam,
     awayTeam: g.awayTeam,
-    homeScore: lastPlay?.homeScore ?? g.homeScore ?? null,
-    awayScore: lastPlay?.awayScore ?? g.awayScore ?? null,
+    homeScore: home,
+    awayScore: away,
     currentPeriod: g.currentPeriod,
     gameClock,
     currentPeriodLabel: periodLabel,

@@ -62,6 +62,10 @@ export interface GameSummary {
   status: GameStatus;
   homeTeam: string;
   awayTeam: string;
+  // Backend sends nested score: { home, away }. Older callers/fixtures may
+  // still send flat homeScore/awayScore, so we keep both shapes here and
+  // the adapter reads nested first, flat as fallback.
+  score?: { home?: number | null; away?: number | null } | null;
   homeScore?: number | null;
   awayScore?: number | null;
   currentPeriod?: number;
@@ -96,7 +100,15 @@ export interface GameSummary {
   readEligible?: boolean;
   currentPeriodLabel?: string;
   dateSection?: string;
-  liveSnapshot?: { periodLabel?: string; timeLabel?: string; homeScore?: number; awayScore?: number; gameClock?: string } | null;
+  liveSnapshot?: {
+    periodLabel?: string;
+    timeLabel?: string;
+    score?: { home?: number | null; away?: number | null } | null;
+    homeScore?: number;
+    awayScore?: number;
+    gameClock?: string;
+    currentPeriod?: number;
+  } | null;
 }
 
 // ─── Game Detail ────────────────────────────────────────
@@ -130,6 +142,7 @@ export interface Game {
   gameDate: string;
   homeTeam: string;
   awayTeam: string;
+  score?: { home?: number | null; away?: number | null } | null;
   homeScore?: number | null;
   awayScore?: number | null;
   status: GameStatus;
@@ -166,7 +179,15 @@ export interface Game {
   readEligible?: boolean;
   currentPeriodLabel?: string;
   dateSection?: string;
-  liveSnapshot?: { periodLabel?: string; timeLabel?: string; homeScore?: number; awayScore?: number; gameClock?: string } | null;
+  liveSnapshot?: {
+    periodLabel?: string;
+    timeLabel?: string;
+    score?: { home?: number | null; away?: number | null } | null;
+    homeScore?: number;
+    awayScore?: number;
+    gameClock?: string;
+    currentPeriod?: number;
+  } | null;
 }
 
 // ─── Stats ──────────────────────────────────────────────

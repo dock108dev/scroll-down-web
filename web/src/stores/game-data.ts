@@ -256,6 +256,12 @@ export const useGameData = create<GameDataState>()((set, get) => ({
       const existing = next.get(gameId);
       if (existing) {
         const merged = { ...existing.core, ...patch };
+        // Null-safe score merge: never let a patch with null/undefined scores
+        // clobber a known-good score already in the store. Realtime patches
+        // can arrive without the score payload (e.g. status-only ticks); the
+        // naive spread above would have wiped scores to null.
+        if (patch.homeScore == null) merged.homeScore = existing.core.homeScore;
+        if (patch.awayScore == null) merged.awayScore = existing.core.awayScore;
         // PBP is the source of truth for scores. When we have PBP data,
         // don't let a game_patch overwrite scores with potentially stale
         // Game-object values — keep the PBP-derived scores instead.
