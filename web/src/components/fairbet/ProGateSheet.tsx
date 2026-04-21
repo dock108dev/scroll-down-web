@@ -163,16 +163,19 @@ export function ProGateSheet() {
 
   return (
     <>
-      {/* Backdrop */}
+      {/* Backdrop — z-[60] sits above BottomTabs (z-50) so mobile tabs aren't
+          tappable while the sheet is open. */}
       <div
-        className="fixed inset-0 z-40"
+        className="fixed inset-0 z-[60]"
         style={{ background: "rgba(0,0,0,0.6)" }}
         onClick={handleClose}
         aria-hidden="true"
         data-testid="pro-gate-backdrop"
       />
 
-      {/* Sheet (mobile) / Modal (desktop) */}
+      {/* Sheet (mobile) / Modal (desktop).
+          On mobile `bottom-16` lifts the sheet above the 64px BottomTabs so the
+          Upgrade CTA isn't crowded against the tab bar. */}
       <div
         ref={dialogRef}
         role="dialog"
@@ -180,8 +183,8 @@ export function ProGateSheet() {
         aria-label={`Upgrade to Pro — ${copy.title}`}
         data-testid="pro-gate-sheet"
         className="
-          fixed z-50 flex flex-col gap-5
-          bottom-0 left-0 right-0
+          fixed z-[70] flex flex-col gap-5
+          bottom-16 left-0 right-0
           md:bottom-auto md:left-1/2 md:top-1/2
           md:-translate-x-1/2 md:-translate-y-1/2
           md:w-full md:max-w-md

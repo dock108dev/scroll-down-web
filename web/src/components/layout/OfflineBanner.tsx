@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PWA } from "@/lib/config";
+import { useClaimTopBannerSlot } from "@/lib/top-banner-slot";
 
 export function OfflineBanner() {
   // Lazy initializer avoids a setState-in-effect for the initial online check.
@@ -9,6 +10,7 @@ export function OfflineBanner() {
   const [offline, setOffline] = useState(
     () => typeof navigator !== "undefined" && !navigator.onLine,
   );
+  useClaimTopBannerSlot("offline", offline);
 
   useEffect(() => {
     let dismissTimer: ReturnType<typeof setTimeout> | null = null;

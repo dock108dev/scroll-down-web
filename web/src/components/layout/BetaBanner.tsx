@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { useHealthDegraded } from "@/hooks/useHealthStatus";
+import { useTopBannerSlotClaimed } from "@/lib/top-banner-slot";
 
 const DISMISSED_KEY = "sd-beta-banner-dismissed";
 
@@ -25,9 +26,10 @@ function getServerSnapshot(): boolean {
 export function BetaBanner() {
   const shouldShow = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
   const isDegraded = useHealthDegraded();
+  const higherPriorityBanner = useTopBannerSlotClaimed();
   const [dismissed, setDismissed] = useState(false);
-  // Hide beta banner when degraded banner is showing to reduce banner noise
-  const visible = shouldShow && !dismissed && !isDegraded;
+  // Yield to degraded / offline / install banners to keep the top stack short on mobile.
+  const visible = shouldShow && !dismissed && !isDegraded && !higherPriorityBanner;
 
   const dismiss = useCallback(() => {
     setDismissed(true);
