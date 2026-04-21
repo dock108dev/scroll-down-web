@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PWA, STORAGE_KEYS } from "@/lib/config";
+import { useClaimTopBannerSlot } from "@/lib/top-banner-slot";
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
@@ -41,6 +42,7 @@ function persistDismissed(): void {
 export function PWAInstallPrompt() {
   const [visible, setVisible] = useState(false);
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null);
+  useClaimTopBannerSlot("pwa-install", visible);
 
   useEffect(() => {
     if (isStandaloneMode() || readDismissed()) return;
@@ -86,8 +88,11 @@ export function PWAInstallPrompt() {
       data-testid="pwa-install-prompt"
       className="w-full bg-neutral-900 border-b border-neutral-800"
     >
-      <div className="mx-auto flex items-center justify-between gap-3 px-4 py-2 text-xs text-neutral-300 max-w-2xl">
-        <span>Add Scroll Down Sports to your home screen for a faster experience.</span>
+      <div className="mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-neutral-300 max-w-2xl">
+        <span className="min-w-0 flex-1">
+          <span className="sm:hidden">Add to home screen</span>
+          <span className="hidden sm:inline">Add Scroll Down Sports to your home screen for a faster experience.</span>
+        </span>
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={handleInstall}

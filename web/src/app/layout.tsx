@@ -34,6 +34,7 @@ export const metadata: Metadata = {
     "Follow MLB, NBA, NHL, and college basketball on your schedule. Live scores when you want them, play by play timelines, betting analytics, and matchup simulators in one place.",
   metadataBase: new URL(SITE_URL),
   alternates: { canonical: "/" },
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
