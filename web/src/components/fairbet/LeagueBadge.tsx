@@ -20,7 +20,7 @@ interface LeagueBadgeProps {
 }
 
 export function LeagueBadge({ league, className }: LeagueBadgeProps) {
-  const colors = LEAGUE_COLORS[league.toLowerCase()] ?? DEFAULT_COLORS;
+  const colors = LEAGUE_COLORS[(league ?? "").toLowerCase()] ?? DEFAULT_COLORS;
 
   return (
     <span

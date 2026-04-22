@@ -190,7 +190,8 @@ const MARKET_KEY_LABELS: Record<string, string> = {
   alternate_totals: "Alt Total",
 };
 
-function marketKeyToLabel(key: string): string {
+function marketKeyToLabel(key: string | null | undefined): string {
+  if (!key) return "";
   return MARKET_KEY_LABELS[key.toLowerCase()] ?? key.replace(/_/g, " ");
 }
 
@@ -209,7 +210,8 @@ const MARKET_SHORT_LABELS: Record<string, string> = {
   team_total: "Team Total",
 };
 
-function marketKeyToShortLabel(key: string): string {
+function marketKeyToShortLabel(key: string | null | undefined): string {
+  if (!key) return "";
   return MARKET_SHORT_LABELS[key.toLowerCase()] ?? marketKeyToLabel(key);
 }
 
@@ -219,7 +221,8 @@ function marketKeyToShortLabel(key: string): string {
  * Returns true for the three mainline markets: spread, total, and moneyline.
  * Everything else (alt lines, props, team totals) is non-mainline.
  */
-export function isMainlineMarket(key: string): boolean {
+export function isMainlineMarket(key: string | null | undefined): boolean {
+  if (!key) return false;
   const lower = key.toLowerCase();
   return (
     lower === "h2h" ||
@@ -234,7 +237,8 @@ export function isMainlineMarket(key: string): boolean {
 // ── Market category mapping ────────────────────────────────────────
 
 /** Map a market_key to a high-level market category for filtering. */
-export function marketKeyToCategory(key: string): string {
+export function marketKeyToCategory(key: string | null | undefined): string {
+  if (!key) return "other";
   const lower = key.toLowerCase();
   if (lower === "h2h" || lower === "moneyline") return "moneyline";
   if (lower === "spreads" || lower === "spread" || lower === "alternate_spread" || lower === "alternate_spreads") return "spread";
@@ -309,9 +313,9 @@ export function selectionDisplay(bet: APIBet): string {
     return bet.bet_description;
   }
 
-  const selection = humaniseSelectionKey(bet.selection_key, bet);
+  const selection = humaniseSelectionKey(bet.selection_key ?? "", bet);
   const marketLabel = marketKeyToLabel(bet.market_key);
-  const marketLower = bet.market_key.toLowerCase();
+  const marketLower = (bet.market_key ?? "").toLowerCase();
 
   if (marketLower.startsWith("player_")) {
     const playerName = bet.player_name ?? selection;

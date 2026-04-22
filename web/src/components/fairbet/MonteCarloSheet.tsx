@@ -131,9 +131,9 @@ export function MonteCarloSheet({ open, onClose, bet }: MonteCarloSheetProps) {
   const sheetRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
-  const sport = bet.league_code.toLowerCase();
-  const isSpreadBet = /spread/i.test(bet.market_key);
-  const isTotalBet = /total/i.test(bet.market_key);
+  const sport = (bet.league_code ?? "").toLowerCase();
+  const isSpreadBet = /spread/i.test(bet.market_key ?? "");
+  const isTotalBet = /total/i.test(bet.market_key ?? "");
   const spreadLine =
     isSpreadBet && bet.line_value != null ? bet.line_value : null;
   const totalLine =

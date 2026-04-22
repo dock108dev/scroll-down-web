@@ -64,7 +64,8 @@ const SPORT_BY_LEAGUE: Record<string, string> = {
   tennis: "Tennis",
 };
 
-export function sportForLeague(league: string): string {
+export function sportForLeague(league: string | null | undefined): string {
+  if (!league) return "";
   return SPORT_BY_LEAGUE[league.toLowerCase()] ?? league.toUpperCase();
 }
 
@@ -135,30 +136,30 @@ export function filterAndSortBets(allBets: APIBet[], filters: FairBetFilters): A
   });
 
   if (filters.league) {
-    result = result.filter(
-      (b) => b.league_code.toLowerCase() === filters.league.toLowerCase(),
-    );
+    const fl = filters.league.toLowerCase();
+    result = result.filter((b) => (b.league_code ?? "").toLowerCase() === fl);
   }
 
   if (filters.market) {
     result = result.filter(
-      (b) => marketKeyToCategory(b.market_key) === filters.market,
+      (b) => marketKeyToCategory(b.market_key ?? "") === filters.market,
     );
   }
 
   if (filters.book) {
+    const fb = filters.book.toLowerCase();
     result = result.filter(
-      (b) => b.books.some((bp) => bp.book.toLowerCase() === filters.book.toLowerCase()),
+      (b) => b.books?.some((bp) => (bp.book ?? "").toLowerCase() === fb),
     );
   }
 
   if (filters.searchText) {
     const q = filters.searchText.toLowerCase();
     result = result.filter((b) =>
-      b.home_team.toLowerCase().includes(q) ||
-      b.away_team.toLowerCase().includes(q) ||
-      b.selection_key.toLowerCase().includes(q) ||
-      (b.player_name && b.player_name.toLowerCase().includes(q)),
+      (b.home_team ?? "").toLowerCase().includes(q) ||
+      (b.away_team ?? "").toLowerCase().includes(q) ||
+      (b.selection_key ?? "").toLowerCase().includes(q) ||
+      (b.player_name ?? "").toLowerCase().includes(q),
     );
   }
 
