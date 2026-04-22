@@ -319,7 +319,7 @@ export function selectionDisplay(bet: APIBet): string {
 
   if (marketLower.startsWith("player_")) {
     const playerName = bet.player_name ?? selection;
-    const side = bet.selection_key.startsWith("player:") ? "" : selection;
+    const side = bet.selection_key?.startsWith("player:") ? "" : selection;
     const shortLabel = marketKeyToShortLabel(bet.market_key);
     if (bet.line_value != null) {
       return side

@@ -52,12 +52,14 @@ const BOOK_ABBREVIATION_MAP: Record<string, string> = {
  * Matches names case-insensitively; falls back to the first 3 characters
  * uppercased.
  */
-export function bookAbbreviation(name: string): string {
+export function bookAbbreviation(name: string | null | undefined): string {
+  if (!name) return "";
   const key = name.toLowerCase().trim();
   return BOOK_ABBREVIATION_MAP[key] ?? key.slice(0, 3).toUpperCase();
 }
 
 /** Convert a sportsbook name to a URL-safe slug for asset paths. */
-export function bookSlug(name: string): string {
+export function bookSlug(name: string | null | undefined): string {
+  if (!name) return "";
   return name.toLowerCase().trim().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 }

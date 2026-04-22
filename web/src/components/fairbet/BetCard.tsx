@@ -114,7 +114,7 @@ export const BetCard = memo(function BetCard({
 
   // User's preferred book price (if different from best)
   const preferredBookPrice = preferredBook
-    ? bet.books.find((b) => b.book.toLowerCase() === preferredBook.toLowerCase())
+    ? bet.books.find((b) => (b.book ?? "").toLowerCase() === preferredBook.toLowerCase())
     : null;
 
   // Primary display: preferred if available, else best

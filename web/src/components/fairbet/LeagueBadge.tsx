@@ -30,7 +30,7 @@ export function LeagueBadge({ league, className }: LeagueBadgeProps) {
       )}
       style={{ backgroundColor: colors.bg, color: colors.text }}
     >
-      {league.toUpperCase()}
+      {(league ?? "").toUpperCase()}
     </span>
   );
 }
