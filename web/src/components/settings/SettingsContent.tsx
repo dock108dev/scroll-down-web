@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSettings } from "@/stores/settings";
 import { useAuth } from "@/stores/auth";
+import { useUI } from "@/stores/ui";
 import { cn } from "@/lib/utils";
 import { Section, Row } from "@/components/shared/FormPrimitives";
 import { ScoreHideBlacklistControls } from "./ScoreHideBlacklistControls";
@@ -48,6 +49,19 @@ export function SettingsContent() {
   } = useSettings();
 
   const { token, email: authEmail, role, logout } = useAuth();
+  const closeSettings = useUI((s) => s.closeSettings);
+
+  const buildLoginHref = (signup = false) => {
+    const base = signup ? "/login?tab=signup" : "/login";
+    if (typeof window === "undefined") return base;
+    const current = window.location.pathname + window.location.search;
+    // Only carry over internal paths that aren't the login flow itself
+    if (!current.startsWith("/login") && /^\/[^/\\]/.test(current)) {
+      const sep = base.includes("?") ? "&" : "?";
+      return `${base}${sep}redirect=${encodeURIComponent(current)}`;
+    }
+    return base;
+  };
 
   return (
     <div data-testid="settings-content" className="space-y-6">
@@ -91,13 +105,15 @@ export function SettingsContent() {
             </p>
             <div className="flex items-center gap-3">
               <Link
-                href="/login"
+                href={buildLoginHref(false)}
+                onClick={closeSettings}
                 className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
               >
                 Log In
               </Link>
               <Link
-                href="/login?tab=signup"
+                href={buildLoginHref(true)}
+                onClick={closeSettings}
                 className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
               >
                 Sign Up

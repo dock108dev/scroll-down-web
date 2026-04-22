@@ -60,11 +60,6 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
     [revealableGames, reveal],
   );
 
-  const unrevealedAll = useMemo(
-    () => games.filter((g) => !reveal.isRevealed(g.id)),
-    [games, reveal],
-  );
-
   const showBatchActions =
     expanded && scoreRevealMode !== "always" && !followingLive;
 
@@ -76,42 +71,23 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
     reveal.revealBatch(entries);
   }, [unrevealedRevealable, reveal]);
 
-  const handleMarkAllRead = useCallback(() => {
-    reveal.markReadBatch(unrevealedAll.map((g) => g.id));
-  }, [unrevealedAll, reveal]);
-
   if (games.length === 0) return null;
 
   const batchActions =
-    showBatchActions && (unrevealedRevealable.length > 0 || unrevealedAll.length > 0) ? (
-      <>
-        {unrevealedRevealable.length > 0 && (
-          <button
-            data-testid={`reveal-all-${title.toLowerCase()}`}
-            onClick={handleRevealAll}
-            aria-label={`Reveal all scores in ${title}`}
-            className="rounded-full px-2.5 py-1 text-[11px] font-medium transition min-h-[32px] border hover:opacity-90"
-            style={{
-              color: "var(--ds-accent)",
-              background: "var(--ds-accent-bg)",
-              borderColor: "color-mix(in srgb, var(--ds-accent) 25%, transparent)",
-            }}
-          >
-            Reveal All
-          </button>
-        )}
-        {unrevealedAll.length > 0 && (
-          <button
-            data-testid={`mark-all-read-${title.toLowerCase()}`}
-            onClick={handleMarkAllRead}
-            aria-label={`Mark all ${title} games as read`}
-            className="rounded-full px-2.5 py-1 text-[11px] font-medium transition min-h-[32px]"
-            style={{ color: "var(--ds-text-tertiary)" }}
-          >
-            Mark read
-          </button>
-        )}
-      </>
+    showBatchActions && unrevealedRevealable.length > 0 ? (
+      <button
+        data-testid={`reveal-all-${title.toLowerCase()}`}
+        onClick={handleRevealAll}
+        aria-label={`Reveal all scores in ${title}`}
+        className="rounded-full px-2.5 py-1 text-[11px] font-medium transition min-h-[32px] border hover:opacity-90"
+        style={{
+          color: "var(--ds-accent)",
+          background: "var(--ds-accent-bg)",
+          borderColor: "color-mix(in srgb, var(--ds-accent) 25%, transparent)",
+        }}
+      >
+        Reveal All
+      </button>
     ) : null;
 
   return (

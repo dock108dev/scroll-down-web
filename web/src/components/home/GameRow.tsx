@@ -232,9 +232,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       );
     }
 
-    // Reveal mode: blur overlay over always-rendered score
-    const awayForDisplay = display?.awayScore ?? game.awayScore;
-    const homeForDisplay = display?.homeScore ?? game.homeScore;
+    // Reveal mode: blur overlay over the score. Only render the score when
+    // the display layer says it's visible — otherwise the raw game score
+    // leaks through the backdrop blur (the overlay is only ~75% opaque).
+    const awayForDisplay = scoresVisible ? display?.awayScore : null;
+    const homeForDisplay = scoresVisible ? display?.homeScore : null;
     const hasAnyScore = awayForDisplay != null && homeForDisplay != null;
     const scoreEl = hasAnyScore ? (
       <span key={flashCount} data-testid="score-value" className={cn("text-lg font-bold tabular-nums text-neutral-200 text-right", flashCount > 0 && "score-flash")}>
@@ -316,8 +318,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
         revealState === "unrevealed" && !live && "border-l-blue-500",
         revealState === "updated" && "border-l-amber-400",
         live && revealState !== "updated" && "border-l-green-400",
-        // Settled opacity for revealed rows (no pending update) in reveal mode
-        !isHistory && canToggle && revealState === "revealed" && "opacity-60",
         "cursor-pointer hover:bg-neutral-800/30 active:bg-neutral-800/40",
       )}
     >

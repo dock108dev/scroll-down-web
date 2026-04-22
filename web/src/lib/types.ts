@@ -7,6 +7,7 @@ export type GameStatus =
   | "live"
   | "completed"
   | "final"
+  | "recap_ready"
   | "archived"
   | "postponed"
   | "canceled";
@@ -686,7 +687,7 @@ export interface LoggedBet {
 
 // ─── Helpers ────────────────────────────────────────────
 
-export const TERMINAL_STATUSES: GameStatus[] = ["final", "completed", "archived", "postponed", "canceled"];
+export const TERMINAL_STATUSES: GameStatus[] = ["final", "recap_ready", "completed", "archived", "postponed", "canceled"];
 export const PREGAME_STATUSES: GameStatus[] = ["pregame", "scheduled"];
 
 export function isLive(status: GameStatus, game?: { isLive?: boolean }): boolean {

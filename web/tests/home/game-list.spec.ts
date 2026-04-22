@@ -303,28 +303,4 @@ test.describe("Home page – game list @live-upstream", () => {
     expect(flashCount).toBe(0);
   });
 
-  test("batch reveal: Mark All Read hides scores and removes unread indicators", async ({ authedPage }) => {
-    await authedPage.evaluate(() => localStorage.removeItem("sd-read-state"));
-    await authedPage.reload();
-    await waitForLoad(authedPage);
-
-    const hasData = await waitForGameData(authedPage);
-    if (!hasData) {
-      test.skip(true, "No game data available from API");
-      return;
-    }
-
-    const markReadBtn = authedPage.locator("[data-testid^='mark-all-read-']").first();
-    const hasMarkRead = (await markReadBtn.count()) > 0;
-    if (!hasMarkRead) {
-      test.skip(true, "No Mark All Read button — not in onMarkRead mode or no games");
-      return;
-    }
-
-    await markReadBtn.click();
-    await authedPage.waitForTimeout(300);
-
-    // Button should disappear after all games are marked read
-    await expect(markReadBtn).not.toBeVisible();
-  });
 });

@@ -18,18 +18,18 @@ export function FollowingLiveBanner() {
   return (
     <div
       data-testid="following-live-banner"
-      className="mx-4 mt-3 px-3 py-2.5 rounded-lg bg-green-900/20 border border-green-800/40 flex items-start justify-between gap-3"
+      className="mx-4 mt-3 px-3 py-2.5 rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-300 dark:border-green-800/40 flex items-start justify-between gap-3"
       role="status"
       aria-live="polite"
     >
-      <p className="text-xs text-green-300 leading-snug">
+      <p className="text-xs text-green-900 dark:text-green-300 leading-snug">
         <span className="font-semibold">Following Live is on</span> — score hiding is
         paused. All scores are visible while this mode is active.
       </p>
       <button
         data-testid="following-live-banner-dismiss"
         onClick={toggle}
-        className="shrink-0 text-xs font-medium text-green-400 hover:text-green-200 transition underline whitespace-nowrap"
+        className="shrink-0 text-xs font-medium text-green-800 hover:text-green-950 dark:text-green-400 dark:hover:text-green-200 transition underline whitespace-nowrap"
         aria-label="Turn off Following Live to re-hide scores"
       >
         Turn off

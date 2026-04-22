@@ -64,6 +64,28 @@ function deepFixStrings<T>(obj: T): T {
   return obj;
 }
 
+// ── camelCase → snake_case key normalizer ────────────────────
+// Upstream FairBet endpoints return camelCase; the client still
+// expects snake_case. Normalize at the proxy boundary so we don't
+// have to rewrite types and every consumer.
+
+function camelToSnakeKey(k: string): string {
+  // Leave already-snake keys alone; otherwise convert fooBar → foo_bar
+  return k.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+}
+
+export function deepSnakeKeys<T>(obj: T): T {
+  if (Array.isArray(obj)) return obj.map(deepSnakeKeys) as T;
+  if (obj && typeof obj === "object" && (obj as object).constructor === Object) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
+      out[camelToSnakeKey(k)] = deepSnakeKeys(v);
+    }
+    return out as T;
+  }
+  return obj;
+}
+
 // ── Helpers ──────────────────────────────────────────────────
 
 /** Extract Authorization header from an incoming request to forward upstream. */

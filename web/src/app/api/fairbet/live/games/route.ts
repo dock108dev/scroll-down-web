@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
+import { apiFetch, ApiError, deepSnakeKeys, forwardAuth } from "@/lib/api-server";
 import type { LiveGameInfo } from "@/lib/types";
 
 export async function GET(req: NextRequest) {
@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
       revalidate: 0,
       headers: forwardAuth(req),
     });
-    return NextResponse.json(data);
+    return NextResponse.json(deepSnakeKeys(data));
   } catch (err) {
     const status = err instanceof ApiError && err.proxyStatus ? err.proxyStatus : 500;
     return NextResponse.json(

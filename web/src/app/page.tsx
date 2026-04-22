@@ -234,6 +234,22 @@ export default function HomePage() {
     });
   }, []);
 
+  const [overflowOpen, setOverflowOpen] = useState(false);
+  const overflowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!overflowOpen) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      if (!overflowRef.current?.contains(e.target as Node)) setOverflowOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("touchstart", onDown);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("touchstart", onDown);
+    };
+  }, [overflowOpen]);
+
   const hasAnyGames = sortedSections.some((s) => s.games.length > 0);
 
   // Track toolbar height for section header sticky offset
@@ -309,9 +325,10 @@ export default function HomePage() {
               )}
             </button>
 
-            {/* Read — primary CTA */}
+            {/* Reveal — primary CTA (matches per-row Reveal button) */}
             {hasAnyGames && scoreRevealMode !== "always" && !followingLive && catchUpCount > 0 && (
               <button
+                data-testid="catch-up-button"
                 onClick={handleCatchUp}
                 className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-blue-500 transition"
               >
@@ -319,26 +336,50 @@ export default function HomePage() {
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                Read
+                Reveal
                 <span className="bg-white/20 rounded-full px-1.5 py-0.5 text-[9px] leading-none">
                   {catchUpCount}
                 </span>
               </button>
             )}
 
-            {/* Unread — icon only (secondary, rarely needed) */}
+            {/* Overflow — houses the rare "Mark all unread" reset */}
             {hasAnyGames && scoreRevealMode !== "always" && !followingLive && readCount > 0 && (
-              <button
-                onClick={handleReset}
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
-                title={`Unread ${readCount} game${readCount !== 1 ? "s" : ""}`}
-                aria-label={`Unread ${readCount} game${readCount !== 1 ? "s" : ""}`}
-              >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              </button>
+              <div ref={overflowRef} className="relative">
+                <button
+                  data-testid="top-overflow-toggle"
+                  onClick={() => setOverflowOpen((v) => !v)}
+                  className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-full text-neutral-500 hover:text-neutral-50 hover:bg-neutral-800 transition"
+                  title="More actions"
+                  aria-label="More actions"
+                  aria-haspopup="menu"
+                  aria-expanded={overflowOpen}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                    <circle cx="5" cy="12" r="1.8" />
+                    <circle cx="12" cy="12" r="1.8" />
+                    <circle cx="19" cy="12" r="1.8" />
+                  </svg>
+                </button>
+                {overflowOpen && (
+                  <div
+                    role="menu"
+                    className="absolute right-0 top-full mt-1 z-30 min-w-[180px] rounded-lg border border-neutral-800 bg-neutral-900 shadow-lg py-1"
+                  >
+                    <button
+                      role="menuitem"
+                      data-testid="mark-all-unread"
+                      onClick={() => {
+                        handleReset();
+                        setOverflowOpen(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-[13px] text-neutral-200 hover:bg-neutral-800 transition"
+                    >
+                      Mark all unread ({readCount})
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {/* Refresh */}
