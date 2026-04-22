@@ -24,6 +24,7 @@ import { useSettings } from "@/stores/settings";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { useHomeScroll } from "@/stores/home-scroll";
 import { pickSnapshot } from "@/lib/score-display";
+import { isGameHiddenByBlacklist } from "@/lib/score-hide";
 import { Spinner } from "@/components/shared/Spinner";
 import { StaleBanner } from "@/components/shared/StaleBanner";
 import { cn } from "@/lib/utils";
@@ -80,6 +81,8 @@ export default function HomePage() {
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const followingLive = useSettings((s) => s.followingLive);
+  const scoreHideLeagues = useSettings((s) => s.scoreHideLeagues);
+  const scoreHideTeams = useSettings((s) => s.scoreHideTeams);
 
   const pinnedIds = usePinnedGames((s) => s.pinnedIds);
   const pruneStale = usePinnedGames((s) => s.pruneStale);
@@ -157,19 +160,33 @@ export default function HomePage() {
     );
   }, [sortedSections, homeExpandedSections]);
 
-  // Count unread final games in visible sections only
+  // Games subject to the hide/reveal workflow under the current mode.
+  // "always" → nothing is hidden, so Reveal/Unread actions don't apply.
+  // "onMarkRead" → every game is hidden by default.
+  // "blacklist" → only blacklisted games are hidden; others are like "always".
+  // followingLive temporarily acts like "always" for every mode.
+  const hideableGames = useMemo(() => {
+    if (followingLive || scoreRevealMode === "always") return [];
+    if (scoreRevealMode === "blacklist") {
+      return allVisibleGames.filter((g) =>
+        isGameHiddenByBlacklist(g, scoreHideLeagues, scoreHideTeams),
+      );
+    }
+    return allVisibleGames;
+  }, [allVisibleGames, scoreRevealMode, followingLive, scoreHideLeagues, scoreHideTeams]);
+
+  // Count unread final games among hideable games
   const unreadFinalCount = useMemo(
     () =>
-      allVisibleGames.filter(
+      hideableGames.filter(
         (g) => isFinal(g.status, g) && !reveal.isRevealed(g.id),
       ).length,
-    [allVisibleGames, reveal],
+    [hideableGames, reveal],
   );
 
   // Live games needing attention: unread live games + revealed live games with new data
   const liveNeedsAttention = useMemo(() => {
-    if (scoreRevealMode === "always") return [];
-    return allVisibleGames.filter((g) => {
+    return hideableGames.filter((g) => {
       if (!isLive(g.status, g)) return false;
       if (g.homeScore == null || g.awayScore == null) return false;
       const revealed = reveal.isRevealed(g.id);
@@ -182,31 +199,31 @@ export default function HomePage() {
         g.awayScore !== snap.awayScore
       );
     });
-  }, [allVisibleGames, reveal, scoreRevealMode]);
+  }, [hideableGames, reveal]);
 
   const catchUpCount = unreadFinalCount + liveNeedsAttention.length;
 
-  // Count revealed games in visible sections only
+  // Count revealed games among hideable games (so "Mark all unread" only
+  // counts games that were actually hidden in the first place).
   const readCount = useMemo(
-    () => allVisibleGames.filter((g) => reveal.isRevealed(g.id)).length,
-    [allVisibleGames, reveal],
+    () => hideableGames.filter((g) => reveal.isRevealed(g.id)).length,
+    [hideableGames, reveal],
   );
 
-  // Final game IDs in visible sections only
-  const visibleFinalGameIds = useMemo(
-    () => allVisibleGames.filter((g) => isFinal(g.status, g)).map((g) => g.id),
-    [allVisibleGames],
+  const hideableFinalIds = useMemo(
+    () => hideableGames.filter((g) => isFinal(g.status, g)).map((g) => g.id),
+    [hideableGames],
   );
 
-  const visibleGameIds = useMemo(() => allVisibleGames.map((g) => g.id), [allVisibleGames]);
+  const hideableGameIds = useMemo(() => hideableGames.map((g) => g.id), [hideableGames]);
 
   const handleCatchUp = useCallback(() => {
     // Build batch entries: all unread finals + live games needing attention
     const entries: { gameId: number; snapshot: ReturnType<typeof pickSnapshot> }[] = [];
 
-    for (const id of visibleFinalGameIds) {
+    for (const id of hideableFinalIds) {
       if (!reveal.isRevealed(id)) {
-        const game = allVisibleGames.find((g) => g.id === id);
+        const game = hideableGames.find((g) => g.id === id);
         if (game) entries.push({ gameId: id, snapshot: pickSnapshot(game) });
       }
     }
@@ -215,12 +232,12 @@ export default function HomePage() {
     }
 
     reveal.revealBatch(entries);
-  }, [visibleFinalGameIds, liveNeedsAttention, reveal, allVisibleGames]);
+  }, [hideableFinalIds, liveNeedsAttention, reveal, hideableGames]);
 
   const handleReset = useCallback(() => {
-    reveal.hideBatch(visibleGameIds);
+    reveal.hideBatch(hideableGameIds);
     clearAllPositions();
-  }, [visibleGameIds, reveal, clearAllPositions]);
+  }, [hideableGameIds, reveal, clearAllPositions]);
 
   const handleSearchChange = useCallback((value: string) => {
     setSearch(value);

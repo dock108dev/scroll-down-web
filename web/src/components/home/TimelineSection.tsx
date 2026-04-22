@@ -9,6 +9,7 @@ import { GameRow } from "./GameRow";
 import { NativeAdCard } from "@/components/ads/NativeAdCard";
 import { isFinal, isLive } from "@/lib/types";
 import { pickSnapshot } from "@/lib/score-display";
+import { isGameHiddenByBlacklist } from "@/lib/score-hide";
 import { ADS } from "@/lib/config";
 
 interface TimelineSectionProps {
@@ -23,6 +24,8 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
   const setHomeExpandedSections = useSettings((s) => s.setHomeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
   const followingLive = useSettings((s) => s.followingLive);
+  const scoreHideLeagues = useSettings((s) => s.scoreHideLeagues);
+  const scoreHideTeams = useSettings((s) => s.scoreHideTeams);
 
   const reveal = useReveal();
 
@@ -43,16 +46,26 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
     return games.filter((g) => pinnedIds.has(g.id));
   }, [games, pinnedIds]);
 
-  // Games eligible for batch reveal (final or live with score data)
+  // Games eligible for batch reveal (final or live with score data) AND
+  // actually hidden under the current reveal mode. In blacklist mode this
+  // filters out the majority of games that are already visible by default.
   const revealableGames = useMemo(
-    () =>
-      games.filter(
+    () => {
+      const baseEligible = games.filter(
         (g) =>
           (isFinal(g.status, g) || isLive(g.status, g)) &&
           g.homeScore != null &&
           g.awayScore != null,
-      ),
-    [games],
+      );
+      if (followingLive || scoreRevealMode === "always") return [];
+      if (scoreRevealMode === "blacklist") {
+        return baseEligible.filter((g) =>
+          isGameHiddenByBlacklist(g, scoreHideLeagues, scoreHideTeams),
+        );
+      }
+      return baseEligible;
+    },
+    [games, scoreRevealMode, followingLive, scoreHideLeagues, scoreHideTeams],
   );
 
   const unrevealedRevealable = useMemo(
