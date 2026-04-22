@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { cn } from "@/lib/utils";
 import { FairBetTheme } from "@/lib/theme";
 import { useProGateSheet } from "@/stores/pro-gate-sheet";
-import { useSession } from "@/stores/session";
+import { useIsPro } from "@/hooks/useIsPro";
 import type { FairBetFilters, ConfidenceLevel, TimeToGame } from "@/lib/fairbet-filters";
 
 const CONFIDENCE_OPTIONS: { key: ConfidenceLevel; label: string }[] = [
@@ -48,11 +48,10 @@ export function AdvancedFilters({
   onTimeToGameChange,
   disabled = false,
 }: AdvancedFiltersProps) {
-  const { tier } = useSession();
   const { openSheet } = useProGateSheet();
   const gateButtonRef = useRef<HTMLButtonElement>(null);
 
-  const isPro = tier === "pro";
+  const isPro = useIsPro();
 
   const hasActive =
     !!filters.confidence || !!filters.sport || !!filters.timeToGame || !!filters.market;

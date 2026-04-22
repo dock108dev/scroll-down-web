@@ -1,4 +1,5 @@
 import { useTier } from "@/stores/tier";
+import { useAuth } from "@/stores/auth";
 import { useProGateSheet } from "@/stores/pro-gate-sheet";
 import { FEATURE_GATES } from "@/lib/config";
 import type { FeatureGateKey } from "@/lib/config";
@@ -24,8 +25,10 @@ export interface ProGateResult {
  */
 export function useProGate(feature: FeatureGateKey): ProGateResult {
   const tier = useTier((s) => s.tier);
+  const role = useAuth((s) => s.role);
   const openSheet = useProGateSheet((s) => s.openSheet);
-  const allowed = tier === "pro" && GATED_FEATURES.has(feature);
+  const effectiveTier: "free" | "pro" = tier === "pro" || role === "admin" ? "pro" : "free";
+  const allowed = effectiveTier === "pro" && GATED_FEATURES.has(feature);
 
   function gate(triggerEl?: HTMLElement | null): boolean {
     if (allowed) return true;
@@ -39,5 +42,5 @@ export function useProGate(feature: FeatureGateKey): ProGateResult {
     return false;
   }
 
-  return { allowed, tier, gate };
+  return { allowed, tier: effectiveTier, gate };
 }

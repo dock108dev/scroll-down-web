@@ -3,7 +3,7 @@
 import { memo, useState, useRef, useEffect } from "react";
 import type { APIBet } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
-import { useTier } from "@/stores/tier";
+import { useIsPro } from "@/hooks/useIsPro";
 import { useProGateSheet } from "@/stores/pro-gate-sheet";
 import { formatOdds, formatDate, cn } from "@/lib/utils";
 import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
@@ -67,7 +67,7 @@ export const BetCard = memo(function BetCard({
 }: BetCardProps) {
   const oddsFormat = useSettings((s) => s.oddsFormat);
   const preferredBook = useSettings((s) => s.preferredSportsbook);
-  const isPro = useTier((s) => s.tier) === "pro";
+  const isPro = useIsPro();
   const openProGate = useProGateSheet((s) => s.openSheet);
   const [showFullBookName, setShowFullBookName] = useState(false);
   const [showExplanation, setShowExplanation] = useState(false);

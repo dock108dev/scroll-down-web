@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useMyBets } from "@/stores/my-bets";
-import { useTier } from "@/stores/tier";
+import { useIsPro } from "@/hooks/useIsPro";
 import type { LoggedBet } from "@/lib/types";
 
 const MIN_BETS_FOR_DASHBOARD = 3;
@@ -205,7 +205,7 @@ function BreakdownTable({
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function MyBetsDashboardPage() {
-  const isPro = useTier((s) => s.tier) === "pro";
+  const isPro = useIsPro();
   const bets = useMyBets((s) => s.bets);
   const { total, wins, losses, pushes, avgClv, sparklinePoints, byBook, byMarket } =
     useDashboardData(bets);
