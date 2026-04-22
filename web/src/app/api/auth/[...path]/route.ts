@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sportsApiBaseUrl } from "@/lib/api-server";
+import { sportsApiBaseUrl, deepSnakeKeys } from "@/lib/api-server";
 import { createRateLimiter } from "@/lib/rate-limit";
 
 // ── Path whitelist ──────────────────────────────────────────────────────
@@ -111,7 +111,21 @@ async function proxy(
       );
     }
 
-    return new NextResponse(body, {
+    // Upstream auth endpoints return camelCase keys (accessToken, tokenType,
+    // userId, createdAt, etc.); the client reads snake_case. Normalize keys
+    // on successful JSON responses so the client sees the shape it expects.
+    // Error bodies are passed through untouched.
+    let outBody = body;
+    if (res.ok) {
+      try {
+        const parsed = JSON.parse(body);
+        outBody = JSON.stringify(deepSnakeKeys(parsed));
+      } catch {
+        // Non-JSON body — leave as-is.
+      }
+    }
+
+    return new NextResponse(outBody, {
       status: res.status,
       headers: {
         "Content-Type": "application/json",

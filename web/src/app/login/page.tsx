@@ -39,8 +39,15 @@ function LoginForm() {
   const initialTab = searchParams.get("tab") === "signup" ? "signup" : "login";
   const reason = searchParams.get("reason");
   const rawRedirect = searchParams.get("redirect");
-  // Only allow safe internal paths — prevent open redirects (including backslash-bypass like /\evil.com)
-  const redirectTo = rawRedirect && /^\/[^/\\]/.test(rawRedirect) ? rawRedirect : null;
+  // Only allow safe internal paths — prevent open redirects (including
+  // backslash-bypass like /\evil.com) and self-redirects back to /login
+  // (which would loop the user right back after a successful submit).
+  const redirectTo =
+    rawRedirect &&
+    /^\/[^/\\]/.test(rawRedirect) &&
+    !rawRedirect.startsWith("/login")
+      ? rawRedirect
+      : null;
   const [tab, setTab] = useState<Tab>(initialTab);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
