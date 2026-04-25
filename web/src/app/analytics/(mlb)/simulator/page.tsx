@@ -5,7 +5,6 @@ import {
   fetchTeams,
   fetchRoster,
   runSimulation,
-  dedupeTeams,
 } from "@/features/analytics/services/SimulatorService";
 import type {
   SimulatorTeam,
@@ -86,7 +85,8 @@ export default function MLBSimulatorPage() {
     async function load() {
       try {
         const t = await fetchTeams();
-        if (!cancelled) setTeams(dedupeTeams(t));
+        // Upstream is now sport-scoped — no need for client-side dedupe.
+        if (!cancelled) setTeams(t);
       } catch {
         // ignore
       } finally {

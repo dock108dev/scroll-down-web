@@ -530,6 +530,11 @@ export interface APIBet {
   league_code: string;
   home_team: string;
   away_team: string;
+  /** ≤10-char team abbreviation (e.g. "POR"). Nullable when the upstream
+   *  team mapping is missing for this bet's game. Required by the simulator
+   *  endpoints — see MonteCarloSheet for usage. */
+  home_team_abbr?: string | null;
+  away_team_abbr?: string | null;
   game_date: string;
   market_key: string;
   selection_key: string;

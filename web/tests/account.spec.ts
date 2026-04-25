@@ -113,47 +113,21 @@ test.describe("Account page", () => {
 
   // ── Nav avatar link ──────────────────────────────────────────────
 
-  test("nav avatar links to /account for authenticated users @smoke", async ({ page }) => {
+  test("nav avatar links to /account for authenticated users @smoke", async ({
+    authedPage,
+  }) => {
     test.skip(
       test.info().project.name === "mobile",
       "TopNav account avatar uses hidden md:flex — not exposed at mobile viewport",
     );
 
-    await page.route("/api/auth/session", async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: "application/json",
-        body: JSON.stringify({
-          authenticated: true,
-          userId: "test-user-3",
-          email: "nav@test.example",
-          tier: "free",
-        }),
-      });
-    });
-
-    // Seed localStorage so TopNav (which uses useAuth) shows the avatar
-    await page.goto("/");
-    await page.evaluate(() => {
-      localStorage.setItem(
-        "sd-auth",
-        JSON.stringify({
-          state: {
-            token: "fake-token",
-            role: "user",
-            email: "nav@test.example",
-            userId: 1,
-            rememberMe: true,
-          },
-          version: 0,
-        }),
-      );
-    });
-    await page.reload();
-
-    const navLink = page.locator("[data-testid='nav-account-link']");
-    // Avatar appears only after auth hydration; use auto-waiting matcher
-    // rather than reading getAttribute immediately (which doesn't retry).
-    await expect(navLink).toHaveAttribute("href", "/account", { timeout: 10_000 });
+    // Use the standing authedPage fixture (real session JWT + sd-auth
+    // localStorage) instead of mocking /api/auth/session and racing reload
+    // against zustand-persist hydration — that combination flaked even with
+    // a 10s auto-wait because the avatar can briefly disappear during
+    // re-hydration after reload.
+    await authedPage.goto("/");
+    const navLink = authedPage.locator("[data-testid='nav-account-link']");
+    await expect(navLink).toHaveAttribute("href", "/account", { timeout: 15_000 });
   });
 });

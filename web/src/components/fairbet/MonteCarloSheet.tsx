@@ -3,10 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { APIBet } from "@/lib/types";
 import type { SimulatorResult } from "@/features/analytics/types";
-import {
-  fetchSimulatorTeams,
-  runPublicSimulation,
-} from "@/features/analytics/services/PublicSimulatorService";
+import { runPublicSimulation } from "@/features/analytics/services/PublicSimulatorService";
 import { FAIRBET } from "@/lib/config";
 import { FairBetTheme } from "@/lib/theme";
 
@@ -144,6 +141,12 @@ export function MonteCarloSheet({ open, onClose, bet }: MonteCarloSheetProps) {
 
   const homeTeam = bet.home_team;
   const awayTeam = bet.away_team;
+  // Bet payloads from the SDA upstream now carry team abbreviations directly
+  // (homeTeamAbbr / awayTeamAbbr → home_team_abbr / away_team_abbr after the
+  // proxy's deepSnakeKeys transform). Falls back to null if mapping is missing
+  // upstream — handled below.
+  const homeAbbr = bet.home_team_abbr ?? null;
+  const awayAbbr = bet.away_team_abbr ?? null;
 
   useEffect(() => {
     if (!open) return;
@@ -155,29 +158,14 @@ export function MonteCarloSheet({ open, onClose, bet }: MonteCarloSheetProps) {
     const run = async () => {
       dispatch({ type: "start" });
       if (controller.signal.aborted) return;
+      if (!homeAbbr || !awayAbbr) {
+        dispatch({
+          type: "fail",
+          message: "Simulation unavailable for this matchup",
+        });
+        return;
+      }
       try {
-        // Bet payloads carry full team names (e.g. "Portland Trail Blazers")
-        // but the simulator endpoint only accepts ≤10-char abbreviations.
-        // Resolve via the cached teams list.
-        const teams = await fetchSimulatorTeams(sport);
-        if (controller.signal.aborted) return;
-        const findAbbr = (label: string): string | undefined => {
-          const lower = label.toLowerCase();
-          return teams.find(
-            (t) =>
-              t.name?.toLowerCase() === lower ||
-              t.short_name?.toLowerCase() === lower,
-          )?.abbreviation;
-        };
-        const homeAbbr = findAbbr(homeTeam);
-        const awayAbbr = findAbbr(awayTeam);
-        if (!homeAbbr || !awayAbbr) {
-          dispatch({
-            type: "fail",
-            message: "Simulation unavailable for this matchup",
-          });
-          return;
-        }
         const res = await runPublicSimulation(sport, {
           home_team: homeAbbr,
           away_team: awayAbbr,
@@ -201,7 +189,7 @@ export function MonteCarloSheet({ open, onClose, bet }: MonteCarloSheetProps) {
       controller.abort();
       cancel();
     };
-  }, [open, sport, homeTeam, awayTeam]);
+  }, [open, sport, homeAbbr, awayAbbr]);
 
   const handleClose = useCallback(() => {
     abortRef.current?.abort();

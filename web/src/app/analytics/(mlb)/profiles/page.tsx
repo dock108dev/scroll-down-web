@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { AuthGate } from "@/components/auth/AuthGate";
-import { fetchTeams, dedupeTeams } from "@/features/analytics/services/SimulatorService";
+import { fetchTeams } from "@/features/analytics/services/SimulatorService";
 import {
   fetchTeamProfile,
 } from "@/features/analytics/services/ProfilesService";
@@ -44,7 +44,8 @@ export default function ProfilesPage() {
     async function load() {
       try {
         const t = await fetchTeams();
-        if (!cancelled) setTeams(dedupeTeams(t));
+        // Upstream is now sport-scoped — no need for client-side dedupe.
+        if (!cancelled) setTeams(t);
       } catch { /* ignore */ }
       finally { if (!cancelled) setTeamsLoading(false); }
     }

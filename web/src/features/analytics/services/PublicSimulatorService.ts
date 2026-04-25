@@ -3,7 +3,6 @@ import type {
   SimulatorResult,
   PublicSimulationRequest,
 } from "../types";
-import { dedupeTeams } from "./SimulatorService";
 import { fetchApi } from "@/lib/api";
 
 // ─── Teams (cached per sport) ────────────────────────────────
@@ -18,9 +17,11 @@ export async function fetchSimulatorTeams(
   const data = await fetchApi<{ teams: SimulatorTeam[]; count: number }>(
     `/api/simulator/${sport}/teams`,
   );
-  const teams = dedupeTeams(data.teams);
-  teamsCache.set(sport, teams);
-  return teams;
+  // SDA upstream now scopes the response to the requested sport — no more
+  // cross-sport leak under shared abbreviations (was: "ARI" returning NFL
+  // Cardinals + NHL Coyotes + MLB Diamondbacks).
+  teamsCache.set(sport, data.teams);
+  return data.teams;
 }
 
 // ─── Simulation ──────────────────────────────────────────────
@@ -34,7 +35,8 @@ export async function runPublicSimulation(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
     // Default fetchApi timeout is 3s; Monte Carlo with 10k iterations
-    // routinely takes 2-5s upstream plus proxy overhead.
-    timeoutMs: 30_000,
+    // typically returns in 2-5s now that the upstream wraps the simulator
+    // in asyncio.to_thread (no longer serialized on the ASGI worker).
+    timeoutMs: 10_000,
   });
 }

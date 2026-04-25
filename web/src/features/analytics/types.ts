@@ -6,6 +6,10 @@ export interface SimulatorTeam {
   name: string;
   short_name: string;
   games_with_stats: number;
+  /** Sport this team belongs to (e.g. "mlb", "nba"). Added by SDA so that
+   *  consumers can sanity-check responses without the previous cross-sport
+   *  leak under shared abbreviations. */
+  sport?: string;
 }
 
 export interface RosterBatter {

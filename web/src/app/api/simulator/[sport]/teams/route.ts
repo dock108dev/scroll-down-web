@@ -15,9 +15,9 @@ export async function GET(
     const data = await apiFetch(`/api/simulator/${sport}/teams`, {
       revalidate: 3600,
     });
-    // Upstream returns camelCase (shortName, gamesWithStats); the SimulatorTeam
-    // type and `dedupeTeams` rely on snake_case. Normalize at the proxy edge
-    // so consumers can rely on a single shape.
+    // Upstream returns camelCase (shortName, gamesWithStats, sport); the
+    // SimulatorTeam type uses snake_case. Normalize at the proxy edge so
+    // consumers can rely on a single shape.
     return NextResponse.json(deepSnakeKeys(data));
   } catch (err) {
     const status = err instanceof ApiError && err.proxyStatus ? err.proxyStatus : 500;
