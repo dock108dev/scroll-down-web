@@ -263,7 +263,8 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
     // Win % bars populate once the simulation completes.
     const homeWin = sheet.locator("[data-testid='montecarlo-home-win']");
     const awayWin = sheet.locator("[data-testid='montecarlo-away-win']");
-    await expect(homeWin).toBeVisible({ timeout: 30_000 });
+    // Simulation API can take 5-30s under parallel load; allow up to 60s.
+    await expect(homeWin).toBeVisible({ timeout: 60_000 });
     await expect(awayWin).toBeVisible();
 
     // Cover % and over/under % stat boxes render immediately after results.

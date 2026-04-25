@@ -470,10 +470,11 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     const sheet = page.locator("[data-testid='montecarlo-sheet']");
     await expect(sheet).toBeVisible({ timeout: 3_000 });
 
-    // Sheet should show win probability bars once simulation completes (up to 30s for API)
+    // Sheet should show win probability bars once simulation completes.
+    // Simulation API can take 5-30s under parallel load; allow up to 60s.
     const homeWin = sheet.locator("[data-testid='montecarlo-home-win']");
     const awayWin = sheet.locator("[data-testid='montecarlo-away-win']");
-    await expect(homeWin).toBeVisible({ timeout: 30_000 });
+    await expect(homeWin).toBeVisible({ timeout: 60_000 });
     await expect(awayWin).toBeVisible({ timeout: 5_000 });
 
     // Values should be percentages that sum to approximately 100%
@@ -548,9 +549,9 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     const sheet = page.locator("[data-testid='montecarlo-sheet']");
     await expect(sheet).toBeVisible({ timeout: 3_000 });
 
-    // Wait for simulation results
+    // Wait for simulation results (5-30s upstream + parallel-load slack)
     await expect(sheet.locator("[data-testid='montecarlo-home-win']")).toBeVisible({
-      timeout: 30_000,
+      timeout: 60_000,
     });
 
     // Histogram should be rendered
