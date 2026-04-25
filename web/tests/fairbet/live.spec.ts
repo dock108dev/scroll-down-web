@@ -1,76 +1,32 @@
 import { test, expect, waitForLoad } from "../helpers";
 
-test.describe("FairBet Page - Live Tab (Guest)", () => {
+test.describe("FairBet Page - In-Game Tab", () => {
   test.beforeEach(async ({ page }) => {
     await page.goto("/fairbet");
     await waitForLoad(page);
   });
 
-  test("guest sees auth gate on Live tab", async ({ page }) => {
-    // Scope to main to avoid the header "LIVE" SSE indicator button
+  test("Pre-Game and In-Game tabs are both visible", async ({ page }) => {
     const main = page.locator("main");
-    const liveTab = main.getByRole("button", { name: "Live" });
-    await liveTab.click();
-
-    await expect(
-      page.getByText("Sign up for free to access live odds")
-    ).toBeVisible();
-
-    await expect(
-      page.getByRole("link", { name: "Sign Up Free" })
-    ).toBeVisible();
+    await expect(main.getByRole("tab", { name: "Pre-Game" })).toBeVisible();
+    await expect(main.getByRole("tab", { name: "In-Game" })).toBeVisible();
   });
 
-  test('"Sign Up Free" links to /login?tab=signup', async ({ page }) => {
+  test("clicking In-Game tab activates it and shows the panel", async ({ page }) => {
     const main = page.locator("main");
-    const liveTab = main.getByRole("button", { name: "Live" });
+    const liveTab = main.getByRole("tab", { name: "In-Game" });
     await liveTab.click();
 
-    const signUpLink = page.getByRole("link", { name: "Sign Up Free" });
-    await expect(signUpLink).toHaveAttribute("href", "/login?tab=signup");
+    await expect(liveTab).toHaveAttribute("aria-selected", "true");
+    await expect(page.locator("#tabpanel-live")).toBeVisible();
   });
 
-  test("switching between Pre-Game and Live tabs works", async ({ page }) => {
+  test("switching back to Pre-Game shows the pre-game panel", async ({ page }) => {
     const main = page.locator("main");
-    const preGameTab = main.getByRole("button", { name: "Pre-Game" });
-    const liveTab = main.getByRole("button", { name: "Live" });
+    await main.getByRole("tab", { name: "In-Game" }).click();
+    await expect(page.locator("#tabpanel-live")).toBeVisible();
 
-    // Both tabs should be visible
-    await expect(preGameTab).toBeVisible();
-    await expect(liveTab).toBeVisible();
-
-    // Switch to Live
-    await liveTab.click();
-    await expect(page.getByText(/sign up for free|live odds/i)).toBeVisible();
-
-    // Switch back to Pre-Game
-    await preGameTab.click();
-    // Auth gate text should disappear
-    await expect(
-      page.getByText("Sign up for free to access live odds")
-    ).not.toBeVisible();
-  });
-});
-
-test.describe("FairBet Page - Live Tab (Logged In)", () => {
-  test("logged-in user sees Live tab content without auth gate", async ({
-    authedPage,
-  }) => {
-    await authedPage.goto("/fairbet");
-    await waitForLoad(authedPage);
-
-    const main = authedPage.locator("main");
-    const liveTab = main.getByRole("button", { name: "Live" });
-    await liveTab.click();
-
-    // Auth gate message should NOT appear for logged-in users
-    await expect(
-      authedPage.getByText("Sign up for free to access live odds")
-    ).not.toBeVisible();
-
-    // Sign Up Free link should NOT appear
-    await expect(
-      authedPage.getByRole("link", { name: "Sign Up Free" })
-    ).not.toBeVisible();
+    await main.getByRole("tab", { name: "Pre-Game" }).click();
+    await expect(page.locator("#tabpanel-pregame")).toBeVisible();
   });
 });

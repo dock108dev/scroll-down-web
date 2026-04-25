@@ -339,3 +339,19 @@ body {
   background: linear-gradient(to top, rgb(10 10 10), transparent);
   opacity: 0.06;
 }
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Scroll padding — keep scrollIntoView (and Playwright's auto-scroll)
+   from landing target elements behind the FairBet sticky filter
+   bar (which is ≈350px tall on mobile in pro view) or the BottomTabs.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+html {
+  scroll-padding-top: var(--header-h, 56px);
+  scroll-padding-bottom: 5rem; /* 4rem BottomTabs + 1rem breathing room */
+}
+@media (max-width: 767px) {
+  /* On mobile the FairBet page stacks header + tabs + filter chips +
+     advanced filters into one tall sticky block. Pad enough that buttons
+     inside bet cards land below it after scrollIntoView. */
+  html { scroll-padding-top: 22rem; }
+}

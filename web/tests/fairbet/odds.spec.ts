@@ -11,9 +11,9 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
   });
 
   test("Pre-Game tab is active by default", async ({ page }) => {
-    // Tabs are plain buttons, not role="tab". The active tab has different styling.
-    const preGameBtn = page.getByRole("button", { name: "Pre-Game" });
-    await expect(preGameBtn).toBeVisible();
+    const preGameTab = page.getByRole("tab", { name: "Pre-Game" });
+    await expect(preGameTab).toBeVisible();
+    await expect(preGameTab).toHaveAttribute("aria-selected", "true");
   });
 
   test("loading state appears then resolves", async ({ page }) => {
@@ -153,7 +153,7 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
     test.skip(true, "No no-edge tier cards in current data set");
   });
 
-  test("FairBet card shows ≤3 market rows by default before expansion", async ({ page }) => {
+  test("FairBet card hides extras behind More Markets toggle by default", async ({ page }) => {
     const groups = page.locator("[data-testid='game-bet-group']");
     const emptyState = page.locator("[data-testid='fairbet-empty-state']");
 
@@ -167,13 +167,20 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
       return;
     }
 
-    // Each game group should show ≤3 bet cards before expansion
+    // Default view shows mainlines only; non-mainlines are hidden behind a
+    // More Markets toggle (`data-testid='more-markets-toggle'`). Find a group
+    // that has the toggle and verify clicking it adds bet cards.
     const allGroups = await groups.all();
     for (const group of allGroups.slice(0, 5)) {
-      const cards = group.locator("[data-testid='bet-card']");
-      const count = await cards.count();
-      expect(count).toBeLessThanOrEqual(3);
+      const toggle = group.locator("[data-testid='more-markets-toggle']");
+      if ((await toggle.count()) === 0) continue;
+      const before = await group.locator("[data-testid='bet-card']").count();
+      await toggle.click();
+      const after = await group.locator("[data-testid='bet-card']").count();
+      expect(after).toBeGreaterThan(before);
+      return;
     }
+    test.skip(true, "No groups with hidden extra markets in current data set");
   });
 
   test("More Markets button expands non-mainline bets", async ({ page }) => {

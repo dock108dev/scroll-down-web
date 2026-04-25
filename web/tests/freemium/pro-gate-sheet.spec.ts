@@ -70,7 +70,11 @@ test.describe("ProGateSheet — upgrade prompt", () => {
     const sheet = page.locator("[data-testid='pro-gate-sheet']");
     await expect(sheet).toBeVisible({ timeout: 3_000 });
 
-    await page.locator("[data-testid='pro-gate-backdrop']").click();
+    // Backdrop is full-viewport; default click hits centroid which the sheet covers.
+    // Click near the top-left where only the backdrop is.
+    await page
+      .locator("[data-testid='pro-gate-backdrop']")
+      .click({ position: { x: 10, y: 10 } });
     await expect(sheet).not.toBeVisible({ timeout: 3_000 });
   });
 

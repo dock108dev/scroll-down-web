@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useReducer, useRef } from "react";
 import type { APIBet } from "@/lib/types";
 import type { SimulatorResult } from "@/features/analytics/types";
-import { runPublicSimulation } from "@/features/analytics/services/PublicSimulatorService";
+import {
+  fetchSimulatorTeams,
+  runPublicSimulation,
+} from "@/features/analytics/services/PublicSimulatorService";
 import { FAIRBET } from "@/lib/config";
 import { FairBetTheme } from "@/lib/theme";
 
@@ -153,9 +156,31 @@ export function MonteCarloSheet({ open, onClose, bet }: MonteCarloSheetProps) {
       dispatch({ type: "start" });
       if (controller.signal.aborted) return;
       try {
+        // Bet payloads carry full team names (e.g. "Portland Trail Blazers")
+        // but the simulator endpoint only accepts ≤10-char abbreviations.
+        // Resolve via the cached teams list.
+        const teams = await fetchSimulatorTeams(sport);
+        if (controller.signal.aborted) return;
+        const findAbbr = (label: string): string | undefined => {
+          const lower = label.toLowerCase();
+          return teams.find(
+            (t) =>
+              t.name?.toLowerCase() === lower ||
+              t.short_name?.toLowerCase() === lower,
+          )?.abbreviation;
+        };
+        const homeAbbr = findAbbr(homeTeam);
+        const awayAbbr = findAbbr(awayTeam);
+        if (!homeAbbr || !awayAbbr) {
+          dispatch({
+            type: "fail",
+            message: "Simulation unavailable for this matchup",
+          });
+          return;
+        }
         const res = await runPublicSimulation(sport, {
-          home_team: homeTeam,
-          away_team: awayTeam,
+          home_team: homeAbbr,
+          away_team: awayAbbr,
           iterations: FAIRBET.MONTE_CARLO_TRIALS,
         });
         if (!controller.signal.aborted) {

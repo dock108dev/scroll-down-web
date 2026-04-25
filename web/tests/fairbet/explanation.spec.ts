@@ -1,7 +1,7 @@
 import { test, expect, waitForLoad } from "../helpers";
 
 test.describe("FairBet - Fair Price Explanation @live-upstream", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ proPage: page }) => {
     await page.goto("/fairbet");
     await waitForLoad(page);
   });
@@ -16,7 +16,7 @@ test.describe("FairBet - Fair Price Explanation @live-upstream", () => {
     return result;
   }
 
-  test("every bet card has a fairbet-explanation trigger @smoke", async ({ page }) => {
+  test("every bet card has a fairbet-explanation trigger @smoke", async ({ proPage: page }) => {
     const result = await waitForBetCards(page);
     if (result !== "cards") {
       test.skip(true, "No bet cards available");
@@ -33,7 +33,7 @@ test.describe("FairBet - Fair Price Explanation @live-upstream", () => {
     }
   });
 
-  test("tapping explanation trigger opens inline panel with plain-language text", async ({ page }) => {
+  test("tapping explanation trigger opens inline panel with plain-language text", async ({ proPage: page }) => {
     const result = await waitForBetCards(page);
     if (result !== "cards") {
       test.skip(true, "No bet cards available");
@@ -54,7 +54,7 @@ test.describe("FairBet - Fair Price Explanation @live-upstream", () => {
     expect(text).toMatch(/margin|vig/i);
   });
 
-  test("second tap on trigger closes the explanation panel", async ({ page }) => {
+  test("second tap on trigger closes the explanation panel", async ({ proPage: page }) => {
     const result = await waitForBetCards(page);
     if (result !== "cards") {
       test.skip(true, "No bet cards available");
@@ -71,7 +71,7 @@ test.describe("FairBet - Fair Price Explanation @live-upstream", () => {
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
   });
 
-  test("Escape key closes the explanation panel", async ({ page }) => {
+  test("Escape key closes the explanation panel", async ({ proPage: page }) => {
     const result = await waitForBetCards(page);
     if (result !== "cards") {
       test.skip(true, "No bet cards available");
@@ -87,7 +87,7 @@ test.describe("FairBet - Fair Price Explanation @live-upstream", () => {
     await expect(panel).not.toBeVisible();
   });
 
-  test("clicking outside the panel closes it", async ({ page }) => {
+  test("clicking outside the panel closes it", async ({ proPage: page }) => {
     const result = await waitForBetCards(page);
     if (result !== "cards") {
       test.skip(true, "No bet cards available");
@@ -104,7 +104,7 @@ test.describe("FairBet - Fair Price Explanation @live-upstream", () => {
     await expect(panel).not.toBeVisible();
   });
 
-  test("explanation trigger is keyboard accessible", async ({ page }) => {
+  test("explanation trigger is keyboard accessible", async ({ proPage: page }) => {
     const result = await waitForBetCards(page);
     if (result !== "cards") {
       test.skip(true, "No bet cards available");

@@ -14,16 +14,16 @@ test.describe("Settings Page", () => {
     await page.goto("/settings");
     const container = page.locator(main);
 
-    await expect(container.getByRole("button", { name: "System" })).toBeVisible();
-    await expect(container.getByRole("button", { name: "Light" })).toBeVisible();
-    await expect(container.getByRole("button", { name: "Dark" })).toBeVisible();
+    await expect(container.getByRole("radio", { name: "System" })).toBeVisible();
+    await expect(container.getByRole("radio", { name: "Light" })).toBeVisible();
+    await expect(container.getByRole("radio", { name: "Dark" })).toBeVisible();
   });
 
   test("clicking theme option updates the selection", async ({ page }) => {
     await page.goto("/settings");
     const container = page.locator(main);
 
-    await container.getByRole("button", { name: "Dark" }).click();
+    await container.getByRole("radio", { name: "Dark" }).click();
 
     // Verify the setting was stored
     const stored = await page.evaluate(() => localStorage.getItem("sd-settings"));
@@ -35,7 +35,7 @@ test.describe("Settings Page", () => {
     const container = page.locator(main);
 
     // Change theme to Dark
-    await container.getByRole("button", { name: "Dark" }).click();
+    await container.getByRole("radio", { name: "Dark" }).click();
 
     // Reload
     await page.reload();
@@ -49,7 +49,7 @@ test.describe("Settings Page", () => {
     await page.goto("/settings");
     const container = page.locator(main);
 
-    await container.getByRole("button", { name: "Light" }).click();
+    await container.getByRole("radio", { name: "Light" }).click();
 
     const stored = await page.evaluate(() => localStorage.getItem("sd-settings"));
     expect(stored).not.toBeNull();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { apiFetch, ApiError, forwardAuth } from "@/lib/api-server";
+import { apiFetch, ApiError, deepSnakeKeys, forwardAuth } from "@/lib/api-server";
 
 const VALID_SPORTS = new Set(["mlb", "nba", "nhl", "ncaab"]);
 
@@ -18,8 +18,14 @@ export async function POST(
       body: JSON.stringify(body),
       headers: forwardAuth(req),
       revalidate: 0,
+      // Monte Carlo simulations on the upstream commonly take 2-5s; the
+      // default 5s sometimes clips. Give a generous ceiling.
+      timeoutMs: 30_000,
     });
-    return NextResponse.json(data);
+    // Upstream returns camelCase; SimulatorResult/MonteCarloSheet read
+    // snake_case (home_win_probability, average_home_score, etc.). Normalize
+    // at the proxy edge so consumers don't crash on undefined fields.
+    return NextResponse.json(deepSnakeKeys(data));
   } catch (err) {
     const status = err instanceof ApiError && err.proxyStatus ? err.proxyStatus : 500;
     return NextResponse.json(

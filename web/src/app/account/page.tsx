@@ -4,7 +4,6 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/stores/session";
 import { AccountContent } from "@/components/account/AccountContent";
-import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 
 export default function AccountPage() {
@@ -29,7 +28,6 @@ export default function AccountPage() {
     <div className="mx-auto max-w-2xl px-4 py-6 space-y-6" data-testid="account-page">
       <h1 className="text-xl font-bold text-neutral-100">Account</h1>
       <AccountContent email={email} />
-      <ProGateSheet />
     </div>
   );
 }

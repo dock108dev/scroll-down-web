@@ -46,6 +46,12 @@ export function createRateLimiter({ window, max }: RateLimiterOptions) {
   }
 
   function check(key: string): CheckResult {
+    // E2E: parallel Playwright workers all share 127.0.0.1 and would trip
+    // per-IP buckets within seconds. Bypass keeps the live route logic intact.
+    if (process.env.NEXT_PUBLIC_SCROLLDOWN_E2E === "1") {
+      return { ok: true, remaining: max, resetMs: window };
+    }
+
     const now = Date.now();
     prune(now);
 

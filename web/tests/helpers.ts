@@ -1,11 +1,22 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import path from "path";
 
-// Persistent auth state file (written by global-setup, loaded by tests)
+// Persistent auth state files (written by global-setup, loaded by tests).
+// One file per identity so tests don't fight over a single mutable session.
 export const AUTH_STATE_PATH = path.join(
   __dirname,
   ".auth",
   "user-state.json",
+);
+export const PRO_STATE_PATH = path.join(
+  __dirname,
+  ".auth",
+  "pro-state.json",
+);
+export const ADMIN_STATE_PATH = path.join(
+  __dirname,
+  ".auth",
+  "admin-state.json",
 );
 
 // ---------------------------------------------------------------------------
@@ -13,7 +24,12 @@ export const AUTH_STATE_PATH = path.join(
 // ---------------------------------------------------------------------------
 
 type Fixtures = {
+  /** Logged-in free-tier user (role=user). */
   authedPage: Page;
+  /** Logged-in pro-tier user. Use for FairBet pro-only UI, EV simulator, Monte Carlo, etc. */
+  proPage: Page;
+  /** Logged-in admin user (free tier unless you change it). Use for /history admin checks. */
+  adminPage: Page;
 };
 
 export const test = base.extend<Fixtures>({
@@ -21,6 +37,29 @@ export const test = base.extend<Fixtures>({
   authedPage: async ({ browser }, use) => {
     const ctx = await browser.newContext({
       storageState: AUTH_STATE_PATH,
+    });
+    const page = await ctx.newPage();
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- Playwright fixture callback, not a React hook
+    await use(page);
+    await ctx.close();
+  },
+  /** A pro-tier authenticated page. Session JWT carries tier=pro and `sd-tier`
+   *  cookie is "pro", so `useSession()`, `useIsPro()`, and Pro UI branches
+   *  all see the user as Pro without needing `?tier=pro` URL overrides. */
+  proPage: async ({ browser }, use) => {
+    const ctx = await browser.newContext({
+      storageState: PRO_STATE_PATH,
+    });
+    const page = await ctx.newPage();
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- Playwright fixture callback, not a React hook
+    await use(page);
+    await ctx.close();
+  },
+  /** An admin-role authenticated page. `useAuth.role` is "admin" (read by
+   *  /history and admin analytics gates). Tier defaults to free. */
+  adminPage: async ({ browser }, use) => {
+    const ctx = await browser.newContext({
+      storageState: ADMIN_STATE_PATH,
     });
     const page = await ctx.newPage();
     // eslint-disable-next-line react-hooks/rules-of-hooks -- Playwright fixture callback, not a React hook
@@ -122,6 +161,23 @@ export async function clearAppState(page: Page): Promise<void> {
     localStorage.clear();
     sessionStorage.clear();
   });
+}
+
+/** Scroll a locator's element to viewport center via window.scrollBy, then
+ *  click. Use when the page has a tall sticky header AND fixed bottom tabs
+ *  — Playwright's auto-scroll can land the target under either overlay,
+ *  especially on mobile viewport (390×844). */
+export async function scrollCenterAndClick(
+  locator: { evaluate: (fn: (el: Element) => void) => Promise<void>; click: (opts?: object) => Promise<void> },
+  options?: { timeout?: number },
+): Promise<void> {
+  await locator.evaluate((el) => {
+    const rect = (el as HTMLElement).getBoundingClientRect();
+    const center = rect.top + rect.height / 2;
+    const target = window.innerHeight / 2;
+    window.scrollBy({ top: center - target, behavior: "instant" });
+  });
+  await locator.click(options ?? {});
 }
 
 /** Wait for game rows to appear. Returns true if data loaded, false if not. */

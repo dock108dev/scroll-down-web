@@ -2,6 +2,15 @@ import { test, expect } from "../helpers";
 import { waitForLoad } from "../helpers";
 
 test.describe("Golf: Tournaments page @live-upstream", () => {
+  // /golf returns 404 unless GOLF_ENABLED=true is set on the server.
+  // /api/golf/tournaments does not gate on the flag, so check the page directly.
+  test.beforeEach(async ({ page }) => {
+    const res = await page.goto("/golf");
+    if (res?.status() === 404) {
+      test.skip(true, "GOLF_ENABLED not set — tournaments page tests skipped");
+    }
+  });
+
   test("page loads with tournament cards", async ({ authedPage: page }) => {
     await page.goto("/golf");
     await waitForLoad(page);

@@ -8,7 +8,7 @@ test.describe("History page @live-upstream", () => {
 
     // Auth gate or history page should be visible
     const historyPage = page.locator("[data-testid='page-history']");
-    const authGate = page.locator("[data-testid='auth-gate']");
+    const authGate = page.locator("[data-testid='history-gate-overlay']");
 
     const isHistory = await historyPage.isVisible().catch(() => false);
     const isGated = await authGate.isVisible().catch(() => false);
@@ -28,7 +28,7 @@ test.describe("History page @live-upstream", () => {
 
     if (!isVisible) {
       // User is not admin, auth gate should show
-      const authGate = page.locator("[data-testid='auth-gate']");
+      const authGate = page.locator("[data-testid='history-gate-overlay']");
       await expect(authGate).toBeVisible();
       return;
     }
@@ -57,18 +57,24 @@ test.describe("History page @live-upstream", () => {
   });
 
   test("non-admin sees auth gate", async ({ page }) => {
-    // Use non-authed page (no saved auth state)
+    // Use non-authed page (no saved auth state). The history page hydrates
+    // session asynchronously, then either renders the gate overlay (free
+    // tier authed) or redirects to /login (anonymous). Wait for any of the
+    // three stable outcomes instead of a generic skeleton timeout.
     await page.goto("/history");
-    await waitForLoad(page);
 
-    // Should see auth gate since no auth
-    const authGate = page.locator("[data-testid='auth-gate']");
-    const historyPage = page.locator("[data-testid='page-history']");
+    const settled = await Promise.race([
+      page.waitForURL(/\/login/, { timeout: 15_000 }).then(() => "login"),
+      page
+        .locator("[data-testid='history-gate-overlay']")
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => "gate"),
+      page
+        .locator("[data-testid='page-history']")
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => "history"),
+    ]).catch(() => "timeout");
 
-    const isGated = await authGate.isVisible().catch(() => false);
-    const isHistory = await historyPage.isVisible().catch(() => false);
-
-    // Either gated or history shown (depends on auth state)
-    expect(isGated || isHistory).toBe(true);
+    expect(settled).not.toBe("timeout");
   });
 });

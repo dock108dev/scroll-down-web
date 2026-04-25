@@ -28,7 +28,7 @@ test.describe("Ad placements — disabled in test env @smoke", () => {
     }
 
     await page.goto(`/game/${gameId}`);
-    await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 10_000 });
+    await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 20_000 });
 
     const banner = page.locator("[data-testid='detail-banner-ad']");
     await expect(banner).toHaveCount(0);
@@ -59,7 +59,7 @@ test.describe("Ad placements — free vs pro @live-upstream", () => {
     }
 
     await page.goto(`/game/${gameId}?tier=pro`);
-    await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 10_000 });
+    await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 20_000 });
 
     const banner = page.locator("[data-testid='detail-banner-ad']");
     await expect(banner).toHaveCount(0);

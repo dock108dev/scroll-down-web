@@ -33,5 +33,8 @@ export async function runPublicSimulation(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(request),
+    // Default fetchApi timeout is 3s; Monte Carlo with 10k iterations
+    // routinely takes 2-5s upstream plus proxy overhead.
+    timeoutMs: 30_000,
   });
 }

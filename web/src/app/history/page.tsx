@@ -11,7 +11,6 @@ import { SearchBar } from "@/components/home/SearchBar";
 import { GameRow } from "@/components/home/GameRow";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { HistoryGateOverlay } from "@/components/history/HistoryGateOverlay";
-import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
 import { useSession } from "@/stores/session";
 import { cn } from "@/lib/utils";
 import { easternToday, addDays, fmtDate } from "@/lib/date-utils";
@@ -273,12 +272,7 @@ function HistoryGated() {
   }
 
   if (effectiveTier !== "pro") {
-    return (
-      <>
-        <HistoryGateOverlay />
-        <ProGateSheet />
-      </>
-    );
+    return <HistoryGateOverlay />;
   }
 
   return (

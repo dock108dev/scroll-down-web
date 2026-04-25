@@ -4,7 +4,14 @@ import type { Page } from "@playwright/test";
 /** Navigate to /profile and verify auth is valid. Returns false if redirected to login. */
 async function gotoProfileOrSkip(page: Page): Promise<boolean> {
   await page.goto("/profile");
-  await page.waitForLoadState("networkidle");
+  // Wait for either the Account heading (authed) or the /login redirect
+  // (anon). networkidle is unreliable here because the page keeps polling.
+  await Promise.race([
+    page.locator("main").getByRole("heading", { name: "Account", exact: true }).first().waitFor({ state: "visible", timeout: 10_000 }),
+    page.waitForURL(/\/login/, { timeout: 10_000 }),
+  ]).catch(() => {
+    /* fall through to URL check */
+  });
   return !page.url().includes("/login");
 }
 
@@ -73,12 +80,15 @@ test.describe("Profile Page", () => {
     const onProfile = await gotoProfileOrSkip(authedPage);
     if (!onProfile) { test.skip(true, "Auth state expired"); return; }
 
+    // After Log Out the profile page calls `router.push("/")`, but its own
+    // auth-redirect useEffect may also fire `router.replace("/login?...")`.
+    // Either landing place is fine — both indicate the auth state was cleared.
     await Promise.all([
-      authedPage.waitForURL(/\/(login)?$/, { timeout: 10_000 }),
+      authedPage.waitForURL(/\/(login(\?.*)?)?$/, { timeout: 10_000 }),
       authedPage.locator(main).getByRole("button", { name: "Log Out" }).click(),
     ]);
 
-    expect(authedPage.url()).toMatch(/\/(login)?$/);
+    expect(authedPage.url()).toMatch(/\/(login(\?.*)?)?$/);
   });
 
   test("clicking Delete Account expands the confirmation form", async ({

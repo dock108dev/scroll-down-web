@@ -139,13 +139,16 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
       await input.fill("100");
       await page.waitForTimeout(400);
 
-      const over100 = card.locator("[data-testid='ev-simulator-over-100']");
-      await expect(over100).toBeVisible();
-      const over100Text = ((await over100.textContent()) ?? "").trim();
-      const o = /^([+-])\$(\d+\.\d{2})$/.exec(over100Text);
+      // "Expected per bet" with stake=100 is the per-$100 EV. (over-100 is
+      // for 100 bets total — a different metric, not what the card label means.)
+      const perBet = card.locator("[data-testid='ev-simulator-per-bet']");
+      await expect(perBet).toBeVisible();
+      const perBetText = ((await perBet.textContent()) ?? "").trim();
+      const o = /^([+-])\$(\d+\.\d{2})$/.exec(perBetText);
       expect(o).not.toBeNull();
 
-      // Per-$100 label and simulator output at $100 stake should be equivalent.
+      // Per-$100 label and simulator per-bet output at $100 stake should
+      // be equivalent up to display rounding (cents).
       expect(o![1]).toBe(expectedSign);
       expect(Math.abs(parseFloat(o![2]) - expectedAmount)).toBeLessThan(0.02);
       return;

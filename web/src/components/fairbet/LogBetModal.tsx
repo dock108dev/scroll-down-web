@@ -88,7 +88,7 @@ export function LogBetModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+      className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-4 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-4"
       style={{ backgroundColor: "rgba(0,0,0,0.7)" }}
       onClick={handleBackdropClick}
       data-testid="log-bet-backdrop"
