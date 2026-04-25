@@ -30,14 +30,12 @@ export const GameBetGroup = memo(function GameBetGroup({
 
   const mainlineBets = bets.filter((b) => isMainlineMarket(b.market_key));
   const extraBets = bets.filter((b) => !isMainlineMarket(b.market_key));
-  const hasExtra = extraBets.length > 0;
+  // Only treat extras as "hidden" when there's something to fall back to.
+  // If a game has no mainlines, we already show every bet and a More
+  // Markets toggle would be a no-op.
+  const hasHiddenExtras = extraBets.length > 0 && mainlineBets.length > 0;
 
-  // Show mainlines by default; fall back to all bets if there are no mainlines
-  const visibleBets = isExpanded || !hasExtra
-    ? bets
-    : mainlineBets.length > 0
-      ? mainlineBets
-      : bets;
+  const visibleBets = isExpanded || !hasHiddenExtras ? bets : mainlineBets;
 
   return (
     <div data-testid="game-bet-group" className="space-y-2">
@@ -53,7 +51,7 @@ export const GameBetGroup = memo(function GameBetGroup({
           />
         );
       })}
-      {hasExtra && (
+      {hasHiddenExtras && (
         <button
           data-testid="more-markets-toggle"
           onClick={() => toggleSection(gameId, MORE_MARKETS_SECTION, [])}

@@ -4,34 +4,41 @@ import { waitForLoad } from "../helpers";
 test.describe("History page @live-upstream", () => {
   test("page loads for admin user", async ({ authedPage: page }) => {
     await page.goto("/history");
-    await waitForLoad(page);
 
-    // Auth gate or history page should be visible
-    const historyPage = page.locator("[data-testid='page-history']");
-    const authGate = page.locator("[data-testid='history-gate-overlay']");
+    // Either the gate (free tier) or the page itself (pro/admin) renders.
+    // Race so we don't depend on skeleton timing.
+    const settled = await Promise.race([
+      page
+        .locator("[data-testid='history-gate-overlay']")
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => "gate"),
+      page
+        .locator("[data-testid='page-history']")
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => "history"),
+    ]).catch(() => "timeout");
 
-    const isHistory = await historyPage.isVisible().catch(() => false);
-    const isGated = await authGate.isVisible().catch(() => false);
-
-    // One of these should be true
-    expect(isHistory || isGated).toBe(true);
+    expect(settled).not.toBe("timeout");
   });
 
   test("date navigator is present when authorized", async ({
     authedPage: page,
   }) => {
     await page.goto("/history");
-    await waitForLoad(page);
 
-    const historyPage = page.locator("[data-testid='page-history']");
-    const isVisible = await historyPage.isVisible().catch(() => false);
+    const settled = await Promise.race([
+      page
+        .locator("[data-testid='history-gate-overlay']")
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => "gate"),
+      page
+        .locator("[data-testid='page-history']")
+        .waitFor({ state: "visible", timeout: 15_000 })
+        .then(() => "history"),
+    ]).catch(() => "timeout");
 
-    if (!isVisible) {
-      // User is not admin, auth gate should show
-      const authGate = page.locator("[data-testid='history-gate-overlay']");
-      await expect(authGate).toBeVisible();
-      return;
-    }
+    if (settled === "gate") return;
+    expect(settled).toBe("history");
 
     // Date navigator should be present
     const toolbar = page.locator("[data-testid='page-history'] .sticky");

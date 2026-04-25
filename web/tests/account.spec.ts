@@ -152,8 +152,8 @@ test.describe("Account page", () => {
     await page.reload();
 
     const navLink = page.locator("[data-testid='nav-account-link']");
-    // Avatar only visible on md+ screens; use force option on smaller viewports
-    const href = await navLink.getAttribute("href");
-    expect(href).toBe("/account");
+    // Avatar appears only after auth hydration; use auto-waiting matcher
+    // rather than reading getAttribute immediately (which doesn't retry).
+    await expect(navLink).toHaveAttribute("href", "/account", { timeout: 10_000 });
   });
 });

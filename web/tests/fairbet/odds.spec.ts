@@ -29,6 +29,17 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
         betCards.first().or(emptyState)
       ).toBeVisible({ timeout: 30_000 });
     } catch {
+      // Page surfaces upstream issues with one of these messages instead of
+      // an empty-state testid. Treat as a real upstream issue, not a regression.
+      const upstreamIssue = await page
+        .getByText(/taking longer than expected|trouble loading odds|retrying automatically/i)
+        .first()
+        .isVisible()
+        .catch(() => false);
+      if (upstreamIssue) {
+        test.skip(true, "Upstream slow or erroring — page in loading/retry state");
+        return;
+      }
       throw new Error("Neither bet cards nor empty state appeared");
     }
   });
