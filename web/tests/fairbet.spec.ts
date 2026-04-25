@@ -448,6 +448,10 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
   test("montecarlo: pro user opens sheet which displays win probability @smoke", async ({
     page,
   }) => {
+    // Monte Carlo simulations take 2-5s upstream + variable Next.js proxy
+    // overhead under parallel test load; bump the test timeout so the inner
+    // 30s waitFor isn't capped by the default 30s test budget.
+    test.slow();
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
@@ -487,6 +491,7 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
   test("montecarlo: sheet closes on backdrop click and reopens for different card @smoke", async ({
     page,
   }) => {
+    test.slow();
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
@@ -524,6 +529,7 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
   });
 
   test("montecarlo: sheet shows histogram element @smoke", async ({ page }) => {
+    test.slow();
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);

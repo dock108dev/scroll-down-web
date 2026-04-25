@@ -90,20 +90,12 @@ test.describe("Mobile Responsive Layout", () => {
   });
 
   test("BottomTabs shows admin tabs for admin users, still hides Golf @smoke", async ({
-    authedPage,
+    adminPage,
   }) => {
-    await authedPage.goto("/");
-    await authedPage.evaluate(() => {
-      const raw = localStorage.getItem("sd-auth");
-      if (!raw) throw new Error("sd-auth not seeded");
-      const parsed = JSON.parse(raw);
-      parsed.state.role = "admin";
-      localStorage.setItem("sd-auth", JSON.stringify(parsed));
-    });
-    await authedPage.reload();
-    await waitForLoad(authedPage);
+    await adminPage.goto("/");
+    await waitForLoad(adminPage);
 
-    const bottomNav = authedPage.locator("nav.fixed");
+    const bottomNav = adminPage.locator("nav.fixed");
     await expect(bottomNav).toBeVisible();
     await expect(bottomNav.getByText("Analytics", { exact: true })).toBeVisible();
     await expect(bottomNav.getByText("History", { exact: true })).toBeVisible();

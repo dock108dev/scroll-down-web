@@ -17,6 +17,9 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
   });
 
   test("loading state appears then resolves", async ({ page }) => {
+    // Under heavy parallel load (4 workers × 2 projects against the same
+    // upstream API key), /api/fairbet/odds can be slow on first paint.
+    test.slow();
     const betCards = page.locator("[data-testid='bet-card']");
     const emptyState = page.locator("[data-testid='fairbet-empty-state']");
 
@@ -24,7 +27,7 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
     try {
       await expect(
         betCards.first().or(emptyState)
-      ).toBeVisible({ timeout: 20_000 });
+      ).toBeVisible({ timeout: 30_000 });
     } catch {
       throw new Error("Neither bet cards nor empty state appeared");
     }

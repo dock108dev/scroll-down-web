@@ -241,6 +241,7 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
   // ── Monte Carlo (ISSUE-055) ──────────────────────────────────────
 
   test("montecarlo: sheet renders win%, cover%, and over/under% values", async ({ page }) => {
+    test.slow();
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
