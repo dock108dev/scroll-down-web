@@ -28,21 +28,17 @@ export const BetCard = memo(function BetCard({
   onShowExplainer,
 }: BetCardProps) {
   const oddsFormat = useSettings((s) => s.oddsFormat);
-  const preferredBook = useSettings((s) => s.preferredSportsbook);
   const isPro = useIsPro();
   const openProGate = useProGateSheet((s) => s.openSheet);
   const [showMonteCarlo, setShowMonteCarlo] = useState(false);
 
   // Best price = highest American odds (least negative for favorites, most positive for underdogs).
-  // The API's bet.bestBook field doesn't always reflect this; trust the math.
+  // The API's bet.bestBook and the user's preferred-book setting both get ignored on this row —
+  // "Best price" must mean best, not preferred.
   const bestBook = bet.books.length > 0
     ? [...bet.books].sort((a, b) => b.price - a.price)[0]
     : null;
-  const preferredBookPrice = preferredBook
-    ? bet.books.find((b) => (b.book ?? "").toLowerCase() === preferredBook.toLowerCase())
-    : null;
-  const primaryBook = preferredBookPrice ?? bestBook;
-  const primaryEv = primaryBook?.display_ev ?? primaryBook?.ev_percent ?? null;
+  const bestEv = bestBook?.display_ev ?? bestBook?.ev_percent ?? null;
 
   const id = betId(bet);
 
@@ -81,22 +77,22 @@ export const BetCard = memo(function BetCard({
 
       {/* ── Main rows: Best / Fair (left-aligned, tight columns) ── */}
       <div className="grid grid-cols-[auto_auto_auto_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
-        {primaryBook && (
+        {bestBook && (
           <>
             <span className="text-neutral-500">Best price</span>
             <span className="text-[10px] text-neutral-400 uppercase tracking-tight">
-              {bookAbbreviation(primaryBook.book)}
+              {bookAbbreviation(bestBook.book)}
             </span>
             <span className="text-sm font-bold text-neutral-50">
-              {formatOdds(primaryBook.price, oddsFormat)}
+              {formatOdds(bestBook.price, oddsFormat)}
             </span>
-            {primaryEv != null ? (
+            {bestEv != null ? (
               <span
                 data-testid="bet-ev-percent"
                 className="text-xs font-semibold"
-                style={{ color: getEVColor(primaryEv) }}
+                style={{ color: getEVColor(bestEv) }}
               >
-                {formatEV(primaryEv)}
+                {formatEV(bestEv)}
               </span>
             ) : (
               <span />
@@ -123,10 +119,10 @@ export const BetCard = memo(function BetCard({
       )}
 
       {/* ── Pro-only line movement (small) ── */}
-      {isPro && bet.opening_line != null && primaryBook != null && (
+      {isPro && bet.opening_line != null && bestBook != null && (
         <LineMovementRow
           openingLine={bet.opening_line}
-          currentLine={primaryBook.price}
+          currentLine={bestBook.price}
           oddsFormat={oddsFormat}
           isPro={isPro}
         />
