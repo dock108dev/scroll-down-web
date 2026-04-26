@@ -12,7 +12,7 @@ import { BookComparisonRow } from "./BookComparisonRow";
 import { LeagueBadge } from "./LeagueBadge";
 import { LineMovementRow } from "./LineMovementRow";
 import { MonteCarloSheet } from "./MonteCarloSheet";
-import { betId } from "@/lib/fairbet-utils";
+import { betId, formatEV, getEVColor } from "@/lib/fairbet-utils";
 
 interface BetCardProps {
   bet: APIBet;
@@ -33,13 +33,16 @@ export const BetCard = memo(function BetCard({
   const openProGate = useProGateSheet((s) => s.openSheet);
   const [showMonteCarlo, setShowMonteCarlo] = useState(false);
 
-  const bestBook = bet.bestBook
-    ? bet.books.find((b) => b.book === bet.bestBook) ?? null
+  // Best price = highest American odds (least negative for favorites, most positive for underdogs).
+  // The API's bet.bestBook field doesn't always reflect this; trust the math.
+  const bestBook = bet.books.length > 0
+    ? [...bet.books].sort((a, b) => b.price - a.price)[0]
     : null;
   const preferredBookPrice = preferredBook
     ? bet.books.find((b) => (b.book ?? "").toLowerCase() === preferredBook.toLowerCase())
     : null;
   const primaryBook = preferredBookPrice ?? bestBook;
+  const primaryEv = primaryBook?.display_ev ?? primaryBook?.ev_percent ?? null;
 
   const id = betId(bet);
 
@@ -77,7 +80,7 @@ export const BetCard = memo(function BetCard({
       </div>
 
       {/* ── Main rows: Best / Fair (left-aligned, tight columns) ── */}
-      <div className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
+      <div className="grid grid-cols-[auto_auto_auto_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
         {primaryBook && (
           <>
             <span className="text-neutral-500">Best price</span>
@@ -87,6 +90,18 @@ export const BetCard = memo(function BetCard({
             <span className="text-sm font-bold text-neutral-50">
               {formatOdds(primaryBook.price, oddsFormat)}
             </span>
+            {primaryEv != null ? (
+              <span
+                data-testid="bet-ev-percent"
+                className="text-xs font-semibold"
+                style={{ color: getEVColor(primaryEv) }}
+              >
+                {formatEV(primaryEv)}
+              </span>
+            ) : (
+              <span />
+            )}
+            <span />
           </>
         )}
         {bet.has_fair && bet.fairAmericanOdds != null && (
@@ -96,6 +111,8 @@ export const BetCard = memo(function BetCard({
             <span className="text-neutral-200 font-medium">
               {formatOdds(bet.fairAmericanOdds, oddsFormat)}
             </span>
+            <span />
+            <span />
           </>
         )}
       </div>
