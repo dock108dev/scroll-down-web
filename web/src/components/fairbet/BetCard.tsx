@@ -130,7 +130,7 @@ export const BetCard = memo(function BetCard({
 
       {/* ── Actions ── */}
       <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-        {isPro && onToggleParlay && (
+        {onToggleParlay && (
           <ActionButton
             label={isInParlay ? "✓ Parlay" : "+ Parlay"}
             active={!!isInParlay}
