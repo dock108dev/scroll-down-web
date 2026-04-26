@@ -4,6 +4,8 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useAutoRetry } from "@/hooks/useAutoRetry";
 import { useFairBetOdds } from "@/hooks/useFairBetOdds";
 import { GameBetGroup } from "@/components/fairbet/GameBetGroup";
+import { BetCard } from "@/components/fairbet/BetCard";
+import { betId } from "@/lib/fairbet-utils";
 import { BookFilters } from "@/components/fairbet/BookFilters";
 import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { ParlaySheet } from "@/components/fairbet/ParlaySheet";
@@ -179,6 +181,7 @@ export default function FairBetPage() {
               onTimeToGameChange={hook.setTimeToGame}
               onEvOnlyChange={hook.setEvOnly}
               onHideThinChange={hook.setHideThin}
+              onHideAltsChange={hook.setHideAlts}
               disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
             />
           </>
@@ -298,8 +301,22 @@ export default function FairBetPage() {
           </div>
         )}
 
-        {/* Bet groups (one per game, mainlines shown by default) */}
-        {!hook.loading &&
+        {/* Render: Best-EV is a flat global sort. Other sorts group by game. */}
+        {!hook.loading && hook.filters.sort === "bestEV" &&
+          hook.filteredBets.slice(0, visibleCount).map((bet) => {
+            const id = betId(bet);
+            return (
+              <BetCard
+                key={id}
+                bet={bet}
+                onToggleParlay={hook.toggleParlay}
+                isInParlay={hook.parlayBetIds.has(id)}
+                onShowExplainer={openExplainer}
+              />
+            );
+          })}
+
+        {!hook.loading && hook.filters.sort !== "bestEV" &&
           gameGroups.slice(0, visibleCount).map((bets) => (
             <GameBetGroup
               key={bets[0].game_id}
@@ -311,12 +328,17 @@ export default function FairBetPage() {
           ))}
 
         {/* Sentinel for loading more + count indicator */}
-        {!hook.loading && visibleCount < gameGroups.length && (
+        {!hook.loading && (
+          hook.filters.sort === "bestEV"
+            ? visibleCount < hook.filteredBets.length
+            : visibleCount < gameGroups.length
+        ) && (
           <>
             <div ref={sentinelRef} className="h-px" />
             <div className="text-center text-xs text-neutral-500 py-2">
-              Showing {Math.min(visibleCount, gameGroups.length)} of{" "}
-              {gameGroups.length} games
+              {hook.filters.sort === "bestEV"
+                ? `Showing ${Math.min(visibleCount, hook.filteredBets.length)} of ${hook.filteredBets.length} bets`
+                : `Showing ${Math.min(visibleCount, gameGroups.length)} of ${gameGroups.length} games`}
             </div>
           </>
         )}

@@ -65,6 +65,7 @@ export interface UseFairBetOddsReturn {
   setSearchText: (v: string) => void;
   setEvOnly: (v: boolean) => void;
   setHideThin: (v: boolean) => void;
+  setHideAlts: (v: boolean) => void;
   setHideStarted: (v: boolean) => void;
   setSort: (v: SortMode) => void;
   setConfidence: (v: ConfidenceLevel) => void;
@@ -638,6 +639,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
   const setSearchText = useCallback((v: string) => setFilters((p) => ({ ...p, searchText: v })), []);
   const setEvOnly = useCallback((v: boolean) => setFilters((p) => ({ ...p, evOnly: v })), []);
   const setHideThin = useCallback((v: boolean) => setFilters((p) => ({ ...p, hideThin: v })), []);
+  const setHideAlts = useCallback((v: boolean) => setFilters((p) => ({ ...p, hideAlts: v })), []);
   const setHideStarted = useCallback((v: boolean) => setFilters((p) => ({ ...p, hideStarted: v })), []);
   const setSort = useCallback((v: SortMode) => setFilters((p) => ({ ...p, sort: v })), []);
   const setConfidence = useCallback((v: ConfidenceLevel) => setFilters((p) => ({ ...p, confidence: v })), []);
@@ -663,6 +665,7 @@ export function useFairBetOdds(): UseFairBetOddsReturn {
     setSearchText,
     setEvOnly,
     setHideThin,
+    setHideAlts,
     setHideStarted,
     setSort,
     setConfidence,

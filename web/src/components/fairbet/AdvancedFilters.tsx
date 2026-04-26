@@ -27,6 +27,7 @@ interface AdvancedFiltersProps {
   onTimeToGameChange: (v: TimeToGame) => void;
   onEvOnlyChange: (v: boolean) => void;
   onHideThinChange: (v: boolean) => void;
+  onHideAltsChange: (v: boolean) => void;
   disabled?: boolean;
 }
 
@@ -36,6 +37,7 @@ export function AdvancedFilters({
   onTimeToGameChange,
   onEvOnlyChange,
   onHideThinChange,
+  onHideAltsChange,
   disabled = false,
 }: AdvancedFiltersProps) {
   const { openSheet } = useProGateSheet();
@@ -46,8 +48,11 @@ export function AdvancedFilters({
 
   const proActiveCount =
     (filters.confidence ? 1 : 0) + (filters.timeToGame ? 1 : 0);
+  // The defaults are evOnly=true, hideThin=true, hideAlts=true. Show "N on" only
+  // when the user has toggled away from the cleaner default — flipping a default-on
+  // switch off shouldn't visually look like "more filtering is happening."
   const freeActiveCount =
-    (filters.evOnly ? 1 : 0) + (filters.hideThin ? 1 : 0);
+    (!filters.evOnly ? 1 : 0) + (!filters.hideThin ? 1 : 0) + (!filters.hideAlts ? 1 : 0);
   const activeCount = proActiveCount + freeActiveCount;
 
   if (!isPro) {
@@ -101,6 +106,11 @@ export function AdvancedFilters({
                 label="Hide thin"
                 active={filters.hideThin}
                 onClick={() => onHideThinChange(!filters.hideThin)}
+              />
+              <AdvancedPill
+                label="Hide alts"
+                active={filters.hideAlts}
+                onClick={() => onHideAltsChange(!filters.hideAlts)}
               />
             </FilterRow>
 
@@ -216,8 +226,9 @@ export function AdvancedFilters({
                 onClick={() => {
                   onConfidenceChange("");
                   onTimeToGameChange("");
-                  onEvOnlyChange(false);
+                  onEvOnlyChange(true);
                   onHideThinChange(true);
+                  onHideAltsChange(true);
                 }}
                 className="text-[10px] font-medium"
                 style={{ color: FairBetTheme.info }}

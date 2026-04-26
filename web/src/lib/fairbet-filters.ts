@@ -22,6 +22,7 @@ export interface FairBetFilters {
   searchText: string;
   evOnly: boolean;
   hideThin: boolean;
+  hideAlts: boolean;
   hideStarted: boolean;
   sort: SortMode;
   // Pro-only advanced filters
@@ -35,8 +36,9 @@ export const DEFAULT_FILTERS: FairBetFilters = {
   market: "",
   book: "",
   searchText: "",
-  evOnly: false,
+  evOnly: true,
   hideThin: true,
+  hideAlts: true,
   hideStarted: false,
   sort: "bestEV",
   confidence: "",
@@ -187,6 +189,24 @@ export function filterAndSortBets(allBets: APIBet[], filters: FairBetFilters): A
     result = result.filter(
       (b) => b.ev_confidence_tier !== "thin" && b.ev_confidence_tier !== "none",
     );
+  }
+
+  // Collapse alt-line families to the highest-EV row per (game, market, side, player).
+  // Alt totals like Over 13.5 / 14.5 / 15.5 in the same game otherwise pile up under
+  // each other and dilute Best-EV sorting.
+  if (filters.hideAlts) {
+    const bestPerFamily = new Map<string, APIBet>();
+    for (const b of result) {
+      const family = `${b.game_id}::${marketKeyToCategory(b.market_key)}::${b.selection_key ?? ""}::${b.player_name ?? ""}`;
+      const incumbent = bestPerFamily.get(family);
+      if (!incumbent || bestEVForBet(b) > bestEVForBet(incumbent)) {
+        bestPerFamily.set(family, b);
+      }
+    }
+    result = result.filter((b) => {
+      const family = `${b.game_id}::${marketKeyToCategory(b.market_key)}::${b.selection_key ?? ""}::${b.player_name ?? ""}`;
+      return bestPerFamily.get(family) === b;
+    });
   }
 
   if (filters.hideStarted) {
