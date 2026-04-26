@@ -198,24 +198,4 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
     test.skip(true, "No groups with extra markets in current data set");
   });
 
-  test("bet cards show edge label in plain language", async ({ page }) => {
-    const betCards = page.locator("[data-testid='bet-card']");
-    const emptyState = page.locator("[data-testid='fairbet-empty-state']");
-
-    const result = await Promise.race([
-      betCards.first().waitFor({ state: "visible", timeout: 20_000 }).then(() => "cards"),
-      emptyState.waitFor({ state: "visible", timeout: 20_000 }).then(() => "empty"),
-    ]).catch(() => "timeout");
-
-    if (result === "timeout" || result === "empty") {
-      test.skip(true, "No bet cards available to verify edge label");
-      return;
-    }
-
-    const labels = page.locator("[data-testid='edge-label']");
-    if ((await labels.count()) === 0) return; // no-edge cards are valid
-
-    const text = ((await labels.first().textContent()) ?? "").trim();
-    expect(/^(Strong|Medium|Small) edge$/i.test(text)).toBe(true);
-  });
 });

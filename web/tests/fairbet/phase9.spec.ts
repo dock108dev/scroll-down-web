@@ -106,55 +106,9 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
     }
   });
 
-  // ── CLV Logging → My Bets (ISSUE-052) ────────────────────────────
-
-  test("CLV: logged bet appears in /settings/my-bets with correct columns @smoke", async ({
-    page,
-  }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    // Start from a clean slate so we know our logged bet is the only row.
-    await page.evaluate(() => localStorage.removeItem("sd-my-bets"));
-    await page.reload();
-    await waitForLoad(page);
-
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const logBtn = page.locator("[data-testid='log-bet-button']").first();
-    if ((await logBtn.count()) === 0) {
-      test.skip(true, "No log-bet buttons rendered");
-      return;
-    }
-
-    await logBtn.click();
-    const modal = page.locator("[data-testid='log-bet-modal']");
-    await expect(modal).toBeVisible({ timeout: 3_000 });
-
-    await page.locator("[data-testid='log-bet-stake-input']").fill("75");
-    await page.locator("[data-testid='log-bet-confirm']").click();
-    await expect(modal).not.toBeVisible({ timeout: 3_000 });
-
-    await page.goto("/settings/my-bets?tier=pro");
-    await waitForLoad(page);
-    await expect(page.locator("[data-testid='my-bets-page']")).toBeVisible({ timeout: 5_000 });
-
-    const rows = page.locator("[data-testid='my-bets-row']");
-    await expect(rows.first()).toBeVisible({ timeout: 5_000 });
-    expect(await rows.count()).toBeGreaterThanOrEqual(1);
-
-    // Required column headers
-    for (const h of ["Date", "Market", "Book", "Placed", "Closing", "CLV%"]) {
-      await expect(page.getByRole("columnheader", { name: h })).toBeVisible();
-    }
-  });
-
   // ── Advanced Filters (ISSUE-054) ─────────────────────────────────
 
-  test("advanced filters: High confidence hides low-confidence cards", async ({ page }) => {
+  test("advanced filters: Strong confidence does not increase card count", async ({ page }) => {
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
@@ -163,6 +117,7 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
       return;
     }
 
+    await page.locator("[data-testid='more-filters-toggle']").click();
     const panel = page.locator("[data-testid='advanced-filters']");
     if ((await panel.count()) === 0) {
       test.skip(true, "Advanced filter panel not rendered");
@@ -171,7 +126,7 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
 
     const beforeCount = await page.locator("[data-testid='bet-card']").count();
 
-    await panel.getByText("High", { exact: true }).click();
+    await panel.getByText("Strong", { exact: true }).click();
     // Allow the store update + re-render to settle.
     await page.waitForTimeout(500);
 

@@ -48,31 +48,6 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     expect(consoleErrors).toHaveLength(0);
   });
 
-  test("edge label present on at least one card @smoke", async ({ page }) => {
-    const result = await waitForCardsOrEmpty(page);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const labels = page.locator("[data-testid='edge-label']");
-    const count = await labels.count();
-    if (count === 0) {
-      test.skip(true, "No edges in current data set");
-      return;
-    }
-
-    let matched = false;
-    for (let i = 0; i < count; i++) {
-      const text = ((await labels.nth(i).textContent()) ?? "").trim();
-      if (/^(Strong|Medium|Small) edge$/i.test(text)) {
-        matched = true;
-        break;
-      }
-    }
-    expect(matched).toBe(true);
-  });
-
   test("book chip row renders with at least one chip @smoke", async ({ page }) => {
     const result = await waitForCardsOrEmpty(page);
     if (result !== "cards") {
@@ -114,109 +89,7 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     test.skip(true, "No groups with extra markets in current data set");
   });
 
-  test("source attribution line present on cards @smoke", async ({ page }) => {
-    const result = await waitForCardsOrEmpty(page);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const attribution = page
-      .locator("[data-testid='bet-card']")
-      .first()
-      .locator("[data-testid='fairbet-source-attribution']");
-    await expect(attribution).toBeVisible();
-    const text = ((await attribution.textContent()) ?? "").trim();
-    expect(text.length).toBeGreaterThan(0);
-  });
-
   // ── CLV Tracking ────────────────────────────────────────────────────
-
-  test("CLV: Pro user sees Log bet button on cards @smoke", async ({ page }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const logBtn = page.locator("[data-testid='log-bet-button']").first();
-    if ((await logBtn.count()) === 0) {
-      test.skip(true, "No log-bet buttons rendered");
-      return;
-    }
-    await expect(logBtn).toBeVisible();
-    await expect(logBtn).toHaveText(/\+ Log bet/i);
-  });
-
-  test("CLV: Log bet modal opens with book and odds pre-filled @smoke", async ({ page }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const logBtn = page.locator("[data-testid='log-bet-button']").first();
-    if ((await logBtn.count()) === 0) {
-      test.skip(true, "No log-bet buttons rendered");
-      return;
-    }
-
-    await logBtn.click();
-    const modal = page.locator("[data-testid='log-bet-modal']");
-    await expect(modal).toBeVisible({ timeout: 3_000 });
-
-    // Stake input should be pre-filled with default
-    const stakeInput = page.locator("[data-testid='log-bet-stake-input']");
-    await expect(stakeInput).toBeVisible();
-    await expect(stakeInput).toHaveValue("100");
-
-    // Cancel closes the modal
-    await page.locator("[data-testid='log-bet-cancel']").click();
-    await expect(modal).not.toBeVisible({ timeout: 2_000 });
-  });
-
-  test("CLV: Log bet modal can confirm and modal closes @smoke", async ({ page }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const logBtn = page.locator("[data-testid='log-bet-button']").first();
-    if ((await logBtn.count()) === 0) {
-      test.skip(true, "No log-bet buttons rendered");
-      return;
-    }
-
-    await logBtn.click();
-    const modal = page.locator("[data-testid='log-bet-modal']");
-    await expect(modal).toBeVisible({ timeout: 3_000 });
-
-    const stakeInput = page.locator("[data-testid='log-bet-stake-input']");
-    await stakeInput.fill("50");
-
-    await page.locator("[data-testid='log-bet-confirm']").click();
-    // Button changes text to "Logged ✓" then modal closes
-    await expect(modal).not.toBeVisible({ timeout: 3_000 });
-  });
-
-  test("CLV: free user does not see Log bet button @smoke", async ({ page }) => {
-    await page.goto("/fairbet?tier=free");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-    const logBtns = page.locator("[data-testid='log-bet-button']");
-    expect(await logBtns.count()).toBe(0);
-  });
 
   test("CLV: My Bets settings page hidden from free users @smoke", async ({ page }) => {
     await page.goto("/settings/my-bets?tier=free");

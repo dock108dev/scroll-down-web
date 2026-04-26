@@ -1,55 +1,18 @@
 "use client";
 
-import { memo, useState, useEffect } from "react";
+import { memo, useState } from "react";
 import type { APIBet } from "@/lib/types";
 import { useSettings } from "@/stores/settings";
 import { useIsPro } from "@/hooks/useIsPro";
 import { useProGateSheet } from "@/stores/pro-gate-sheet";
-import { formatOdds, formatDate, cn } from "@/lib/utils";
+import { formatOdds, formatDate } from "@/lib/utils";
 import { FairBetTheme, bookAbbreviation } from "@/lib/theme";
-import { FAIRBET, FEATURE_GATES } from "@/lib/config";
+import { FEATURE_GATES } from "@/lib/config";
 import { BookComparisonRow } from "./BookComparisonRow";
 import { LeagueBadge } from "./LeagueBadge";
 import { LineMovementRow } from "./LineMovementRow";
-import { LogBetModal } from "./LogBetModal";
 import { MonteCarloSheet } from "./MonteCarloSheet";
-import { betId, getEdgeLabel, type EdgeLabel } from "@/lib/fairbet-utils";
-
-function getLatestObservedAt(books: APIBet["books"]): number {
-  let latest = 0;
-  for (const b of books) {
-    const t = b.observed_at ? new Date(b.observed_at).getTime() : 0;
-    if (t > latest) latest = t;
-  }
-  return latest;
-}
-
-function buildAttributionLabel(
-  bookCount: number,
-  latestMs: number,
-  nowMs: number,
-): { text: string; isStale: boolean } {
-  if (latestMs === 0) return { text: `From ${bookCount} book${bookCount !== 1 ? "s" : ""}`, isStale: false };
-  const ageMs = nowMs - latestMs;
-  const ageMin = Math.floor(ageMs / 60_000);
-  const bookLabel = `From ${bookCount} book${bookCount !== 1 ? "s" : ""}`;
-  if (ageMs < FAIRBET.ATTRIBUTION_FRESH_MS) return { text: bookLabel, isStale: false };
-  if (ageMs < FAIRBET.ATTRIBUTION_STALE_MS) return { text: `${bookLabel} · Updated ${ageMin}m ago`, isStale: false };
-  return { text: `${bookLabel} · May be delayed · ${ageMin}m ago`, isStale: true };
-}
-
-function edgeStyle(label: EdgeLabel): React.CSSProperties {
-  if (label === "Strong") {
-    return { backgroundColor: `${FairBetTheme.positive}18`, color: FairBetTheme.positive };
-  }
-  if (label === "Medium") {
-    return { backgroundColor: "var(--fb-surface-secondary)", color: "var(--ds-text-secondary)" };
-  }
-  if (label === "Small") {
-    return { backgroundColor: "var(--fb-surface-secondary)", color: "var(--ds-text-tertiary)" };
-  }
-  return { backgroundColor: "var(--fb-surface-secondary)", color: "var(--ds-text-tertiary)" };
-}
+import { betId } from "@/lib/fairbet-utils";
 
 interface BetCardProps {
   bet: APIBet;
@@ -68,16 +31,7 @@ export const BetCard = memo(function BetCard({
   const preferredBook = useSettings((s) => s.preferredSportsbook);
   const isPro = useIsPro();
   const openProGate = useProGateSheet((s) => s.openSheet);
-  const [showLogModal, setShowLogModal] = useState(false);
   const [showMonteCarlo, setShowMonteCarlo] = useState(false);
-
-  const latestObservedAt = getLatestObservedAt(bet.books);
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = setInterval(() => setNow(Date.now()), FAIRBET.ATTRIBUTION_UPDATE_INTERVAL_MS);
-    return () => clearInterval(id);
-  }, []);
-  const attribution = buildAttributionLabel(bet.books.length, latestObservedAt, now);
 
   const bestBook = bet.bestBook
     ? bet.books.find((b) => b.book === bet.bestBook) ?? null
@@ -87,8 +41,6 @@ export const BetCard = memo(function BetCard({
     : null;
   const primaryBook = preferredBookPrice ?? bestBook;
 
-  const ev = bestBook?.display_ev ?? bestBook?.ev_percent ?? 0;
-  const edge = getEdgeLabel(ev);
   const id = betId(bet);
 
   const borderStyle: React.CSSProperties = isInParlay
@@ -115,38 +67,36 @@ export const BetCard = memo(function BetCard({
           <span className="text-sm font-semibold text-neutral-50 truncate">
             {bet.selectionDisplay ?? bet.selection_key}
           </span>
-          {edge !== "None" && (
-            <span
-              data-testid="edge-label"
-              className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
-              style={edgeStyle(edge)}
-            >
-              {edge} edge
-            </span>
-          )}
+          <span className="shrink-0 text-[10px] text-neutral-500">{dateStr} {timeStr}</span>
         </div>
-        <div className="flex items-center justify-between gap-2 text-[11px] text-neutral-500 min-w-0">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="truncate">{bet.away_team} @ {bet.home_team}</span>
-            <LeagueBadge league={bet.league_code} />
-            <span className="truncate">{bet.marketDisplayName ?? bet.market_key}</span>
-          </div>
-          <span className="shrink-0 text-[10px]">{dateStr} {timeStr}</span>
+        <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 min-w-0">
+          <span className="truncate">{bet.away_team} @ {bet.home_team}</span>
+          <LeagueBadge league={bet.league_code} />
+          <span className="truncate">{bet.marketDisplayName ?? bet.market_key}</span>
         </div>
       </div>
 
-      {/* ── Main rows: Best / Fair / Edge ── */}
-      <div className="space-y-1">
+      {/* ── Main rows: Best / Fair (left-aligned, tight columns) ── */}
+      <div className="grid grid-cols-[auto_auto_1fr] items-baseline gap-x-3 gap-y-1 text-xs">
         {primaryBook && (
-          <PriceRow
-            label="Best price"
-            book={bookAbbreviation(primaryBook.book)}
-            price={formatOdds(primaryBook.price, oddsFormat)}
-            emphasis
-          />
+          <>
+            <span className="text-neutral-500">Best price</span>
+            <span className="text-[10px] text-neutral-400 uppercase tracking-tight">
+              {bookAbbreviation(primaryBook.book)}
+            </span>
+            <span className="text-sm font-bold text-neutral-50">
+              {formatOdds(primaryBook.price, oddsFormat)}
+            </span>
+          </>
         )}
         {bet.has_fair && bet.fairAmericanOdds != null && (
-          <PriceRow label="Fair price" price={formatOdds(bet.fairAmericanOdds, oddsFormat)} />
+          <>
+            <span className="text-neutral-500">Fair price</span>
+            <span />
+            <span className="text-neutral-200 font-medium">
+              {formatOdds(bet.fairAmericanOdds, oddsFormat)}
+            </span>
+          </>
         )}
       </div>
 
@@ -174,13 +124,6 @@ export const BetCard = memo(function BetCard({
             onClick={() => onToggleParlay(id)}
           />
         )}
-        {isPro && primaryBook && (
-          <ActionButton
-            label="+ Log bet"
-            onClick={() => setShowLogModal(true)}
-            testId="log-bet-button"
-          />
-        )}
         {isPro ? (
           <ActionButton
             label="Win sim"
@@ -204,32 +147,6 @@ export const BetCard = memo(function BetCard({
         )}
       </div>
 
-      {/* ── Attribution ── */}
-      <p
-        data-testid="fairbet-source-attribution"
-        className="text-[10px] pt-0.5"
-        style={{ color: attribution.isStale ? "rgb(245, 158, 11)" : "var(--ds-text-tertiary)" }}
-      >
-        {attribution.text}
-      </p>
-
-      {showLogModal && primaryBook && (
-        <LogBetModal
-          gameId={bet.game_id}
-          leagueCode={bet.league_code}
-          homeTeam={bet.home_team}
-          awayTeam={bet.away_team}
-          gameDate={bet.game_date}
-          marketKey={bet.market_key}
-          marketLabel={bet.marketDisplayName ?? bet.market_key}
-          selectionDisplay={bet.selectionDisplay ?? bet.selection_key}
-          book={primaryBook.book}
-          placedOdds={primaryBook.price}
-          oddsFormat={oddsFormat}
-          onClose={() => setShowLogModal(false)}
-        />
-      )}
-
       {isPro && (
         <MonteCarloSheet
           open={showMonteCarlo}
@@ -240,30 +157,6 @@ export const BetCard = memo(function BetCard({
     </div>
   );
 });
-
-function PriceRow({
-  label,
-  book,
-  price,
-  emphasis,
-}: {
-  label: string;
-  book?: string;
-  price: string;
-  emphasis?: boolean;
-}) {
-  return (
-    <div className="flex items-baseline justify-between gap-2 text-xs">
-      <span className="text-neutral-500">{label}</span>
-      <div className="flex items-baseline gap-1.5">
-        {book && <span className="text-[10px] text-neutral-400">{book}</span>}
-        <span className={cn(emphasis ? "text-sm font-bold text-neutral-50" : "text-neutral-200 font-medium")}>
-          {price}
-        </span>
-      </div>
-    </div>
-  );
-}
 
 function ActionButton({
   label,
