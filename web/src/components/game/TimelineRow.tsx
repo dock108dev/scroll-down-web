@@ -134,6 +134,48 @@ function getAccentColor(
 }
 
 /**
+ * Resolve the score line "after" this play. The API ships either flat
+ * homeScore/awayScore (older shape) or score: { home, away } / scoreBefore: {...}
+ * objects (NHL, MLB). For scoring plays where only `scoreBefore` is sent,
+ * derive the after-score from the before + delta + scoringTeamAbbr.
+ */
+function resolveScoreAfter(
+  play: PlayEntry,
+  homeAbbr: string | undefined,
+  awayAbbr: string | undefined,
+): { home: number; away: number } | null {
+  // Flat after-score (legacy)
+  if (play.homeScore != null && play.awayScore != null) {
+    return { home: play.homeScore, away: play.awayScore };
+  }
+  // Object after-score
+  if (play.score && play.score.home != null && play.score.away != null) {
+    return { home: play.score.home, away: play.score.away };
+  }
+  // Resolve before-score (flat or object form)
+  const beforeHome = play.homeScoreBefore ?? play.scoreBefore?.home;
+  const beforeAway = play.awayScoreBefore ?? play.scoreBefore?.away;
+  if (beforeHome == null || beforeAway == null) return null;
+
+  // Non-scoring play: running score is just the before-score
+  if (!play.scoreChanged && !play.scoringTeamAbbr) {
+    return { home: beforeHome, away: beforeAway };
+  }
+  // Scoring play: add the delta to the scoring team
+  if (play.scoringTeamAbbr) {
+    const delta = play.pointsScored ?? 1;
+    if (play.scoringTeamAbbr === homeAbbr) {
+      return { home: beforeHome + delta, away: beforeAway };
+    }
+    if (play.scoringTeamAbbr === awayAbbr) {
+      return { home: beforeHome, away: beforeAway + delta };
+    }
+  }
+  // scoreChanged with no scoringTeamAbbr — still useful: show before-score
+  return { home: beforeHome, away: beforeAway };
+}
+
+/**
  * Splits a play description into a primary action line and optional stats.
  * E.g. "J. Brown 25' 3PT (5 PTS) (Pritchard 4 AST)" →
  *   { primary: "J. Brown 25' 3PT", stats: "5 PTS · Pritchard 4 AST" }
@@ -174,6 +216,7 @@ export function TimelineRow({
     awayColor,
   );
   const scoreChanged = tier === 1 && (play.scoreChanged ?? false);
+  const scoreAfter = resolveScoreAfter(play, homeTeamAbbr, awayTeamAbbr);
 
   // ── Tier 1: Primary / high-impact ──
   if (tier === 1) {
@@ -214,14 +257,14 @@ export function TimelineRow({
         </div>
 
         {/* Score display — AWY 4 · HME 6 with team abbrs so the number is never bare */}
-        {play.awayScore != null && play.homeScore != null && (
+        {scoreAfter && (
           <span className="shrink-0 text-xs font-semibold tabular-nums flex items-center gap-1.5 pt-0.5">
             <span style={{ color: awayColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>
-              {awayTeamAbbr ? `${awayTeamAbbr} ${play.awayScore}` : play.awayScore}
+              {awayTeamAbbr ? `${awayTeamAbbr} ${scoreAfter.away}` : scoreAfter.away}
             </span>
             <span className="text-neutral-600">·</span>
             <span style={{ color: homeColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>
-              {homeTeamAbbr ? `${homeTeamAbbr} ${play.homeScore}` : play.homeScore}
+              {homeTeamAbbr ? `${homeTeamAbbr} ${scoreAfter.home}` : scoreAfter.home}
             </span>
             {scoreChanged && (
               <span className="ml-1 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -249,11 +292,11 @@ export function TimelineRow({
         </div>
 
         {/* Score (muted) */}
-        {play.awayScore != null && play.homeScore != null && (
+        {scoreAfter && (
           <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
-            {awayTeamAbbr ? `${awayTeamAbbr} ${play.awayScore}` : play.awayScore}
+            {awayTeamAbbr ? `${awayTeamAbbr} ${scoreAfter.away}` : scoreAfter.away}
             {" · "}
-            {homeTeamAbbr ? `${homeTeamAbbr} ${play.homeScore}` : play.homeScore}
+            {homeTeamAbbr ? `${homeTeamAbbr} ${scoreAfter.home}` : scoreAfter.home}
           </span>
         )}
       </div>

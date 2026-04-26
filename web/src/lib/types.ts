@@ -338,8 +338,10 @@ export interface PlayEntry {
   teamAbbreviation?: string;
   playerName?: string;
   description?: string;
+  // Some sports flatten this; NHL/MLB ship the object form below. Read both.
   homeScore?: number;
   awayScore?: number;
+  score?: { home?: number; away?: number } | null;
   periodLabel?: string;
   timeLabel?: string;
   tier?: number;
@@ -348,6 +350,7 @@ export interface PlayEntry {
   pointsScored?: number;
   homeScoreBefore?: number;
   awayScoreBefore?: number;
+  scoreBefore?: { home?: number; away?: number } | null;
   phase?: string;
 }
 

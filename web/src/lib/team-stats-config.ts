@@ -266,3 +266,35 @@ export function buildGroupsFromNormalized(
   return ordered;
 }
 
+// ─── Fallback: build groups from raw `stats` object using sport defs ───
+// Used when the API didn't populate normalizedStats but did send the raw
+// per-team `stats` map. Keeps the comparison alive instead of falling back
+// to the "Team stats unavailable" empty state.
+export function buildGroupsFromRaw(
+  homeStats: Record<string, unknown>,
+  awayStats: Record<string, unknown>,
+  leagueCode: string,
+): NormalizedGroup[] {
+  const sportGroups = getGroupsForSport(leagueCode);
+  const ordered: NormalizedGroup[] = [];
+  for (const group of sportGroups) {
+    const rows: NormalizedRow[] = [];
+    for (const def of group.stats) {
+      const homeVal = resolveStatValue(homeStats, def.aliases);
+      const awayVal = resolveStatValue(awayStats, def.aliases);
+      if (homeVal == null && awayVal == null) continue;
+      rows.push({
+        key: def.key,
+        label: def.label,
+        homeValue: homeVal,
+        awayValue: awayVal,
+        lowerIsBetter: !!def.lowerIsBetter,
+        isPercentage: !!def.isPercentage,
+      });
+    }
+    if (rows.length > 0) {
+      ordered.push({ title: group.title, rows });
+    }
+  }
+  return ordered;
+}

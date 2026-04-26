@@ -2,6 +2,7 @@ import type { TeamStat } from "@/lib/types";
 import {
   formatStatValue,
   buildGroupsFromNormalized,
+  buildGroupsFromRaw,
 } from "@/lib/team-stats-config";
 
 // ─── Comparison bar row ─────────────────────────────────────────
@@ -108,6 +109,7 @@ export function TeamStatsComparison({
   teamStats,
   homeTeam,
   awayTeam,
+  leagueCode,
   homeColor = "var(--ds-team-b)",
   awayColor = "var(--ds-team-a)",
 }: TeamStatsComparisonProps) {
@@ -116,10 +118,19 @@ export function TeamStatsComparison({
 
   if (!home || !away) return null;
 
-  const normalizedGroups = buildGroupsFromNormalized(
+  const fromNormalized = buildGroupsFromNormalized(
     home.normalizedStats ?? [],
     away.normalizedStats ?? [],
   );
+  const normalizedRowCount = fromNormalized.reduce((acc, g) => acc + g.rows.length, 0);
+  // The backend's normalizedStats can be anemic (e.g. NHL ships only `points`
+  // and `assists`, and points is filtered as a duplicate of the header score).
+  // When that happens, derive the comparison from the raw `stats` map keyed by
+  // the sport's group definitions — keeps NHL's shots/hits/blocks visible
+  // instead of falling through to "Team stats unavailable".
+  const fromRaw = buildGroupsFromRaw(home.stats ?? {}, away.stats ?? {}, leagueCode ?? "");
+  const rawRowCount = fromRaw.reduce((acc, g) => acc + g.rows.length, 0);
+  const normalizedGroups = rawRowCount > normalizedRowCount ? fromRaw : fromNormalized;
 
   // A single stat row (e.g. only AST surviving) doesn't read as a "Team Stats"
   // comparison — it reads as broken UI. Hide the section unless there are at
