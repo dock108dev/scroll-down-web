@@ -71,9 +71,23 @@ export function sportForLeague(league: string | null | undefined): string {
 
 // ── Helpers ────────────────────────────────────────────────────────
 
-/** Best EV percent for a bet from the API-provided field. */
+/**
+ * Best EV percent for a bet — computed from whichever book offers the highest
+ * American price (least negative for favorites, most positive for underdogs).
+ * Don't trust bet.bestEvPercent: the upstream "best book" pick can disagree
+ * with the math, which would cause this list to sort by the wrong row's EV.
+ */
 export function bestEVForBet(bet: APIBet): number {
-  return bet.bestEvPercent ?? 0;
+  if (!bet.books || bet.books.length === 0) return 0;
+  let bestPrice = -Infinity;
+  let bestEv = 0;
+  for (const b of bet.books) {
+    if (b.price > bestPrice) {
+      bestPrice = b.price;
+      bestEv = b.display_ev ?? b.ev_percent ?? 0;
+    }
+  }
+  return bestEv;
 }
 
 const HIGH_CONFIDENCE_TIERS = new Set(["full", "sharp", "high"]);
