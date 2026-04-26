@@ -138,35 +138,6 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
     await expect(searchInput).toBeVisible();
   });
 
-  test("no-edge tier bet card renders without EV tier badge", async ({ page }) => {
-    const betCards = page.locator("[data-testid='bet-card']");
-    const emptyState = page.locator("[data-testid='fairbet-empty-state']");
-
-    const result = await Promise.race([
-      betCards.first().waitFor({ state: "visible", timeout: 20_000 }).then(() => "cards"),
-      emptyState.waitFor({ state: "visible", timeout: 20_000 }).then(() => "empty"),
-    ]).catch(() => "timeout");
-
-    if (result === "timeout" || result === "empty") {
-      test.skip(true, "No bet cards available to verify no-edge tier");
-      return;
-    }
-
-    // Find a card that shows "No edge" (no-edge tier) and verify no tier badge
-    const allCards = await betCards.all();
-    for (const card of allCards) {
-      const evLabel = card.locator("[data-testid='ev-dollar-label']");
-      const labelText = await evLabel.textContent().catch(() => null);
-      if (labelText === "No edge") {
-        const tierBadge = card.locator("[data-testid='ev-tier-badge']");
-        await expect(tierBadge).toHaveCount(0);
-        return;
-      }
-    }
-    // No "No edge" cards found — skip gracefully
-    test.skip(true, "No no-edge tier cards in current data set");
-  });
-
   test("FairBet card hides extras behind More Markets toggle by default", async ({ page }) => {
     const groups = page.locator("[data-testid='game-bet-group']");
     const emptyState = page.locator("[data-testid='fairbet-empty-state']");
@@ -227,7 +198,7 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
     test.skip(true, "No groups with extra markets in current data set");
   });
 
-  test("bet cards show dollar-value EV format", async ({ page }) => {
+  test("bet cards show edge label in plain language", async ({ page }) => {
     const betCards = page.locator("[data-testid='bet-card']");
     const emptyState = page.locator("[data-testid='fairbet-empty-state']");
 
@@ -237,20 +208,14 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
     ]).catch(() => "timeout");
 
     if (result === "timeout" || result === "empty") {
-      test.skip(true, "No bet cards available to verify EV format");
+      test.skip(true, "No bet cards available to verify edge label");
       return;
     }
 
-    const evLabel = betCards.first().locator("[data-testid='ev-dollar-label']");
-    const hasEvLabel = await evLabel.count() > 0;
+    const labels = page.locator("[data-testid='edge-label']");
+    if ((await labels.count()) === 0) return; // no-edge cards are valid
 
-    if (!hasEvLabel) {
-      // No EV label means ev_percent was null/undefined — acceptable
-      return;
-    }
-
-    const text = await evLabel.textContent() ?? "";
-    const isDollarFormat = /^[+-]\$\d+\.\d{2} per \$100$/.test(text) || text === "No edge";
-    expect(isDollarFormat).toBe(true);
+    const text = ((await labels.first().textContent()) ?? "").trim();
+    expect(/^(Strong|Medium|Small) edge$/i.test(text)).toBe(true);
   });
 });

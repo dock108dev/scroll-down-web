@@ -110,16 +110,7 @@
   --fb-card-border: rgba(0, 0, 0, 0.08);
   --fb-border-subtle: rgba(0, 0, 0, 0.06);
 
-  /* ── EV tier traffic-light colours (light mode) ─────── */
-  --ev-strong-border: rgba(20, 83, 45, 0.65);
-  --ev-strong-bg: rgba(20, 83, 45, 0.08);
-  --ev-strong-text: rgb(20, 83, 45);
-  --ev-good-border: rgba(22, 101, 52, 0.50);
-  --ev-good-bg: rgba(22, 101, 52, 0.06);
   --ev-good-text: rgb(22, 101, 52);
-  --ev-marginal-border: rgba(133, 77, 14, 0.50);
-  --ev-marginal-bg: rgba(133, 77, 14, 0.07);
-  --ev-marginal-text: rgb(133, 77, 14);
 
   /* ── Default team colours (light mode) ───────────── */
   --ds-team-a: rgb(124, 58, 237);
@@ -190,16 +181,7 @@
   --fb-card-border: rgba(255, 255, 255, 0.08);
   --fb-border-subtle: rgba(255, 255, 255, 0.12);
 
-  /* ── EV tier traffic-light colours (dark mode) ─────── */
-  --ev-strong-border: rgba(74, 222, 128, 0.60);
-  --ev-strong-bg: rgba(74, 222, 128, 0.10);
-  --ev-strong-text: rgb(74, 222, 128);
-  --ev-good-border: rgba(134, 239, 172, 0.45);
-  --ev-good-bg: rgba(134, 239, 172, 0.08);
   --ev-good-text: rgb(134, 239, 172);
-  --ev-marginal-border: rgba(251, 191, 36, 0.45);
-  --ev-marginal-bg: rgba(251, 191, 36, 0.08);
-  --ev-marginal-text: rgb(234, 179, 8);
 
   /* ── Default team colours (dark mode) ────────────── */
   --ds-team-a: rgb(160, 130, 255);

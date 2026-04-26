@@ -106,57 +106,6 @@ test.describe("Phase 9 FairBet Pro E2E @live-upstream", () => {
     }
   });
 
-  // ── EV Simulator (ISSUE-051) ─────────────────────────────────────
-
-  test("EV simulator: $100 stake output matches the card's EV-per-$100 label", async ({
-    page,
-  }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    // Find a card that exposes both the EV-per-$100 label and the simulator input.
-    const cards = page.locator("[data-testid='bet-card']");
-    const cardCount = await cards.count();
-
-    for (let i = 0; i < cardCount; i++) {
-      const card = cards.nth(i);
-      const evLabel = card.locator("[data-testid='ev-dollar-label']");
-      const input = card.locator("[data-testid='ev-simulator-input']");
-      if ((await evLabel.count()) === 0 || (await input.count()) === 0) continue;
-
-      const evText = ((await evLabel.textContent()) ?? "").trim();
-      // e.g. "+$4.23 per $100"
-      const evMatch = /^([+-])\$(\d+\.\d{2}) per \$100$/.exec(evText);
-      if (!evMatch) continue;
-      const expectedSign = evMatch[1];
-      const expectedAmount = parseFloat(evMatch[2]);
-
-      await input.fill("100");
-      await page.waitForTimeout(400);
-
-      // "Expected per bet" with stake=100 is the per-$100 EV. (over-100 is
-      // for 100 bets total — a different metric, not what the card label means.)
-      const perBet = card.locator("[data-testid='ev-simulator-per-bet']");
-      await expect(perBet).toBeVisible();
-      const perBetText = ((await perBet.textContent()) ?? "").trim();
-      const o = /^([+-])\$(\d+\.\d{2})$/.exec(perBetText);
-      expect(o).not.toBeNull();
-
-      // Per-$100 label and simulator per-bet output at $100 stake should
-      // be equivalent up to display rounding (cents).
-      expect(o![1]).toBe(expectedSign);
-      expect(Math.abs(parseFloat(o![2]) - expectedAmount)).toBeLessThan(0.02);
-      return;
-    }
-
-    test.skip(true, "No card exposed both EV label and simulator input");
-  });
-
   // ── CLV Logging → My Bets (ISSUE-052) ────────────────────────────
 
   test("CLV: logged bet appears in /settings/my-bets with correct columns @smoke", async ({
@@ -409,7 +358,7 @@ test.describe("FairBet book-details blur (ISSUE-061) @live-upstream", () => {
     );
   });
 
-  test("free-tier: book details are blurred and ev-dollar-label is visible @smoke", async ({
+  test("free-tier: pregame cards render without blur and show book comparison @smoke", async ({
     page,
   }) => {
     await page.goto("/fairbet?tier=free");
@@ -420,98 +369,28 @@ test.describe("FairBet book-details blur (ISSUE-061) @live-upstream", () => {
       return;
     }
 
-    // Every card should show the blur region; no card should show a book comparison row
-    const cards = page.locator("[data-testid='bet-card']");
-    const cardCount = await cards.count();
-    expect(cardCount).toBeGreaterThan(0);
+    // The blur surface from the previous design should be gone for free pregame.
+    expect(await page.locator("[data-testid='book-details-blur']").count()).toBe(0);
 
-    // At least one card must have a blur button
-    const blurButtons = page.locator("[data-testid='book-details-blur']");
-    await expect(blurButtons.first()).toBeVisible({ timeout: 5_000 });
-
-    // The book-comparison-row inside the blurred area must not be directly interactable
-    // (it's aria-hidden, inside a pointer-events:none div)
-    const firstCard = cards.first();
-    const blurBtn = firstCard.locator("[data-testid='book-details-blur']");
-    await expect(blurBtn).toBeVisible();
-
-    // EV dollar label must be visible (outside blur) when present
-    const evLabel = firstCard.locator("[data-testid='ev-dollar-label']");
-    if ((await evLabel.count()) > 0) {
-      await expect(evLabel).toBeVisible();
-    }
-
-    // EV tier badge (in Section 1) must be visible
-    const evBadge = firstCard.locator("[data-testid='ev-tier-badge']");
-    if ((await evBadge.count()) > 0) {
-      await expect(evBadge).toBeVisible();
-    }
-  });
-
-  test("free-tier: tapping blur region opens upgrade CTA sheet @smoke", async ({ page }) => {
-    await page.goto("/fairbet?tier=free");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const blurBtn = page.locator("[data-testid='book-details-blur']").first();
-    await expect(blurBtn).toBeVisible({ timeout: 5_000 });
-    await blurBtn.click();
-
-    await expect(page.locator("[data-testid='pro-gate-sheet']")).toBeVisible({ timeout: 3_000 });
-    await expect(page.locator("[data-testid='pro-gate-title']")).toHaveText(
-      "Full FairBet Analysis",
-    );
-  });
-
-  test("pro-tier: no blur region, book comparison row is visible @smoke", async ({ page }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    // No blur buttons should appear for pro users
-    const blurButtons = page.locator("[data-testid='book-details-blur']");
-    expect(await blurButtons.count()).toBe(0);
-
-    // At least one book comparison row must be visible
+    // Book comparison row should be visible.
     const compRows = page.locator("[data-testid='book-comparison-row']");
     if ((await compRows.count()) > 0) {
       await expect(compRows.first()).toBeVisible();
     }
   });
 
-  test("free-tier: no layout shift between free and pro render @smoke", async ({ page }) => {
-    // Load free view and capture card heights
-    await page.goto("/fairbet?tier=free");
+  test("pro-tier: book comparison row is visible @smoke", async ({ page }) => {
+    await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
-    const freeResult = await waitForCardsOrEmpty(page, 15_000);
-    if (freeResult !== "cards") {
+    const result = await waitForCardsOrEmpty(page, 15_000);
+    if (result !== "cards") {
       test.skip(true, "No bet cards available");
       return;
     }
 
-    const firstCardFree = page.locator("[data-testid='bet-card']").first();
-    const freeBox = await firstCardFree.boundingBox();
-    expect(freeBox).not.toBeNull();
-    expect(freeBox!.height).toBeGreaterThan(0);
-
-    // Reload as pro and compare card height — should be within a small tolerance
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    await waitForCardsOrEmpty(page, 15_000);
-
-    const firstCardPro = page.locator("[data-testid='bet-card']").first();
-    const proBox = await firstCardPro.boundingBox();
-    expect(proBox).not.toBeNull();
-
-    // Card height should be reasonably similar (within 80px) — no severe layout shift
-    expect(Math.abs(freeBox!.height - proBox!.height)).toBeLessThan(80);
+    const compRows = page.locator("[data-testid='book-comparison-row']");
+    if ((await compRows.count()) > 0) {
+      await expect(compRows.first()).toBeVisible();
+    }
   });
 });

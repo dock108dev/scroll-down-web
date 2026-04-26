@@ -56,7 +56,7 @@ export function formatProbability(prob: number): string {
 
 /**
  * Map API confidence tier to display label.
- * API sends: "full", "decent", "thin"
+ * API sends: "full"/"sharp"/"high", "decent"/"market"/"medium", "thin"/"low".
  */
 export function getConfidenceLabel(tier?: string): string {
   switch (tier) {
@@ -67,13 +67,27 @@ export function getConfidenceLabel(tier?: string): string {
     case "decent":
     case "market":
     case "medium":
-      return "Decent";
+      return "Medium";
     case "thin":
     case "low":
-      return "Thin";
+      return "Small";
     default:
-      return "N/A";
+      return "";
   }
+}
+
+export type EdgeLabel = "Strong" | "Medium" | "Small" | "None";
+
+/**
+ * Translate a bet's EV (dollars per $100) into a plain-language edge label.
+ * Thresholds mirror the old EV_TIER_* values.
+ */
+export function getEdgeLabel(evDollarsPer100: number | null | undefined): EdgeLabel {
+  if (evDollarsPer100 == null || !Number.isFinite(evDollarsPer100)) return "None";
+  if (evDollarsPer100 > 7) return "Strong";
+  if (evDollarsPer100 >= 3) return "Medium";
+  if (evDollarsPer100 >= 0.5) return "Small";
+  return "None";
 }
 
 export function getConfidenceColor(tier?: string): string {
@@ -108,16 +122,6 @@ export function getEVColor(ev: number): string {
   if (ev > 0) return FairBetTheme.positiveMuted;
   if (ev < 0) return FairBetTheme.negative;
   return FairBetTheme.neutral;
-}
-
-export type EVTier = "strong" | "good" | "marginal" | "no-edge";
-
-/** Classify EV into a traffic-light tier based on dollar value per $100. */
-export function getEVTier(ev: number): EVTier {
-  if (ev > FAIRBET.EV_TIER_STRONG) return "strong";
-  if (ev >= FAIRBET.EV_TIER_GOOD) return "good";
-  if (ev >= FAIRBET.EV_TIER_MARGINAL) return "marginal";
-  return "no-edge";
 }
 
 // ── Method display names ───────────────────────────────────────────

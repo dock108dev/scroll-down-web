@@ -36,7 +36,7 @@ export const DEFAULT_FILTERS: FairBetFilters = {
   book: "",
   searchText: "",
   evOnly: false,
-  hideThin: false,
+  hideThin: true,
   hideStarted: false,
   sort: "bestEV",
   confidence: "",

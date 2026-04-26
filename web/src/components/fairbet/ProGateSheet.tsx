@@ -217,19 +217,20 @@ export function ProGateSheet() {
           </div>
 
           <button
+            type="button"
             onClick={handleClose}
-            className="shrink-0 rounded-lg flex items-center justify-center transition-colors"
+            className="shrink-0 rounded-lg flex items-center justify-center hover:bg-neutral-800 active:bg-neutral-700 transition-colors"
             style={{
-              minHeight: "44px",
-              minWidth: "44px",
-              color: "var(--color-neutral-500, #737373)",
+              width: "44px",
+              height: "44px",
+              color: "var(--color-neutral-300, #d4d4d4)",
             }}
             aria-label="Close upgrade prompt"
             data-testid="pro-gate-close"
           >
             <svg
-              width="16"
-              height="16"
+              width="20"
+              height="20"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -267,7 +268,7 @@ export function ProGateSheet() {
               style={{ color: "var(--color-neutral-50, #fafafa)" }}
               data-testid="pro-gate-price-monthly"
             >
-              $9.99
+              $0.99
             </span>
             <span
               className="text-sm"
@@ -281,7 +282,7 @@ export function ProGateSheet() {
             style={{ color: "var(--color-neutral-400, #a3a3a3)" }}
             data-testid="pro-gate-price-annual"
           >
-            or $79 / year — save 34%
+            or $8 / year — save 33%
           </p>
         </div>
 

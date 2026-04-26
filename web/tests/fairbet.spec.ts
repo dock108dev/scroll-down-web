@@ -48,54 +48,29 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     expect(consoleErrors).toHaveLength(0);
   });
 
-  test("dollar-value EV label present on at least one card @smoke", async ({ page }) => {
+  test("edge label present on at least one card @smoke", async ({ page }) => {
     const result = await waitForCardsOrEmpty(page);
     if (result !== "cards") {
       test.skip(true, "No bet cards available");
       return;
     }
 
-    const evLabels = page.locator("[data-testid='ev-dollar-label']");
-    const count = await evLabels.count();
+    const labels = page.locator("[data-testid='edge-label']");
+    const count = await labels.count();
     if (count === 0) {
-      test.skip(true, "No EV labels in current data set");
+      test.skip(true, "No edges in current data set");
       return;
     }
 
-    // Find at least one card whose label matches the "+$X.XX per $100" format.
     let matched = false;
     for (let i = 0; i < count; i++) {
-      const text = (await evLabels.nth(i).textContent()) ?? "";
-      if (/^[+-]\$\d+\.\d{2} per \$100$/.test(text.trim())) {
+      const text = ((await labels.nth(i).textContent()) ?? "").trim();
+      if (/^(Strong|Medium|Small) edge$/i.test(text)) {
         matched = true;
         break;
       }
     }
     expect(matched).toBe(true);
-  });
-
-  test("traffic-light tier badge present on at least one card @smoke", async ({ page }) => {
-    const result = await waitForCardsOrEmpty(page);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const tierBadges = page.locator("[data-testid='ev-tier-badge']");
-    const badgeCount = await tierBadges.count();
-    if (badgeCount === 0) {
-      test.skip(true, "All current cards are no-edge tier");
-      return;
-    }
-
-    const first = tierBadges.first();
-    await expect(first).toBeVisible();
-    const text = ((await first.textContent()) ?? "").trim();
-    expect(["Strong", "Good", "Marginal"]).toContain(text);
-    // Tier color is driven by inline CSS variables — confirm styling applied.
-    const bg = await first.evaluate((el) => getComputedStyle(el).backgroundColor);
-    expect(bg).not.toBe("");
-    expect(bg).not.toBe("rgba(0, 0, 0, 0)");
   });
 
   test("book chip row renders with at least one chip @smoke", async ({ page }) => {
@@ -139,26 +114,6 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     test.skip(true, "No groups with extra markets in current data set");
   });
 
-  test("fair price explanation panel opens and closes on tap @smoke", async ({ page }) => {
-    // The explanation trigger only renders for Pro users (BetCard.tsx).
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const trigger = page.locator("[data-testid='fairbet-explanation']").first();
-    await expect(trigger).toBeVisible();
-
-    await trigger.click();
-    await expect(trigger).toHaveAttribute("aria-expanded", "true");
-
-    await trigger.click();
-    await expect(trigger).toHaveAttribute("aria-expanded", "false");
-  });
-
   test("source attribution line present on cards @smoke", async ({ page }) => {
     const result = await waitForCardsOrEmpty(page);
     if (result !== "cards") {
@@ -173,125 +128,6 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     await expect(attribution).toBeVisible();
     const text = ((await attribution.textContent()) ?? "").trim();
     expect(text.length).toBeGreaterThan(0);
-  });
-
-  test("line-movement row is blurred for free users and unblurred for pro @smoke", async ({
-    page,
-  }) => {
-    // Navigate as free user first; skip if no cards with opening_line in data.
-    await page.goto("/fairbet?tier=free");
-    await waitForLoad(page);
-    const resultFree = await waitForCardsOrEmpty(page, 15_000);
-    if (resultFree !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const gated = page.locator("[data-testid='line-movement-gated']");
-    const gatedCount = await gated.count();
-    if (gatedCount === 0) {
-      test.skip(true, "No opening_line data in current API response");
-      return;
-    }
-    await expect(gated.first()).toBeVisible();
-
-    // Pro tier should not show the gated element.
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    await waitForCardsOrEmpty(page, 15_000);
-    await expect(page.locator("[data-testid='line-movement-gated']")).toHaveCount(0);
-  });
-
-  test("EV simulator: pro user sees outputs after entering stake @smoke", async ({ page }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const input = page.locator("[data-testid='ev-simulator-input']").first();
-    if ((await input.count()) === 0) {
-      test.skip(true, "No EV simulator inputs in current data");
-      return;
-    }
-    await expect(input).toBeVisible();
-
-    await input.fill("50");
-    // wait for debounce
-    await page.waitForTimeout(400);
-
-    const perBet = page.locator("[data-testid='ev-simulator-per-bet']").first();
-    const over100 = page.locator("[data-testid='ev-simulator-over-100']").first();
-    await expect(perBet).toBeVisible();
-    await expect(over100).toBeVisible();
-
-    const perBetText = ((await perBet.textContent()) ?? "").trim();
-    const over100Text = ((await over100.textContent()) ?? "").trim();
-    // Both outputs must be dollar amounts with sign
-    expect(perBetText).toMatch(/^[+-]\$\d+\.\d{2}$/);
-    expect(over100Text).toMatch(/^[+-]\$\d+\.\d{2}$/);
-
-    // Over 100 must be 100× per-bet. perBetText is rounded to cents
-    // ($0.005 of imprecision), so multiplying by 100 can be off by up to $0.50.
-    const perBetVal = parseFloat(perBetText.replace(/[^0-9.-]/g, "")) * (perBetText.startsWith("-") ? -1 : 1);
-    const over100Val = parseFloat(over100Text.replace(/[^0-9.-]/g, "")) * (over100Text.startsWith("-") ? -1 : 1);
-    expect(Math.abs(over100Val - perBetVal * 100)).toBeLessThanOrEqual(0.5);
-  });
-
-  test("EV simulator: free user sees disabled input and gate sheet on focus @smoke", async ({
-    page,
-  }) => {
-    await page.goto("/fairbet?tier=free");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const gated = page.locator("[data-testid='ev-simulator-gated']").first();
-    await expect(gated).toBeVisible();
-    await expect(gated).toHaveAttribute("aria-disabled", "true");
-
-    await gated.focus();
-    await expect(page.locator("[data-testid='pro-gate-sheet']")).toBeVisible({ timeout: 3_000 });
-  });
-
-  test("EV simulator: non-numeric input is ignored, negative clamped to 0 @smoke", async ({
-    page,
-  }) => {
-    await page.goto("/fairbet?tier=pro");
-    await waitForLoad(page);
-    const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result !== "cards") {
-      test.skip(true, "No bet cards available");
-      return;
-    }
-
-    const input = page.locator("[data-testid='ev-simulator-input']").first();
-    if ((await input.count()) === 0) {
-      test.skip(true, "No EV simulator inputs in current data");
-      return;
-    }
-
-    // Non-numeric: output should not appear
-    await input.fill("abc");
-    await page.waitForTimeout(400);
-    // The input filter rejects non-numeric chars, so value stays empty → no output rendered
-    await expect(page.locator("[data-testid='ev-simulator-per-bet']").first()).toHaveCount(0);
-
-    // Negative value: stake clamped to 0, outputs show $0.00
-    await input.fill("-10");
-    await page.waitForTimeout(400);
-    const perBet = page.locator("[data-testid='ev-simulator-per-bet']").first();
-    const over100 = page.locator("[data-testid='ev-simulator-over-100']").first();
-    await expect(perBet).toBeVisible();
-    const perBetText = ((await perBet.textContent()) ?? "").trim();
-    const over100Text = ((await over100.textContent()) ?? "").trim();
-    expect(perBetText).toBe("+$0.00");
-    expect(over100Text).toBe("+$0.00");
   });
 
   // ── CLV Tracking ────────────────────────────────────────────────────
@@ -583,7 +419,7 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
 
   // ── Advanced Filters (ISSUE-054) ─────────────────────────────────
 
-  test("advanced filters: free user sees gated button that opens pro-gate sheet @smoke", async ({
+  test("more filters: free user sees gated Confidence row that opens pro-gate sheet @smoke", async ({
     page,
   }) => {
     await page.goto("/fairbet?tier=free");
@@ -594,6 +430,7 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
       return;
     }
 
+    await page.locator("[data-testid='more-filters-toggle']").click();
     const gated = page.locator("[data-testid='fairbet-filters-gated']");
     await expect(gated).toBeVisible({ timeout: 5_000 });
 
@@ -601,7 +438,7 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     await expect(page.locator("[data-testid='pro-gate-sheet']")).toBeVisible({ timeout: 3_000 });
   });
 
-  test("advanced filters: pro user sees full filter panel with four control rows @smoke", async ({
+  test("more filters: pro user sees Confidence and Starts rows after expanding @smoke", async ({
     page,
   }) => {
     await page.goto("/fairbet?tier=pro");
@@ -612,19 +449,18 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
       return;
     }
 
+    await page.locator("[data-testid='more-filters-toggle']").click();
     const panel = page.locator("[data-testid='advanced-filters']");
     await expect(panel).toBeVisible({ timeout: 5_000 });
 
-    // Confidence pills
     await expect(panel.getByText("Confidence")).toBeVisible();
-    await expect(panel.getByText("High")).toBeVisible();
+    await expect(panel.getByText("Strong", { exact: true })).toBeVisible();
 
-    // Time-to-game pills
     await expect(panel.getByText("Starts")).toBeVisible();
     await expect(panel.getByText("Within 1h")).toBeVisible();
   });
 
-  test("advanced filters: filter state persists across page reload @smoke", async ({ page }) => {
+  test("more filters: confidence selection persists across page reload @smoke", async ({ page }) => {
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
@@ -633,16 +469,15 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
       return;
     }
 
+    await page.locator("[data-testid='more-filters-toggle']").click();
     const panel = page.locator("[data-testid='advanced-filters']");
     if ((await panel.count()) === 0) {
       test.skip(true, "Advanced filter panel not rendered");
       return;
     }
 
-    // Click "High" confidence
-    await panel.getByText("High").click();
+    await panel.getByText("Strong", { exact: true }).click();
 
-    // Reload and confirm localStorage state is restored
     await page.reload();
     await waitForLoad(page);
     await waitForCardsOrEmpty(page, 15_000);

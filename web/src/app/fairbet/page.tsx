@@ -95,10 +95,14 @@ export default function FairBetPage() {
     <div data-testid="page-fairbet" className="mx-auto max-w-5xl">
       <div className="sticky z-30 bg-neutral-950 px-4 py-2 sm:py-3 space-y-2 sm:space-y-2.5 border-b border-neutral-800/50" style={{ top: "var(--header-h)" }}>
         {/* ── Header ── */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="text-base sm:text-lg font-bold text-neutral-50">FairBet</h1>
-            <span className="hidden sm:inline text-xs text-neutral-500">Compare odds &middot; Find +EV</span>
+            <p className="text-[11px] sm:text-xs text-neutral-500 leading-snug">
+              Find better prices across sportsbooks.
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
             {hook.canShowParlay && (
               <button
                 onClick={() => setShowParlay(true)}
@@ -112,25 +116,19 @@ export default function FairBetPage() {
                 Parlay ({hook.parlayCount})
               </button>
             )}
+            <button
+              onClick={() => setShowHowItWorks(true)}
+              className="text-[11px] font-medium rounded-full px-2.5 py-1.5 min-h-[36px] sm:min-h-[32px] transition"
+              style={{
+                backgroundColor: "var(--fb-info-soft)",
+                color: "var(--fb-info)",
+                border: "1px solid var(--fb-info)30",
+              }}
+            >
+              How FairBet works
+            </button>
           </div>
-          <button
-            onClick={() => setShowHowItWorks(true)}
-            className="text-[11px] font-medium rounded-full px-2.5 py-1.5 min-h-[36px] sm:min-h-[32px] transition"
-            style={{
-              backgroundColor: "var(--fb-info-soft)",
-              color: "var(--fb-info)",
-              border: "1px solid var(--fb-info)30",
-            }}
-          >
-            How it works
-          </button>
         </div>
-
-        {/* ── Brief description ── */}
-        <p className="text-[11px] text-neutral-500 leading-snug -mt-0.5">
-          Compares odds across sportsbooks to find bets where the price is
-          better than the true probability.
-        </p>
 
         {/* ── Tabs ── */}
         <div role="tablist" aria-label="FairBet odds timing" className="flex gap-1 rounded-lg p-0.5" style={{ backgroundColor: "var(--fb-surface-secondary)" }}>
@@ -170,10 +168,6 @@ export default function FairBetPage() {
               onSearchChange={hook.setSearchText}
               sort={hook.filters.sort}
               onSortChange={hook.setSort}
-              evOnly={hook.filters.evOnly}
-              onEvOnlyChange={hook.setEvOnly}
-              hideThin={hook.filters.hideThin}
-              onHideThinChange={hook.setHideThin}
               parlayCount={hook.parlayCount}
               onParlayClick={() => setShowParlay(true)}
               onRefresh={hook.refetch}
@@ -181,11 +175,10 @@ export default function FairBetPage() {
             />
             <AdvancedFilters
               filters={hook.filters}
-              availableSports={hook.availableSports}
               onConfidenceChange={hook.setConfidence}
-              onMarketChange={hook.setMarket}
-              onSportChange={hook.setSport}
               onTimeToGameChange={hook.setTimeToGame}
+              onEvOnlyChange={hook.setEvOnly}
+              onHideThinChange={hook.setHideThin}
               disabled={!!hook.error || (hook.filteredBets.length === 0 && !hook.loading)}
             />
           </>
@@ -256,20 +249,14 @@ export default function FairBetPage() {
 
         {/* Empty state */}
         {!hook.loading && !hook.error && hook.filteredBets.length === 0 && (
-          <div data-testid="fairbet-empty-state" className="py-12 text-center space-y-4">
+          <div data-testid="fairbet-empty-state" className="py-12 text-center space-y-3">
             <p className="text-base font-semibold text-neutral-300">
-              {hook.allBets.length > 0 && !hook.filters.evOnly
-                ? "No bets match your filters"
-                : "Markets are tight today"}
+              No strong edges right now.
             </p>
             <p className="text-xs text-neutral-500 leading-relaxed max-w-sm mx-auto">
-              {hook.allBets.length > 0 && !hook.filters.evOnly
-                ? "Try clearing your filters to see all available odds."
-                : hook.filters.evOnly && hook.allBets.length > 0
-                  ? "No +EV opportunities at the moment. Try disabling the +EV filter to browse all odds."
-                  : "No edges found across tracked markets. Check back closer to game time."}
+              Check back closer to game time or broaden your filters.
             </p>
-            <div className="flex flex-col items-center gap-3 pt-1">
+            <div className="flex flex-col items-center gap-2 pt-1">
               {hook.filters.evOnly && (
                 <button
                   onClick={() => hook.setEvOnly(false)}
@@ -283,9 +270,22 @@ export default function FairBetPage() {
                   Show all bets
                 </button>
               )}
+              {hook.filters.hideThin && (
+                <button
+                  onClick={() => hook.setHideThin(false)}
+                  className="text-xs font-medium px-4 py-2 min-h-[40px] rounded-lg transition"
+                  style={{
+                    backgroundColor: "var(--fb-surface-secondary)",
+                    color: "var(--ds-text-secondary)",
+                    border: "1px solid var(--fb-border-subtle)",
+                  }}
+                >
+                  Include thin markets
+                </button>
+              )}
               <button
                 onClick={hook.refetch}
-                className="inline-flex items-center gap-2 text-xs font-medium px-4 py-2 min-h-[40px] rounded-lg transition"
+                className="text-xs font-medium px-4 py-2 min-h-[40px] rounded-lg transition"
                 style={{
                   backgroundColor: "var(--fb-surface-secondary)",
                   color: "var(--ds-text-tertiary)",
@@ -295,28 +295,6 @@ export default function FairBetPage() {
                 Refresh
               </button>
             </div>
-
-            {/* Example card — only shown when API returned no odds at all */}
-            {hook.allBets.length === 0 && (
-              <div className="mx-auto max-w-sm text-left rounded-xl p-4 space-y-3 opacity-60 pointer-events-none select-none" style={{ backgroundColor: "var(--fb-card-bg)", border: "1px dashed var(--fb-border-subtle)" }}>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-neutral-500">Example</p>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-neutral-200">Lakers vs Celtics</p>
-                    <p className="text-xs text-neutral-500">Spread &middot; NBA</p>
-                  </div>
-                  <span className="text-xs font-bold px-2 py-1 rounded-full" style={{ backgroundColor: `${FairBetTheme.positive}20`, color: FairBetTheme.positive }}>+2.4% EV</span>
-                </div>
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="text-neutral-400">Fair: <strong className="text-neutral-200">-108</strong></span>
-                  <span className="text-neutral-400">Best: <strong style={{ color: FairBetTheme.positive }}>-102</strong></span>
-                  <span className="text-neutral-500 ml-auto">DraftKings</span>
-                </div>
-                <p className="text-[10px] text-neutral-600 leading-relaxed">
-                  &uarr; When a book&apos;s price is better than the fair line, you have an edge.
-                </p>
-              </div>
-            )}
           </div>
         )}
 
@@ -383,116 +361,43 @@ export default function FairBetPage() {
         onClearAll={hook.clearParlay}
       />
 
-      {/* How it works - generic sheet */}
+      {/* How FairBet works */}
       {showHowItWorks && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
+        <div
+          data-testid="fairbet-how-modal"
+          className="fixed inset-0 z-50 flex items-end justify-center md:items-center"
+        >
           <div className="absolute inset-0 bg-black/60" onClick={() => setShowHowItWorks(false)} />
           <div
-            className="relative z-10 w-full max-w-lg rounded-t-2xl md:rounded-2xl p-6 space-y-4"
+            className="relative z-10 w-full max-w-md rounded-t-2xl md:rounded-2xl p-6 space-y-4"
             style={{
               backgroundColor: "var(--fb-card-bg)",
               border: "1px solid var(--fb-border-subtle)",
             }}
           >
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-neutral-50">How FairBet Works</h2>
+            <div className="flex items-start justify-between gap-3">
+              <h2 className="text-lg font-semibold text-neutral-50">How FairBet works</h2>
               <button
+                type="button"
                 onClick={() => setShowHowItWorks(false)}
-                className="text-neutral-500 hover:text-neutral-50 text-sm min-h-[44px] min-w-[44px] flex items-center justify-center"
+                aria-label="Close"
+                className="shrink-0 rounded-lg flex items-center justify-center hover:bg-neutral-800 transition-colors"
+                style={{ width: "44px", height: "44px", color: "var(--color-neutral-300, #d4d4d4)" }}
               >
-                Close
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
               </button>
             </div>
-            <div className="text-sm space-y-3 text-neutral-400">
+            <div className="text-sm space-y-3 text-neutral-400 leading-relaxed">
               <p>
-                FairBet calculates the{" "}
-                <span className="relative inline-block group">
-                  <strong className="text-neutral-50 underline decoration-dotted decoration-neutral-600 cursor-help">true probability</strong>
-                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[220px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    What should actually happen, minus the book&apos;s cut.
-                  </span>
-                </span>
-                {" "}of each outcome by removing the sportsbook&apos;s margin (vig) from sharp
-                lines.
+                FairBet compares prices across sportsbooks and estimates a fair
+                price using the available market. When one sportsbook offers a
+                better price than the estimate, we flag it as a possible edge.
               </p>
-              <p>
-                A bet has{" "}
-                <span className="relative inline-block group">
-                  <strong className="text-neutral-50 underline decoration-dotted decoration-neutral-600 cursor-help">positive expected value (+EV)</strong>
-                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[220px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    The price is better than it should be. Profitable long term.
-                  </span>
-                </span>
-                {" "}when a book&apos;s price implies a lower probability than the true
-                probability. This means the payout exceeds what the risk
-                warrants.
-              </p>
-              <p>
-                <span style={{ color: FairBetTheme.positive }} className="font-medium">Green values</span>{" "}
-                indicate +EV prices.
-              </p>
-              <p>
-                Use the{" "}
-                <span className="relative inline-block group">
-                  <strong className="text-neutral-50 underline decoration-dotted decoration-neutral-600 cursor-help">parlay builder</strong>
-                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[220px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    Combine multiple bets into one. Higher risk, higher payout.
-                  </span>
-                </span>
-                {" "}to combine multiple +EV bets.
-                Fair probability for parlays assumes independent legs.
-              </p>
-            </div>
-
-            {/* Real talk */}
-            <div className="border-t border-neutral-800 pt-4 space-y-2">
-              <h3 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
-                Real talk on EV
-              </h3>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Positive expected value doesn&apos;t mean the bet is going to hit. It
-                just means the number is off. That&apos;s it. If math and probability
-                aren&apos;t really your thing, this probably isn&apos;t going to be the
-                magic switch that fixes everything.
-              </p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Now, if it <span className="italic">is</span> working and
-                we&apos;re consistently
-                beating{" "}
-                <span className="relative inline-block group">
-                  <span className="underline decoration-dotted decoration-neutral-600 cursor-help">
-                    closing line value
-                  </span>
-                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[200px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    How much better our bet was compared to the closing line.
-                  </span>
-                </span>
-                , first of all: nice. Second of all: enjoy it while it lasts.
-                Because every American sportsbook on earth will limit your account
-                the second they catch on. Trust us. Shoutout to the $4 max bets on
-                basically every major book in the country. And if you don&apos;t
-                know what CLV is... honestly, maybe just watch the games.
-              </p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Once we do get limited, the next move is{" "}
-                <span className="relative inline-block group">
-                  <span className="underline decoration-dotted decoration-neutral-600 cursor-help">
-                    peer-to-peer exchanges
-                  </span>
-                  <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-max max-w-[200px] rounded bg-neutral-700 px-2 py-1 text-[10px] text-neutral-200 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                    Bet against people not books. No limits but you post a price or find one you like if it exists.
-                  </span>
-                </span>
-                , not books. No limits, but we&apos;re either posting a price or
-                finding one we like if it exists. They&apos;re not available
-                everywhere, but that&apos;s where you go if you want to keep
-                pressing after stacking some cash. And again, if you don&apos;t
-                know what those are, you probably shouldn&apos;t be trying this yet
-                either.
-              </p>
-              <p className="text-xs text-neutral-500 leading-relaxed">
-                Peer-to-peer exchange tracking and odds comparison tools are on
-                the roadmap.
+              <p className="text-xs text-neutral-500">
+                These are estimates, not guarantees.
               </p>
             </div>
           </div>

@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { FairBetTheme } from "@/lib/theme";
-import type { SortMode } from "@/hooks/useFairBetOdds";
+import type { SortMode } from "@/lib/fairbet-filters";
 
 // ── Market filter definitions ──────────────────────────────────────
 
@@ -23,31 +23,19 @@ const SORT_OPTIONS: { key: SortMode; label: string }[] = [
 // ── Props ──────────────────────────────────────────────────────────
 
 interface BookFiltersProps {
-  // League
   availableLeagues: string[];
   selectedLeague: string;
   onLeagueChange: (league: string) => void;
-  // Market
   availableMarkets: string[];
   selectedMarket: string;
   onMarketChange: (market: string) => void;
-  // Search
   searchText: string;
   onSearchChange: (text: string) => void;
-  // Sort
   sort: SortMode;
   onSortChange: (sort: SortMode) => void;
-  // Toggles
-  evOnly: boolean;
-  onEvOnlyChange: (v: boolean) => void;
-  hideThin: boolean;
-  onHideThinChange: (v: boolean) => void;
-  // Parlay
   parlayCount: number;
   onParlayClick: () => void;
-  // Refresh
   onRefresh: () => void;
-  // Disabled state (no data loaded)
   disabled?: boolean;
 }
 
@@ -62,10 +50,6 @@ export function BookFilters({
   onSearchChange,
   sort,
   onSortChange,
-  evOnly,
-  onEvOnlyChange,
-  hideThin,
-  onHideThinChange,
   parlayCount,
   onParlayClick,
   onRefresh,
@@ -193,11 +177,6 @@ export function BookFilters({
         </button>
       </div>
 
-      {/* Toggle pills row */}
-      <div className="flex items-center gap-2">
-        <TogglePill label="+EV Only" active={evOnly} onClick={() => onEvOnlyChange(!evOnly)} />
-        <TogglePill label="Hide Thin" active={hideThin} onClick={() => onHideThinChange(!hideThin)} />
-      </div>
     </div>
   );
 }
@@ -237,34 +216,3 @@ function FilterPill({
   );
 }
 
-function TogglePill({
-  label,
-  active,
-  onClick,
-}: {
-  label: string;
-  active: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="shrink-0 rounded-full px-2.5 py-1 min-h-[36px] sm:min-h-[28px] flex items-center text-[11px] font-medium transition"
-      style={
-        active
-          ? {
-              backgroundColor: `${FairBetTheme.positive}20`,
-              color: FairBetTheme.positive,
-              border: `1px solid ${FairBetTheme.positive}40`,
-            }
-          : {
-              backgroundColor: "var(--fb-surface-secondary)",
-              color: "var(--ds-text-secondary)",
-              border: "1px solid var(--fb-border-subtle)",
-            }
-      }
-    >
-      {label}
-    </button>
-  );
-}

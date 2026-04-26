@@ -63,10 +63,6 @@ export const API = {
 export const FAIRBET = {
   MIN_BOOKS: 3, // hide bets with fewer books posting a price
   EV_HIGHLIGHT_THRESHOLD: 5, // EV% at which a bet gets the strong-positive color
-  EV_TIER_STRONG: 7,    // > $7 per $100 → dark green
-  EV_TIER_GOOD: 3,      // $3–$7 per $100 → light green
-  EV_TIER_MARGINAL: 1,  // $1–$3 per $100 → amber
-  // < $1 per $100 → no-edge (gray, no highlight)
   ATTRIBUTION_FRESH_MS: 2 * 60_000,         // < 2m: no staleness label
   ATTRIBUTION_STALE_MS: 15 * 60_000,        // > 15m: amber "May be delayed"
   ATTRIBUTION_UPDATE_INTERVAL_MS: 30_000,   // re-evaluate attribution label every 30s

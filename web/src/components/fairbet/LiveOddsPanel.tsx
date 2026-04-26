@@ -9,7 +9,9 @@ import { FairExplainerSheet } from "@/components/fairbet/FairExplainerSheet";
 import { LeagueBadge } from "@/components/fairbet/LeagueBadge";
 import { FairBetTheme } from "@/lib/theme";
 import { betId } from "@/lib/fairbet-utils";
-import { RENDER } from "@/lib/config";
+import { RENDER, FEATURE_GATES } from "@/lib/config";
+import { useIsPro } from "@/hooks/useIsPro";
+import { useProGateSheet } from "@/stores/pro-gate-sheet";
 import type { APIBet } from "@/lib/types";
 
 const MARKET_FILTERS = [
@@ -27,6 +29,8 @@ const SORT_OPTIONS = [
 export function LiveOddsPanel() {
   const hook = useFairBetLive();
   const isDegraded = useHealthDegraded();
+  const isPro = useIsPro();
+  const openProGate = useProGateSheet((s) => s.openSheet);
   const [explainerBet, setExplainerBet] = useState<APIBet | null>(null);
   const [showExplainer, setShowExplainer] = useState(false);
 
@@ -255,8 +259,16 @@ export function LiveOddsPanel() {
         </div>
       )}
 
-      {/* ── Game groups ──────────────────────────────────── */}
-      {hook.gameData.map((gd) => (
+      {/* ── Free-tier locked preview for the whole Live tab ── */}
+      {!isPro && hasData && (
+        <LiveLockedPreview
+          gameData={hook.gameData}
+          onUnlock={(el) => openProGate(FEATURE_GATES.LIVE_ODDS, el)}
+        />
+      )}
+
+      {/* ── Game groups (Pro only) ──────────────────────────────── */}
+      {isPro && hook.gameData.map((gd) => (
         <GameGroup
           key={gd.game.game_id}
           data={gd}
@@ -376,6 +388,90 @@ function GameGroup({
           />
         );
       })}
+    </div>
+  );
+}
+
+// ── Free-tier locked preview ───────────────────────────────
+
+function LiveLockedPreview({
+  gameData,
+  onUnlock,
+}: {
+  gameData: LiveGameData[];
+  onUnlock: (el: HTMLElement) => void;
+}) {
+  const totalBets = gameData.reduce((acc, gd) => acc + gd.bets.length, 0);
+  const games = gameData.slice(0, 3);
+
+  return (
+    <div data-testid="live-locked-preview" className="space-y-2">
+      <div
+        className="rounded-xl px-4 py-3 space-y-2"
+        style={{
+          backgroundColor: "var(--fb-card-bg)",
+          border: "1px solid var(--fb-border-subtle)",
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="relative flex h-1.5 w-1.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-green-400" />
+          </span>
+          <span className="text-xs font-semibold text-neutral-50">Live FairBet</span>
+        </div>
+        <p className="text-xs text-neutral-400 leading-relaxed">
+          {totalBets} live price{totalBets === 1 ? "" : "s"} found across{" "}
+          {gameData.length} game{gameData.length === 1 ? "" : "s"}.
+        </p>
+        <p className="text-xs text-neutral-500 leading-relaxed">
+          Upgrade to see live edges, sportsbook prices, and win probability.
+        </p>
+        <button
+          type="button"
+          onClick={(e) => onUnlock(e.currentTarget)}
+          data-testid="live-locked-cta"
+          className="mt-1 inline-flex items-center gap-1.5 text-xs font-semibold px-4 py-2 rounded-lg transition"
+          style={{ backgroundColor: FairBetTheme.info, color: "#fff" }}
+        >
+          Unlock Live FairBet
+        </button>
+      </div>
+
+      {games.map((gd) => (
+        <div
+          key={gd.game.game_id}
+          data-testid="live-locked-row"
+          className="rounded-xl px-3 py-2.5 space-y-1.5"
+          style={{
+            backgroundColor: "var(--fb-card-bg)",
+            border: "1px solid var(--fb-border-subtle)",
+          }}
+        >
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-neutral-300 truncate">
+              {gd.game.away_team} @ {gd.game.home_team}
+            </span>
+            <span
+              className="shrink-0 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full"
+              style={{ backgroundColor: "var(--fb-surface-secondary)", color: "var(--ds-text-tertiary)" }}
+            >
+              Locked
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] text-neutral-500 min-w-0">
+            <LeagueBadge league={gd.game.league_code} />
+            <span className="truncate">
+              {gd.bets.length} live opportunit{gd.bets.length === 1 ? "y" : "ies"}
+            </span>
+            {gd.response.last_updated_at && (
+              <span className="ml-auto shrink-0 text-[10px] text-neutral-600">
+                Updated {new Date(gd.response.last_updated_at).toLocaleTimeString()}
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

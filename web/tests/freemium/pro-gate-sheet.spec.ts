@@ -40,9 +40,9 @@ test.describe("ProGateSheet — upgrade prompt", () => {
     await openSheet(page, "full_fairbet");
 
     await expect(page.locator("[data-testid='pro-gate-price-monthly']")).toHaveText(
-      "$9.99",
+      "$0.99",
     );
-    await expect(page.locator("[data-testid='pro-gate-price-annual']")).toContainText("$79");
+    await expect(page.locator("[data-testid='pro-gate-price-annual']")).toContainText("$8");
   });
 
   test("Upgrade to Pro CTA is visible", async ({ page }) => {
