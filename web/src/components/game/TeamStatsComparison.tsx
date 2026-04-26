@@ -121,6 +121,18 @@ export function TeamStatsComparison({
     away.normalizedStats ?? [],
   );
 
+  // A single stat row (e.g. only AST surviving) doesn't read as a "Team Stats"
+  // comparison — it reads as broken UI. Hide the section unless there are at
+  // least 3 useful rows to compare.
+  const totalRows = normalizedGroups.reduce((acc, g) => acc + g.rows.length, 0);
+  if (totalRows < 3) {
+    return (
+      <div data-testid="team-stats-comparison" className="rounded-lg border border-neutral-800 bg-neutral-900 px-3 py-4 text-center">
+        <p className="text-xs text-neutral-500">Team stats unavailable for this game.</p>
+      </div>
+    );
+  }
+
   return (
     <div data-testid="team-stats-comparison" className="space-y-3">
       {/* Team header */}

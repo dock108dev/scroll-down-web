@@ -201,13 +201,27 @@ interface NHLGoaliesTableProps {
 
 const GOALIE_HEADLINE = HEADLINE_STATS.nhl_goalie; // ["SV", "GA", "SV%"]
 
+function goalieDidNotPlay(g: NHLGoalieStat): boolean {
+  const toi = parseTOI(g.toi);
+  if (toi > 0) return false;
+  return (g.shotsAgainst ?? 0) === 0
+    && (g.saves ?? 0) === 0
+    && (g.goalsAgainst ?? 0) === 0;
+}
+
 export function NHLGoaliesTable({ title, goalies: rawGoalies }: NHLGoaliesTableProps) {
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
 
-  const goalies = [...rawGoalies].sort((a, b) => parseTOI(b.toi) - parseTOI(a.toi));
-  if (goalies.length === 0) return null;
+  // Split into played vs did-not-play so a backup with all-zero stats doesn't
+  // render alongside the starter as if both had real numbers.
+  const played = rawGoalies
+    .filter((g) => !goalieDidNotPlay(g))
+    .sort((a, b) => parseTOI(b.toi) - parseTOI(a.toi));
+  const dnp = rawGoalies.filter((g) => goalieDidNotPlay(g));
+  if (played.length === 0 && dnp.length === 0) return null;
 
   const headlineSet = new Set(GOALIE_HEADLINE);
+  const goalies = played;
 
   function togglePlayer(name: string) {
     setExpandedPlayers((prev) => {
@@ -228,6 +242,9 @@ export function NHLGoaliesTable({ title, goalies: rawGoalies }: NHLGoaliesTableP
       </div>
 
       <div>
+        {goalies.length === 0 && dnp.length > 0 && (
+          <p className="px-3 py-2 text-xs text-neutral-500">No goalie has logged ice time yet.</p>
+        )}
         {goalies.map((g) => {
           const isExpanded = expandedPlayers.has(g.playerName);
           const svPct = formatSvPct(g.savePercentage);
@@ -299,6 +316,17 @@ export function NHLGoaliesTable({ title, goalies: rawGoalies }: NHLGoaliesTableP
             </div>
           );
         })}
+        {dnp.map((g) => (
+          <div
+            key={g.playerName}
+            className="flex items-center justify-between px-3 py-1.5 text-xs border-b border-neutral-800/50 last:border-b-0"
+          >
+            <span className="text-neutral-500 truncate" title={g.playerName}>
+              {abbreviateName(g.playerName)}
+            </span>
+            <span className="text-neutral-600 italic shrink-0">Did not play</span>
+          </div>
+        ))}
       </div>
     </div>
   );

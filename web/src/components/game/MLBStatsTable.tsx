@@ -188,13 +188,24 @@ interface MLBPitchersTableProps {
 
 const PITCHER_HEADLINE = HEADLINE_STATS.mlb_pitcher; // ["IP", "K", "ERA"]
 
+function pitcherDidNotPlay(p: MLBPitcherStat): boolean {
+  if (parseInningsPitched(p.inningsPitched) > 0) return false;
+  return (p.hits ?? 0) === 0
+    && (p.runs ?? 0) === 0
+    && (p.earnedRuns ?? 0) === 0
+    && (p.strikeOuts ?? 0) === 0
+    && (p.baseOnBalls ?? 0) === 0;
+}
+
 export function MLBPitchersTable({ title, pitchers: rawPitchers }: MLBPitchersTableProps) {
   const [expandedPlayers, setExpandedPlayers] = useState<Set<string>>(new Set());
 
-  const pitchers = [...rawPitchers].sort(
-    (a, b) => parseInningsPitched(b.inningsPitched) - parseInningsPitched(a.inningsPitched),
-  );
-  if (pitchers.length === 0) return null;
+  const played = rawPitchers
+    .filter((p) => !pitcherDidNotPlay(p))
+    .sort((a, b) => parseInningsPitched(b.inningsPitched) - parseInningsPitched(a.inningsPitched));
+  const dnp = rawPitchers.filter((p) => pitcherDidNotPlay(p));
+  if (played.length === 0 && dnp.length === 0) return null;
+  const pitchers = played;
 
   const headlineSet = new Set(PITCHER_HEADLINE);
 
@@ -217,6 +228,9 @@ export function MLBPitchersTable({ title, pitchers: rawPitchers }: MLBPitchersTa
       </div>
 
       <div>
+        {pitchers.length === 0 && dnp.length > 0 && (
+          <p className="px-3 py-2 text-xs text-neutral-500">No pitcher has thrown yet.</p>
+        )}
         {pitchers.map((p) => {
           const isExpanded = expandedPlayers.has(p.playerName);
           const pcSt =
@@ -294,6 +308,17 @@ export function MLBPitchersTable({ title, pitchers: rawPitchers }: MLBPitchersTa
             </div>
           );
         })}
+        {dnp.map((p) => (
+          <div
+            key={p.playerName}
+            className="flex items-center justify-between px-3 py-1.5 text-xs border-b border-neutral-800/50 last:border-b-0"
+          >
+            <span className="text-neutral-500 truncate" title={p.playerName}>
+              {abbreviateName(p.playerName)}
+            </span>
+            <span className="text-neutral-600 italic shrink-0">Did not play</span>
+          </div>
+        ))}
       </div>
     </div>
   );

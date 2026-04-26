@@ -137,6 +137,10 @@ function getAccentColor(
  * Splits a play description into a primary action line and optional stats.
  * E.g. "J. Brown 25' 3PT (5 PTS) (Pritchard 4 AST)" →
  *   { primary: "J. Brown 25' 3PT", stats: "5 PTS · Pritchard 4 AST" }
+ *
+ * Drops parentheticals that are bare numbers / punctuation — those are usually
+ * raw API fields (inning number, period) leaking into the description and would
+ * otherwise render as an unlabeled "6" under the play.
  */
 function splitDescription(text: string): { primary: string; stats: string | null } {
   const i = text.indexOf("(");
@@ -144,7 +148,10 @@ function splitDescription(text: string): { primary: string; stats: string | null
   const primary = text.slice(0, i).trim();
   const groups: string[] = [];
   for (const m of text.slice(i).matchAll(/\(([^)]*)\)/g)) {
-    if (m[1].trim()) groups.push(m[1].trim());
+    const content = m[1].trim();
+    if (!content) continue;
+    if (!/[a-zA-Z]/.test(content)) continue;
+    groups.push(content);
   }
   return { primary, stats: groups.length ? groups.join(" · ") : null };
 }
@@ -206,15 +213,15 @@ export function TimelineRow({
           })()}
         </div>
 
-        {/* Score display */}
+        {/* Score display — AWY 4 · HME 6 with team abbrs so the number is never bare */}
         {play.awayScore != null && play.homeScore != null && (
-          <span className="shrink-0 text-sm font-bold tabular-nums flex items-center gap-0.5">
+          <span className="shrink-0 text-xs font-semibold tabular-nums flex items-center gap-1.5 pt-0.5">
             <span style={{ color: awayColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>
-              {play.awayScore}
+              {awayTeamAbbr ? `${awayTeamAbbr} ${play.awayScore}` : play.awayScore}
             </span>
-            <span className="text-neutral-600">-</span>
+            <span className="text-neutral-600">·</span>
             <span style={{ color: homeColor ?? "#a3a3a3", textShadow: "var(--ds-team-text-outline)" }}>
-              {play.homeScore}
+              {homeTeamAbbr ? `${homeTeamAbbr} ${play.homeScore}` : play.homeScore}
             </span>
             {scoreChanged && (
               <span className="ml-1 w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -244,7 +251,9 @@ export function TimelineRow({
         {/* Score (muted) */}
         {play.awayScore != null && play.homeScore != null && (
           <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
-            {play.awayScore}-{play.homeScore}
+            {awayTeamAbbr ? `${awayTeamAbbr} ${play.awayScore}` : play.awayScore}
+            {" · "}
+            {homeTeamAbbr ? `${homeTeamAbbr} ${play.homeScore}` : play.homeScore}
           </span>
         )}
       </div>
