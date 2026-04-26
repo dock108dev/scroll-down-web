@@ -215,8 +215,9 @@ export function TimelineRow({
     homeColor,
     awayColor,
   );
+  const isScoringPlay = (play.scoreChanged ?? false) || play.scoringTeamAbbr != null;
   const scoreChanged = tier === 1 && (play.scoreChanged ?? false);
-  const scoreAfter = resolveScoreAfter(play, homeTeamAbbr, awayTeamAbbr);
+  const scoreAfter = isScoringPlay ? resolveScoreAfter(play, homeTeamAbbr, awayTeamAbbr) : null;
 
   // ── Tier 1: Primary / high-impact ──
   if (tier === 1) {
