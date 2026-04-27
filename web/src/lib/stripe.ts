@@ -11,7 +11,7 @@ let _stripe: Stripe | null = null;
 /** Lazy singleton — never instantiated at import time so the key is only read on first use. */
 export function getStripe(): Stripe {
   if (!_stripe) {
-    _stripe = new Stripe(getStripeSecretKey(), { apiVersion: "2026-03-25.dahlia" });
+    _stripe = new Stripe(getStripeSecretKey(), { apiVersion: "2026-04-22.dahlia" });
   }
   return _stripe;
 }
