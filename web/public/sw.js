@@ -1,17 +1,16 @@
 // Service worker for Scroll Down Sports
 // Cache First: /_next/static/** (immutable hashed assets)
-// Network First: /api/games (list) — list reflects fast-moving live state, SWR
-//   was serving stale "LIVE" snapshots after games had ended.
-// Stale-While-Revalidate: /api/games/[id] (detail) — TTL matches config.ts
+// Network First: /api/games/** (list and detail) — both reflect fast-moving
+//   live state. SWR was serving stale "LIVE" snapshots after games had ended,
+//   and on the detail page it left the play-by-play stuck at the snapshot
+//   captured the first time the user viewed the game. Cache is now used only
+//   as an offline fallback.
 //
-// Cache version bumped from v1 → v2 to evict poisoned list responses cached
-// under the old SWR strategy on existing clients.
+// Cache version bumped to v2 to evict poisoned responses cached under the
+// previous SWR strategy on existing clients.
 
 const STATIC_CACHE = "sd-static-v1";
 const API_CACHE = "sd-api-v2";
-
-// TTL (ms) — must stay in sync with src/lib/config.ts CACHE values
-const GAME_DETAIL_TTL_MS = 5 * 60_000;
 
 // ─── Install ────────────────────────────────────────────────────────────────
 
@@ -51,36 +50,15 @@ function isGameApiRequest(url) {
   return url.pathname.startsWith("/api/games");
 }
 
-/** True for /api/games (list); false for /api/games/[id] (detail). */
-function isGameListRequest(url) {
-  const parts = url.pathname.split("/").filter(Boolean);
-  return parts.length <= 2;
-}
-
-/** Returns true if the cached response is still within its TTL. */
-function isFresh(response, ttlMs) {
-  const ts = response.headers.get("sw-cached-at");
-  if (!ts) return false;
-  return Date.now() - parseInt(ts, 10) < ttlMs;
-}
-
 /**
- * Fetch from the network, stamp with a cache timestamp header, and store in
- * the named cache. Returns the original network response (body unconsumed).
+ * Fetch from the network and store the response in the named cache for use
+ * as an offline fallback. Returns the original network response.
  */
 async function fetchAndCache(cacheName, request) {
   const response = await fetch(request);
   if (response.ok) {
     const clone = response.clone();
-    const buf = await clone.arrayBuffer();
-    const headers = new Headers(clone.headers);
-    headers.set("sw-cached-at", String(Date.now()));
-    const stamped = new Response(buf, {
-      status: clone.status,
-      statusText: clone.statusText,
-      headers,
-    });
-    caches.open(cacheName).then((cache) => cache.put(request, stamped));
+    caches.open(cacheName).then((cache) => cache.put(request, clone));
   }
   return response;
 }
@@ -109,11 +87,11 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // ── Network First: game list endpoint ─────────────────────────────────────
-  // The list reflects fast-changing live state. We always try the network
-  // first so a freshly-finished game shows as Final immediately, and only
-  // fall back to cache when the network is unavailable.
-  if (isGameApiRequest(url) && isGameListRequest(url)) {
+  // ── Network First: all game API routes ────────────────────────────────────
+  // Both the list and detail endpoints reflect fast-changing live state. Try
+  // the network first so freshly-finished games and newly-arrived plays show
+  // immediately; fall back to cache only when the network is unavailable.
+  if (isGameApiRequest(url)) {
     event.respondWith(
       (async () => {
         try {
@@ -131,41 +109,6 @@ self.addEventListener("fetch", (event) => {
           );
         }
       })()
-    );
-    return;
-  }
-
-  // ── Stale-While-Revalidate: game detail endpoint ──────────────────────────
-  if (isGameApiRequest(url)) {
-    event.respondWith(
-      caches.open(API_CACHE).then(async (cache) => {
-        const cached = await cache.match(event.request);
-
-        if (cached) {
-          if (!isFresh(cached, GAME_DETAIL_TTL_MS)) {
-            // Stale: kick off background revalidation and serve immediately
-            event.waitUntil(
-              fetchAndCache(API_CACHE, event.request.clone()).catch(() => {})
-            );
-          }
-          return cached;
-        }
-
-        // No cached entry: wait for network response
-        try {
-          return await fetchAndCache(API_CACHE, event.request.clone());
-        } catch {
-          // Network unavailable and no cache — return offline fallback
-          const fallback = await caches.match("/offline.html");
-          return (
-            fallback ||
-            new Response("Service unavailable offline", {
-              status: 503,
-              headers: { "Content-Type": "text/plain" },
-            })
-          );
-        }
-      })
     );
     return;
   }

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { GameDetailResponse } from "@/lib/types";
 import { isLive } from "@/lib/types";
+import { POLLING } from "@/lib/config";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
@@ -77,15 +78,33 @@ export function useGameDetail(id: number) {
   // Browsers throttle background tabs, so realtime events may be missed even
   // while the WebSocket appears connected. useVisibilityRefresh triggers a
   // silent REST refresh when hidden > VISIBILITY_AWAY_MS *or* when the
-  // realtime connection is offline. Only fires for live games.
+  // realtime connection is offline. We refresh regardless of game status: a
+  // game that finished in the background can have a stale plays array even
+  // after `status` flips to final, and a "live" status read from cache might
+  // itself be stale. The cost of an extra fetch is small.
 
   const gameStatus = data?.game.status;
   const gameIsLive = data ? isLive(gameStatus!, data.game) : false;
 
   useVisibilityRefresh(
-    () => { if (gameIsLive) fetchGame({ silent: true }); },
+    () => fetchGame({ silent: true }),
     realtimeStatus.connected,
   );
+
+  // ── Polling fallback: refresh live games on a fixed cadence ──
+  // Realtime is the primary path for play-by-play. Polling guarantees that a
+  // silently-dropped WebSocket or a missed `pbp_append` event doesn't leave
+  // the timeline frozen mid-game. We only poll while the game is live —
+  // terminal states have no further updates worth chasing.
+
+  useEffect(() => {
+    if (!gameIsLive) return;
+    const intervalId = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchGame({ silent: true });
+    }, POLLING.GAMES_REFRESH_MS);
+    return () => clearInterval(intervalId);
+  }, [gameIsLive, fetchGame]);
 
   // Track which game page is open (used by visibility handler).
   // No auto-accept: the user must manually click "Update" to advance the snapshot.
