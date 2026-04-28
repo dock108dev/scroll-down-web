@@ -94,7 +94,7 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
       // Intentional headline must be present
       const text = await emptyState.textContent() ?? "";
       expect(text.trim().length).toBeGreaterThan(0);
-      expect(text).toMatch(/markets are tight today|no bets match/i);
+      expect(text).toMatch(/no strong edges|broaden your filters/i);
       // Refresh button must be in the empty state
       const refreshBtn = emptyState.getByRole("button", { name: /refresh/i });
       await expect(refreshBtn).toBeVisible();
@@ -104,12 +104,12 @@ test.describe("FairBet Page - Odds @live-upstream", () => {
   });
 
   test('"How it works" button opens explainer @smoke', async ({ page }) => {
-    const howItWorksButton = page.getByRole("button", { name: "How it works" });
+    const howItWorksButton = page.getByRole("button", { name: "How FairBet works" });
     await expect(howItWorksButton).toBeVisible();
     await howItWorksButton.click();
 
     await expect(
-      page.getByRole("heading", { name: "How FairBet Works" })
+      page.getByRole("heading", { name: "How FairBet works" })
     ).toBeVisible();
   });
 

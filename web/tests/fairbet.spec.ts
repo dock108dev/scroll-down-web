@@ -286,7 +286,7 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     await expect(emptyState).toBeVisible();
     const text = ((await emptyState.textContent()) ?? "").trim();
     expect(text.length).toBeGreaterThan(0);
-    expect(text).toMatch(/markets are tight today|no bets match/i);
+    expect(text).toMatch(/no strong edges|broaden your filters/i);
     await expect(emptyState.getByRole("button", { name: /refresh/i })).toBeVisible();
   });
 
@@ -298,8 +298,8 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     await page.goto("/fairbet?tier=free");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result === "timeout") {
-      test.skip(true, "FairBet API did not respond within 20s");
+    if (result !== "cards") {
+      test.skip(true, "No bet cards available — AdvancedFilters is disabled when filteredBets is empty");
       return;
     }
 
@@ -317,8 +317,8 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result === "timeout") {
-      test.skip(true, "FairBet API did not respond within 20s");
+    if (result !== "cards") {
+      test.skip(true, "No bet cards available — AdvancedFilters is disabled when filteredBets is empty");
       return;
     }
 
@@ -337,8 +337,8 @@ test.describe("FairBet E2E Suite @live-upstream", () => {
     await page.goto("/fairbet?tier=pro");
     await waitForLoad(page);
     const result = await waitForCardsOrEmpty(page, 15_000);
-    if (result === "timeout") {
-      test.skip(true, "FairBet API did not respond within 20s");
+    if (result !== "cards") {
+      test.skip(true, "No bet cards available — AdvancedFilters is disabled when filteredBets is empty");
       return;
     }
 
