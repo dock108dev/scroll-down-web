@@ -1,12 +1,16 @@
 // Service worker for Scroll Down Sports
 // Cache First: /_next/static/** (immutable hashed assets)
-// Stale-While-Revalidate: /api/games/** (TTLs match config.ts)
+// Network First: /api/games (list) — list reflects fast-moving live state, SWR
+//   was serving stale "LIVE" snapshots after games had ended.
+// Stale-While-Revalidate: /api/games/[id] (detail) — TTL matches config.ts
+//
+// Cache version bumped from v1 → v2 to evict poisoned list responses cached
+// under the old SWR strategy on existing clients.
 
 const STATIC_CACHE = "sd-static-v1";
-const API_CACHE = "sd-api-v1";
+const API_CACHE = "sd-api-v2";
 
 // TTL (ms) — must stay in sync with src/lib/config.ts CACHE values
-const GAMES_LIST_TTL_MS = 90_000;
 const GAME_DETAIL_TTL_MS = 5 * 60_000;
 
 // ─── Install ────────────────────────────────────────────────────────────────
@@ -47,11 +51,10 @@ function isGameApiRequest(url) {
   return url.pathname.startsWith("/api/games");
 }
 
-/** Choose TTL based on whether it's the list endpoint or a detail endpoint. */
-function getGameApiTtl(url) {
+/** True for /api/games (list); false for /api/games/[id] (detail). */
+function isGameListRequest(url) {
   const parts = url.pathname.split("/").filter(Boolean);
-  // /api/games → 2 segments (list); /api/games/[id] → 3+ segments (detail)
-  return parts.length <= 2 ? GAMES_LIST_TTL_MS : GAME_DETAIL_TTL_MS;
+  return parts.length <= 2;
 }
 
 /** Returns true if the cached response is still within its TTL. */
@@ -106,15 +109,40 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // ── Stale-While-Revalidate: game API routes ───────────────────────────────
+  // ── Network First: game list endpoint ─────────────────────────────────────
+  // The list reflects fast-changing live state. We always try the network
+  // first so a freshly-finished game shows as Final immediately, and only
+  // fall back to cache when the network is unavailable.
+  if (isGameApiRequest(url) && isGameListRequest(url)) {
+    event.respondWith(
+      (async () => {
+        try {
+          return await fetchAndCache(API_CACHE, event.request.clone());
+        } catch {
+          const cached = await caches.open(API_CACHE).then((c) => c.match(event.request));
+          if (cached) return cached;
+          const fallback = await caches.match("/offline.html");
+          return (
+            fallback ||
+            new Response("Service unavailable offline", {
+              status: 503,
+              headers: { "Content-Type": "text/plain" },
+            })
+          );
+        }
+      })()
+    );
+    return;
+  }
+
+  // ── Stale-While-Revalidate: game detail endpoint ──────────────────────────
   if (isGameApiRequest(url)) {
-    const ttl = getGameApiTtl(url);
     event.respondWith(
       caches.open(API_CACHE).then(async (cache) => {
         const cached = await cache.match(event.request);
 
         if (cached) {
-          if (!isFresh(cached, ttl)) {
+          if (!isFresh(cached, GAME_DETAIL_TTL_MS)) {
             // Stale: kick off background revalidation and serve immediately
             event.waitUntil(
               fetchAndCache(API_CACHE, event.request.clone()).catch(() => {})

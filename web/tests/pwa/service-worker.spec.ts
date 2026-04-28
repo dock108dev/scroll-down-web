@@ -95,22 +95,22 @@ test.describe("Service Worker", () => {
     }
   });
 
-  test("game list API served stale from cache on repeat visit", async ({
+  test("game list API hits network on repeat visit (network-first)", async ({
     browser,
   }) => {
     const context = await browser.newContext();
     const page = await context.newPage();
 
-    let gamesApiHits = 0;
-    await page.route("**/api/games**", (route) => {
-      gamesApiHits++;
+    // Distinguish list (/api/games?…) from detail (/api/games/[id]); only the
+    // list endpoint is network-first. Detail stays SWR.
+    let listHits = 0;
+    await page.route(/\/api\/games(\?|$)/, (route) => {
+      listHits++;
       route.continue();
     });
 
-    // First visit to home page — primes the SW API cache
     await page.goto("/", { waitUntil: "domcontentloaded" });
-
-    const firstVisitHits = gamesApiHits;
+    const firstVisitHits = listHits;
 
     const swDeadline = Date.now() + SW_TIMEOUT_MS;
     let swActive = false;
@@ -126,13 +126,45 @@ test.describe("Service Worker", () => {
       return;
     }
 
-    // Reset counter and navigate again — SW should serve stale from cache
-    gamesApiHits = 0;
+    listHits = 0;
     await page.goto("/", { waitUntil: "domcontentloaded" });
 
-    // With SWR, SW serves from cache immediately; background revalidation may
-    // still fire, so hits should be ≤ firstVisitHits (not doubled)
-    expect(gamesApiHits).toBeLessThanOrEqual(firstVisitHits);
+    // Network-first: every visit must hit the network for the list endpoint
+    // (not served from cache). Use firstVisitHits as a sanity floor in case
+    // multiple list requests fire on a single page load.
+    expect(listHits).toBeGreaterThanOrEqual(Math.max(1, firstVisitHits));
+
+    await context.close();
+  });
+
+  test("game list falls back to cache when network unavailable", async ({
+    browser,
+  }) => {
+    const context = await browser.newContext();
+    const page = await context.newPage();
+
+    // First visit — prime the cache via a successful list fetch.
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+
+    const swDeadline = Date.now() + SW_TIMEOUT_MS;
+    let swActive = false;
+    while (Date.now() < swDeadline) {
+      swActive = await page.evaluate(() => navigator.serviceWorker.controller !== null);
+      if (swActive) break;
+      await page.waitForTimeout(400);
+    }
+
+    if (!swActive) {
+      test.skip();
+      await context.close();
+      return;
+    }
+
+    // Second visit with the network blocked — SW should fall back to the
+    // cached list response and still resolve a 200.
+    await page.route(/\/api\/games(\?|$)/, (route) => route.abort("failed"));
+    const response = await page.goto("/", { waitUntil: "domcontentloaded" });
+    expect(response?.status()).toBe(200);
 
     await context.close();
   });

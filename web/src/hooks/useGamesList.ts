@@ -5,7 +5,7 @@ import { api } from "@/lib/api";
 import type { GameSummary } from "@/lib/types";
 import { useGameData } from "@/stores/game-data";
 import type { GameCore } from "@/stores/game-data";
-import { CACHE, API, STORAGE_KEYS } from "@/lib/config";
+import { CACHE, API, POLLING, STORAGE_KEYS } from "@/lib/config";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameListChannel } from "@/realtime/channels";
 import { easternToday, addDays, fmtDate, toEasternDateStr } from "@/lib/date-utils";
@@ -328,12 +328,32 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   }, [needsListRefresh, listKeys, clearListRefresh, fetchAll]);
 
   // ── Visibility change: refresh after prolonged background or offline ──
+  // `enabled` only gates on `error` — when stale, refreshing on visibility is
+  // exactly how the user recovers. `fetchAll`'s freshness window dedupes
+  // redundant calls if realtime/polling already fetched recently.
 
   useVisibilityRefresh(
     () => fetchAll(false, true),
     realtimeStatus.connected,
-    !error && !stale, // disable visibility refresh while in error or stale state
+    !error,
   );
+
+  // ── Polling fallback: refresh on a fixed cadence while tab is visible ──
+  // Realtime is the primary path; polling guarantees recovery when realtime
+  // is dropped silently or the dispatcher misses a state transition (e.g. a
+  // game flipping from live → final overnight). `fetchAll` self-deduplicates
+  // via the GAMES_FRESH_MS window, so this is cheap when other paths are
+  // already keeping data fresh.
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      fetchAll(false, false).catch(() => {
+        /* fetchAll surfaces errors via state; nothing to do here */
+      });
+    }, POLLING.GAMES_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [fetchAll]);
 
   // Derive sections from store using tracked section IDs
   const sections: SectionData[] = useMemo(() => {
