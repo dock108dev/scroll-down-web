@@ -1,3 +1,18 @@
+# CI for scroll-down-web (Next.js / React / TypeScript)
+#
+# Covers:
+#   • ESLint (eslint-config-next / core-web-vitals + TS)
+#   • TypeScript (tsc --noEmit)
+#   • Vitest unit tests + coverage artifact
+#   • Next.js production build
+#   • npm audit (production deps, high+ severity)
+#   • Playwright @smoke E2E (Chromium; requires repo secrets — skipped on fork PRs)
+#   • Docker image build + push to GHCR (main only)
+#   • Dev deploy via SSH (main only, after docker)
+#
+# Related: CodeQL (.github/workflows/codeql.yml), Dependabot (.github/dependabot.yml),
+#           daily full E2E (.github/workflows/e2e-daily.yml)
+
 name: CI
 
 on:
@@ -11,9 +26,14 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least privilege for the default GITHUB_TOKEN (jobs add scopes as needed).
+permissions:
+  contents: read
+  actions: write # upload-artifact (coverage + Playwright report)
+
 jobs:
   # ────────────────────────────────────────────────────────
-  # Web — lint, typecheck, build
+  # Web — lint, typecheck, unit tests + coverage, audit, build
   # ────────────────────────────────────────────────────────
   web:
     runs-on: ubuntu-latest
@@ -34,17 +54,24 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Lockfile + install integrity are enforced by `npm ci` (fails on mismatch).
+
+      - name: Audit production dependencies (high or critical)
+        run: npm audit --omit=dev --audit-level=high
+        # DevDependencies are still covered indirectly via Dependabot + local `npm audit`.
+
       - name: Lint
         run: npm run lint
 
       - name: Type check
         run: npx tsc --noEmit
 
-      - name: Unit tests (vitest) + coverage
+      - name: Unit tests (Vitest) + coverage
         run: npm run test:unit:coverage
 
+      # Fork PRs get a read-only token — skip upload (tests still run).
       - name: Upload coverage report
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
         uses: actions/upload-artifact@v7
         with:
           name: web-coverage
@@ -57,9 +84,14 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
 
   # ────────────────────────────────────────────────────────
-  # Playwright — smoke E2E (many @smoke cases × chromium + mobile; allow headroom)
+  # Playwright — smoke E2E (requires secrets; not run for fork PRs)
   # ────────────────────────────────────────────────────────
   playwright-smoke:
+    needs: web
+    # Fork PRs do not receive repository secrets — skip instead of failing on empty API keys.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -125,6 +157,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
+      contents: read
       packages: write
 
     steps:
