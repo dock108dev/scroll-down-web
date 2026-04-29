@@ -9,8 +9,8 @@ import { shouldShowAds, type ViewerEntitlements } from "./entitlements";
  * + auth stores, derives ViewerEntitlements, and applies shouldShowAds() so
  * paid and admin viewers never see an ad slot. Returns false until the tier
  * store has hydrated to avoid a free-tier flash for paid viewers on first
- * paint. Consolidates duplicated gating across NativeAdCard, FairBetAd,
- * FeedAd, and GameDetailAd. See docs/audits/cleanup-report.md.
+ * paint. Consolidates duplicated gating across FairBetAd, FeedAd, and
+ * GameDetailAd. See docs/audits/cleanup-report.md.
  */
 export function useAdGate(): boolean {
   const tier = useTier((s) => s.tier);

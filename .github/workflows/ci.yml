@@ -40,6 +40,17 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
+      - name: Unit tests (vitest) + coverage
+        run: npm run test:unit:coverage
+
+      - name: Upload coverage report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: web-coverage
+          path: web/coverage/
+          retention-days: 7
+
       - name: Build
         run: npm run build
         env:

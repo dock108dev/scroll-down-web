@@ -6,7 +6,6 @@ import { useSettings } from "@/stores/settings";
 import { useReveal } from "@/stores/reveal";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { GameRow } from "./GameRow";
-import { NativeAdCard } from "@/components/ads/NativeAdCard";
 import { FeedAd } from "@/components/ads/FeedAd";
 import { isFinal, isLive } from "@/lib/types";
 import { pickSnapshot } from "@/lib/score-display";
@@ -172,7 +171,7 @@ export function TimelineSection({
           {games.map((game, index) => (
             <Fragment key={game.id}>
               <GameRow game={game} />
-              {useFeedAdSlots ? (
+              {useFeedAdSlots && (
                 <>
                   {index === ADS.TOP_FEED_AFTER_INDEX && (
                     <FeedAd position="top-feed" />
@@ -186,8 +185,6 @@ export function TimelineSection({
                       games.length - 2,
                     ) && <FeedAd position="bottom-feed" />}
                 </>
-              ) : (
-                (index + 1) % ADS.NATIVE_AD_INTERVAL === 0 && <NativeAdCard />
               )}
             </Fragment>
           ))}

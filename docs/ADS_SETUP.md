@@ -13,7 +13,7 @@ The single source of truth for "should this viewer see ads?" is
 `shouldShowAds()` in `web/src/lib/ads/entitlements.ts`, surfaced to client
 components via the `useAdGate()` hook in `web/src/lib/ads/useAdGate.ts`.
 Do not duplicate that check in components — render one of the named ad
-components (`<FeedAd>`, `<GameDetailAd>`, `<FairBetAd>`, `<NativeAdCard>`),
+components (`<FeedAd>`, `<GameDetailAd>`, `<FairBetAd>`),
 each of which already calls `useAdGate()` internally. New ad surfaces should
 follow the same pattern: call `useAdGate()` once at the top of the component
 and bail before rendering anything ad-related.

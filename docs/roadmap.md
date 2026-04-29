@@ -132,7 +132,7 @@
 - [x] Implement feature gates: `FEATURE_GATES` constants, `lib/pro-gate.ts`, `hooks/useProGate.ts`
 - [ ] Add "see what you're missing" preview: blurred FairBet cards with EV visible but details gated
 - [x] Design upgrade flow: `ProGateSheet` global overlay triggered at gate points
-- [x] If ads: manual Google AdSense via `components/ads/AdSenseScript.tsx` + `AdSlot.tsx` and named slot components (`FeedAd`, `GameDetailAd`, `FairBetAd`, `NativeAdCard`). Eligibility SSOT in `lib/ads/entitlements.ts` (`shouldShowAds`) surfaced via the `useAdGate()` hook; placement constants in `lib/config.ts` (`ADS.*`). See `docs/ADS_SETUP.md`.
+- [x] If ads: manual Google AdSense via `components/ads/AdSenseScript.tsx` + `AdSlot.tsx` and named slot components (`FeedAd`, `GameDetailAd`, `FairBetAd`). Eligibility SSOT in `lib/ads/entitlements.ts` (`shouldShowAds`) surfaced via the `useAdGate()` hook; placement constants in `lib/config.ts` (`ADS.*`). See `docs/ADS_SETUP.md`.
 - [ ] Enforce ad placement rules at runtime: never between live game rows, never during reveal gesture, never on game detail primary sections
 - [ ] Consider sportsbook affiliate integration: native card format, CPA-based revenue, age-gated
 - [x] Add subscription management: Stripe via `/api/billing/checkout`, `/api/billing/portal`, `/api/billing/webhook`

@@ -5,11 +5,10 @@ import { test, expect } from "../helpers";
 // provide a harness for manual ad-enabled smoke tests.
 
 test.describe("Ad placements — disabled in test env @smoke", () => {
-  test("native ad cards do not appear on home feed", async ({ page }) => {
+  test("home feed ads do not appear when ads are disabled", async ({ page }) => {
     await page.goto("/");
-    // When NEXT_PUBLIC_ADS_ENABLED=false, no ad cards should be in the DOM.
-    const ads = page.locator("[data-testid='native-ad-card']");
-    await expect(ads).toHaveCount(0);
+    // When NEXT_PUBLIC_ADS_ENABLED=false, no ad slots should be in the DOM.
+    await expect(page.locator("[data-testid^='feed-ad-']")).toHaveCount(0);
   });
 
   test("game detail ads do not appear on game detail page @live-upstream", async ({ page }) => {
@@ -35,13 +34,12 @@ test.describe("Ad placements — disabled in test env @smoke", () => {
 });
 
 test.describe("Ad placements — free vs pro @live-upstream", () => {
-  test("native ad card is absent for pro-tier users", async ({ page }) => {
+  test("home feed ads are absent for pro-tier users", async ({ page }) => {
     // Simulate pro tier via dev override and verify no ads render.
     await page.goto("/?tier=pro");
     await page.waitForTimeout(500);
 
-    const ads = page.locator("[data-testid='native-ad-card']");
-    await expect(ads).toHaveCount(0);
+    await expect(page.locator("[data-testid^='feed-ad-']")).toHaveCount(0);
   });
 
   test("game detail ads are absent for pro-tier users", async ({ page }) => {

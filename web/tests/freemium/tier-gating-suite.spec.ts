@@ -50,7 +50,7 @@ test.describe("ISSUE-047 / free tier gated feature", () => {
 // ─── (2) Pro tier suppresses gate sheet and ad slots ───────────────────────
 
 test.describe("ISSUE-047 / ?tier=pro suppresses gate + ads", () => {
-  test("pro tier override hides native ad cards on home feed @smoke", async ({ page }) => {
+  test("pro tier override hides home feed ads @smoke", async ({ page }) => {
     await page.goto("/?tier=pro");
     await waitForTierPersist(page);
 
@@ -60,7 +60,7 @@ test.describe("ISSUE-047 / ?tier=pro suppresses gate + ads", () => {
       return;
     }
 
-    await expect(page.locator("[data-testid='native-ad-card']")).toHaveCount(0);
+    await expect(page.locator("[data-testid^='feed-ad-']")).toHaveCount(0);
   });
 
   test("pro tier override hides detail banner ad on game detail @smoke @live-upstream", async ({

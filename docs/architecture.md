@@ -318,7 +318,7 @@ web/src/
 │
 ├── components/
 │   ├── account/            # AccountContent
-│   ├── ads/                # AdSenseScript, AdSlot, FeedAd, GameDetailAd, FairBetAd, NativeAdCard
+│   ├── ads/                # AdSenseScript, AdSlot, FeedAd, GameDetailAd, FairBetAd
 │   ├── auth/               # AuthProvider, AuthGate, SessionProvider
 │   ├── fairbet/            # BetCard, BookFilters, LiveOddsPanel, ParlaySheet, ExplainerSheet,
 │   │                       # BookChip, BookComparisonRow, ProGateSheet
@@ -414,7 +414,7 @@ The app has a Pro tier implemented via Stripe alongside an anonymous tier tracki
 
 **Billing routes** (Stripe): `POST /api/billing/checkout` creates a Checkout session, `POST /api/billing/portal` opens Customer Portal, `POST /api/billing/webhook` handles subscription lifecycle events, `GET /api/billing/info` returns current subscription status.
 
-**Ads** (`components/ads/`, SSOT in `lib/ads/`): manual Google AdSense slots for free-tier viewers only. The loader `<Script>` mounts in the root layout via `AdSenseScript`; named slot components (`FeedAd` for the home Today feed, `GameDetailAd` for `/game/[id]`, `FairBetAd` for `/fairbet`, `NativeAdCard` for non-Today feed sections) render an `<AdSlot>` per placement. Every visible-ad decision flows through `shouldShowAds()` in `lib/ads/entitlements.ts` via the `useAdGate()` hook — paid (`tier=pro`) and admin viewers never load the AdSense script and never see an `<ins>` tag. Slot IDs and the kill switch are read once in `lib/ads/config.ts` (`NEXT_PUBLIC_ADS_ENABLED`, `NEXT_PUBLIC_ADSENSE_*`). Placement constants in `lib/config.ts` (`ADS.NATIVE_AD_INTERVAL`, `ADS.TOP_FEED_AFTER_INDEX`, `ADS.MID_FEED_AFTER_INDEX`). `ads.txt` ships as a static file at `web/public/ads.txt` (served at `/ads.txt`). Ads never appear between live game rows, during the reveal gesture, or inside FairBet bet rows / play-by-play. See [ADS_SETUP.md](ADS_SETUP.md) for full setup, env vars, and verification steps.
+**Ads** (`components/ads/`, SSOT in `lib/ads/`): manual Google AdSense slots for free-tier viewers only. The loader `<Script>` mounts in the root layout via `AdSenseScript`; named slot components (`FeedAd` for the home Today feed, `GameDetailAd` for `/game/[id]`, `FairBetAd` for `/fairbet`) render an `<AdSlot>` per placement. Every visible-ad decision flows through `shouldShowAds()` in `lib/ads/entitlements.ts` via the `useAdGate()` hook — paid (`tier=pro`) and admin viewers never load the AdSense script and never see an `<ins>` tag. Slot IDs and the kill switch are read once in `lib/ads/config.ts` (`NEXT_PUBLIC_ADS_ENABLED`, `NEXT_PUBLIC_ADSENSE_*`). Placement constants in `lib/config.ts` (`ADS.TOP_FEED_AFTER_INDEX`, `ADS.MID_FEED_AFTER_INDEX`). `ads.txt` ships as a static file at `web/public/ads.txt` (served at `/ads.txt`). Ads never appear between live game rows, during the reveal gesture, or inside FairBet bet rows / play-by-play. See [ADS_SETUP.md](ADS_SETUP.md) for full setup, env vars, and verification steps.
 
 ## My Bets Tracker
 

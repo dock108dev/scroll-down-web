@@ -203,7 +203,6 @@ Canonical Pro-tier gate keys. All server routes and client hooks that enforce a 
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `ADS.NATIVE_AD_INTERVAL` | 8 | Insert a `NativeAdCard` every N game rows in non-Today home sections |
 | `ADS.TOP_FEED_AFTER_INDEX` | 2 | Render the home `top-feed` `FeedAd` after this game-row index in the Today section |
 | `ADS.MID_FEED_AFTER_INDEX` | 6 | Render the home `mid-feed` `FeedAd` after this game-row index in the Today section |
 

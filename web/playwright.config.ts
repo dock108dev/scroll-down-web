@@ -20,6 +20,9 @@ const SPORTS_API_KEY_ENV = (["SPORTS_DATA_API_KEY", "SPORTS_API_KEY", "API_KEY"]
  */
 export default defineConfig({
   testDir: "./tests",
+  // tests/unit/** is run by Vitest (see vitest.config.ts); Playwright must skip it
+  // or it'll try to load vitest's ESM entry under CJS and fail.
+  testIgnore: ["**/unit/**"],
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

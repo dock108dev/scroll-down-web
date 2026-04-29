@@ -215,7 +215,6 @@ export const AUTH = {
 };
 
 export const ADS = {
-  NATIVE_AD_INTERVAL: 8,
   TOP_FEED_AFTER_INDEX: 2,
   MID_FEED_AFTER_INDEX: 6,
 };
