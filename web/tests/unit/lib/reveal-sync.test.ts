@@ -1,5 +1,32 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
+/** Minimal `fetch` mock shaped like `Response` for TS (tests only use ok/json). */
+function mockJsonResponse(data: unknown): Response {
+  return {
+    ok: true,
+    status: 200,
+    statusText: "OK",
+    json: async () => data,
+  } as unknown as Response;
+}
+
+function mockFailedResponse(status: number): Response {
+  return {
+    ok: false,
+    status,
+    statusText: "Error",
+    json: async () => ({}),
+  } as unknown as Response;
+}
+
+function mockOkEmpty(): Response {
+  return {
+    ok: true,
+    status: 200,
+    json: async () => ({}),
+  } as unknown as Response;
+}
+
 const revealBatch = vi.fn();
 const getSnapshot = vi.fn();
 
@@ -35,9 +62,8 @@ describe("reveal-sync", () => {
     getSnapshot.mockReturnValue(undefined);
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({
+      vi.fn().mockResolvedValue(
+        mockJsonResponse({
           revealedIds: [11, 12],
           snapshots: {
             "11": {
@@ -55,7 +81,7 @@ describe("reveal-sync", () => {
           },
           updatedAt: "2026-06-01T00:00:00.000Z",
         }),
-      }),
+      ),
     );
     vi.useFakeTimers();
   });
@@ -99,14 +125,13 @@ describe("reveal-sync", () => {
 
   it("fills placeholder snapshot when remote and local snapshots are missing", async () => {
     getSnapshot.mockReturnValue(undefined);
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockJsonResponse({
         revealedIds: [99],
         snapshots: {},
         updatedAt: "",
       }),
-    });
+    );
     const { startRevealSync, stopRevealSync } = await import("@/lib/reveal-sync");
     startRevealSync();
     await vi.runOnlyPendingTimersAsync();
@@ -119,14 +144,13 @@ describe("reveal-sync", () => {
 
   it("skips merge when remote ids are already local", async () => {
     revealBatch.mockClear();
-    const fetchLocalOnly = vi.fn().mockResolvedValue({
-      ok: true,
-      json: async () => ({
+    const fetchLocalOnly = vi.fn().mockResolvedValue(
+      mockJsonResponse({
         revealedIds: [10],
         snapshots: {},
         updatedAt: "",
       }),
-    });
+    );
     vi.stubGlobal("fetch", fetchLocalOnly);
     const { startRevealSync, stopRevealSync } = await import("@/lib/reveal-sync");
     startRevealSync();
@@ -137,7 +161,7 @@ describe("reveal-sync", () => {
 
   it("returns early when fetch is not ok", async () => {
     revealBatch.mockClear();
-    vi.mocked(fetch).mockResolvedValue({ ok: false, status: 500 });
+    vi.mocked(fetch).mockResolvedValue(mockFailedResponse(500));
     const { startRevealSync, stopRevealSync } = await import("@/lib/reveal-sync");
     startRevealSync();
     await vi.runOnlyPendingTimersAsync();
@@ -171,15 +195,14 @@ describe("reveal-sync", () => {
 
   it("schedules debounced PUT when the reveal subscription fires", async () => {
     vi.mocked(fetch)
-      .mockResolvedValueOnce({
-        ok: true,
-        json: async () => ({
+      .mockResolvedValueOnce(
+        mockJsonResponse({
           revealedIds: [],
           snapshots: {},
           updatedAt: "",
         }),
-      })
-      .mockResolvedValue({ ok: true });
+      )
+      .mockResolvedValue(mockOkEmpty());
     const { startRevealSync, stopRevealSync } = await import("@/lib/reveal-sync");
     startRevealSync();
     await vi.runOnlyPendingTimersAsync();
@@ -192,14 +215,13 @@ describe("reveal-sync", () => {
 
   it("flushRevealSync PUTs local snapshots", async () => {
     const { flushRevealSync, stopRevealSync } = await import("@/lib/reveal-sync");
-    vi.mocked(fetch).mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
+    vi.mocked(fetch).mockResolvedValueOnce(
+      mockJsonResponse({
         revealedIds: [],
         snapshots: {},
         updatedAt: "2026-06-01T00:00:00.000Z",
       }),
-    });
+    );
     const { startRevealSync } = await import("@/lib/reveal-sync");
     startRevealSync();
     await flushRevealSync();
@@ -210,15 +232,16 @@ describe("reveal-sync", () => {
   it("no-ops when tier gate denies sync", async () => {
     const tier = await import("@/stores/tier");
     vi.mocked(tier.useTier.getState).mockReturnValueOnce({
+      tier: "free",
+      anonId: "",
+      initialized: true,
+      initialize: vi.fn(),
       isAllowed: () => false,
     });
     revealBatch.mockClear();
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ revealedIds: [], snapshots: {}, updatedAt: "" }),
-      }),
+      vi.fn().mockResolvedValue(mockJsonResponse({ revealedIds: [], snapshots: {}, updatedAt: "" })),
     );
     const { startRevealSync, stopRevealSync } = await import("@/lib/reveal-sync");
     startRevealSync();

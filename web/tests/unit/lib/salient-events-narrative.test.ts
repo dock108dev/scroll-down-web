@@ -408,7 +408,7 @@ describe("extractSalientEvents narrative + extractors", () => {
         homeScore: 2,
         awayScore: 3,
         quarter: 4,
-        pointsScored: "three",
+        pointsScored: 3,
       },
     ];
     const r = extractSalientEvents({
