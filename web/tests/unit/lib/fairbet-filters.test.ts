@@ -4,7 +4,6 @@ import {
   sportForLeague,
   bestEVForBet,
   filterAndSortBets,
-  type FairBetFilters,
 } from "@/lib/fairbet-filters";
 import type { APIBet } from "@/lib/types";
 

@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import type { BoxScoreInput } from "@/lib/salient-events";
 import type { PlayEntry, PlayerStat } from "@/lib/types";
 import { extractSalientEvents } from "@/lib/salient-events";
 
