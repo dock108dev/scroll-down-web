@@ -26,11 +26,11 @@ client bundle at build time, so changing any of them requires a rebuild + redepl
 | Variable                              | Required for ads? | Example value                    | Purpose |
 |---------------------------------------|-------------------|----------------------------------|---------|
 | `NEXT_PUBLIC_ADS_ENABLED`             | Yes (must be `true`) | `true`                        | Global kill switch. Any value other than the literal string `true` disables ads. |
-| `NEXT_PUBLIC_ADSENSE_CLIENT_ID`       | Yes               | `ca-pub-1234567890123456`        | AdSense publisher / client ID. Loader script and every `<ins>` tag use this. |
-| `NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT`  | Per-slot          | `1234567890`                     | Slot ID used by the home feed `<FeedAd>` (top / mid / bottom feed). |
-| `NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT`| Per-slot          | `2345678901`                     | Slot ID for game detail `after-hero` and `between-sections`. |
-| `NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT`    | Per-slot          | `3456789012`                     | Slot ID for FairBet `top-info` and `bottom`. |
-| `NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT`     | Per-slot          | `4567890123`                     | Slot ID for the game detail `bottom` placement. |
+| `NEXT_PUBLIC_ADSENSE_CLIENT_ID`       | Yes               | `ca-pub-3337164122582315`        | AdSense publisher / client ID. Loader script and every `<ins>` tag use this. |
+| `NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT`  | Per-slot          | `8899182394`                     | Slot ID used by the home feed `<FeedAd>` (top / mid / bottom feed). |
+| `NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT`| Per-slot          | `9756968492`                     | Slot ID for game detail `after-hero` and `between-sections`. |
+| `NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT`    | Per-slot          | `4772235121`                     | Slot ID for FairBet `top-info` and `bottom`. |
+| `NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT`     | Per-slot          | `8443886825`                     | Slot ID for the game detail `bottom` placement. |
 
 Behavior when a variable is missing:
 
@@ -103,7 +103,7 @@ is served at `/ads.txt`. After AdSense approves the publisher ID, replace the
 placeholder content with:
 
 ```
-google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-3337164122582315, DIRECT, f08c47fec0942fa0
 ```
 
 - Replace `pub-XXXXXXXXXXXXXXXX` with the actual publisher ID (no `ca-` prefix).
