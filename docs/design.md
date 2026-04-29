@@ -212,9 +212,12 @@ Ads (when added) must never interrupt the reveal gesture, appear between game ro
 
 ## Testing Strategy
 
-### Playwright-Only
+### Two Layers
 
-No unit tests. All testing is E2E via Playwright, running against a live dev server on `localhost:3001`.
+- **Vitest unit tests** for pure logic and isolated component contracts (currently `lib/ads/entitlements.ts` and `<AdSlot>`). Live under `web/tests/unit/`.
+- **Playwright E2E** for product flows. Runs against a live dev server on `localhost:3001`. Two browser projects: desktop Chromium and mobile-viewport Chromium.
+
+Most coverage is still E2E. Reach for a unit test when the logic is pure, the component has a clear contract, or the failure mode is hard to reproduce in a browser run.
 
 ### Test Priorities
 

@@ -2,14 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { STORAGE_KEYS } from "@/lib/config";
 import { verifySession, findAccountByEmail } from "@/lib/magic-link";
 import { getStripe } from "@/lib/stripe";
+import { publicBaseUrl } from "@/lib/public-url";
 
 export const dynamic = "force-dynamic";
-
-function origin(req: NextRequest): string {
-  const host = req.headers.get("host") ?? "localhost:3001";
-  const proto = req.headers.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
-}
 
 export async function GET(req: NextRequest) {
   const cookie = req.cookies.get(STORAGE_KEYS.SESSION)?.value;
@@ -29,7 +24,7 @@ export async function GET(req: NextRequest) {
   const stripe = getStripe();
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: account.stripeCustomerId,
-    return_url: `${origin(req)}/account`,
+    return_url: `${publicBaseUrl(req)}/account`,
   });
 
   return NextResponse.redirect(portalSession.url, { status: 303 });

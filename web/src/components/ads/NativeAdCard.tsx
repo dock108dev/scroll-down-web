@@ -1,17 +1,9 @@
 "use client";
 
-import { useTier } from "@/stores/tier";
+import { useAdGate } from "@/lib/ads/useAdGate";
 
-const ADS_ENABLED = process.env.NEXT_PUBLIC_ADS_ENABLED !== "false";
-
-interface NativeAdCardProps {
-  slotIndex: number;
-}
-
-export function NativeAdCard({ slotIndex: _slotIndex }: NativeAdCardProps) {
-  const tier = useTier((s) => s.tier);
-
-  if (!ADS_ENABLED || tier !== "free") return null;
+export function NativeAdCard() {
+  if (!useAdGate()) return null;
 
   return (
     <div

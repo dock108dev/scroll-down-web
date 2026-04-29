@@ -25,6 +25,10 @@ Canonical store for all game data. In-memory only — rebuilt from API on each s
 - Mutations: `upsertFromList`, `upsertFromDetail`, `applyGamePatch`, `appendPbp`
 - Selectors: `getCore(id)`, `getDetail(id)`, `getFlow(id)` return stable references
 
+### `game-core` (not persisted)
+
+Supporting store for the `GameCore` shape — minimal score/status/clock fields used by realtime patches and quick-render selectors. Backed by `game-data`; kept separate so `applyGamePatch` and pinned-bar selectors don't pull the full detail object.
+
 ### `settings` (persisted: `sd-settings`)
 
 User preferences. All settings have sensible defaults and work without auth.
@@ -43,18 +47,19 @@ User preferences. All settings have sensible defaults and work without auth.
 | `followingLiveAt` | `number` | `0` | Timestamp when Following Live was activated |
 | `showStaleBanners` | `boolean` | `true` | Admin-only: show banner when displaying stale cached data |
 
-### `reveal` (persisted: `sd-read-state`)
+### `reveal` (persisted: IndexedDB)
 
 Tracks which games the user has "read" (revealed scores for).
 
-- `revealedIds: Set<number>` — game IDs the user has revealed (max 500)
-- `snapshots: Map<number, Snapshot>` — score snapshot at reveal time (max 20)
+- `revealedIds: Set<number>` — game IDs the user has revealed (max 500 via `STORAGE.MAX_REVEALED_IDS`)
+- `snapshots: Map<number, RevealSnapshot>` — score snapshot at reveal time (max 20 via `STORAGE.MAX_SNAPSHOTS`)
 - Batch operations: `revealBatch()`, `hideBatch()` for bulk actions
 - Snapshots detect "new data" — if live score differs from snapshot, show UPDATE indicator
+- Persistence is IndexedDB (DB `scroll-down`), not Zustand `persist` middleware. `lib/reveal-idb.ts` handles read/write and a one-shot migration from the legacy `sd-read-state` localStorage key.
 
 ### `pinned-games` (persisted: `sd-pinned-games`)
 
-- `pinnedIds: Set<number>` — max 10 pinned games
+- `pinnedIds: Set<number>` — max 10 (`LAYOUT.MAX_PINNED_GAMES`)
 - `pinMeta: Map<number, { away, home abbreviations }>` — for chip display
 - Auto-prune: removes pins for games no longer in current date range
 
@@ -112,6 +117,15 @@ Ephemeral UI state for the Pro upgrade bottom sheet.
 - `show(feature)` / `hide()` — open/close actions
 
 The sheet is a global overlay rendered in the root layout. Any component can trigger it via the store without prop drilling.
+
+### `my-bets` (persisted: `sd-my-bets`)
+
+User-saved bet records with outcomes tracking, surfaced at `/settings/my-bets`.
+
+- Saved bet shape: market, selection, line, price, book, sport, optional `gameId`
+- Outcome states: pending, win, loss, push (set after the game finishes)
+- Cap: 200 entries (`STORAGE.MAX_MY_BETS`)
+- Outcomes are reconciled against `/api/analytics/prediction-outcomes` and `/api/analytics/record-outcomes`
 
 ## Preference Sync
 

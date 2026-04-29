@@ -9,7 +9,7 @@
 
 import { FairBetTheme } from "./theme";
 import { FAIRBET } from "./config";
-import type { APIBet, DevigedMarket } from "./types";
+import type { APIBet } from "./types";
 
 // ── Parlay leg snapshot ─────────────────────────────────────────────
 
@@ -25,26 +25,6 @@ export interface ParlayLeg {
 export function formatEV(percent: number): string {
   const sign = percent > 0 ? "+" : "";
   return `${sign}${percent.toFixed(1)}%`;
-}
-
-/** Negligible positive EV threshold in dollar terms (< $0.50 per $100 → "No edge"). */
-const EV_NO_EDGE_THRESHOLD = 0.5;
-
-/**
- * Format EV as a dollar value per $100 bet.
- * Formula: EV_dollars = (EV_percent / 100) * 100 = EV_percent
- *
- * Returns:
- *  - { label: "+$X.XX per $100", isNoEdge: false } for EV ≥ +$0.50
- *  - { label: "No edge", isNoEdge: true }           for 0 ≤ EV < +$0.50
- *  - { label: "-$X.XX per $100", isNoEdge: false }  for negative EV
- */
-export function formatEVDollars(percent: number): { label: string; isNoEdge: boolean } {
-  if (percent >= 0 && percent < EV_NO_EDGE_THRESHOLD) {
-    return { label: "No edge", isNoEdge: true };
-  }
-  const sign = percent > 0 ? "+" : "-";
-  return { label: `${sign}$${Math.abs(percent).toFixed(2)} per $100`, isNoEdge: false };
 }
 
 /** Format probability as percentage: "52.3%" */
@@ -460,31 +440,6 @@ export function evPct(trueProb: number, offeredAmerican: number): number {
   const d = americanToDecimal(offeredAmerican);
   if (!Number.isFinite(trueProb) || !Number.isFinite(d)) return NaN;
   return (trueProb * d - 1) * 100;
-}
-
-/**
- * Multiplicative no-vig devig for a market with 2+ sides.
- *
- * Converts each American odds input to its implied probability, normalises
- * the set so they sum to exactly 1.0 (removing the book's overround), then
- * converts the fair probabilities back to American odds.
- *
- * Returns null when:
- *  - input is null/undefined
- *  - fewer than 2 sides (single-outcome markets can't be deviggged)
- *  - any side contains a non-finite or zero value
- */
-export function devig(sides: number[]): DevigedMarket | null {
-  if (!sides || sides.length < 2) return null;
-
-  const rawProbs = sides.map(americanToImpliedProb);
-  if (rawProbs.some((p) => !Number.isFinite(p) || p <= 0)) return null;
-
-  const overround = rawProbs.reduce((sum, p) => sum + p, 0);
-  const fairProbs = rawProbs.map((p) => p / overround);
-  const fairOdds = fairProbs.map(impliedProbToAmerican);
-
-  return { sides, fairProbs, fairOdds, overround };
 }
 
 /**

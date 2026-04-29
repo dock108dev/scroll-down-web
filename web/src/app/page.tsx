@@ -519,6 +519,7 @@ export default function HomePage() {
           games={section.games}
           stickyTop={stickyTop}
           pinnedIds={pinnedIds}
+          useFeedAdSlots={section.key === "Today"}
         />
       ))}
     </div>

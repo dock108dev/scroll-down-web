@@ -45,6 +45,9 @@ export const useSession = create<SessionState>()((set) => ({
         set({ status: "anonymous", email: null, tier: "free", userId: null });
       }
     } catch {
+      // Network failure during session probe: treat as anonymous. The user
+      // sees logged-out UI and re-attempts an action that triggers re-auth.
+      // See docs/audits/error-handling-report.md §F9.
       set({ status: "anonymous", email: null, tier: "free", userId: null });
     }
   },
@@ -53,7 +56,8 @@ export const useSession = create<SessionState>()((set) => ({
     try {
       await fetch("/api/auth/sign-out", { method: "POST", credentials: "same-origin" });
     } catch {
-      // Ignore network errors — reset local state regardless
+      // User intent is "sign out"; local state must reset even if the network
+      // request fails. See docs/audits/error-handling-report.md §F10.
     }
     set({ status: "anonymous", email: null, tier: "free", userId: null });
   },

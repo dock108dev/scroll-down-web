@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual, randomBytes } from "crypto";
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync } from "fs";
 import { join } from "path";
 import { AUTH, STORAGE_KEYS } from "@/lib/config";
 
@@ -121,13 +121,25 @@ function accountsPath(): string {
 }
 
 function loadAccounts(): Map<string, Account> {
+  const path = accountsPath();
+  if (!existsSync(path)) return new Map();
   try {
-    const path = accountsPath();
-    if (!existsSync(path)) return new Map();
     const arr = JSON.parse(readFileSync(path, "utf8")) as Account[];
     return new Map(arr.map((a) => [a.email.toLowerCase(), a]));
   } catch (err) {
-    console.error("[magic-link] loadAccounts failed — returning empty store. Accounts file may be corrupted:", err);
+    // Corrupt accounts file is a data-loss risk: returning an empty Map would
+    // let the next saveAccounts() call overwrite the original. Quarantine the
+    // file (rename to .corrupt-<ts>) so the next write starts a clean store
+    // and the original is preserved for manual recovery.
+    // See docs/audits/error-handling-report.md §F1.
+    const quarantine = `${path}.corrupt-${Date.now()}`;
+    try {
+      renameSync(path, quarantine);
+      console.error(`[magic-link] loadAccounts failed — accounts file quarantined to ${quarantine}. Manual recovery required:`, err);
+    } catch (renameErr) {
+      console.error("[magic-link] loadAccounts failed AND quarantine rename failed — refusing to return empty store; throwing to prevent data loss:", err, renameErr);
+      throw err;
+    }
     return new Map();
   }
 }

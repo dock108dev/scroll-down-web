@@ -83,7 +83,7 @@ test.describe("ISSUE-047 / ?tier=pro suppresses gate + ads", () => {
 
     await page.goto(`/game/${gameId}?tier=pro`);
     await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 10_000 });
-    await expect(page.locator("[data-testid='detail-banner-ad']")).toHaveCount(0);
+    await expect(page.locator("[data-testid^='game-detail-ad-']")).toHaveCount(0);
   });
 
   test("pro tier does not open ProGateSheet for gated feature", async ({ page }) => {

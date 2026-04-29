@@ -20,8 +20,11 @@ export async function POST(req: NextRequest) {
   try {
     event = getStripe().webhooks.constructEvent(rawBody, sig, getWebhookSecret());
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Signature verification failed";
-    return NextResponse.json({ error: msg }, { status: 400 });
+    // Surface signature failures in logs so a misconfigured webhook secret or
+    // an active forgery attempt is visible. The 400 body is generic to avoid
+    // confirming what failed to the caller.
+    console.error("[billing/webhook] signature verification failed:", err);
+    return NextResponse.json({ error: "Signature verification failed" }, { status: 400 });
   }
 
   switch (event.type) {
@@ -55,6 +58,13 @@ export async function POST(req: NextRequest) {
         if (account) {
           const nextBillingDate = new Date(periodEnd * 1000).toISOString();
           updateAccountTier(account.email, account.tier, undefined, nextBillingDate);
+        } else {
+          // No matching local account for a Stripe customer means our
+          // accounts file is out of sync with Stripe — log so it can be
+          // reconciled. See docs/audits/error-handling-report.md §B1.
+          console.warn(
+            `[billing/webhook] ${event.type}: no local account for stripeCustomerId=${customerId} (event.id=${event.id})`,
+          );
         }
       }
       break;
@@ -69,6 +79,13 @@ export async function POST(req: NextRequest) {
         const account = findAccountByStripeCustomerId(customerId);
         if (account) {
           updateAccountTier(account.email, "free", undefined, undefined);
+        } else {
+          // Subscription deleted for an unknown customer — same drift as
+          // above, but lets a paid user keep Pro indefinitely until manual
+          // reconciliation. See docs/audits/error-handling-report.md §B1.
+          console.warn(
+            `[billing/webhook] subscription.deleted: no local account for stripeCustomerId=${customerId} (event.id=${event.id}) — Pro entitlement may not have been revoked`,
+          );
         }
       }
       break;

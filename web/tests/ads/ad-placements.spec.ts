@@ -12,7 +12,7 @@ test.describe("Ad placements — disabled in test env @smoke", () => {
     await expect(ads).toHaveCount(0);
   });
 
-  test("detail banner ad does not appear on game detail page @live-upstream", async ({ page }) => {
+  test("game detail ads do not appear on game detail page @live-upstream", async ({ page }) => {
     // Navigate to a game detail page; game ID 1 is used as a representative slug.
     // The test skips gracefully if live data is unavailable.
     const res = await page.request.get("/api/games?limit=1");
@@ -30,8 +30,7 @@ test.describe("Ad placements — disabled in test env @smoke", () => {
     await page.goto(`/game/${gameId}`);
     await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 20_000 });
 
-    const banner = page.locator("[data-testid='detail-banner-ad']");
-    await expect(banner).toHaveCount(0);
+    await expect(page.locator("[data-testid^='game-detail-ad-']")).toHaveCount(0);
   });
 });
 
@@ -45,7 +44,7 @@ test.describe("Ad placements — free vs pro @live-upstream", () => {
     await expect(ads).toHaveCount(0);
   });
 
-  test("detail banner ad is absent for pro-tier users", async ({ page }) => {
+  test("game detail ads are absent for pro-tier users", async ({ page }) => {
     const res = await page.request.get("/api/games?limit=1");
     if (!res.ok()) {
       test.skip();
@@ -61,7 +60,6 @@ test.describe("Ad placements — free vs pro @live-upstream", () => {
     await page.goto(`/game/${gameId}?tier=pro`);
     await page.waitForSelector("[data-testid='page-game-detail']", { timeout: 20_000 });
 
-    const banner = page.locator("[data-testid='detail-banner-ad']");
-    await expect(banner).toHaveCount(0);
+    await expect(page.locator("[data-testid^='game-detail-ad-']")).toHaveCount(0);
   });
 });

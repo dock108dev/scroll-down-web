@@ -135,7 +135,11 @@ export default function BatchPage() {
       try {
         const detail = await fetchBatchJobDetail(jobId);
         setJobDetails((prev) => ({ ...prev, [jobId]: detail }));
-      } catch { /* ignore */ }
+      } catch (err) {
+        // Admin diagnostic surface — log so a missing detail panel is
+        // explainable. See docs/audits/error-handling-report.md §C2.
+        console.error(`[batch] fetchBatchJobDetail(${jobId}) failed:`, err);
+      }
     }
 
     // Fetch per-job outcomes if not cached
@@ -144,7 +148,9 @@ export default function BatchPage() {
       try {
         const outcomes = await fetchPredictionOutcomes(jobId);
         setJobOutcomes((prev) => ({ ...prev, [jobId]: outcomes }));
-      } catch { /* ignore */ }
+      } catch (err) {
+        console.error(`[batch] fetchPredictionOutcomes(${jobId}) failed:`, err);
+      }
       finally {
         setOutcomesLoading((prev) => ({ ...prev, [jobId]: false }));
       }

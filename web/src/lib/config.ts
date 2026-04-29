@@ -216,8 +216,8 @@ export const AUTH = {
 
 export const ADS = {
   NATIVE_AD_INTERVAL: 8,
-  BANNER_WIDTH: 320,
-  BANNER_HEIGHT: 50,
+  TOP_FEED_AFTER_INDEX: 2,
+  MID_FEED_AFTER_INDEX: 6,
 };
 
 export const DEFAULTS = {

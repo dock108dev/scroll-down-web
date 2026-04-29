@@ -31,7 +31,7 @@ import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gamePbpChannel } from "@/realtime/channels";
 import { trackEvent, initScrollTracking } from "@/lib/analytics";
 import { InlineFeedback } from "@/components/shared/InlineFeedback";
-import { DetailBannerAd } from "@/components/ads/DetailBannerAd";
+import { GameDetailAd } from "@/components/ads/GameDetailAd";
 import { ATTRIBUTION } from "@/lib/config";
 
 // ─── Main Page Component ───────────────────────────────────────
@@ -381,6 +381,10 @@ export default function GameDetailPage({
         />
       </div>
 
+      <div className="px-4 pt-3">
+        <GameDetailAd position="after-hero" />
+      </div>
+
       <div ref={contentRef} className="py-4 space-y-2">
         {/* ─── Pregame Buzz ──────────────────────────────── */}
         {sections.includes("Pregame Buzz") && (
@@ -428,6 +432,12 @@ export default function GameDetailPage({
               awayColor={awayColor}
             />
           </CollapsibleSection>
+        )}
+
+        {sections.includes("Timeline") && (
+          <div className="px-4 py-2">
+            <GameDetailAd position="between-sections" />
+          </div>
         )}
 
         {/* ─── Player Stats ─────────────────────────────── */}
@@ -517,8 +527,8 @@ export default function GameDetailPage({
 
       {!error && <InlineFeedback context="game" />}
 
-      <div className="flex justify-center py-3">
-        <DetailBannerAd />
+      <div className="px-4 py-3">
+        <GameDetailAd position="bottom" />
       </div>
 
       <p

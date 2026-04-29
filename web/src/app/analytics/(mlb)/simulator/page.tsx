@@ -87,8 +87,11 @@ export default function MLBSimulatorPage() {
         const t = await fetchTeams();
         // Upstream is now sport-scoped — no need for client-side dedupe.
         if (!cancelled) setTeams(t);
-      } catch {
-        // ignore
+      } catch (err) {
+        // See docs/audits/error-handling-report.md §F5. Empty selector is the
+        // visible failure mode; log for diagnostics + surface in error UI.
+        console.error("[simulator] fetchTeams failed:", err);
+        if (!cancelled) setError("Failed to load teams.");
       } finally {
         if (!cancelled) setTeamsLoading(false);
       }
@@ -125,7 +128,10 @@ export default function MLBSimulatorPage() {
         );
         setHomeStarter(autoFillStarter(r));
       })
-      .catch(() => {
+      .catch((err) => {
+        // Empty roster panel is the visible failure; log for diagnostics.
+        // See docs/audits/error-handling-report.md §F6.
+        console.error(`[simulator] fetchRoster(home=${homeAbbr}) failed:`, err);
         if (!cancelled) {
           setHomeBatters([]);
           setHomePitchers([]);
@@ -165,7 +171,9 @@ export default function MLBSimulatorPage() {
         );
         setAwayStarter(autoFillStarter(r));
       })
-      .catch(() => {
+      .catch((err) => {
+        // See docs/audits/error-handling-report.md §F6.
+        console.error(`[simulator] fetchRoster(away=${awayAbbr}) failed:`, err);
         if (!cancelled) {
           setAwayBatters([]);
           setAwayPitchers([]);

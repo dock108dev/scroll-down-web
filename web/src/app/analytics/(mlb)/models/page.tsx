@@ -137,7 +137,12 @@ export default function ModelsPage() {
       await cancelTrainingJob(jobId);
       const tj = await fetchTrainingJobs();
       setTrainingJobs(tj);
-    } catch { /* ignore */ }
+    } catch (err) {
+      // Admin action — surface the failure so the operator knows the cancel
+      // didn't take. See docs/audits/error-handling-report.md §C1.
+      console.error(`[models] cancelTrainingJob(${jobId}) failed:`, err);
+      setError(`Failed to cancel job ${jobId}.`);
+    }
   };
 
   const handleActivateModel = async (model: RegisteredModel) => {
@@ -145,7 +150,12 @@ export default function ModelsPage() {
       await activateModel(model.model_id, model.sport, model.model_type);
       const ml = await fetchModelsList();
       setModels(ml);
-    } catch { /* ignore */ }
+    } catch (err) {
+      // Admin action — silent failure here meant the user thought activation
+      // succeeded. See docs/audits/error-handling-report.md §C1.
+      console.error(`[models] activateModel(${model.model_id}) failed:`, err);
+      setError(`Failed to activate model ${model.model_id}.`);
+    }
   };
 
   if (loading) {

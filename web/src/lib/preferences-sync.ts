@@ -328,17 +328,20 @@ export function flushPreferences(): void {
 
   const body = JSON.stringify(snapshotLocal());
 
-  try {
-    fetch("/api/auth/me/preferences", {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body,
-      keepalive: true,
-    });
-  } catch {
-    // best-effort on unload
-  }
+  // Best-effort fire-and-forget on unload. `keepalive: true` lets the request
+  // outlive the page. The .catch swallows the unhandled rejection that would
+  // otherwise surface in the next tab; a sync throw from fetch() (e.g. URL
+  // parse) would also reject the returned Promise.
+  // See docs/audits/error-handling-report.md §E1.
+  fetch("/api/auth/me/preferences", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body,
+    keepalive: true,
+  }).catch(() => {
+    // Unload path — nothing to retry, nothing to surface.
+  });
 }

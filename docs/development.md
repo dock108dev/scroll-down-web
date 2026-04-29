@@ -27,10 +27,13 @@ See `.env.local.example` for local development defaults.
 | Command | Purpose |
 |---------|---------|
 | `npm run dev` | Development server with hot reload (port 3001) |
-| `npm run build` | Production build (standalone output) |
-| `npm start` | Start production server |
+| `npm run build` | Production build (`.next/standalone/`) |
+| `npm start` | Start production server (port 3001, runs `node .next/standalone/server.js`) |
 | `npm run lint` | ESLint check |
 | `npx tsc --noEmit` | TypeScript type check |
+| `npm run test:unit` | Vitest unit tests |
+| `npm run test:smoke` | Playwright smoke suite (`@smoke` tag) |
+| `npm test` | Full Playwright suite (requires dev server running on port 3001) |
 
 ## Docker (Local)
 

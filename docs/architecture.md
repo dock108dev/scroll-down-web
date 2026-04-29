@@ -157,7 +157,7 @@ Implementation: `src/realtime/` (transport.ts, dispatcher.ts, channels.ts, hooks
 | `session` | — | No | HttpOnly cookie session: status, email, tier, userId (magic-link system) | — |
 | `tier` | `sd-tier` | Yes | Free/pro tier, anonymous ID, `isAllowed(feature)` gate evaluation | — |
 | `settings` | `sd-settings` | Yes | Theme, reveal mode, odds format, sportsbook, etc. | 20 leagues, 100 teams |
-| `reveal` | `sd-read-state` | Yes (IDB) | Revealed game IDs + score snapshots | 500 IDs, 20 snapshots |
+| `reveal` | IndexedDB (`scroll-down` DB) | Yes (IDB; one-shot migration from legacy `sd-read-state` localStorage key) | Revealed game IDs + score snapshots | 500 IDs, 20 snapshots |
 | `pinned-games` | `sd-pinned-games` | Yes | Pinned game IDs + team abbreviations | 10 games |
 | `reading-position` | `sd-reading-position` | Yes | Per-game play index for timeline resume | 50 positions, 30-day age |
 | `section-layout` | `sd-section-layout` | Yes | Per-game section expand/collapse state | 50 layouts |
@@ -185,6 +185,7 @@ Implementation: `src/realtime/` (transport.ts, dispatcher.ts, channels.ts, hooks
 | `useHealthStatus` | Backend health check | — |
 | `useFreshnessLabel` | Compute freshness label from timestamp | Derived |
 | `useProGate` | Evaluate Pro feature gates for a given key | Derived |
+| `useIsPro` | Boolean shortcut for Pro tier (reads `tier` store) | Derived |
 
 ### 5. Score Reveal System
 
@@ -317,7 +318,7 @@ web/src/
 │
 ├── components/
 │   ├── account/            # AccountContent
-│   ├── ads/                # NativeAdCard, DetailBannerAd
+│   ├── ads/                # AdSenseScript, AdSlot, FeedAd, GameDetailAd, FairBetAd, NativeAdCard
 │   ├── auth/               # AuthProvider, AuthGate, SessionProvider
 │   ├── fairbet/            # BetCard, BookFilters, LiveOddsPanel, ParlaySheet, ExplainerSheet,
 │   │                       # BookChip, BookComparisonRow, ProGateSheet
@@ -336,7 +337,7 @@ web/src/
 │       └── services/       # SimulatorService, PublicSimulatorService, ModelsService, BatchService,
 │                           # ForecastsService, ProfilesService
 │
-├── hooks/                  # Data fetching & realtime hooks (15 hooks)
+├── hooks/                  # Data fetching & derived hooks (16 hooks)
 ├── stores/                 # Zustand state management (14 stores)
 ├── realtime/               # WebSocket/SSE transport, dispatcher, channel naming, hooks
 └── lib/                    # Utilities (api, types, config, date, score-hide, fairbet-utils, pro-gate,
@@ -360,9 +361,11 @@ Implementation: `src/lib/stale-cache.ts`, `src/hooks/useHealthStatus.ts`, `src/c
 
 ### Headers (`next.config.ts`)
 
+Defined in `web/next.config.ts`. Applied to all responses unless noted.
+
 | Header | Value |
 |--------|-------|
-| `Content-Security-Policy` | `default-src 'self'`; `script-src` adds `plausible.io`, `partners.draftkings.com`, `affiliates.betmgm.com`; `connect-src` adds `sda.dock108.dev`, `wss://sda.dock108.dev`, `api.stripe.com`, `partners.draftkings.com`, `affiliates.betmgm.com`; `frame-src` adds `js.stripe.com`, `hooks.stripe.com`; `'unsafe-inline'` on scripts (open risk R-4 in security audit) |
+| `Content-Security-Policy` | `default-src 'self'`. `script-src` adds `'unsafe-inline'`, `plausible.io`, `partners.draftkings.com`, `affiliates.betmgm.com`, and the AdSense script origins (`pagead2.googlesyndication.com`, `partner.googleadservices.com`, `adservice.google.com`, `tpc.googlesyndication.com`, `googleads.g.doubleclick.net`, `securepubads.g.doubleclick.net`, `www.googletagservices.com`, `www.gstatic.com`). `connect-src` adds `plausible.io`, `sda.dock108.dev` + `wss://sda.dock108.dev`, `api.stripe.com`, the DraftKings/BetMGM affiliate hosts, and the AdSense network hosts. `frame-src` adds `js.stripe.com`, `hooks.stripe.com`, and the AdSense iframe hosts. `frame-ancestors 'none'` blocks embedding. |
 | `X-Content-Type-Options` | `nosniff` |
 | `X-Frame-Options` | `DENY` |
 | `Strict-Transport-Security` | 2 years, includeSubDomains, preload |
@@ -370,6 +373,8 @@ Implementation: `src/lib/stale-cache.ts`, `src/hooks/useHealthStatus.ts`, `src/c
 | `Referrer-Policy` | `strict-origin-when-cross-origin` |
 | `X-DNS-Prefetch-Control` | `off` |
 | `Cache-Control` | `no-store` (API routes only) |
+
+`'unsafe-inline'` on `script-src` is currently load-bearing for Next.js inline boot scripts and the AdSense `<ins>` push call. Replacing it with a nonce-based CSP is tracked as a follow-up in `docs/audits/security-report.md`.
 
 ### SEO & Discoverability
 
@@ -387,7 +392,7 @@ Dual analytics: self-hosted + Plausible. No cookies. IPs anonymized.
 
 **Plausible**: script loaded in root layout. `trackEvent()` sends to both systems.
 
-Events tracked: `reveal_score`, `game_view`, `scroll_50`, `scroll_90`, `feedback_up`, `feedback_down`, `signup_gate_click`, `simulation_run`, `login_success`, `signup_success`, `token_refresh_error`.
+Events emitted: `reveal_score`, `game_view`, `scroll_50`, `scroll_90`, `feedback_up`, `feedback_down`, `signup_gate_click`, `simulation_run`, `login_success`, `signup_success`, `token_refresh_error`, `profile_hydrate_error`.
 
 ## Sports Supported
 
@@ -409,7 +414,7 @@ The app has a Pro tier implemented via Stripe alongside an anonymous tier tracki
 
 **Billing routes** (Stripe): `POST /api/billing/checkout` creates a Checkout session, `POST /api/billing/portal` opens Customer Portal, `POST /api/billing/webhook` handles subscription lifecycle events, `GET /api/billing/info` returns current subscription status.
 
-**Ads** (`components/ads/`): `NativeAdCard` renders as a game-card-shaped list item with an "Ad" badge. `DetailBannerAd` is a 320×50 banner for game detail. Placement rules in `config.ts` (`ADS.NATIVE_AD_INTERVAL: 8`). Ads never appear between live game rows, during the reveal gesture, or on game detail primary sections.
+**Ads** (`components/ads/`, SSOT in `lib/ads/`): manual Google AdSense slots for free-tier viewers only. The loader `<Script>` mounts in the root layout via `AdSenseScript`; named slot components (`FeedAd` for the home Today feed, `GameDetailAd` for `/game/[id]`, `FairBetAd` for `/fairbet`, `NativeAdCard` for non-Today feed sections) render an `<AdSlot>` per placement. Every visible-ad decision flows through `shouldShowAds()` in `lib/ads/entitlements.ts` via the `useAdGate()` hook — paid (`tier=pro`) and admin viewers never load the AdSense script and never see an `<ins>` tag. Slot IDs and the kill switch are read once in `lib/ads/config.ts` (`NEXT_PUBLIC_ADS_ENABLED`, `NEXT_PUBLIC_ADSENSE_*`). Placement constants in `lib/config.ts` (`ADS.NATIVE_AD_INTERVAL`, `ADS.TOP_FEED_AFTER_INDEX`, `ADS.MID_FEED_AFTER_INDEX`). `ads.txt` ships as a static file at `web/public/ads.txt` (served at `/ads.txt`). Ads never appear between live game rows, during the reveal gesture, or inside FairBet bet rows / play-by-play. See [ADS_SETUP.md](ADS_SETUP.md) for full setup, env vars, and verification steps.
 
 ## My Bets Tracker
 

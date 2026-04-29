@@ -3,14 +3,9 @@ import { STORAGE_KEYS } from "@/lib/config";
 import { verifySession } from "@/lib/magic-link";
 import { findAccountByEmail, updateAccountTier } from "@/lib/magic-link";
 import { getStripe, getPriceId } from "@/lib/stripe";
+import { publicBaseUrl } from "@/lib/public-url";
 
 export const dynamic = "force-dynamic";
-
-function origin(req: NextRequest): string {
-  const host = req.headers.get("host") ?? "localhost:3001";
-  const proto = req.headers.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
-}
 
 export async function POST(req: NextRequest) {
   const cookie = req.cookies.get(STORAGE_KEYS.SESSION)?.value;
@@ -32,7 +27,7 @@ export async function POST(req: NextRequest) {
 
   const priceId = getPriceId(plan);
   const stripe = getStripe();
-  const base = origin(req);
+  const base = publicBaseUrl(req);
 
   const account = findAccountByEmail(payload.email);
   const params: Parameters<typeof stripe.checkout.sessions.create>[0] = {

@@ -48,16 +48,12 @@ All tunables live in `src/lib/config.ts`. No magic numbers elsewhere in the code
 | `POLLING.GAMES_REFRESH_MS` | 60s | Background game list refresh interval |
 | `POLLING.LIVE_GAME_POLL_MS` | 45s | Live game detail polling interval |
 | `POLLING.LIVE_ODDS_REFRESH_MS` | 15s | Live FairBet odds polling interval |
+| `POLLING.READING_RESUME_DELAY_MS` | 300ms | Delay before scrolling to saved reading position |
 | `POLLING.FOLLOWING_LIVE_TTL_MS` | 2 hours | Auto-disable Following Live after inactivity |
 | `POLLING.FOLLOWING_LIVE_CHECK_MS` | 60s | How often to check for inactivity expiry |
-
-### API Limits
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `API.GAMES_LIMIT` | 200 | Max games per API request |
-| `API.FAIRBET_PAGE_SIZE` | 100 | FairBet bets per page |
-| `API.FAIRBET_MAX_CONCURRENT` | 3 | Max concurrent FairBet page fetches |
+| `POLLING.TOKEN_REFRESH_MS` | 10 min | Silent JWT refresh cadence (legacy auth) |
+| `POLLING.GOLF_LEADERBOARD_REFRESH_MS` | 60s | Golf leaderboard polling interval |
+| `POLLING.GOLF_TOURNAMENTS_REFRESH_MS` | 5 min | Golf tournament list refresh interval |
 
 ### Storage Bounds
 
@@ -99,18 +95,43 @@ Additional keys used by newer features:
 
 Note: `home-scroll` store is in-memory only (not persisted to localStorage). Cache keys (`sd-*-cache`) are written by data-fetching hooks on successful fetch and read on cold start for stale fallback.
 
+### API
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `API.GAMES_LIMIT` | 200 | Max games per API request |
+| `API.FAIRBET_PAGE_SIZE` | 100 | FairBet bets per page |
+| `API.FAIRBET_MAX_CONCURRENT` | 3 | Max concurrent FairBet page fetches |
+| `API.FAIRBET_REQUEST_TIMEOUT_MS` | 12_000 | Per-page FairBet request timeout |
+| `API.FAIRBET_PAGE_RETRY_ATTEMPTS` | 2 | Retry attempts per FairBet page on transient failure |
+| `API.FAIRBET_PAGE_RETRY_DELAY_MS` | 800 | Delay between FairBet page retries |
+| `API.HEALTH_BACKEND_PING_TIMEOUT_MS` | 15_000 | `/api/health` upstream ping timeout (CI cold start headroom) |
+| `API.ISR_REVALIDATE_S` | 60 | Next.js ISR revalidation for cached API proxy routes |
+
+### Realtime
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `REALTIME.WS_FAIL_THRESHOLD` | 2 | WebSocket failures before switching to SSE |
+| `REALTIME.WS_FAIL_WINDOW_MS` | 60s | Window in which failures count toward the threshold |
+| `REALTIME.SSE_FALLBACK_DURATION_MS` | 5 min | How long SSE runs before retrying WebSocket |
+| `REALTIME.BACKOFF_INITIAL_MS` | 1s | Initial reconnect backoff |
+| `REALTIME.BACKOFF_MAX_MS` | 30s | Max reconnect backoff (exponential) |
+| `REALTIME.FRESHNESS_INDICATOR_MS` | 20s | Freshness threshold used by the realtime indicator UI |
+| `REALTIME.RECOVERY_MIN_INTERVAL_MS` | 8s | Minimum gap between recovery re-fetches per channel |
+
 ### FairBet
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
 | `FAIRBET.MIN_BOOKS` | 3 | Hide bets with fewer than this many books posting a price |
-| `FAIRBET.EV_HIGHLIGHT_THRESHOLD` | 5% | EV% at which a bet gets the strong-positive color |
-| `FAIRBET.EV_TIER_STRONG` | 7 | >$7 per $100 → dark green |
-| `FAIRBET.EV_TIER_GOOD` | 3 | $3–$7 per $100 → light green |
-| `FAIRBET.EV_TIER_MARGINAL` | 1 | $1–$3 per $100 → amber |
+| `FAIRBET.EV_HIGHLIGHT_THRESHOLD` | 5 | EV% at which a bet gets the strong-positive color |
 | `FAIRBET.ATTRIBUTION_FRESH_MS` | 2 min | No staleness label if data is younger than this |
 | `FAIRBET.ATTRIBUTION_STALE_MS` | 15 min | "May be delayed" amber label if older than this |
 | `FAIRBET.ATTRIBUTION_UPDATE_INTERVAL_MS` | 30s | How often to re-evaluate the attribution label |
+| `FAIRBET.CONFIDENCE_SAMPLE_HIGH` | 30 | Min `confidence` value for the high EV-confidence tier |
+| `FAIRBET.CONFIDENCE_SAMPLE_MEDIUM` | 10 | Min `confidence` value for the medium EV-confidence tier |
+| `FAIRBET.MONTE_CARLO_TRIALS` | 10_000 | Trials per Win Probability Monte Carlo run |
 
 ### Freshness Labels
 
@@ -153,16 +174,21 @@ Note: `home-scroll` store is in-memory only (not persisted to localStorage). Cac
 
 ### Feature Gates
 
+Canonical Pro-tier gate keys. All server routes and client hooks that enforce a paywall must reference one of these via `lib/pro-gate.ts` or `hooks/useProGate.ts` — never use string literals for gate checks.
+
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `FEATURE_GATES.LIVE_ODDS` | `"live_odds"` | Real-time in-game odds (Pro only) |
+| `FEATURE_GATES.LIVE_ODDS` | `"live_odds"` | Real-time in-game odds |
 | `FEATURE_GATES.FULL_FAIRBET` | `"full_fairbet"` | Full FairBet access with all markets |
 | `FEATURE_GATES.ALL_BOOKS` | `"all_books"` | All sportsbooks in comparisons |
 | `FEATURE_GATES.ALL_MARKETS` | `"all_markets"` | Alt lines and prop markets |
 | `FEATURE_GATES.CROSS_DEVICE_SYNC` | `"cross_device_sync"` | Sync across devices |
 | `FEATURE_GATES.ADVANCED_FILTERS` | `"advanced_filters"` | Advanced FairBet filter controls |
-
-All gate keys must be referenced via `FEATURE_GATES` — never use string literals for gate checks.
+| `FEATURE_GATES.LINE_MOVEMENT` | `"line_movement"` | Line-movement history |
+| `FEATURE_GATES.EV_SIMULATOR` | `"ev_simulator"` | Custom EV / simulation tools |
+| `FEATURE_GATES.CLV_TRACKING` | `"clv_tracking"` | Closing-line-value tracking |
+| `FEATURE_GATES.WIN_PROBABILITY` | `"win_probability"` | Win-probability sheet (uses `FAIRBET.MONTE_CARLO_TRIALS`) |
+| `FEATURE_GATES.HISTORY` | `"history"` | Historical games archive |
 
 ### Auth
 
@@ -177,9 +203,13 @@ All gate keys must be referenced via `FEATURE_GATES` — never use string litera
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `ADS.NATIVE_AD_INTERVAL` | 8 | Insert a native ad card every N game rows |
-| `ADS.BANNER_WIDTH` | 320 | Detail banner ad width (px) |
-| `ADS.BANNER_HEIGHT` | 50 | Detail banner ad height (px) |
+| `ADS.NATIVE_AD_INTERVAL` | 8 | Insert a `NativeAdCard` every N game rows in non-Today home sections |
+| `ADS.TOP_FEED_AFTER_INDEX` | 2 | Render the home `top-feed` `FeedAd` after this game-row index in the Today section |
+| `ADS.MID_FEED_AFTER_INDEX` | 6 | Render the home `mid-feed` `FeedAd` after this game-row index in the Today section |
+
+AdSense slot IDs and the kill switch live in env vars (read in
+`web/src/lib/ads/config.ts`), not in `web/src/lib/config.ts`. See
+[ADS_SETUP.md](ADS_SETUP.md) for the env-var matrix.
 
 ### Defaults
 

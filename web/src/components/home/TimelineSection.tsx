@@ -7,6 +7,7 @@ import { useReveal } from "@/stores/reveal";
 import { SectionHeader } from "@/components/shared/SectionHeader";
 import { GameRow } from "./GameRow";
 import { NativeAdCard } from "@/components/ads/NativeAdCard";
+import { FeedAd } from "@/components/ads/FeedAd";
 import { isFinal, isLive } from "@/lib/types";
 import { pickSnapshot } from "@/lib/score-display";
 import { isGameHiddenByBlacklist } from "@/lib/score-hide";
@@ -17,9 +18,16 @@ interface TimelineSectionProps {
   games: GameCore[];
   stickyTop?: string;
   pinnedIds?: Set<number>;
+  useFeedAdSlots?: boolean;
 }
 
-export function TimelineSection({ title, games, stickyTop, pinnedIds }: TimelineSectionProps) {
+export function TimelineSection({
+  title,
+  games,
+  stickyTop,
+  pinnedIds,
+  useFeedAdSlots = false,
+}: TimelineSectionProps) {
   const homeExpandedSections = useSettings((s) => s.homeExpandedSections);
   const setHomeExpandedSections = useSettings((s) => s.setHomeExpandedSections);
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
@@ -164,8 +172,22 @@ export function TimelineSection({ title, games, stickyTop, pinnedIds }: Timeline
           {games.map((game, index) => (
             <Fragment key={game.id}>
               <GameRow game={game} />
-              {(index + 1) % ADS.NATIVE_AD_INTERVAL === 0 && (
-                <NativeAdCard slotIndex={Math.floor((index + 1) / ADS.NATIVE_AD_INTERVAL)} />
+              {useFeedAdSlots ? (
+                <>
+                  {index === ADS.TOP_FEED_AFTER_INDEX && (
+                    <FeedAd position="top-feed" />
+                  )}
+                  {index === ADS.MID_FEED_AFTER_INDEX && (
+                    <FeedAd position="mid-feed" />
+                  )}
+                  {index ===
+                    Math.max(
+                      ADS.MID_FEED_AFTER_INDEX + 1,
+                      games.length - 2,
+                    ) && <FeedAd position="bottom-feed" />}
+                </>
+              ) : (
+                (index + 1) % ADS.NATIVE_AD_INTERVAL === 0 && <NativeAdCard />
               )}
             </Fragment>
           ))}

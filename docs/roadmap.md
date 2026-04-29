@@ -132,7 +132,7 @@
 - [x] Implement feature gates: `FEATURE_GATES` constants, `lib/pro-gate.ts`, `hooks/useProGate.ts`
 - [ ] Add "see what you're missing" preview: blurred FairBet cards with EV visible but details gated
 - [x] Design upgrade flow: `ProGateSheet` global overlay triggered at gate points
-- [x] If ads: `components/ads/NativeAdCard.tsx` (game-card format with "Ad" badge), `components/ads/DetailBannerAd.tsx`; `ADS` config governs placement interval
+- [x] If ads: manual Google AdSense via `components/ads/AdSenseScript.tsx` + `AdSlot.tsx` and named slot components (`FeedAd`, `GameDetailAd`, `FairBetAd`, `NativeAdCard`). Eligibility SSOT in `lib/ads/entitlements.ts` (`shouldShowAds`) surfaced via the `useAdGate()` hook; placement constants in `lib/config.ts` (`ADS.*`). See `docs/ADS_SETUP.md`.
 - [ ] Enforce ad placement rules at runtime: never between live game rows, never during reveal gesture, never on game detail primary sections
 - [ ] Consider sportsbook affiliate integration: native card format, CPA-based revenue, age-gated
 - [x] Add subscription management: Stripe via `/api/billing/checkout`, `/api/billing/portal`, `/api/billing/webhook`
@@ -171,24 +171,3 @@
 - [ ] Evaluate making history page Pro-only: full game archive, bet tracking, performance over time
 - [ ] Test: E2E for CLV dashboard, simulator, advanced filters
 
----
-
-## Research Index
-
-Detailed research backing these phases lives in `docs/archived/research/`:
-
-| Topic | File | Informs Phase |
-|-------|------|--------------|
-| Score reveal UX patterns | `score-reveal-ux-patterns.md` | 1 |
-| Sports app trust signals | `sports-app-trust-signals.md` | 2 |
-| Competitor UX audit | `competitor-ux-audit.md` | 2, 3 |
-| Live scores APIs | `live-scores-api.md` | 2 |
-| Sports data APIs | `sports-data-apis.md` | 2 |
-| Realtime WebSocket patterns | `realtime-websocket-patterns.md` | 2 |
-| Fair value & EV calculation | `fair-value-ev-calculation.md` | 4 |
-| Betting odds APIs | `betting-odds-api.md`, `betting-odds-apis.md` | 4 |
-| AI sports summary quality | `ai-sports-summary-quality.md` | 5 |
-| PWA offline score caching | `pwa-offline-score-caching.md` | 6 |
-| Freemium monetization | `freemium-sports-app-monetization.md` | 7 |
-| Non-intrusive ad formats | `non-intrusive-ad-formats.md` | 7 |
-| Golf data APIs | `golf-data-apis.md` | 8 |

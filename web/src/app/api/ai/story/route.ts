@@ -94,9 +94,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const block = message.content[0];
     llmText = block.type === "text" ? block.text.trim() : "";
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    // Don't echo Anthropic SDK errors back to the caller (key/quota/model state
+    // leakage); log the underlying error and return a generic 502.
+    // See docs/audits/error-handling-report.md §F8.
+    console.error("[ai/story] Anthropic call failed:", err);
     return NextResponse.json(
-      { error: "LLM_ERROR", reason: message },
+      { error: "LLM_ERROR" },
       { status: 502 },
     );
   }

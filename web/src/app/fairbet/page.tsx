@@ -18,6 +18,7 @@ import { InlineFeedback } from "@/components/shared/InlineFeedback";
 import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { RENDER } from "@/lib/config";
 import { AdvancedFilters } from "@/components/fairbet/AdvancedFilters";
+import { FairBetAd } from "@/components/ads/FairBetAd";
 
 export default function FairBetPage() {
   const hook = useFairBetOdds();
@@ -196,6 +197,12 @@ export default function FairBetPage() {
         {activeTab === "pregame" && <div role="tabpanel" id="tabpanel-pregame" aria-labelledby="tab-pregame">
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
+        {!hook.error && !loadingTimedOut && (
+          <div className="pt-2">
+            <FairBetAd position="top-info" />
+          </div>
+        )}
+
         {/* Loading state — skeleton cards to avoid blank screen */}
         {hook.loading && !hook.error && !loadingTimedOut && (
           <div className="pt-3 space-y-3">
@@ -358,6 +365,12 @@ export default function FairBetPage() {
                 }}
               />
             </div>
+          </div>
+        )}
+
+        {!hook.loading && !hook.error && hook.filteredBets.length > 0 && (
+          <div className="pt-2">
+            <FairBetAd position="bottom" />
           </div>
         )}
         </div>}

@@ -18,7 +18,13 @@ export function readCache<T>(key: string): CacheEntry<T> | null {
     if (!entry.data || !entry.savedAt) return null;
     return entry;
   } catch {
-    // Corrupt or unparseable cache entry — treat as cache miss
+    // Corrupt or unparseable cache entry — drop it so we don't re-parse it on
+    // every read for the rest of the session. See docs/audits/error-handling-report.md §E2.
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      // Storage access may also be denied; nothing else to do.
+    }
     return null;
   }
 }

@@ -2,19 +2,26 @@
 
 ## Transport
 
-The realtime system uses a two-tier transport with automatic failover:
+Two transports with automatic failover (`web/src/realtime/transport.ts`):
 
-1. **WebSocket** (primary) — connects to `wss://<backend>/v1/ws`
-2. **SSE** (fallback) — connects via `/api/realtime/sse` proxy (because `EventSource` cannot set custom headers, the proxy injects the API key)
-3. **Offline** — graceful degradation with cache + polling
+1. **WebSocket** (primary) — connects to `wss://<backend>/v1/ws`. The base URL is derived from `BACKEND_BASE_URL` in `web/src/lib/config.ts` (`https://` → `wss://`).
+2. **SSE** (fallback) — connects via the `/api/realtime/sse` proxy. EventSource cannot set custom headers, so the proxy injects the `X-API-Key` server-side.
+
+When both transports are unavailable, components stay on cached data + the existing polling intervals defined by data-fetching hooks (`web/src/hooks/`). Polling is not driven by the realtime layer.
 
 ### Failover Logic
 
-- If WebSocket fails **2 times within 60 seconds**, transport switches to SSE
-- SSE runs for **5 minutes**, then attempts to reconnect via WebSocket
-- Reconnection uses exponential backoff: **1s initial, 30s maximum**
+All thresholds live in `REALTIME` inside `web/src/lib/config.ts`:
 
-All failover thresholds are configured in `src/lib/config.ts` under `REALTIME`.
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `WS_FAIL_THRESHOLD` | 2 | WebSocket failures before switching to SSE |
+| `WS_FAIL_WINDOW_MS` | 60_000 | Window in which failures count toward the threshold |
+| `SSE_FALLBACK_DURATION_MS` | 5 × 60_000 | How long SSE runs before retrying WebSocket |
+| `BACKOFF_INITIAL_MS` | 1_000 | Initial reconnect backoff |
+| `BACKOFF_MAX_MS` | 30_000 | Max reconnect backoff (exponential) |
+| `RECOVERY_MIN_INTERVAL_MS` | 8_000 | Minimum gap between recovery re-fetches per channel |
+| `FRESHNESS_INDICATOR_MS` | 20_000 | UI freshness threshold used by `useFreshnessLabel` |
 
 ## Event Types
 

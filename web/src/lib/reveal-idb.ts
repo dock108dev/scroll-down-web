@@ -269,7 +269,10 @@ export async function idbMigrateFromLocalStorage(): Promise<void> {
       });
     }
   } catch {
-    // Malformed localStorage data — discard and continue
+    // One-shot localStorage→IDB migration. Malformed legacy data is irrecoverable
+    // by definition (it failed JSON.parse), so dropping it is the only outcome;
+    // the user is no worse off than before the migration ran.
+    // See docs/audits/error-handling-report.md §F11.
   } finally {
     localStorage.removeItem(STORAGE_KEYS.READ_STATE);
   }

@@ -132,7 +132,11 @@ async function proxy(
         "X-RateLimit-Remaining": String(limit.remaining),
       },
     });
-  } catch {
+  } catch (err) {
+    // Network/DNS failure reaching the upstream auth service. Log so an outage
+    // is visible — clients only see a generic 502.
+    // See docs/audits/error-handling-report.md §B2.
+    console.error(`[auth-proxy] upstream fetch failed for /auth/${resolvedPath}:`, err);
     return NextResponse.json(
       { detail: "Auth service unavailable" },
       { status: 502 },

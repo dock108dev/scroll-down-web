@@ -2,7 +2,10 @@
 
 ## Overview
 
-End-to-end tests use Playwright with two browser projects: desktop Chromium and mobile-viewport Chromium (390x844, touch enabled). Tests run against a live dev server on `localhost:3001`.
+The repo runs two test layers:
+
+- **Vitest unit tests** under `web/tests/unit/` — pure-logic and component tests using `jsdom` + `@testing-library/react`. Configured by `web/vitest.config.ts`.
+- **Playwright E2E tests** under `web/tests/` (excluding `unit/`) — two browser projects: desktop Chromium and mobile-viewport Chromium (390×844, touch enabled). Tests run against a live dev server on `localhost:3001`.
 
 ## Setup
 
@@ -10,17 +13,26 @@ End-to-end tests use Playwright with two browser projects: desktop Chromium and 
 # Install Playwright browsers (first time only)
 npx playwright install chromium
 
-# Start the dev server in another terminal
+# Start the dev server in another terminal (Playwright only — Vitest does not need it)
 npm run dev
 
-# Run all tests
+# Run all Playwright tests
 npm test
+
+# Run smoke-only Playwright tests
+npm run test:smoke
 
 # Run with visible browser
 npm run test:headed
 
 # Run Playwright UI mode
 npm run test:ui
+
+# Run Vitest unit tests
+npm run test:unit
+
+# Watch mode for unit tests
+npm run test:unit:watch
 ```
 
 ## Configuration
@@ -75,24 +87,39 @@ npm test
 
 ## Test Suites
 
-### Feature Tests
+### Vitest (`web/tests/unit/`)
+
+| Path | Coverage |
+|------|----------|
+| `tests/unit/ads/AdSlot.test.tsx` | `<AdSlot>` renders placeholder height before mount, no-ops when `window.adsbygoogle` is missing |
+| `tests/unit/ads/shouldShowAds.test.ts` | `shouldShowAds()` matrix: kill switch, missing client ID, paid/admin/anonymous viewers |
+| `tests/unit/setup.ts` | Vitest setup: `@testing-library/jest-dom` matchers, `jsdom` polyfills |
+
+Add a new unit test by creating a `*.test.ts(x)` file under `tests/unit/` — `vitest.config.ts` picks them up automatically.
+
+### Playwright (feature suites)
 
 | Directory | Tests | Notes |
 |-----------|-------|-------|
+| `tests/ads/` | Ad placement gating, paid-user suppression | Verifies `<ins>` tags + script load behavior |
 | `tests/auth/` | Signup, login, logout, magic link, forgot password | Creates fresh accounts per test |
 | `tests/home/` | Game list, pinning, score reveal | Skips gracefully if no game data |
 | `tests/game/` | Detail page, reading position | Navigates via game row click |
 | `tests/fairbet/` | Odds display, live tab, parlay builder | Skips if API slow (>20s) |
+| `tests/freemium/` | Tier gating, Pro gate sheet, upgrade flow | Uses `?tier=pro` URL override |
 | `tests/golf/` | Tournament list, leaderboard display | Skips if golf API unavailable |
 | `tests/history/` | Date navigator, search, auth gate | Tests both admin and guest access |
 | `tests/analytics/` | Tab navigation, models page, batch simulation | Permission checks |
 | `tests/errors/` | 404 handling, API error resilience | Route interception for 500s/timeouts |
 | `tests/profile/` | Account info, password change, delete account | Skips if auth expired |
-| `tests/mobile/` | Bottom tabs, responsive layout | Mobile viewport (390x844) |
+| `tests/mobile/` | Bottom tabs, responsive layout | Mobile viewport (390×844) |
+| `tests/nav/` | Top nav, bottom tabs, route navigation | Cross-cutting nav coverage |
+| `tests/pwa/` | Service worker, install prompt, offline banner | PWA infrastructure smoke |
 | `tests/performance/` | Page load times, navigation speed | Threshold-based assertions |
 | `tests/cache/` | LocalStorage staleness, tab visibility | Simulates visibility changes |
 | `tests/realtime/` | SSE endpoint connectivity | Verifies proxy responds |
 | `tests/settings/` | Theme, score reveal mode, odds format | Toggles settings and verifies |
+| `tests/sync/` | Pro-tier reveal sync (`/api/sync/reveal`) | Cross-device sync semantics |
 
 ## Resilience Patterns
 
@@ -176,6 +203,10 @@ The CI pipeline runs Playwright smoke tests (`@smoke`-tagged) on every push via 
 | Command | Purpose |
 |---------|---------|
 | `npm test` | All Playwright tests |
-| `npm run test:smoke` | Smoke tests only (`@smoke` tag) |
-| `npm run test:headed` | Tests in visible browser |
+| `npm run test:smoke` | Smoke Playwright tests only (`@smoke` tag) |
+| `npm run test:smoke:pr` | Smoke tests excluding `@live-upstream`; mirrors the PR smoke job |
+| `npm run test:headed` | Playwright tests in visible browser |
 | `npm run test:ui` | Playwright UI mode |
+| `npm run test:unit` | Vitest unit suite (`--passWithNoTests`) |
+| `npm run test:unit:watch` | Vitest watch mode |
+| `npm run test:unit:coverage` | Vitest with coverage |

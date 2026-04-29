@@ -126,7 +126,10 @@ export async function GET(): Promise<NextResponse> {
   try {
     const data = await _inflight;
     return NextResponse.json(data);
-  } catch {
+  } catch (err) {
+    // Log upstream API-Sports failures so an outage is observable; client-facing
+    // body stays generic. See docs/audits/error-handling-report.md §F3.
+    console.error("[golf/leaderboard] upstream fetch failed:", err);
     return NextResponse.json(
       { error: "Failed to fetch golf leaderboard" },
       { status: 502 },

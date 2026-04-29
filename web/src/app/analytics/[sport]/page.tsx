@@ -59,8 +59,11 @@ export default function SportSimulatorPage() {
       try {
         const t = await fetchSimulatorTeams(sport);
         if (!cancelled) setTeams(t);
-      } catch {
-        // ignore
+      } catch (err) {
+        // Public-facing surface; an empty selector with no message is a
+        // dead-end. See docs/audits/error-handling-report.md §F7.
+        console.error(`[${sport}-simulator] fetchSimulatorTeams failed:`, err);
+        if (!cancelled) setError("Failed to load teams.");
       } finally {
         if (!cancelled) setTeamsLoading(false);
       }

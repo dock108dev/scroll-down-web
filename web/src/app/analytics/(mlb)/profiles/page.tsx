@@ -46,7 +46,12 @@ export default function ProfilesPage() {
         const t = await fetchTeams();
         // Upstream is now sport-scoped — no need for client-side dedupe.
         if (!cancelled) setTeams(t);
-      } catch { /* ignore */ }
+      } catch (err) {
+        // Empty team selector with no explanation is a dead-end UX; surface and
+        // log. See docs/audits/error-handling-report.md §F4.
+        console.error("[profiles] fetchTeams failed:", err);
+        if (!cancelled) setError("Failed to load teams.");
+      }
       finally { if (!cancelled) setTeamsLoading(false); }
     }
     load();

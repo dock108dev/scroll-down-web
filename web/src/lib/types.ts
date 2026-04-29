@@ -589,18 +589,6 @@ export interface ExplanationStep {
   detail_rows?: { label: string; value: string; is_highlight?: boolean }[];
 }
 
-/** Result of multiplicative no-vig devig for a market. */
-export interface DevigedMarket {
-  /** Input American odds per side. */
-  sides: number[];
-  /** Normalized fair probabilities (sum exactly to 1.0). */
-  fairProbs: number[];
-  /** Fair American odds derived from fairProbs. */
-  fairOdds: number[];
-  /** Sum of raw implied probabilities before normalization (>1 = vig present). */
-  overround: number;
-}
-
 export interface BookPrice {
   book: string;
   price: number;

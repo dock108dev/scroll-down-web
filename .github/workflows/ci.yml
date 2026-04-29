@@ -134,6 +134,16 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}/web:latest
             ghcr.io/${{ github.repository }}/web:${{ github.sha }}
+          # NEXT_PUBLIC_* vars are inlined into the bundle at build time. Slot IDs
+          # come from repo Variables so they can be set via the GitHub UI once the
+          # AdSense ad units are created — no code change required.
+          build-args: |
+            NEXT_PUBLIC_ADS_ENABLED=true
+            NEXT_PUBLIC_ADSENSE_CLIENT_ID=ca-pub-3337164122582315
+            NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT=${{ vars.NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT }}
+            NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT=${{ vars.NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT }}
+            NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT=${{ vars.NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT }}
+            NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT=${{ vars.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

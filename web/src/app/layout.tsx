@@ -17,6 +17,7 @@ import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/layout/PWAInstallPrompt";
 import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
 import { TierBootstrap } from "@/components/layout/TierBootstrap";
+import { AdSenseScript } from "@/components/ads/AdSenseScript";
 
 const SITE_URL = "https://scrolldownsports.dev";
 
@@ -109,6 +110,7 @@ export default function RootLayout({
       </head>
       <body className="bg-neutral-950 text-neutral-50 antialiased">
         <ThemeProvider>
+          <AdSenseScript />
           <AuthProvider />
           <SessionProvider />
           <TierBootstrap />

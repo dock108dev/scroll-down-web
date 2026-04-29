@@ -6,6 +6,7 @@ import {
   storeMagicToken,
   sendMagicLinkEmail,
 } from "@/lib/magic-link";
+import { publicBaseUrl } from "@/lib/public-url";
 
 const limiter = createRateLimiter({
   window: AUTH.SEND_LINK_RATE_WINDOW_MS,
@@ -18,14 +19,6 @@ function clientIp(req: NextRequest): string {
     req.headers.get("x-real-ip") ??
     "unknown"
   );
-}
-
-function baseUrl(req: NextRequest): string {
-  const configured = process.env.MAGIC_LINK_BASE_URL;
-  if (configured) return configured.replace(/\/$/, "");
-  const host = req.headers.get("host") ?? "localhost:3001";
-  const proto = req.headers.get("x-forwarded-proto") ?? "http";
-  return `${proto}://${host}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -62,7 +55,7 @@ export async function POST(req: NextRequest) {
   const token = generateMagicToken();
   storeMagicToken(token, email, anonId);
 
-  const link = `${baseUrl(req)}/api/auth/verify?token=${token}`;
+  const link = `${publicBaseUrl(req)}/api/auth/verify?token=${encodeURIComponent(token)}`;
 
   try {
     await sendMagicLinkEmail(email, link);
