@@ -1,0 +1,29 @@
+name: Promote Prod
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: promote-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: production
+
+    steps:
+      - name: Deploy latest image to Hetzner (prod)
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HETZNER_HOST }}
+          username: ${{ secrets.HETZNER_USER }}
+          key: ${{ secrets.HETZNER_SSH_KEY }}
+          script: |
+            DEPLOY_PATH="${{ vars.DEPLOY_PATH || '/opt/scrolldown-web' }}"
+            cd "$DEPLOY_PATH"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            docker pull ghcr.io/${{ github.repository }}/web:latest
+            docker compose up -d --no-deps --wait scrolldown-web
+            docker image prune -f || true

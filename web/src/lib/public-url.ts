@@ -1,4 +1,5 @@
 import type { NextRequest } from "next/server";
+import { getSiteUrl } from "@/lib/site-config";
 
 /**
  * Resolve the public origin for outbound URLs that we hand to third parties
@@ -14,14 +15,12 @@ import type { NextRequest } from "next/server";
  *  1. `PUBLIC_BASE_URL` env (preferred — explicit per-deploy config).
  *  2. `MAGIC_LINK_BASE_URL` env (legacy alias kept so existing deploys keep
  *     working without an env-var rename).
- *  3. In production NODE_ENV: the hardcoded canonical site URL.
+ *  3. In production NODE_ENV: the configured canonical site URL.
  *  4. In non-production: the request's `host` header — host-header injection
  *     in dev is acceptable because attackers don't reach dev hosts.
  *
  * See docs/audits/security-report.md §H1.
  */
-
-const CANONICAL_PROD_BASE_URL = "https://scrolldownsports.dev";
 
 function trimTrailingSlash(s: string): string {
   return s.replace(/\/$/, "");
@@ -32,7 +31,7 @@ export function publicBaseUrl(req: NextRequest): string {
   if (explicit) return trimTrailingSlash(explicit);
 
   if (process.env.NODE_ENV === "production") {
-    return CANONICAL_PROD_BASE_URL;
+    return getSiteUrl();
   }
 
   const host = req.headers.get("host") ?? "localhost:3001";

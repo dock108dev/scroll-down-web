@@ -18,64 +18,69 @@ import { PWAInstallPrompt } from "@/components/layout/PWAInstallPrompt";
 import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
 import { TierBootstrap } from "@/components/layout/TierBootstrap";
 import { AdSenseScript } from "@/components/ads/AdSenseScript";
-
-const SITE_URL = "https://scrolldownsports.dev";
+import { getSiteHost, getSiteUrl, isNoIndexSite } from "@/lib/site-config";
 
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: "#0a0a0a",
 };
 
-export const metadata: Metadata = {
-  title: {
-    default: "Scroll Down Sports — Catch Up on Games Your Way",
-    template: "%s | Scroll Down Sports",
-  },
-  description:
-    "Follow MLB, NBA, NHL, and college basketball on your schedule. Live scores when you want them, play by play timelines, betting analytics, and matchup simulators in one place.",
-  metadataBase: new URL(SITE_URL),
-  alternates: { canonical: "/" },
-  manifest: "/manifest.webmanifest",
-  icons: {
-    icon: [
-      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: "/apple-touch-icon.png",
-  },
-  openGraph: {
-    type: "website",
-    siteName: "Scroll Down Sports",
-    title: "Scroll Down Sports — Catch Up on Games Your Way",
+export function generateMetadata(): Metadata {
+  const siteUrl = getSiteUrl();
+  const noIndex = isNoIndexSite();
+  return {
+    title: {
+      default: "Scroll Down Sports — Catch Up on Games Your Way",
+      template: "%s | Scroll Down Sports",
+    },
     description:
-      "Live scores when you want them, play by play timelines, betting analytics, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
-    url: SITE_URL,
-    images: [{ url: "/app-icon.png", width: 1024, height: 1024, alt: "Scroll Down Sports" }],
-  },
-  twitter: {
-    card: "summary",
-    title: "Scroll Down Sports",
-    description:
-      "Live scores when you want them, real time timelines, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
-    images: ["/app-icon.png"],
-  },
-  robots: {
-    index: true,
-    follow: true,
-  },
-};
+      "Follow MLB, NBA, NHL, and college basketball on your schedule. Live scores when you want them, play by play timelines, betting analytics, and matchup simulators in one place.",
+    metadataBase: new URL(siteUrl),
+    alternates: { canonical: "/" },
+    manifest: "/manifest.webmanifest",
+    icons: {
+      icon: [
+        { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+        { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+      ],
+      apple: "/apple-touch-icon.png",
+    },
+    openGraph: {
+      type: "website",
+      siteName: "Scroll Down Sports",
+      title: "Scroll Down Sports — Catch Up on Games Your Way",
+      description:
+        "Live scores when you want them, play by play timelines, betting analytics, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
+      url: siteUrl,
+      images: [{ url: "/app-icon.png", width: 1024, height: 1024, alt: "Scroll Down Sports" }],
+    },
+    twitter: {
+      card: "summary",
+      title: "Scroll Down Sports",
+      description:
+        "Live scores when you want them, real time timelines, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
+      images: ["/app-icon.png"],
+    },
+    robots: {
+      index: !noIndex,
+      follow: !noIndex,
+    },
+  };
+}
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const siteUrl = getSiteUrl();
+  const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? getSiteHost();
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
         <Script
           defer
-          data-domain="scrolldownsports.dev"
+          data-domain={plausibleDomain}
           src="https://plausible.io/js/script.js"
         />
         <Script id="sw-register" strategy="afterInteractive">{`
@@ -94,7 +99,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "WebApplication",
               name: "Scroll Down Sports",
-              url: SITE_URL,
+              url: siteUrl,
               description:
                 "Live scores when you want them, play by play timelines, betting analytics, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
               applicationCategory: "SportsApplication",

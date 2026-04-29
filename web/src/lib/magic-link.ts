@@ -241,7 +241,7 @@ export async function sendMagicLinkEmail(to: string, link: string): Promise<void
   }
 
   const from =
-    process.env.MAGIC_LINK_FROM_EMAIL ?? "noreply@mail.scrolldownsports.dev";
+    process.env.MAGIC_LINK_FROM_EMAIL ?? "noreply@mail.scrolldownsports.com";
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",

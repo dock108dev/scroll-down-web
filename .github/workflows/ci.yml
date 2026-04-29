@@ -159,23 +159,24 @@ jobs:
           cache-to: type=gha,mode=max
 
   # ────────────────────────────────────────────────────────
-  # Deploy — pull + restart on Hetzner (after docker push)
+  # Deploy (dev) — pull + restart on Hetzner (after docker push)
   # ────────────────────────────────────────────────────────
-  deploy:
+  deploy-dev:
     needs: docker
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: production
+    environment: development
 
     steps:
-      - name: Deploy to Hetzner
+      - name: Deploy to Hetzner (dev)
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.HETZNER_HOST }}
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            cd /opt/scrolldown-web
+            DEPLOY_PATH="${{ vars.DEPLOY_PATH || '/opt/scrolldown-web-dev' }}"
+            cd "$DEPLOY_PATH"
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             docker pull ghcr.io/${{ github.repository }}/web:latest
             docker compose up -d --no-deps --wait scrolldown-web

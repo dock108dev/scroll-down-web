@@ -1,6 +1,6 @@
 # Deployment
 
-## Production Setup
+## Environment Setup
 
 The app runs as a standalone Next.js server in a Docker container on a Hetzner VPS.
 
@@ -32,12 +32,34 @@ services:
       start_period: 10s
 ```
 
-### Production Environment
+### Runtime Environment Files
 
-Create `.env.production` on the server (never committed):
+Create environment files on the server (never committed).
+
+Production (`.com`) example:
 
 ```bash
 SPORTS_DATA_API_KEY=<real-api-key>
+PUBLIC_BASE_URL=https://scrolldownsports.com
+SITE_NOINDEX=false
+# Optional (defaults to host in PUBLIC_BASE_URL)
+# NEXT_PUBLIC_PLAUSIBLE_DOMAIN=scrolldownsports.com
+# Optional sender override
+# MAGIC_LINK_FROM_EMAIL=noreply@mail.scrolldownsports.com
+# Optional: internal Docker network URL to backend
+# SPORTS_API_INTERNAL_URL=http://backend:8000
+```
+
+Development (`.dev`) example:
+
+```bash
+SPORTS_DATA_API_KEY=<real-api-key>
+PUBLIC_BASE_URL=https://scrolldownsports.dev
+SITE_NOINDEX=true
+# Optional (defaults to host in PUBLIC_BASE_URL)
+# NEXT_PUBLIC_PLAUSIBLE_DOMAIN=scrolldownsports.dev
+# Optional sender override
+# MAGIC_LINK_FROM_EMAIL=noreply@mail.scrolldownsports.com
 # Optional: internal Docker network URL to backend
 # SPORTS_API_INTERNAL_URL=http://backend:8000
 ```
@@ -65,7 +87,11 @@ GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push/PR to `m
 1. **web** — lint, type check (`tsc --noEmit`), production build
 2. **playwright-smoke** — runs `@smoke`-tagged Playwright tests against a dev server
 3. **docker** (main branch only, after web passes) — build Docker image, push to `ghcr.io`
-4. **deploy** (after docker) — SSH into Hetzner, pull latest image, restart container
+4. **deploy-dev** (after docker) — SSH into Hetzner, pull latest image, restart **dev** container/environment
+
+Production promotion is intentionally separate:
+
+- **Promote Prod** (`.github/workflows/promote-prod.yml`) — manual `workflow_dispatch` that pulls current `web:latest` and restarts the production container/environment.
 
 ### Image Tags
 
@@ -81,6 +107,14 @@ Every main-branch push produces two tags:
 | `HETZNER_USER` | SSH username |
 | `HETZNER_SSH_KEY` | SSH private key |
 | `GHCR_TOKEN` | GitHub Container Registry auth token |
+
+Set these in both GitHub Environments used by deploy jobs (`development` and `production`) unless you intentionally share one environment secret scope.
+
+### Required Environment Variables (GitHub Environments)
+
+| Variable | Example (dev) | Example (prod) | Purpose |
+|----------|----------------|----------------|---------|
+| `DEPLOY_PATH` | `/opt/scrolldown-web-dev` | `/opt/scrolldown-web` | Remote folder where `docker compose` is executed. |
 
 ### Other Workflows
 

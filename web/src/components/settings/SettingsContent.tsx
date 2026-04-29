@@ -297,15 +297,15 @@ export function SettingsContent() {
         </Row>
         <div className="px-4 py-3 space-y-2">
           <a
-            href="https://scrolldownsports.dev"
+            href="/"
             target="_blank"
             rel="noopener noreferrer"
             className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
           >
-            scrolldownsports.dev
+            Scroll Down Sports
           </a>
           <a
-            href="https://scrolldownsports.dev/privacy"
+            href="/privacy"
             target="_blank"
             rel="noopener noreferrer"
             className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
@@ -313,7 +313,7 @@ export function SettingsContent() {
             Privacy Policy
           </a>
           <a
-            href="https://scrolldownsports.dev/terms"
+            href="/terms"
             target="_blank"
             rel="noopener noreferrer"
             className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
