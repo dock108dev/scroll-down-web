@@ -1,6 +1,6 @@
 import { test, expect, waitForLoad, waitForGameData } from "../helpers";
 
-test.describe("Game Timeline — highlights mode @live-upstream", () => {
+test.describe("Game Timeline — play-by-play @live-upstream", () => {
   test.beforeEach(async ({ authedPage }) => {
     await authedPage.goto("/");
     await waitForLoad(authedPage);
@@ -16,7 +16,7 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
     return true;
   }
 
-  test("timeline section renders and toggle button is present", async ({
+  test("timeline section renders full play-by-play by default", async ({
     authedPage,
   }) => {
     const ok = await navigateToGame(authedPage);
@@ -30,13 +30,12 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
 
     await expect(section).toBeVisible();
 
-    const toggle = authedPage.locator("[data-testid='timeline-toggle']");
-    await expect(toggle).toBeVisible();
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
-    await expect(toggle).toHaveAttribute("aria-label", "Show full play-by-play");
+    await expect(section).toContainText("Full play-by-play");
+    await expect(authedPage.locator("[data-testid='timeline-toggle']")).toHaveCount(0);
+    await expect(section).not.toContainText("Key plays");
   });
 
-  test("toggle button switches to full play-by-play and back", async ({
+  test("expand details button expands compact play groups when available", async ({
     authedPage,
   }) => {
     const ok = await navigateToGame(authedPage);
@@ -48,23 +47,21 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
       return;
     }
 
-    const toggle = authedPage.locator("[data-testid='timeline-toggle']");
+    const expandDetails = authedPage.locator("[data-testid='timeline-expand-details']");
+    if ((await expandDetails.count()) === 0) {
+      test.skip(true, "No compact play groups on this game");
+      return;
+    }
 
-    // Default: highlights mode
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(expandDetails).toHaveAttribute("aria-pressed", "false");
+    await expect(expandDetails).toHaveAttribute("aria-label", "Expand play details");
 
-    // Expand to full play-by-play
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await expect(toggle).toHaveAttribute("aria-label", "Switch to key plays view");
-
-    // Collapse back to highlights
-    await toggle.click();
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
-    await expect(toggle).toHaveAttribute("aria-label", "Show full play-by-play");
+    await expandDetails.click();
+    await expect(expandDetails).toHaveAttribute("aria-pressed", "true");
+    await expect(expandDetails).toHaveAttribute("aria-label", "Collapse play details");
   });
 
-  test("toggle button is keyboard accessible", async ({ authedPage }) => {
+  test("expand details button is keyboard accessible when available", async ({ authedPage }) => {
     const ok = await navigateToGame(authedPage);
     if (!ok) { test.skip(true, "No game data"); return; }
 
@@ -74,13 +71,18 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
       return;
     }
 
-    const toggle = authedPage.locator("[data-testid='timeline-toggle']");
-    await toggle.focus();
+    const expandDetails = authedPage.locator("[data-testid='timeline-expand-details']");
+    if ((await expandDetails.count()) === 0) {
+      test.skip(true, "No compact play groups on this game");
+      return;
+    }
+
+    await expandDetails.focus();
     await authedPage.keyboard.press("Enter");
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(expandDetails).toHaveAttribute("aria-pressed", "true");
 
     await authedPage.keyboard.press("Enter");
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(expandDetails).toHaveAttribute("aria-pressed", "false");
   });
 
   test("period cards have aria-expanded and aria-controls attributes", async ({
@@ -97,7 +99,7 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
 
     // Period toggle buttons inside timeline section
     const periodButtons = section.locator(
-      "button:not([data-testid='timeline-toggle'])",
+      "button[aria-controls]",
     );
     const count = await periodButtons.count();
     if (count === 0) {
@@ -110,7 +112,7 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
     await expect(firstBtn).toHaveAttribute("aria-controls");
   });
 
-  test("full play-by-play shows more plays than highlights mode", async ({
+  test("expanded details show at least as many indexed plays as compact view", async ({
     authedPage,
   }) => {
     const ok = await navigateToGame(authedPage);
@@ -124,7 +126,7 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
 
     // Expand all period cards first
     const periodButtons = section.locator(
-      "button:not([data-testid='timeline-toggle'])",
+      "button[aria-controls]",
     );
     const count = await periodButtons.count();
     for (let i = 0; i < count; i++) {
@@ -134,18 +136,19 @@ test.describe("Game Timeline — highlights mode @live-upstream", () => {
     }
     await authedPage.waitForTimeout(300);
 
-    // Count play rows in highlights mode
-    const highlightRowCount = await section.locator(".rounded-md, .rounded").count();
+    const compactRowCount = await section.locator("[data-play-index]").count();
 
-    // Switch to full play-by-play
-    const toggle = authedPage.locator("[data-testid='timeline-toggle']");
-    await toggle.click();
+    const expandDetails = authedPage.locator("[data-testid='timeline-expand-details']");
+    if ((await expandDetails.count()) === 0) {
+      test.skip(true, "No compact play groups on this game");
+      return;
+    }
+
+    await expandDetails.click();
     await authedPage.waitForTimeout(300);
 
-    const fullRowCount = await section.locator(".rounded-md, .rounded").count();
+    const expandedRowCount = await section.locator("[data-play-index]").count();
 
-    // Full mode should show at least as many items as highlights mode
-    // (strict greater-than only possible when tier 3 data exists)
-    expect(fullRowCount).toBeGreaterThanOrEqual(highlightRowCount);
+    expect(expandedRowCount).toBeGreaterThanOrEqual(compactRowCount);
   });
 });

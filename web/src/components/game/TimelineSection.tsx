@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useId } from "react";
+import { useState, useMemo } from "react";
 import type { PlayEntry } from "@/lib/types";
 import { TimelineRow } from "./TimelineRow";
 import { CollapsedPlayGroup } from "./CollapsedPlayGroup";
@@ -104,40 +104,6 @@ function buildPeriodItems(periodPlays: PlayEntry[]): PeriodItem[] {
   return items;
 }
 
-/**
- * Builds the highlights-only view for a period.
- *
- * Priority order:
- *  1. If tier metadata exists (any play with tier 1 or 2): show tier 1+2.
- *  2. Else if scoring plays exist: show scoring plays.
- *  3. Else: deterministic sample — first + last + every ~5th play.
- */
-function buildHighlightItems(
-  periodPlays: PlayEntry[],
-  hasTierData: boolean,
-): PeriodItem[] {
-  if (hasTierData) {
-    const high = periodPlays.filter(p => (p.tier ?? 3) <= 2);
-    return high.map(p => ({ kind: "play", play: p }));
-  }
-
-  // Fallback 1: scoring plays
-  const scoring = periodPlays.filter(p => p.scoreChanged === true);
-  if (scoring.length >= 1) {
-    return scoring.map(p => ({ kind: "play", play: p }));
-  }
-
-  // Fallback 2: deterministic sample — always include first and last
-  const n = periodPlays.length;
-  if (n <= 5) return periodPlays.map(p => ({ kind: "play" as const, play: p }));
-  const step = Math.max(2, Math.floor(n / 5));
-  const indices = new Set<number>([0, n - 1]);
-  for (let i = step; i < n - 1; i += step) indices.add(i);
-  return [...indices]
-    .sort((a, b) => a - b)
-    .map(i => ({ kind: "play" as const, play: periodPlays[i] }));
-}
-
 // ─── Period Card ────────────────────────────────────────────
 
 interface PeriodCardProps {
@@ -150,6 +116,7 @@ interface PeriodCardProps {
   homeColor?: string;
   awayColor?: string;
   contentId: string;
+  expandDetails: boolean;
 }
 
 function PeriodCard({
@@ -162,6 +129,7 @@ function PeriodCard({
   homeColor,
   awayColor,
   contentId,
+  expandDetails,
 }: PeriodCardProps) {
   return (
     <div className="rounded-lg border border-neutral-800 bg-neutral-900 overflow-hidden">
@@ -209,6 +177,7 @@ function PeriodCard({
                   <CollapsedPlayGroup
                     key={`tier3-${item.plays[0].playIndex}`}
                     plays={item.plays}
+                    expandAll={expandDetails}
                     homeTeamAbbr={homeTeamAbbr}
                     awayTeamAbbr={awayTeamAbbr}
                     homeColor={homeColor}
@@ -243,28 +212,23 @@ export function TimelineSection({
   homeColor,
   awayColor,
 }: TimelineSectionProps) {
-  const [showAll, setShowAll] = useState(false);
-  const toggleId = useId();
+  const [expandDetails, setExpandDetails] = useState(false);
 
   // Per-game period expand/collapse persistence
   const { getPeriods, togglePeriod } = useSectionLayout();
   const expandedPeriods = getPeriods(gameId) ?? [];
 
-  // True if any play carries explicit tier 1 or 2 metadata from the backend
-  const hasTierData = useMemo(
-    () => plays.some(p => p.tier != null && p.tier <= 2),
-    [plays],
-  );
-
   const periods = useMemo(() => {
     const periodMap = groupByPeriod(plays);
     return Array.from(periodMap.entries()).map(([period, periodPlays]) => ({
       period,
-      items: showAll
-        ? buildPeriodItems(periodPlays)
-        : buildHighlightItems(periodPlays, hasTierData),
+      items: buildPeriodItems(periodPlays),
     }));
-  }, [plays, showAll, hasTierData]);
+  }, [plays]);
+
+  const hasCollapsedDetails = periods.some(({ items }) =>
+    items.some((item) => item.kind === "tier3-group"),
+  );
 
   if (plays.length === 0) {
     return (
@@ -276,26 +240,27 @@ export function TimelineSection({
 
   return (
     <div data-testid="timeline-section" className="px-4 space-y-2">
-      {/* Mode toggle */}
+      {/* Detail expansion */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-neutral-500">
-          {showAll ? "Full play-by-play" : "Key plays"}
+          Full play-by-play
         </span>
-        <button
-          id={toggleId}
-          onClick={() => setShowAll(s => !s)}
-          aria-pressed={showAll}
-          aria-label={showAll ? "Switch to key plays view" : "Show full play-by-play"}
-          data-testid="timeline-toggle"
-          className={cn(
-            "rounded-full px-3 py-1 text-xs font-medium transition",
-            showAll
-              ? "bg-neutral-700 text-neutral-200"
-              : "bg-transparent text-neutral-400 ring-1 ring-neutral-700/60 hover:ring-neutral-500",
-          )}
-        >
-          {showAll ? "Key plays" : "All plays"}
-        </button>
+        {hasCollapsedDetails && (
+          <button
+            onClick={() => setExpandDetails(s => !s)}
+            aria-pressed={expandDetails}
+            aria-label={expandDetails ? "Collapse play details" : "Expand play details"}
+            data-testid="timeline-expand-details"
+            className={cn(
+              "rounded-full px-3 py-1 text-xs font-medium transition",
+              expandDetails
+                ? "bg-neutral-700 text-neutral-200"
+                : "bg-transparent text-neutral-400 ring-1 ring-neutral-700/60 hover:ring-neutral-500",
+            )}
+          >
+            {expandDetails ? "Collapse details" : "Expand details"}
+          </button>
+        )}
       </div>
 
       {periods.map(({ period, items }) => (
@@ -310,6 +275,7 @@ export function TimelineSection({
           homeColor={homeColor}
           awayColor={awayColor}
           contentId={`timeline-period-${gameId}-${period.replace(/\s+/g, "-")}`}
+          expandDetails={expandDetails}
         />
       ))}
     </div>

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 interface CollapsedPlayGroupProps {
   plays: PlayEntry[];
   summaryLabel?: string;
+  expandAll?: boolean;
   homeTeamAbbr?: string;
   awayTeamAbbr?: string;
   homeColor?: string;
@@ -95,12 +96,14 @@ function generateSummary(plays: PlayEntry[]): string {
 export function CollapsedPlayGroup({
   plays,
   summaryLabel,
+  expandAll = false,
   homeTeamAbbr,
   awayTeamAbbr,
   homeColor,
   awayColor,
 }: CollapsedPlayGroupProps) {
   const [expanded, setExpanded] = useState(false);
+  const isExpanded = expandAll || expanded;
 
   const label = summaryLabel || generateSummary(plays);
 
@@ -117,7 +120,7 @@ export function CollapsedPlayGroup({
         <span
           className={cn(
             "text-[10px] text-neutral-600 transition-transform duration-150",
-            expanded && "rotate-90",
+            isExpanded && "rotate-90",
           )}
         >
           {"\u25B6"}
@@ -145,7 +148,7 @@ export function CollapsedPlayGroup({
       <div
         className={cn(
           "grid transition-[grid-template-rows] duration-200",
-          expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
+          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]",
         )}
       >
         <div className="overflow-hidden">

@@ -125,9 +125,14 @@ test.describe("Game Detail Reading Position @live-upstream", () => {
       return;
     }
 
-    // Switch to full play-by-play so all play rows render
-    const toggle = authedPage.locator("[data-testid='timeline-toggle']");
-    await toggle.click();
+    const firstPeriod = timeline.locator("button[aria-controls]").first();
+    if ((await firstPeriod.count()) === 0) {
+      test.skip(true, "No period cards on this game");
+      return;
+    }
+    if ((await firstPeriod.getAttribute("aria-expanded")) === "false") {
+      await firstPeriod.click();
+    }
     await authedPage.waitForTimeout(300);
 
     const playElements = authedPage.locator("[data-play-index]");
@@ -199,9 +204,14 @@ test.describe("Game Detail Reading Position @live-upstream", () => {
       return;
     }
 
-    // Switch to full play-by-play to expose indexed play elements
-    const toggle = authedPage.locator("[data-testid='timeline-toggle']");
-    await toggle.click();
+    const firstPeriod = timeline.locator("button[aria-controls]").first();
+    if ((await firstPeriod.count()) === 0) {
+      test.skip(true, "No period cards on this game");
+      return;
+    }
+    if ((await firstPeriod.getAttribute("aria-expanded")) === "false") {
+      await firstPeriod.click();
+    }
     await authedPage.waitForTimeout(300);
 
     const playElements = authedPage.locator("[data-play-index]");
