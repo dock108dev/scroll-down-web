@@ -74,7 +74,37 @@ function groupByPeriod(plays: PlayEntry[]): Map<string, PlayEntry[]> {
  * Returns true for any tier 3 play.
  */
 function isTier3(play: PlayEntry): boolean {
-  return (play.tier ?? 3) === 3;
+  return getTimelineTier(play) === 3;
+}
+
+function normalizedPlayText(play: PlayEntry): string {
+  return `${play.playType ?? ""} ${play.description ?? ""}`.toLowerCase();
+}
+
+function isExtraBaseHit(play: PlayEntry): boolean {
+  const text = normalizedPlayText(play);
+  if (text.includes("double play") || text.includes("triple play")) return false;
+  return (
+    text.includes("home run") ||
+    text.includes("homer") ||
+    /\btriples?\b/.test(text) ||
+    /\bdoubles?\b/.test(text)
+  );
+}
+
+function getTimelineTier(play: PlayEntry): number {
+  if (play.scoreChanged || play.scoringTeamAbbr || /\b(home run|homer)\b/.test(normalizedPlayText(play))) {
+    return 1;
+  }
+  if (isExtraBaseHit(play)) {
+    return Math.min(play.tier ?? 3, 2);
+  }
+  return play.tier ?? 3;
+}
+
+function withTimelineTier(play: PlayEntry): PlayEntry {
+  const tier = getTimelineTier(play);
+  return tier === play.tier ? play : { ...play, tier };
 }
 
 /**
@@ -97,7 +127,7 @@ function buildPeriodItems(periodPlays: PlayEntry[]): PeriodItem[] {
       items.push({ kind: "tier3-group", plays: group });
       i = j;
     } else {
-      items.push({ kind: "play", play });
+      items.push({ kind: "play", play: withTimelineTier(play) });
       i++;
     }
   }

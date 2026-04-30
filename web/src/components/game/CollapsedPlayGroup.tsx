@@ -17,7 +17,7 @@ interface CollapsedPlayGroupProps {
 
 /**
  * Generates a client-side summary label by counting play types.
- * E.g. "2 missed shots, 1 rebound, 1 other"
+ * E.g. "2 missed shots, 1 rebound, 1 fielders choice"
  */
 function generateSummary(plays: PlayEntry[]): string {
   const counts: Record<string, number> = {};
@@ -59,6 +59,40 @@ function generateSummary(plays: PlayEntry[]): string {
     } else if (desc.includes("violation") || type.includes("violation")) {
       counts["violation"] = (counts["violation"] ?? 0) + 1;
     // Baseball
+    } else if (desc.includes("triple play") || type.includes("triple_play")) {
+      counts["triple play"] = (counts["triple play"] ?? 0) + 1;
+    } else if (desc.includes("double play") || type.includes("double_play")) {
+      counts["double play"] = (counts["double play"] ?? 0) + 1;
+    } else if (desc.includes("home run") || desc.includes("homer") || type.includes("home_run")) {
+      counts["home run"] = (counts["home run"] ?? 0) + 1;
+    } else if (/\btriples?\b/.test(desc) || type.includes("triple")) {
+      counts["triple"] = (counts["triple"] ?? 0) + 1;
+    } else if (/\bdoubles?\b/.test(desc) || type.includes("double")) {
+      counts["double"] = (counts["double"] ?? 0) + 1;
+    } else if (desc.includes("hit by pitch") || desc.includes("hit-by-pitch") || type.includes("hit_by_pitch")) {
+      counts["hit by pitch"] = (counts["hit by pitch"] ?? 0) + 1;
+    } else if (desc.includes("sacrifice") || desc.includes("sac fly") || desc.includes("sac bunt") || type.includes("sacrifice")) {
+      counts["sacrifice"] = (counts["sacrifice"] ?? 0) + 1;
+    } else if (desc.includes("fielder's choice") || desc.includes("fielders choice") || type.includes("fielders_choice")) {
+      counts["fielders choice"] = (counts["fielders choice"] ?? 0) + 1;
+    } else if (desc.includes("force out") || type.includes("forceout")) {
+      counts["force out"] = (counts["force out"] ?? 0) + 1;
+    } else if (desc.includes("reaches on error") || /\berror\b/.test(desc) || type.includes("error")) {
+      counts["error"] = (counts["error"] ?? 0) + 1;
+    } else if (desc.includes("wild pitch") || type.includes("wild_pitch")) {
+      counts["wild pitch"] = (counts["wild pitch"] ?? 0) + 1;
+    } else if (desc.includes("passed ball") || type.includes("passed_ball")) {
+      counts["passed ball"] = (counts["passed ball"] ?? 0) + 1;
+    } else if (desc.includes("balk") || type.includes("balk")) {
+      counts["balk"] = (counts["balk"] ?? 0) + 1;
+    } else if (desc.includes("pickoff") || desc.includes("picked off") || type.includes("pickoff")) {
+      counts["pickoff"] = (counts["pickoff"] ?? 0) + 1;
+    } else if (desc.includes("caught stealing") || type.includes("caught_stealing")) {
+      counts["caught stealing"] = (counts["caught stealing"] ?? 0) + 1;
+    } else if (desc.includes("mound visit") || type.includes("mound_visit")) {
+      counts["mound visit"] = (counts["mound visit"] ?? 0) + 1;
+    } else if (desc.includes("review") || desc.includes("challenge") || type.includes("review") || type.includes("challenge")) {
+      counts["review"] = (counts["review"] ?? 0) + 1;
     } else if (desc.includes("strikeout") || desc.includes("struck out") || type.includes("strikeout")) {
       counts["strikeout"] = (counts["strikeout"] ?? 0) + 1;
     } else if (desc.includes("ground out") || desc.includes("grounds out") || type.includes("groundout")) {
@@ -73,8 +107,6 @@ function generateSummary(plays: PlayEntry[]): string {
       counts["walk"] = (counts["walk"] ?? 0) + 1;
     } else if (desc.includes("single") || type.includes("single")) {
       counts["single"] = (counts["single"] ?? 0) + 1;
-    } else if (desc.includes("double play") || type.includes("double_play")) {
-      counts["double play"] = (counts["double play"] ?? 0) + 1;
     } else if (desc.includes("stolen base") || type.includes("stolen_base")) {
       counts["stolen base"] = (counts["stolen base"] ?? 0) + 1;
     } else if (desc.includes("pitching change") || desc.includes("pitcher change") || type.includes("pitching_change")) {
