@@ -69,7 +69,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   const scoresVisible = display?.visible ?? false;
   const hasNewData = display?.hasUpdate ?? false;
   const freshness = useFreshnessLabel(game.id, live && !isHistory);
-  const updateContext = hasNewData ? formatSnapshotContext(snapshot) : "";
 
   // Three visual states for read/unread treatment
   const revealState: "unrevealed" | "revealed" | "updated" =
@@ -137,16 +136,11 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     }
   };
 
-  // ── Live clock string (used in score zone) ──────────────────
-  const liveTimeStr = (() => {
-    if (!live) return "";
-    const showClock = scoresVisible;
-    if (display?.frozen && snapshot?.periodLabel) {
-      const snapClock = snapshot.clock && snapshot.clock !== snapshot.periodLabel ? snapshot.clock : "";
-      return `${snapshot.periodLabel}${snapClock ? ` ${snapClock}` : ""}`;
-    }
-    if (!showClock) return "";
-    // Deduplicate: MLB puts the inning label in both fields
+  // ── Game context string (used in score zone) ──────────────────
+  const scoreContextStr = (() => {
+    if (display?.frozen) return formatSnapshotContext(snapshot);
+    if (!live || !scoresVisible) return "";
+
     const clock = game.gameClock && game.gameClock !== game.currentPeriodLabel ? game.gameClock : "";
     return (game.currentPeriodLabel || clock)
       ? `${game.currentPeriodLabel ?? ""}${clock ? ` ${clock}` : ""}`
@@ -169,7 +163,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
         return (
           <button
             data-testid="upd-badge"
-            title={updateContext ? `Update available from ${updateContext}` : "Update available"}
+            title="Update available"
             onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
             className="inline-flex max-w-full items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
@@ -178,14 +172,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPD
-            {updateContext && (
-              <span
-                data-testid="upd-context"
-                className="min-w-0 truncate font-medium text-neutral-500"
-              >
-                &middot; {updateContext}
-              </span>
-            )}
           </button>
         );
       }
@@ -206,7 +192,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
         return (
           <button
             data-testid="upd-badge"
-            title={updateContext ? `Update available from ${updateContext}` : "Update available"}
+            title="Update available"
             onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
             className="inline-flex max-w-full items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
@@ -215,14 +201,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPD
-            {updateContext && (
-              <span
-                data-testid="upd-context"
-                className="min-w-0 truncate font-medium text-neutral-500"
-              >
-                &middot; {updateContext}
-              </span>
-            )}
           </button>
         );
       }
@@ -256,7 +234,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
             }}
             className={cn(scoreLaneClass, "pl-3 flex items-center justify-end text-right gap-1.5")}
           >
-            {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
+            {scoreContextStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{scoreContextStr}</span>}
             <span key={flashCount} data-testid="score-value" className={cn(scoreTextClass, flashCount > 0 && "score-flash")}>{display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}</span>
           </button>
         );
@@ -296,12 +274,13 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
             className="absolute inset-0 flex items-center justify-end gap-1.5 w-full"
             tabIndex={scoresVisible ? 0 : -1}
           >
-            {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
+            {scoreContextStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{scoreContextStr}</span>}
             {scoreEl}
           </button>
         ) : (
           scoreEl ? (
-            <div className="absolute inset-0 flex items-center justify-end">
+            <div className="absolute inset-0 flex items-center justify-end gap-1.5">
+              {scoreContextStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{scoreContextStr}</span>}
               {scoreEl}
             </div>
           ) : null
