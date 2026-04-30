@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SUPPORT_EMAIL } from "@/lib/site-config";
 
 export const metadata: Metadata = { title: "Terms of Service — Scroll Down Sports" };
 
@@ -52,10 +53,10 @@ export default function TermsPage() {
         <p>
           Questions? Reach us at{" "}
           <a
-            href="mailto:dock108dev@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-blue-400 hover:text-blue-300 transition-colors"
           >
-            dock108dev@gmail.com
+            {SUPPORT_EMAIL}
           </a>.
         </p>
       </section>

@@ -3,6 +3,7 @@
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { useHealthDegraded } from "@/hooks/useHealthStatus";
 import { useTopBannerSlotClaimed } from "@/lib/top-banner-slot";
+import { SUPPORT_EMAIL } from "@/lib/site-config";
 
 const DISMISSED_KEY = "sd-beta-banner-dismissed";
 
@@ -51,7 +52,7 @@ export function BetaBanner() {
         <span>
           Early version &mdash; some features are in progress.{" "}
           <a
-            href="mailto:dock108dev@gmail.com?subject=Beta Feedback"
+            href={`mailto:${SUPPORT_EMAIL}?subject=Beta Feedback`}
             className="inline-flex items-center font-medium text-blue-400 hover:text-blue-300 transition-colors min-h-[44px] px-1"
           >
             Send feedback

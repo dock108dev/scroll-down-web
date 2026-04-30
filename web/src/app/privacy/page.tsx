@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SUPPORT_EMAIL } from "@/lib/site-config";
 
 export const metadata: Metadata = { title: "Privacy Policy — Scroll Down Sports" };
 
@@ -45,10 +46,10 @@ export default function PrivacyPage() {
         <p>
           Questions about privacy? Reach us at{" "}
           <a
-            href="mailto:dock108dev@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="text-blue-400 hover:text-blue-300 transition-colors"
           >
-            dock108dev@gmail.com
+            {SUPPORT_EMAIL}
           </a>.
         </p>
       </section>

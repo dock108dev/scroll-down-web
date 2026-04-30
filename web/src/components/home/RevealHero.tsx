@@ -1,4 +1,31 @@
+"use client";
+
+import { useSettings } from "@/stores/settings";
+
 export function RevealHero() {
+  const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
+  const followingLive = useSettings((s) => s.followingLive);
+  const hiddenLeagueCount = useSettings((s) => s.scoreHideLeagues.length);
+  const hiddenTeamCount = useSettings((s) => s.scoreHideTeams.length);
+
+  if (followingLive || scoreRevealMode === "always") return null;
+
+  const blacklistHasRules = hiddenLeagueCount + hiddenTeamCount > 0;
+  const copy = scoreRevealMode === "blacklist"
+    ? blacklistHasRules
+      ? {
+        lead: "Selected scores are hidden.",
+        body: "Teams and leagues on your hide list stay spoiler-free; everything else is visible.",
+      }
+      : {
+        lead: "Scores are visible by default.",
+        body: "Add teams or leagues in Score visibility to hide only the ones you care about.",
+      }
+    : {
+      lead: "Scores are hidden by default.",
+      body: "Reveal results on your schedule — no spoilers until you choose.",
+    };
+
   return (
     <div
       data-testid="reveal-hero"
@@ -20,8 +47,8 @@ export function RevealHero() {
         <line x1="1" y1="1" x2="23" y2="23" />
       </svg>
       <p className="text-xs text-neutral-500 leading-snug">
-        <span className="font-medium text-neutral-300">Scores are hidden by default.</span>
-        {" "}Reveal results on your schedule — no spoilers until you choose.
+        <span className="font-medium text-neutral-300">{copy.lead}</span>
+        {" "}{copy.body}
       </p>
     </div>
   );

@@ -126,10 +126,9 @@ export const STORAGE = {
 };
 
 export const FRESHNESS = {
-  LABEL_MIN_MS: 30_000,           // <30s: no label
-  AMBER_THRESHOLD_MS: 2 * 60_000, // 30s–2min: "Updated Xs ago" (muted)
-  RED_THRESHOLD_MS: 5 * 60_000,   // 2–5min: "May be delayed" (amber), >5min: "Data delayed" (red)
-  UPDATE_INTERVAL_MS: 10_000,     // re-evaluate label every 10s
+  LABEL_MIN_MS: 10 * 60_000,      // <10min: no label; trust normal live updates
+  RED_THRESHOLD_MS: 15 * 60_000,  // 10–15min: "May be delayed", >15min: "Data delayed"
+  UPDATE_INTERVAL_MS: 30_000,     // re-evaluate label every 30s
 };
 
 export const RENDER = {

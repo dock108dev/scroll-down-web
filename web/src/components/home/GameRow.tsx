@@ -3,8 +3,9 @@
 import { memo, useRef, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { GameCore } from "@/stores/game-data";
-import { isLive, isFinal, isPregame } from "@/lib/types";
+import { isLive, isFinal, isPregame, type GameStatus } from "@/lib/types";
 import { useReveal } from "@/stores/reveal";
+import type { RevealSnapshot } from "@/stores/reveal";
 import { useScoreDisplay } from "@/hooks/useScoreDisplay";
 import { usePinnedGames } from "@/stores/pinned-games";
 import { cn, cardDisplayName, formatTimeET, resolveTeamColor } from "@/lib/utils";
@@ -34,10 +35,24 @@ function formatHistoryDateTime(dateStr: string): string {
   return `${monthDay} · ${time} ET`;
 }
 
+function formatSnapshotContext(snapshot: RevealSnapshot | undefined): string {
+  if (!snapshot) return "";
+  if (isFinal(snapshot.status as GameStatus)) return "Final";
+
+  const periodLabel = snapshot.periodLabel ?? (snapshot.period ? `P${snapshot.period}` : "");
+  const clock = snapshot.clock && snapshot.clock !== periodLabel
+    ? snapshot.clock
+    : "";
+
+  if (periodLabel && clock) return `${periodLabel} ${clock}`;
+  return periodLabel || clock;
+}
+
 export const GameRow = memo(function GameRow({ game, showPin = true, variant = "home" }: GameRowProps) {
   const isHistory = variant === "history";
   const router = useRouter();
   const { reveal, acceptUpdate, isRevealed } = useReveal();
+  const snapshot = useReveal((s) => s.getSnapshot(game.id));
   const display = useScoreDisplay(game.id);
 
   const pinned = usePinnedGames((s) => s.isPinned)(game.id);
@@ -49,12 +64,12 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   const live = isLive(game.status, game);
   const pregame = isPregame(game.status, game);
 
-  const freshness = useFreshnessLabel(game.id, live && !isHistory);
-
   const hasScoreData = game.homeScore != null && game.awayScore != null;
   const canToggle = display?.canToggle ?? false;
   const scoresVisible = display?.visible ?? false;
   const hasNewData = display?.hasUpdate ?? false;
+  const freshness = useFreshnessLabel(game.id, live && !isHistory);
+  const updateContext = hasNewData ? formatSnapshotContext(snapshot) : "";
 
   // Three visual states for read/unread treatment
   const revealState: "unrevealed" | "revealed" | "updated" =
@@ -80,7 +95,8 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     if (scoresVisible && pA != null && pH != null &&
         display?.awayScore != null && display?.homeScore != null &&
         (pA !== display.awayScore || pH !== display.homeScore)) {
-      setFlashCount((c) => c + 1);
+      const t = setTimeout(() => setFlashCount((c) => c + 1), 0);
+      return () => clearTimeout(t);
     }
   }, [display?.awayScore, display?.homeScore, scoresVisible]);
 
@@ -91,7 +107,10 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   useEffect(() => {
     const prev = prevHasNewRef.current;
     prevHasNewRef.current = hasNewData;
-    if (!prev && hasNewData && canToggle && !scoresVisible) setUpdatePulse(true);
+    if (!prev && hasNewData && canToggle && !scoresVisible) {
+      const t = setTimeout(() => setUpdatePulse(true), 0);
+      return () => clearTimeout(t);
+    }
   }, [hasNewData, canToggle, scoresVisible]);
 
   useEffect(() => {
@@ -122,7 +141,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
   const liveTimeStr = (() => {
     if (!live) return "";
     const showClock = scoresVisible;
-    const snapshot = useReveal.getState().getSnapshot(game.id);
     if (display?.frozen && snapshot?.periodLabel) {
       const snapClock = snapshot.clock && snapshot.clock !== snapshot.periodLabel ? snapshot.clock : "";
       return `${snapshot.periodLabel}${snapClock ? ` ${snapClock}` : ""}`;
@@ -134,6 +152,9 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       ? `${game.currentPeriodLabel ?? ""}${clock ? ` ${clock}` : ""}`
       : "";
   })();
+
+  const scoreTextClass = "shrink-0 whitespace-nowrap text-lg font-bold tabular-nums text-neutral-200 text-right";
+  const scoreLaneClass = "shrink-0 min-w-[128px] min-h-[44px]";
 
   // ── Status indicator ──────────────────────────────────────────
 
@@ -148,14 +169,23 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
         return (
           <button
             data-testid="upd-badge"
+            title={updateContext ? `Update available from ${updateContext}` : "Update available"}
             onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
-            className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
+            className="inline-flex max-w-full items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-live-dot absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPD
+            {updateContext && (
+              <span
+                data-testid="upd-context"
+                className="min-w-0 truncate font-medium text-neutral-500"
+              >
+                &middot; {updateContext}
+              </span>
+            )}
           </button>
         );
       }
@@ -176,14 +206,23 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
         return (
           <button
             data-testid="upd-badge"
+            title={updateContext ? `Update available from ${updateContext}` : "Update available"}
             onClick={(e) => { e.stopPropagation(); acceptUpdate(game.id, pickSnapshot(game)); }}
-            className="inline-flex items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
+            className="inline-flex max-w-full items-center gap-1 text-amber-400 font-semibold text-xs cursor-pointer hover:text-amber-300 transition"
           >
             <span className="relative flex h-1.5 w-1.5">
               <span className="animate-live-dot absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-amber-400" />
             </span>
             UPD
+            {updateContext && (
+              <span
+                data-testid="upd-context"
+                className="min-w-0 truncate font-medium text-neutral-500"
+              >
+                &middot; {updateContext}
+              </span>
+            )}
           </button>
         );
       }
@@ -215,16 +254,17 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
               e.stopPropagation();
               if (hasNewData) acceptUpdate(game.id, pickSnapshot(game));
             }}
-            className="shrink-0 pl-3 min-w-[96px] min-h-[44px] flex items-center justify-end text-right gap-2"
+            className={cn(scoreLaneClass, "pl-3 flex items-center justify-end text-right gap-1.5")}
           >
             {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
-            <span key={flashCount} data-testid="score-value" className={cn("text-lg font-bold tabular-nums text-neutral-200", flashCount > 0 && "score-flash")}>{display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}</span>
+            <span key={flashCount} data-testid="score-value" className={cn(scoreTextClass, flashCount > 0 && "score-flash")}>{display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}</span>
           </button>
         );
       }
       return (
         <span key={flashCount} data-testid="score-value" className={cn(
-          "shrink-0 text-lg font-bold tabular-nums text-neutral-200 pl-3 text-right min-w-[96px]",
+          scoreTextClass,
+          "pl-3 min-w-[96px]",
           flashCount > 0 && "score-flash",
         )}>
           {display?.awayScore ?? game.awayScore} <span className="text-neutral-600">&ndash;</span> {display?.homeScore ?? game.homeScore}
@@ -239,13 +279,13 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     const homeForDisplay = scoresVisible ? display?.homeScore : null;
     const hasAnyScore = awayForDisplay != null && homeForDisplay != null;
     const scoreEl = hasAnyScore ? (
-      <span key={flashCount} data-testid="score-value" className={cn("text-lg font-bold tabular-nums text-neutral-200 text-right", flashCount > 0 && "score-flash")}>
+      <span key={flashCount} data-testid="score-value" className={cn(scoreTextClass, flashCount > 0 && "score-flash")}>
         {awayForDisplay} <span className="text-neutral-600">&ndash;</span> {homeForDisplay}
       </span>
     ) : null;
 
     return (
-      <div className="relative shrink-0 ml-3 min-w-[96px] min-h-[44px]">
+      <div className={cn("relative ml-3", scoreLaneClass)}>
         {/* Score always rendered beneath overlay */}
         {live ? (
           <button
@@ -253,7 +293,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
               e.stopPropagation();
               if (hasNewData) acceptUpdate(game.id, pickSnapshot(game));
             }}
-            className="absolute inset-0 flex items-center justify-end gap-2 w-full"
+            className="absolute inset-0 flex items-center justify-end gap-1.5 w-full"
             tabIndex={scoresVisible ? 0 : -1}
           >
             {liveTimeStr && <span className="text-neutral-500 text-[11px] font-normal whitespace-nowrap">{liveTimeStr}</span>}
@@ -351,7 +391,6 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
             data-testid="freshness-label"
             className={cn(
               "text-[10px] leading-tight truncate",
-              freshness.severity === "muted" && "text-neutral-500",
               freshness.severity === "amber" && "text-amber-400",
               freshness.severity === "red" && "text-red-400",
             )}

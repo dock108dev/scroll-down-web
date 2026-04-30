@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SUPPORT_EMAIL } from "@/lib/site-config";
 
 export const metadata: Metadata = { title: "Contact — Scroll Down Sports" };
 
@@ -19,14 +20,14 @@ export default function ContactPage() {
             The fastest way to reach us:
           </p>
           <a
-            href="mailto:dock108dev@gmail.com"
+            href={`mailto:${SUPPORT_EMAIL}`}
             className="inline-flex items-center gap-2 text-sm font-semibold text-blue-400 hover:text-blue-300 transition-colors min-h-[44px] bg-blue-500/10 px-3 py-2 rounded-lg border border-blue-500/20"
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
               <polyline points="22,6 12,13 2,6" />
             </svg>
-            dock108dev@gmail.com
+            {SUPPORT_EMAIL}
           </a>
         </div>
 

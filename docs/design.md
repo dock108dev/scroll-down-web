@@ -109,8 +109,8 @@ The dispatcher routes all incoming events into the `game-data` Zustand store. Co
 
 Every piece of data should communicate its provenance and freshness:
 
-- **Relative timestamps**: "Updated 12s ago" not "2:34:47 PM"
-- **Staleness thresholds**: fresh (no label) → "N seconds ago" → amber warning → red "may be delayed"
+- **Freshness labels**: routine live refreshes stay silent; warn only when data is meaningfully stale
+- **Staleness thresholds**: fresh (no label) → amber warning → red "data delayed"
 - **Source attribution**: bookmaker logos inline for odds, "via [source]" for stats
 - **Score update flash**: brief highlight animation when score changes (600ms yellow flash or scale pulse)
 - **Live indicator**: pulsing dot + "LIVE" for in-progress games

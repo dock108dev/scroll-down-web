@@ -141,10 +141,9 @@ Note: `home-scroll` store is in-memory only (not persisted to localStorage). Cac
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `FRESHNESS.LABEL_MIN_MS` | 30s | No label shown if updated within this window |
-| `FRESHNESS.AMBER_THRESHOLD_MS` | 2 min | Muted "Updated Xs ago" shown from 30s to 2 min |
-| `FRESHNESS.RED_THRESHOLD_MS` | 5 min | Amber "May be delayed" from 2–5 min; red "Data delayed" above 5 min |
-| `FRESHNESS.UPDATE_INTERVAL_MS` | 10s | Re-evaluate label every 10 seconds |
+| `FRESHNESS.LABEL_MIN_MS` | 10 min | No label shown unless live data has gone meaningfully stale |
+| `FRESHNESS.RED_THRESHOLD_MS` | 15 min | Amber "May be delayed" from 10–15 min; red "Data delayed" above 15 min |
+| `FRESHNESS.UPDATE_INTERVAL_MS` | 30s | Re-evaluate label every 30 seconds |
 
 ### Render
 

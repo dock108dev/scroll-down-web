@@ -36,13 +36,13 @@ test.describe("Freshness label on live game cards @live-upstream", () => {
     }
 
     // On a fresh page load, coreUpdatedAt is recent so no label should show
-    // (all labels require >30s age — data was just fetched)
+    // (labels only appear once live data is meaningfully delayed)
     const labels = authedPage.locator("[data-testid='freshness-label']");
     const labelCount = await labels.count();
     expect(labelCount).toBe(0);
   });
 
-  test("freshness label appears with muted style when data is 30s–2min stale", async ({
+  test("freshness label stays hidden for routine 60s live refresh age", async ({
     authedPage,
   }) => {
     const hasData = await waitForGameData(authedPage);
@@ -51,7 +51,7 @@ test.describe("Freshness label on live game cards @live-upstream", () => {
       return;
     }
 
-    // Simulate stale data by backdating coreUpdatedAt to 60 seconds ago
+    // Simulate routine live refresh age by backdating coreUpdatedAt to 60 seconds ago.
     const injected = await authedPage.evaluate(() => {
       const store = (
         window as unknown as {
@@ -75,22 +75,13 @@ test.describe("Freshness label on live game cards @live-upstream", () => {
       return;
     }
 
-    // Trigger a re-render by waiting for the 10s tick or navigating; instead
-    // we force a tiny state update by evaluating a no-op and waiting.
     await authedPage.waitForTimeout(200);
 
     const labels = authedPage.locator("[data-testid='freshness-label']");
-    const count = await labels.count();
-    if (count === 0) {
-      test.skip(true, "Label did not appear after store injection — store not directly accessible");
-      return;
-    }
-    await expect(labels.first()).toBeVisible();
-    const text = await labels.first().textContent();
-    expect(text).toMatch(/\d+s ago/);
+    await expect(labels).toHaveCount(0);
   });
 
-  test("freshness label shows amber 'May be delayed' at 2–5min threshold", async ({
+  test("freshness label shows amber 'May be delayed' at 10–15min threshold", async ({
     authedPage,
   }) => {
     const hasData = await waitForGameData(authedPage);
@@ -110,7 +101,7 @@ test.describe("Freshness label on live game cards @live-upstream", () => {
       let patched = 0;
       for (const [, entry] of state.games) {
         if (entry.core.isLive) {
-          entry.coreUpdatedAt = Date.now() - 3 * 60_000;
+          entry.coreUpdatedAt = Date.now() - 11 * 60_000;
           patched++;
         }
       }
@@ -133,7 +124,7 @@ test.describe("Freshness label on live game cards @live-upstream", () => {
     expect(text).toBe("May be delayed");
   });
 
-  test("freshness label shows red 'Data delayed' beyond 5min threshold", async ({
+  test("freshness label shows red 'Data delayed' beyond 15min threshold", async ({
     authedPage,
   }) => {
     const hasData = await waitForGameData(authedPage);
@@ -153,7 +144,7 @@ test.describe("Freshness label on live game cards @live-upstream", () => {
       let patched = 0;
       for (const [, entry] of state.games) {
         if (entry.core.isLive) {
-          entry.coreUpdatedAt = Date.now() - 6 * 60_000;
+          entry.coreUpdatedAt = Date.now() - 16 * 60_000;
           patched++;
         }
       }

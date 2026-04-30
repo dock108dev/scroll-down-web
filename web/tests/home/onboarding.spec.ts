@@ -1,12 +1,14 @@
 import { test, expect } from "../helpers";
 
 test.describe("Reveal hero strip", () => {
-  test("is always visible on fresh load", async ({ browser }) => {
+  test("shows spoiler-free copy in hide-by-default mode", async ({ browser }) => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
 
     await page.goto("/");
-    await expect(page.getByTestId("reveal-hero")).toBeVisible({ timeout: 5_000 });
+    const hero = page.getByTestId("reveal-hero");
+    await expect(hero).toBeVisible({ timeout: 5_000 });
+    await expect(hero).toContainText("Scores are hidden by default.");
 
     await ctx.close();
   });
@@ -35,6 +37,7 @@ test.describe("Reveal hero strip", () => {
 
     await ctx.close();
   });
+
 });
 
 test.describe("Reveal mode onboarding banner", () => {

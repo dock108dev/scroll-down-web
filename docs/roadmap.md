@@ -38,8 +38,8 @@
 
 **Exit criteria**: Live games show freshness indicators. Stale data is labeled. Score updates animate meaningfully.
 
-- [ ] Add relative freshness labels: "Updated 12s ago" on game cards during live games
-- [ ] Implement staleness thresholds: fresh (no label) → seconds ago → amber "may be delayed" → red warning
+- [ ] Keep routine live freshness silent; only show warnings once live data is meaningfully stale
+- [ ] Implement staleness thresholds: fresh (no label) → amber "may be delayed" → red warning
 - [ ] Add score update animation: brief highlight flash (yellow/gold, 600ms) when score changes via realtime
 - [ ] Add pulsing live indicator (dot + "LIVE" badge) for in-progress games
 - [ ] Ensure final games are visually static — no animation, no pulsing, muted styling
@@ -170,4 +170,3 @@
 - [ ] Consider API access tier ($24.99+/mo): programmatic access to fair odds, CLV data
 - [ ] Evaluate making history page Pro-only: full game archive, bet tracking, performance over time
 - [ ] Test: E2E for CLV dashboard, simulator, advanced filters
-

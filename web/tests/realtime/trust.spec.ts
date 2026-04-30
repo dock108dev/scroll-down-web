@@ -243,7 +243,7 @@ test.describe("Stale-data state UI (mocked)", () => {
     await expect(labels).toHaveCount(0);
   });
 
-  test("muted staleness label appears after store coreUpdatedAt backdated 60s @live-upstream", async ({ page }) => {
+  test("freshness label stays hidden for routine 60s live refresh age @live-upstream", async ({ page }) => {
     await page.goto("/");
     const hasData = await waitForGameData(page);
     if (!hasData) {
@@ -280,16 +280,10 @@ test.describe("Stale-data state UI (mocked)", () => {
     await page.waitForTimeout(200);
 
     const labels = page.locator("[data-testid='freshness-label']");
-    if ((await labels.count()) === 0) {
-      test.skip(true, "No freshness labels rendered — store injection may not have triggered re-render");
-      return;
-    }
-
-    const text = await labels.first().textContent();
-    expect(text).toMatch(/\d+s ago/);
+    await expect(labels).toHaveCount(0);
   });
 
-  test("'May be delayed' label appears when data is 3 minutes stale @live-upstream", async ({ page }) => {
+  test("'May be delayed' label appears when data is 10+ minutes stale @live-upstream", async ({ page }) => {
     await page.goto("/");
     const hasData = await waitForGameData(page);
     if (!hasData) {
@@ -311,7 +305,7 @@ test.describe("Stale-data state UI (mocked)", () => {
       let patched = 0;
       for (const [, entry] of store.getState().games) {
         if (entry.core.isLive) {
-          entry.coreUpdatedAt = Date.now() - 3 * 60_000;
+          entry.coreUpdatedAt = Date.now() - 11 * 60_000;
           patched++;
         }
       }
@@ -335,7 +329,7 @@ test.describe("Stale-data state UI (mocked)", () => {
     expect(text).toBe("May be delayed");
   });
 
-  test("'Data delayed' label appears when data is >5 minutes stale @live-upstream", async ({ page }) => {
+  test("'Data delayed' label appears when data is >15 minutes stale @live-upstream", async ({ page }) => {
     await page.goto("/");
     const hasData = await waitForGameData(page);
     if (!hasData) {
@@ -357,7 +351,7 @@ test.describe("Stale-data state UI (mocked)", () => {
       let patched = 0;
       for (const [, entry] of store.getState().games) {
         if (entry.core.isLive) {
-          entry.coreUpdatedAt = Date.now() - 6 * 60_000;
+          entry.coreUpdatedAt = Date.now() - 16 * 60_000;
           patched++;
         }
       }

@@ -1,5 +1,6 @@
 const DEFAULT_PROD_SITE_URL = "https://scrolldownsports.com";
 const DEFAULT_DEV_SITE_URL = "https://scrolldownsports.dev";
+export const SUPPORT_EMAIL = "dock108dev@gmail.com";
 
 function trimTrailingSlash(value: string): string {
   return value.replace(/\/$/, "");

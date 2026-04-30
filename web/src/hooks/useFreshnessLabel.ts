@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useGameData } from "@/stores/game-data";
 import { FRESHNESS } from "@/lib/config";
 
-export type FreshnessSeverity = "muted" | "amber" | "red";
+export type FreshnessSeverity = "amber" | "red";
 
 export interface FreshnessLabel {
   text: string;
@@ -18,12 +18,6 @@ function computeLabel(
   if (coreUpdatedAt === 0) return null;
   const ageMs = now - coreUpdatedAt;
   if (ageMs < FRESHNESS.LABEL_MIN_MS) return null;
-  if (ageMs < FRESHNESS.AMBER_THRESHOLD_MS) {
-    return {
-      text: `Updated ${Math.floor(ageMs / 1000)}s ago`,
-      severity: "muted",
-    };
-  }
   if (ageMs < FRESHNESS.RED_THRESHOLD_MS) {
     return { text: "May be delayed", severity: "amber" };
   }
@@ -37,7 +31,7 @@ export function useFreshnessLabel(
   const coreUpdatedAt = useGameData(
     (s) => s.getGame(gameId)?.coreUpdatedAt ?? 0,
   );
-  // Updated by interval tick so label text stays current without re-fetching
+  // Updated by interval tick so delayed-state labels can appear without re-fetching.
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
