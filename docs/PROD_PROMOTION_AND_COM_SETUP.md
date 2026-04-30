@@ -177,6 +177,9 @@ No routine SSH needed after initial server/domain bootstrap.
 - Canonical/meta URLs point to `.com`
 - `https://scrolldownsports.com/sitemap.xml` returns sitemap entries
 - `https://scrolldownsports.com/robots.txt` allows indexing
+- Submit `https://scrolldownsports.com/sitemap.xml` in Google Search Console
+- Verify `https://scrolldownsports.com/ads.txt` is crawlable and still includes the Google publisher line
+- Use URL Inspection for `/`, `/fairbet`, one live `/game/{id}`, `/games/{today}`, and `/sports/mlb`
 - Magic-link and billing return URLs resolve to `.com`
 - Ads render for free users; paid/admin still suppressed
 

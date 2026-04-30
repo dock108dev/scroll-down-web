@@ -28,6 +28,10 @@ export const viewport: Viewport = {
 export function generateMetadata(): Metadata {
   const siteUrl = getSiteUrl();
   const noIndex = isNoIndexSite();
+  const verificationOther: Record<string, string> = {};
+  if (process.env.BING_SITE_VERIFICATION) {
+    verificationOther["msvalidate.01"] = process.env.BING_SITE_VERIFICATION;
+  }
   return {
     title: {
       default: "Scroll Down Sports — Catch Up on Games Your Way",
@@ -64,6 +68,10 @@ export function generateMetadata(): Metadata {
     robots: {
       index: !noIndex,
       follow: !noIndex,
+    },
+    verification: {
+      google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
+      other: Object.keys(verificationOther).length ? verificationOther : undefined,
     },
   };
 }
