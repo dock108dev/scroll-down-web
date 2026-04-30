@@ -1,4 +1,4 @@
-import { BACKEND_BASE_URL } from "@/lib/config";
+import { API, BACKEND_BASE_URL } from "@/lib/config";
 
 /** Read at call time so CI/Playwright always see the current process env (not a stale module snapshot). */
 export function sportsApiBaseUrl(): string {
@@ -29,6 +29,32 @@ export class ApiError extends Error {
   get proxyStatus(): number {
     return this.isUpstreamGatewayError ? 502 : this.status;
   }
+}
+
+interface CachedApiEntry<T> {
+  data: T;
+  savedAt: number;
+}
+
+const apiCache = new Map<string, CachedApiEntry<unknown>>();
+const inflight = new Map<string, Promise<unknown>>();
+
+function pruneApiCache(): void {
+  while (apiCache.size > API.BFF_CACHE_MAX_ENTRIES) {
+    const oldestKey = apiCache.keys().next().value as string | undefined;
+    if (!oldestKey) return;
+    apiCache.delete(oldestKey);
+  }
+}
+
+function isFallbackEligible(err: unknown): boolean {
+  if (!(err instanceof ApiError)) return true;
+  return err.status === 429 || err.status >= 500;
+}
+
+export function clearApiResponseCache(): void {
+  apiCache.clear();
+  inflight.clear();
 }
 
 // ── Double-encoded UTF-8 repair ─────────────────────────────
@@ -128,5 +154,48 @@ export async function apiFetch<T>(
     return deepFixStrings(data);
   } finally {
     clearTimeout(timer);
+  }
+}
+
+export async function cachedApiFetch<T>(
+  cacheKey: string,
+  path: string,
+  options: RequestInit & {
+    revalidate?: number;
+    timeoutMs?: number;
+    freshMs: number;
+    staleMs: number;
+  },
+): Promise<{ data: T; cacheStatus: "fresh" | "miss" | "stale" }> {
+  const now = Date.now();
+  const cached = apiCache.get(cacheKey) as CachedApiEntry<T> | undefined;
+  if (cached && now - cached.savedAt < options.freshMs) {
+    apiCache.delete(cacheKey);
+    apiCache.set(cacheKey, cached);
+    return { data: cached.data, cacheStatus: "fresh" };
+  }
+
+  let pending = inflight.get(cacheKey) as Promise<T> | undefined;
+  if (!pending) {
+    pending = apiFetch<T>(path, options);
+    inflight.set(cacheKey, pending);
+  }
+
+  try {
+    const data = await pending;
+    apiCache.set(cacheKey, { data, savedAt: Date.now() });
+    pruneApiCache();
+    return { data, cacheStatus: "miss" };
+  } catch (err) {
+    if (cached && now - cached.savedAt < options.staleMs && isFallbackEligible(err)) {
+      apiCache.delete(cacheKey);
+      apiCache.set(cacheKey, cached);
+      return { data: cached.data, cacheStatus: "stale" };
+    }
+    throw err;
+  } finally {
+    if (inflight.get(cacheKey) === pending) {
+      inflight.delete(cacheKey);
+    }
   }
 }

@@ -86,6 +86,10 @@ export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T>
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
       throw new Error("We're having trouble loading data right now. Please try again later.");
+    } else if (res.status === 429) {
+      throw new Error("Data is busy right now. We'll try again shortly.");
+    } else if (res.status === 503) {
+      throw new Error("Live data is temporarily delayed. We'll try again shortly.");
     } else if (res.status >= 500) {
       throw new Error("Something went wrong on our end. Please try again later.");
     }

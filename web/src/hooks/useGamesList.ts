@@ -45,20 +45,41 @@ function getSectionDateRanges(): Record<SectionKey, DateRange> {
   };
 }
 
-// ── Fetch a single section ─────────────────────────────────
+// ── Fetch the full home window ──────────────────────────────
 
-async function fetchSection(
-  range: DateRange,
+async function fetchWindow(
+  ranges: Record<SectionKey, DateRange>,
   league?: string,
   init?: RequestInit,
 ): Promise<GameSummary[]> {
   const params = new URLSearchParams();
-  params.set("startDate", range.startDate);
-  params.set("endDate", range.endDate);
+  params.set("startDate", ranges.Yesterday.startDate);
+  params.set("endDate", ranges.Upcoming.endDate);
   params.set("limit", String(API.GAMES_LIMIT));
   if (league) params.set("league", league);
   const data = await api.games(params, init);
   return data.games;
+}
+
+function bucketGamesBySection(
+  games: GameSummary[],
+  ranges: Record<SectionKey, DateRange>,
+): Record<SectionKey, GameSummary[]> {
+  const buckets: Record<SectionKey, GameSummary[]> = {
+    Yesterday: [],
+    Today: [],
+    Upcoming: [],
+  };
+  for (const game of games) {
+    const date = toEasternDateStr(game.gameDate);
+    for (const key of SECTION_ORDER) {
+      if (date >= ranges[key].startDate && date <= ranges[key].endDate) {
+        buckets[key].push(game);
+        break;
+      }
+    }
+  }
+  return buckets;
 }
 
 // ── Client-side search filter ──────────────────────────────
@@ -211,19 +232,15 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
 
     try {
       const init = { signal: controller.signal };
-      const [yesterday, today, upcoming] = await Promise.all([
-        fetchSection(ranges.Yesterday, league, init),
-        fetchSection(ranges.Today, league, init),
-        fetchSection(ranges.Upcoming, league, init),
-      ]);
+      const windowGames = await fetchWindow(ranges, league, init);
       if (controller.signal.aborted) return;
 
       // Upsert per section with aligned listKeys
-      const sections: [SectionKey, GameSummary[]][] = [
-        ["Yesterday", yesterday],
-        ["Today", today],
-        ["Upcoming", upcoming],
-      ];
+      const windowBuckets = bucketGamesBySection(windowGames, ranges);
+      const sections: [SectionKey, GameSummary[]][] = SECTION_ORDER.map((key) => [
+        key,
+        windowBuckets[key],
+      ]);
       const buckets: Record<SectionKey, number[]> = { Yesterday: [], Today: [], Upcoming: [] };
 
       for (const [key, summaries] of sections) {

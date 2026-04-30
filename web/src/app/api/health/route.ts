@@ -11,6 +11,11 @@ export const dynamic = "force-dynamic";
  */
 const SKIP_UPSTREAM_HEALTH = process.env.SCROLLDOWN_PLAYWRIGHT_WEB_SERVER === "1";
 
+let cachedHealth: {
+  checkedAt: number;
+  status: "ok" | "degraded";
+} | null = null;
+
 function healthPingLogMessage(err: unknown): string {
   if (err instanceof Error && err.name === "AbortError") {
     return `upstream ping timed out after ${API.HEALTH_BACKEND_PING_TIMEOUT_MS}ms`;
@@ -24,6 +29,17 @@ export async function GET() {
     return NextResponse.json(
       { status: "ok", timestamp: new Date().toISOString() },
       { status: 200 },
+    );
+  }
+
+  if (cachedHealth && Date.now() - cachedHealth.checkedAt < API.HEALTH_CACHE_MS) {
+    return NextResponse.json(
+      {
+        status: cachedHealth.status,
+        timestamp: new Date(cachedHealth.checkedAt).toISOString(),
+        cached: true,
+      },
+      { status: cachedHealth.status === "ok" ? 200 : 503 },
     );
   }
 
@@ -41,6 +57,7 @@ export async function GET() {
   }
 
   const status = backendStatus === "ok" ? "ok" : "degraded";
+  cachedHealth = { checkedAt: Date.now(), status };
 
   return NextResponse.json(
     {

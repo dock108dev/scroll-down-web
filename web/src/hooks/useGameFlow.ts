@@ -40,8 +40,9 @@ export function useGameFlow(id: number) {
 
   useEffect(() => {
     if (cached && isFlowFresh(id)) {
-      // Have fresh cached data — show it immediately, refresh silently
-      fetchFlow({ silent: true });
+      // Have fresh cached data; avoid an immediate duplicate detail-page call.
+      setData(cached);
+      setLoading(false);
     } else {
       fetchFlow();
     }
