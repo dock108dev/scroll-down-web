@@ -19,3 +19,6 @@ export const ADSENSE_FAIRBET_SLOT =
 
 export const ADSENSE_BOTTOM_SLOT =
   process.env.NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT ?? "";
+
+export const ADSENSE_SEO_CONTENT_SLOT =
+  process.env.NEXT_PUBLIC_ADSENSE_SEO_CONTENT_SLOT ?? "";

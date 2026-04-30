@@ -31,6 +31,7 @@ client bundle at build time, so changing any of them requires a rebuild + redepl
 | `NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT`| Per-slot          | `9756968492`                     | Slot ID for game detail `after-hero` and `between-sections`. |
 | `NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT`    | Per-slot          | `4772235121`                     | Slot ID for FairBet `top-info` and `bottom`. |
 | `NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT`     | Per-slot          | `8443886825`                     | Slot ID for the game detail `bottom` placement. |
+| `NEXT_PUBLIC_ADSENSE_SEO_CONTENT_SLOT`| Optional          | `2244668800`                     | Slot ID for crawlable SEO pages (`/games/[date]`, `/sports/[league]`, `/teams/[teamSlug]`). Falls back to `HOME_FEED_SLOT` if empty. |
 
 Behavior when a variable is missing:
 
@@ -156,7 +157,8 @@ variable in the table below, create one matching ad unit in AdSense:
 6. Paste the slot ID into the corresponding `NEXT_PUBLIC_ADSENSE_*_SLOT` env
    variable. Rebuild and redeploy.
 
-Repeat for all four slot variables.
+Repeat for all slot variables you want live. The SEO content slot is optional;
+if it is empty, the SEO pages reuse `NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT`.
 
 ## Slot Mapping
 
@@ -170,6 +172,7 @@ match an AdSense unit to the page and placement it serves.
 | `NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT`  | `<GameDetailAd>`         | `/game/[id]`                          | `after-hero` (below scoreboard / reveal), `between-sections` (after Game Flow) |
 | `NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT`       | `<GameDetailAd>`         | `/game/[id]`                          | `bottom` (after all primary content) |
 | `NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT`      | `<FairBetAd>`            | `/fairbet`                            | `top-info` (below intro/filter), `bottom` (after value list) |
+| `NEXT_PUBLIC_ADSENSE_SEO_CONTENT_SLOT`  | `<SeoContentAd>`         | `/games/[date]`, `/sports/[league]`, `/teams/[teamSlug]` | `intro`, `inline`, `bottom` |
 
 Notes:
 
@@ -180,6 +183,9 @@ Notes:
   the inline placements and `BOTTOM_SLOT` for the page-bottom placement. This
   lets us tune the bottom unit's format separately if we ever want to.
 - FairBet uses a single slot ID for both placements.
+- SEO pages use revenue-safe placements only: one near the intro, one after
+  several matchup links, and one near the bottom. They do not auto-refresh and
+  do not interrupt score reveal gestures.
 
 ## Local Development
 

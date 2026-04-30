@@ -21,6 +21,8 @@
 | `PUBLIC_BASE_URL` | `https://scrolldownsports.com` in production fallback | Canonical public origin used for metadata, sitemap/robots, magic-link URLs, and billing return URLs. Set per deployed environment (`.com` for prod, `.dev` for dev). |
 | `SITE_NOINDEX` | `auto` (`true` on `.dev`, `false` otherwise) | Force robots/crawl behavior. Set `true` for dev deployments, `false` for production. |
 | `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | Derived from `PUBLIC_BASE_URL` hostname | Optional explicit Plausible `data-domain` override. |
+| `GOOGLE_SITE_VERIFICATION` | — | Optional Google Search Console verification token emitted as a metadata verification tag. |
+| `BING_SITE_VERIFICATION` | — | Optional Bing Webmaster Tools verification token emitted as `msvalidate.01`. |
 | `MAGIC_LINK_FROM_EMAIL` | `noreply@mail.scrolldownsports.com` | Sender address for sign-in emails. |
 
 ### Build-time

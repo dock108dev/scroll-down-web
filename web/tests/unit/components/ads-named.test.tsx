@@ -21,6 +21,7 @@ describe("named ad shells", () => {
     vi.stubEnv("NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT", "fair-slot");
     vi.stubEnv("NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT", "detail-slot");
     vi.stubEnv("NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT", "bottom-slot");
+    vi.stubEnv("NEXT_PUBLIC_ADSENSE_SEO_CONTENT_SLOT", "seo-slot");
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -49,6 +50,22 @@ describe("named ad shells", () => {
     rerender(<GameDetailAd position="bottom" />);
     expect(screen.getByTestId("game-detail-ad-bottom")).toBeInTheDocument();
     expect(screen.getByTestId("slot-bottom-slot")).toBeInTheDocument();
+  });
+
+  it("renders SeoContentAd with the SEO slot when set", async () => {
+    const { SeoContentAd } = await import("@/components/ads/SeoContentAd");
+    render(<SeoContentAd position="inline" />);
+    expect(screen.getByTestId("seo-content-ad-inline")).toBeInTheDocument();
+    expect(screen.getByTestId("slot-seo-slot")).toBeInTheDocument();
+  });
+
+  it("falls back to the home feed slot for SeoContentAd", async () => {
+    vi.resetModules();
+    vi.stubEnv("NEXT_PUBLIC_ADSENSE_SEO_CONTENT_SLOT", "");
+    const { SeoContentAd } = await import("@/components/ads/SeoContentAd");
+    render(<SeoContentAd position="bottom" />);
+    expect(screen.getByTestId("seo-content-ad-bottom")).toBeInTheDocument();
+    expect(screen.getByTestId("slot-feed-slot")).toBeInTheDocument();
   });
 
   it("renders AdSenseScript loader when gated open", async () => {
