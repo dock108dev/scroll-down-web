@@ -131,6 +131,28 @@ test.describe("Home page – game list @live-upstream", () => {
     expect(authedPage.url()).toMatch(/\/game\/[a-zA-Z0-9_-]+/);
   });
 
+  test("unrevealed rows show catch-up affordance", async ({ authedPage }) => {
+    await authedPage.evaluate(() => localStorage.removeItem("sd-read-state"));
+    await authedPage.reload();
+    await waitForLoad(authedPage);
+
+    const hasData = await waitForGameData(authedPage);
+    if (!hasData) {
+      test.skip(true, "No game data available from API");
+      return;
+    }
+
+    const hint = authedPage.locator("[data-testid='open-game-hint']").first();
+    const hasHint = (await hint.count()) > 0;
+    if (!hasHint) {
+      test.skip(true, "No unrevealed games available (not in onMarkRead mode)");
+      return;
+    }
+
+    await expect(hint).toBeVisible();
+    await expect(hint).toContainText("Catch up in order");
+  });
+
   test("reveal gesture: blur overlay visible then fades on reveal click", async ({ authedPage }) => {
     // Clear reveal state so games appear unrevealed
     await authedPage.evaluate(() => localStorage.removeItem("sd-read-state"));

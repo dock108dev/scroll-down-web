@@ -13,6 +13,7 @@ import { LeagueBadge } from "@/components/fairbet/LeagueBadge";
 import { APP_TIMEZONE } from "@/lib/date-utils";
 import { pickSnapshot } from "@/lib/score-display";
 import { useFreshnessLabel } from "@/hooks/useFreshnessLabel";
+import { HOME_COPY } from "./copy";
 
 interface GameRowProps {
   game: GameCore;
@@ -149,6 +150,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
 
   const scoreTextClass = "shrink-0 whitespace-nowrap text-lg font-bold tabular-nums text-neutral-200 text-right";
   const scoreLaneClass = "shrink-0 min-w-[128px] min-h-[44px]";
+  const showOpenGameHint = !isHistory && canToggle && !scoresVisible;
 
   // ── Status indicator ──────────────────────────────────────────
 
@@ -319,7 +321,7 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
               <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
               <circle cx="12" cy="12" r="3" />
             </svg>
-            <span>Reveal</span>
+            <span>{HOME_COPY.revealScore}</span>
           </button>
         </div>
       </div>
@@ -380,22 +382,48 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
       </div>
 
       {/* Center: matchup — abbreviations on small screens, display names on sm+ */}
-      <div className="flex-1 min-w-0 flex items-center gap-1.5 truncate">
-        <span
-          className="text-[15px] font-semibold truncate"
-          style={{ color: resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark) }}
-        >
-          <span className="sm:hidden">{game.awayTeamAbbr ?? cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}</span>
-          <span className="hidden sm:inline">{cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}</span>
-        </span>
-        <span className="text-neutral-600 text-xs font-medium shrink-0">@</span>
-        <span
-          className="text-[15px] font-semibold truncate"
-          style={{ color: resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark) }}
-        >
-          <span className="sm:hidden">{game.homeTeamAbbr ?? cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}</span>
-          <span className="hidden sm:inline">{cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}</span>
-        </span>
+      <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5">
+        <div className="min-w-0 flex items-center gap-1.5 truncate">
+          <span
+            className="text-[15px] font-semibold truncate"
+            style={{ color: resolveTeamColor(game.awayTeamColorLight, game.awayTeamColorDark) }}
+          >
+            <span className="sm:hidden">{game.awayTeamAbbr ?? cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}</span>
+            <span className="hidden sm:inline">{cardDisplayName(game.awayTeam, game.leagueCode, game.awayTeamAbbr)}</span>
+          </span>
+          <span className="text-neutral-600 text-xs font-medium shrink-0">@</span>
+          <span
+            className="text-[15px] font-semibold truncate"
+            style={{ color: resolveTeamColor(game.homeTeamColorLight, game.homeTeamColorDark) }}
+          >
+            <span className="sm:hidden">{game.homeTeamAbbr ?? cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}</span>
+            <span className="hidden sm:inline">{cardDisplayName(game.homeTeam, game.leagueCode, game.homeTeamAbbr)}</span>
+          </span>
+        </div>
+        {showOpenGameHint && (
+          <span
+            data-testid="open-game-hint"
+            className="inline-flex min-w-0 items-center gap-1 text-[11px] leading-tight text-neutral-500"
+          >
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="shrink-0"
+              aria-hidden="true"
+            >
+              <path d="M8 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-3" />
+              <path d="M15 3h6v6" />
+              <path d="m10 14 11-11" />
+            </svg>
+            <span className="truncate">{HOME_COPY.openGameHint}</span>
+          </span>
+        )}
       </div>
 
       {/* Right: score zone or history date/time */}

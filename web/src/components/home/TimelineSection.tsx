@@ -11,6 +11,7 @@ import { isFinal, isLive } from "@/lib/types";
 import { pickSnapshot } from "@/lib/score-display";
 import { isGameHiddenByBlacklist } from "@/lib/score-hide";
 import { ADS } from "@/lib/config";
+import { HOME_COPY } from "./copy";
 
 interface TimelineSectionProps {
   title: string;
@@ -98,7 +99,7 @@ export function TimelineSection({
       <button
         data-testid={`reveal-all-${title.toLowerCase()}`}
         onClick={handleRevealAll}
-        aria-label={`Reveal all scores in ${title}`}
+        aria-label={`${HOME_COPY.revealAllScores} in ${title}`}
         className="rounded-full px-2.5 py-1 text-[11px] font-medium transition min-h-[32px] border hover:opacity-90"
         style={{
           color: "var(--ds-accent)",
@@ -106,7 +107,7 @@ export function TimelineSection({
           borderColor: "color-mix(in srgb, var(--ds-accent) 25%, transparent)",
         }}
       >
-        Reveal All
+        {HOME_COPY.revealAllScores}
       </button>
     ) : null;
 

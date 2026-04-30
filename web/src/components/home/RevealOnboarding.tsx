@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { STORAGE_KEYS } from "@/lib/config";
 import { useReveal } from "@/stores/reveal";
+import { HOME_COPY } from "./copy";
 
-const STEPS = [
-  "Scores are hidden — tap a game to reveal when you're ready.",
-  "Your reveals are saved. Come back anytime without seeing spoilers.",
-] as const;
+const STEPS = HOME_COPY.onboarding;
 
 function hasSeenOnboarding(): boolean {
   try {

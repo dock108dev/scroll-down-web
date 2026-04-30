@@ -1,6 +1,7 @@
 "use client";
 
 import { useSettings } from "@/stores/settings";
+import { HOME_COPY } from "./copy";
 
 export function RevealHero() {
   const scoreRevealMode = useSettings((s) => s.scoreRevealMode);
@@ -13,18 +14,9 @@ export function RevealHero() {
   const blacklistHasRules = hiddenLeagueCount + hiddenTeamCount > 0;
   const copy = scoreRevealMode === "blacklist"
     ? blacklistHasRules
-      ? {
-        lead: "Selected scores are hidden.",
-        body: "Teams and leagues on your hide list stay spoiler-free; everything else is visible.",
-      }
-      : {
-        lead: "Scores are visible by default.",
-        body: "Add teams or leagues in Score visibility to hide only the ones you care about.",
-      }
-    : {
-      lead: "Scores are hidden by default.",
-      body: "Reveal results on your schedule — no spoilers until you choose.",
-    };
+      ? HOME_COPY.revealHero.blacklistWithRules
+      : HOME_COPY.revealHero.blacklistEmpty
+    : HOME_COPY.revealHero.default;
 
   return (
     <div

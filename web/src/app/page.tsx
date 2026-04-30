@@ -10,6 +10,7 @@ import { SearchBar } from "@/components/home/SearchBar";
 import { TimelineSection } from "@/components/home/TimelineSection";
 import { RevealHero } from "@/components/home/RevealHero";
 import { FollowingLiveBanner } from "@/components/home/FollowingLiveBanner";
+import { HOME_COPY } from "@/components/home/copy";
 
 // Client-only: reads localStorage on first render, no SSR needed.
 const RevealOnboarding = dynamic(
@@ -342,7 +343,7 @@ export default function HomePage() {
               )}
             </button>
 
-            {/* Reveal — primary CTA (matches per-row Reveal button) */}
+            {/* Reveal score — primary CTA (matches per-row Reveal score button) */}
             {hasAnyGames && scoreRevealMode !== "always" && !followingLive && catchUpCount > 0 && (
               <button
                 data-testid="catch-up-button"
@@ -353,7 +354,7 @@ export default function HomePage() {
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
-                Reveal
+                {HOME_COPY.revealScore}
                 <span className="bg-white/20 rounded-full px-1.5 py-0.5 text-[9px] leading-none">
                   {catchUpCount}
                 </span>
@@ -474,9 +475,9 @@ export default function HomePage() {
           <div className="mt-6 mx-auto max-w-sm text-left space-y-3 border border-neutral-800 rounded-lg p-4 bg-neutral-900/50">
             <p className="text-xs font-medium text-neutral-300">While you wait, here&apos;s what Scroll Down Sports offers:</p>
             <ul className="text-xs text-neutral-500 space-y-1.5 list-none">
-              <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Spoiler-free scores — reveal results on your schedule</li>
+              <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> {HOME_COPY.unavailableFeatures.hiddenScores}</li>
               <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Live MLB, NBA, NHL, and NCAAB games</li>
-              <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> Play-by-play timelines for every game</li>
+              <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> {HOME_COPY.unavailableFeatures.timelines}</li>
               <li className="flex items-start gap-2"><span className="text-blue-400 mt-px">&#9679;</span> FairBet odds comparison across sportsbooks</li>
             </ul>
           </div>

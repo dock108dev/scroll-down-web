@@ -1,7 +1,7 @@
 import { test, expect } from "../helpers";
 
 test.describe("Reveal hero strip", () => {
-  test("shows spoiler-free copy in hide-by-default mode", async ({ browser }) => {
+  test("shows hidden-score copy in hide-by-default mode", async ({ browser }) => {
     const ctx = await browser.newContext();
     const page = await ctx.newPage();
 
