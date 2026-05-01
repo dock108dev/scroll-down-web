@@ -30,7 +30,7 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="mx-auto max-w-2xl px-4 py-5">
+      <section className="sr-only">
         <div className="mb-4">
           <h1 className="text-xl font-bold text-neutral-50">Spoiler-free sports catch-up</h1>
           <p className="mt-1 text-sm leading-relaxed text-neutral-500">

@@ -23,7 +23,7 @@ export function Footer() {
               Scroll Down Sports
             </p>
             <p className="mt-2 text-xs text-neutral-500 leading-relaxed max-w-xs">
-              Catch up on games without spoilers. Real-time scores, play-by-play
+              Catch up on games on your own time. Real-time scores, play-by-play
               timelines, betting analytics, and matchup simulators for MLB, NBA,
               NHL, and NCAAB.
             </p>
