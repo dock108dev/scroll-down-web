@@ -67,7 +67,7 @@ export default async function SportPage({
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-5">
-        <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Spoiler-free sports hub</p>
+        <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Sports hub</p>
         <h1 className="mt-1 text-2xl font-bold text-neutral-50">{label} Games</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-neutral-500">
           Follow recent, live, and upcoming {label} matchups without seeing scores before you are ready.

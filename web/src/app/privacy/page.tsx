@@ -35,7 +35,7 @@ export default function PrivacyPage() {
       <section className="space-y-3 text-sm text-neutral-300 leading-relaxed">
         <h2 className="text-lg font-semibold text-neutral-200">Local Storage</h2>
         <p>
-          Most of your preferences (theme, spoiler settings, pinned games) are
+          Most of your preferences (theme, reveal settings, pinned games) are
           stored locally in your browser using localStorage. This data never
           leaves your device unless you are signed in and choose to sync.
         </p>

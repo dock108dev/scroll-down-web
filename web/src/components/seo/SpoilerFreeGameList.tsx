@@ -78,7 +78,7 @@ export function SpoilerFreeGameList({
                         ·{" "}
                       </span>
                     )}
-                    Spoiler-free game tracker
+                    Game tracker
                   </p>
                 </div>
                 <span className="shrink-0 rounded-full border border-neutral-700 px-2.5 py-1 text-xs font-medium text-neutral-400">
