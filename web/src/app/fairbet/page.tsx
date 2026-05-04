@@ -198,7 +198,7 @@ export default function FairBetPage() {
         <StaleBanner stale={hook.stale} staleAt={hook.staleAt} onRetry={hook.refetch} />
 
         {!hook.error && !loadingTimedOut && (
-          <div className="pt-2">
+          <div className="pt-2 empty:hidden">
             <FairBetAd position="top-info" />
           </div>
         )}
@@ -369,7 +369,7 @@ export default function FairBetPage() {
         )}
 
         {!hook.loading && !hook.error && hook.filteredBets.length > 0 && (
-          <div className="pt-2">
+          <div className="pt-2 empty:hidden">
             <FairBetAd position="bottom" />
           </div>
         )}

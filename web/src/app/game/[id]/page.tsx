@@ -381,7 +381,7 @@ export default function GameDetailPage({
         />
       </div>
 
-      <div className="px-4 pt-3">
+      <div className="px-4 pt-3 empty:hidden">
         <GameDetailAd position="after-hero" />
       </div>
 
@@ -435,7 +435,7 @@ export default function GameDetailPage({
         )}
 
         {sections.includes("Timeline") && (
-          <div className="px-4 py-2">
+          <div className="px-4 py-2 empty:hidden">
             <GameDetailAd position="between-sections" />
           </div>
         )}
@@ -527,7 +527,7 @@ export default function GameDetailPage({
 
       {!error && <InlineFeedback context="game" />}
 
-      <div className="px-4 py-3">
+      <div className="px-4 py-3 empty:hidden">
         <GameDetailAd position="bottom" />
       </div>
 
