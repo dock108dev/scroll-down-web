@@ -1,5 +1,5 @@
 import { apiFetch } from "@/lib/api-server";
-import { addDays, easternToday, fmtDate } from "@/lib/date-utils";
+import { addDaysCalendar, easternCalendarToday } from "@/lib/date-utils";
 import type { GameListResponse, GameSummary } from "@/lib/types";
 
 export const SEO_REVALIDATE_SECONDS = 60;
@@ -39,19 +39,19 @@ export async function fetchSeoGamesForDate(date: string, league?: string): Promi
 }
 
 export async function fetchRollingSeoGames(pastDays = 14, futureDays = 7): Promise<GameSummary[]> {
-  const today = easternToday();
+  const today = easternCalendarToday();
   return fetchSeoGameWindow({
-    startDate: fmtDate(addDays(today, -pastDays)),
-    endDate: fmtDate(addDays(today, futureDays)),
+    startDate: addDaysCalendar(today, -pastDays),
+    endDate: addDaysCalendar(today, futureDays),
     limit: 700,
   });
 }
 
 export async function fetchHomeSeoGames(): Promise<GameSummary[]> {
-  const today = easternToday();
+  const today = easternCalendarToday();
   return fetchSeoGameWindow({
-    startDate: fmtDate(addDays(today, -1)),
-    endDate: fmtDate(addDays(today, 2)),
+    startDate: addDaysCalendar(today, -1),
+    endDate: addDaysCalendar(today, 2),
     limit: 200,
   });
 }

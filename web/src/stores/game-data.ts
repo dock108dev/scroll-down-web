@@ -17,6 +17,8 @@ export interface GameCore {
   id: number;
   leagueCode: string;
   gameDate: string;
+  /** YYYY-MM-DD from backend; preferred for section bucketing vs deriving from gameDate. */
+  localGameDate?: string;
   status: GameStatus;
   homeTeam: string;
   awayTeam: string;
@@ -181,9 +183,15 @@ export const useGameData = create<GameDataState>()((set, get) => ({
           const detailIsFresh =
             existing.detail != null &&
             now - existing.detail.fetchedAt < CACHE.GAME_DETAIL_TTL_MS;
+          const mergedCore = detailIsFresh
+            ? {
+                ...existing.core,
+                localGameDate: core.localGameDate ?? existing.core.localGameDate,
+              }
+            : core;
           next.set(g.id, {
             ...existing,
-            core: detailIsFresh ? existing.core : core,
+            core: mergedCore,
             coreUpdatedAt: detailIsFresh ? existing.coreUpdatedAt : now,
           });
         } else {

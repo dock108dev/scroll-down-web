@@ -13,11 +13,11 @@ import { LoadingSkeleton } from "@/components/shared/LoadingSkeleton";
 import { HistoryGateOverlay } from "@/components/history/HistoryGateOverlay";
 import { useSession } from "@/stores/session";
 import { cn } from "@/lib/utils";
-import { easternToday, addDays, fmtDate } from "@/lib/date-utils";
+import { addDaysCalendar, easternCalendarToday } from "@/lib/date-utils";
 
 /** Earliest allowed date: 2 days ago (excludes today and yesterday). */
 function historyMaxDate(): string {
-  return fmtDate(addDays(easternToday(), -2));
+  return addDaysCalendar(easternCalendarToday(), -2);
 }
 
 // ── All supported leagues ──────────────────────────────────

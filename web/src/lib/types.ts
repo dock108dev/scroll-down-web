@@ -60,6 +60,8 @@ export interface GameSummary {
   id: number;
   leagueCode: string;
   gameDate: string;
+  /** YYYY-MM-DD schedule date in league/venue-local calendar (authoritative for grouping). */
+  localGameDate?: string;
   status: GameStatus;
   homeTeam: string;
   awayTeam: string;
@@ -141,6 +143,8 @@ export interface Game {
   season?: number;
   seasonType?: string;
   gameDate: string;
+  /** YYYY-MM-DD schedule date in league/venue-local calendar (authoritative for grouping). */
+  localGameDate?: string;
   homeTeam: string;
   awayTeam: string;
   score?: { home?: number | null; away?: number | null } | null;

@@ -6,6 +6,12 @@
 import type { GameSummary, Game, PlayEntry } from "@/lib/types";
 import type { GameCore } from "./game-data";
 
+type ApiLocalDate = { localGameDate?: string; local_game_date?: string };
+
+function pickLocalGameDate(g: ApiLocalDate): string | undefined {
+  return g.localGameDate ?? g.local_game_date;
+}
+
 export function coreFromSummary(g: GameSummary): GameCore {
   const periodLabel = g.liveSnapshot?.periodLabel ?? g.currentPeriodLabel;
   const rawClock = g.liveSnapshot?.gameClock ?? g.liveSnapshot?.timeLabel ?? g.gameClock;
@@ -30,6 +36,7 @@ export function coreFromSummary(g: GameSummary): GameCore {
     id: g.id,
     leagueCode: g.leagueCode,
     gameDate: g.gameDate,
+    localGameDate: pickLocalGameDate(g as GameSummary & ApiLocalDate),
     status: g.status,
     homeTeam: g.homeTeam,
     awayTeam: g.awayTeam,
@@ -95,6 +102,7 @@ export function coreFromGame(
     id: g.id,
     leagueCode: g.leagueCode,
     gameDate: g.gameDate,
+    localGameDate: pickLocalGameDate(g as Game & ApiLocalDate),
     status: g.status,
     homeTeam: g.homeTeam,
     awayTeam: g.awayTeam,

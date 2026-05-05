@@ -1,6 +1,6 @@
 "use client";
 
-import { easternToday, fmtDate } from "@/lib/date-utils";
+import { addDaysCalendar, easternCalendarToday } from "@/lib/date-utils";
 
 // ── Component ──────────────────────────────────────────────
 
@@ -12,11 +12,7 @@ interface DateNavigatorProps {
 
 export function DateNavigator({ startDate, endDate, onChange }: DateNavigatorProps) {
   // History excludes today and yesterday (game day and game day + 1)
-  const maxDate = (() => {
-    const d = easternToday();
-    d.setDate(d.getDate() - 2);
-    return fmtDate(d);
-  })();
+  const maxDate = addDaysCalendar(easternCalendarToday(), -2);
 
   return (
     <div className="flex items-center gap-2">

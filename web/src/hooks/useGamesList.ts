@@ -8,7 +8,11 @@ import type { GameCore } from "@/stores/game-data";
 import { CACHE, API, POLLING, STORAGE_KEYS } from "@/lib/config";
 import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
 import { gameListChannel } from "@/realtime/channels";
-import { easternToday, addDays, fmtDate, toEasternDateStr } from "@/lib/date-utils";
+import {
+  addDaysCalendar,
+  easternCalendarToday,
+  gameScheduleDateStr,
+} from "@/lib/date-utils";
 import { useVisibilityRefresh } from "./useVisibilityRefresh";
 import { readCache, writeCache } from "@/lib/stale-cache";
 
@@ -28,19 +32,19 @@ interface DateRange {
 }
 
 function getSectionDateRanges(): Record<SectionKey, DateRange> {
-  const today = easternToday();
+  const today = easternCalendarToday();
   return {
     Yesterday: {
-      startDate: fmtDate(addDays(today, -1)),
-      endDate: fmtDate(addDays(today, -1)),
+      startDate: addDaysCalendar(today, -1),
+      endDate: addDaysCalendar(today, -1),
     },
     Today: {
-      startDate: fmtDate(today),
-      endDate: fmtDate(today),
+      startDate: today,
+      endDate: today,
     },
     Upcoming: {
-      startDate: fmtDate(addDays(today, 1)),
-      endDate: fmtDate(addDays(today, 2)),
+      startDate: addDaysCalendar(today, 1),
+      endDate: addDaysCalendar(today, 2),
     },
   };
 }
@@ -71,7 +75,7 @@ function bucketGamesBySection(
     Upcoming: [],
   };
   for (const game of games) {
-    const date = toEasternDateStr(game.gameDate);
+    const date = gameScheduleDateStr(game);
     for (const key of SECTION_ORDER) {
       if (date >= ranges[key].startDate && date <= ranges[key].endDate) {
         buckets[key].push(game);
@@ -135,7 +139,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
   const clearListRefresh = useGameData((s) => s.clearListRefresh);
 
   // Recompute section ranges if the Eastern calendar day changes while app is open.
-  const todayKey = fmtDate(easternToday());
+  const todayKey = easternCalendarToday();
   // Align realtime channels with list cache keys by league+date pair
   // eslint-disable-next-line react-hooks/exhaustive-deps -- todayKey intentionally triggers recompute on day change
   const ranges = useMemo(() => getSectionDateRanges(), [todayKey]);
@@ -163,7 +167,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         for (const id of meta.gameIds) {
           const entry = games.get(id);
           if (!entry) continue;
-          const d = toEasternDateStr(entry.core.gameDate);
+          const d = gameScheduleDateStr(entry.core);
           if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
             result[key].push(id);
           }
@@ -251,7 +255,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         listFetchTimestamps.set(lk, Date.now());
 
         for (const g of deduped.values()) {
-          const d = toEasternDateStr(g.gameDate);
+          const d = gameScheduleDateStr(g);
           if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
             buckets[key].push(g.id);
           }
@@ -317,7 +321,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         for (const id of meta.gameIds) {
           const entry = store.games.get(id);
           if (!entry) continue;
-          const d = toEasternDateStr(entry.core.gameDate);
+          const d = gameScheduleDateStr(entry.core);
           if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
             seeded[key].push(id);
           }

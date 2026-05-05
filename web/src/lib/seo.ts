@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import type { GameSummary } from "@/lib/types";
-import { addDays, easternToday, fmtDate, toEasternDateStr, APP_TIMEZONE } from "@/lib/date-utils";
+import {
+  addDaysCalendar,
+  easternCalendarToday,
+  gameScheduleDateStr,
+  APP_TIMEZONE,
+} from "@/lib/date-utils";
 import { getSiteUrl } from "@/lib/site-config";
 
 export const SUPPORTED_SEO_LEAGUES = ["mlb", "nba", "nhl", "ncaab"] as const;
@@ -91,10 +96,10 @@ export function isValidDateParam(value: string): boolean {
 }
 
 export function rollingSeoDates(pastDays = 14, futureDays = 7): string[] {
-  const today = easternToday();
+  const today = easternCalendarToday();
   const dates: string[] = [];
   for (let offset = -pastDays; offset <= futureDays; offset++) {
-    dates.push(fmtDate(addDays(today, offset)));
+    dates.push(addDaysCalendar(today, offset));
   }
   return dates;
 }
@@ -126,9 +131,9 @@ export function spoilerSafeGameTitle(game: Pick<GameSummary, "awayTeam" | "homeT
 }
 
 export function spoilerSafeGameDescription(
-  game: Pick<GameSummary, "awayTeam" | "homeTeam" | "leagueCode" | "gameDate">,
+  game: Pick<GameSummary, "awayTeam" | "homeTeam" | "leagueCode" | "gameDate" | "localGameDate">,
 ): string {
-  const date = formatLongDate(toEasternDateStr(game.gameDate));
+  const date = formatLongDate(gameScheduleDateStr(game));
   return `Catch up on ${game.awayTeam} at ${game.homeTeam} from ${date} without score spoilers. Follow the ${leagueLabel(game.leagueCode)} timeline, status, and matchup details when you are ready.`;
 }
 
