@@ -19,6 +19,19 @@ interface GameRowProps {
   game: GameCore;
   showPin?: boolean;
   variant?: "home" | "history";
+  showPregameDate?: boolean;
+}
+
+function formatPregameDate(dateStr: string): string {
+  return new Date(dateStr).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    timeZone: APP_TIMEZONE,
+  });
+}
+
+function formatPregameDateTime(dateStr: string): string {
+  return `${formatPregameDate(dateStr)} · ${formatTimeET(dateStr)}`;
 }
 
 function formatHistoryDateTime(dateStr: string): string {
@@ -49,7 +62,12 @@ function formatSnapshotContext(snapshot: RevealSnapshot | undefined): string {
   return periodLabel || clock;
 }
 
-export const GameRow = memo(function GameRow({ game, showPin = true, variant = "home" }: GameRowProps) {
+export const GameRow = memo(function GameRow({
+  game,
+  showPin = true,
+  variant = "home",
+  showPregameDate = false,
+}: GameRowProps) {
   const isHistory = variant === "history";
   const router = useRouter();
   const { reveal, acceptUpdate, isRevealed } = useReveal();
@@ -210,7 +228,14 @@ export const GameRow = memo(function GameRow({ game, showPin = true, variant = "
     }
 
     if (pregame) {
-      return <span className="text-neutral-500 text-xs">{formatTimeET(game.gameDate)}</span>;
+      if (!showPregameDate) {
+        return <span className="text-neutral-500 text-xs">{formatTimeET(game.gameDate)}</span>;
+      }
+      return (
+        <span className="text-neutral-500 text-xs whitespace-nowrap">
+          {formatPregameDateTime(game.gameDate)}
+        </span>
+      );
     }
 
     return null;

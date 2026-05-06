@@ -1,5 +1,6 @@
 import { apiFetch } from "@/lib/api-server";
 import { addDaysCalendar, easternCalendarToday } from "@/lib/date-utils";
+import { filterOutTbdGames } from "@/lib/game-filters";
 import type { GameListResponse, GameSummary } from "@/lib/types";
 
 export const SEO_REVALIDATE_SECONDS = 60;
@@ -31,7 +32,7 @@ export async function fetchSeoGameWindow({
       timeoutMs: SEO_FETCH_TIMEOUT_MS,
     },
   );
-  return data.games;
+  return filterOutTbdGames(data.games);
 }
 
 export async function fetchSeoGamesForDate(date: string, league?: string): Promise<GameSummary[]> {

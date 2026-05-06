@@ -13,6 +13,7 @@ import {
   easternCalendarToday,
   gameScheduleDateStr,
 } from "@/lib/date-utils";
+import { hasTbdMatchup, filterOutTbdGames } from "@/lib/game-filters";
 import { useVisibilityRefresh } from "./useVisibilityRefresh";
 import { readCache, writeCache } from "@/lib/stale-cache";
 
@@ -236,7 +237,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
 
     try {
       const init = { signal: controller.signal };
-      const windowGames = await fetchWindow(ranges, league, init);
+      const windowGames = filterOutTbdGames(await fetchWindow(ranges, league, init));
       if (controller.signal.aborted) return;
 
       // Upsert per section with aligned listKeys
@@ -385,7 +386,7 @@ export function useGamesList(league?: string, search?: string): UseGamesListRetu
         const entry = games.get(id);
         if (entry) {
           const core = entry.core;
-          if (matchesSearch(core, search ?? "")) {
+          if (!hasTbdMatchup(core) && matchesSearch(core, search ?? "")) {
             cores.push(core);
           }
         }

@@ -38,6 +38,7 @@ export function TimelineSection({
   const reveal = useReveal();
 
   const expanded = homeExpandedSections.includes(title);
+  const showPregameDate = title === "Upcoming";
 
   const handleToggle = useCallback(() => {
     const next = expanded
@@ -158,7 +159,7 @@ export function TimelineSection({
             {pinnedOpen && (
               <div className="max-h-[40vh] overflow-y-auto overscroll-contain space-y-1.5 px-3 py-1.5">
                 {pinned.map((game) => (
-                  <GameRow key={game.id} game={game} />
+                  <GameRow key={game.id} game={game} showPregameDate={showPregameDate} />
                 ))}
               </div>
             )}
@@ -171,7 +172,7 @@ export function TimelineSection({
         <div className="space-y-1.5 px-3 py-1.5">
           {games.map((game, index) => (
             <Fragment key={game.id}>
-              <GameRow game={game} />
+              <GameRow game={game} showPregameDate={showPregameDate} />
               {useFeedAdSlots && (
                 <>
                   {index === ADS.TOP_FEED_AFTER_INDEX && (

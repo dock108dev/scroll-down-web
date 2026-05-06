@@ -8,6 +8,7 @@ import {
   leagueLabel,
   slugifyTeamName,
 } from "@/lib/seo";
+import { filterOutTbdGames } from "@/lib/game-filters";
 
 interface SpoilerFreeGameListProps {
   games: GameSummary[];
@@ -40,7 +41,9 @@ export function SpoilerFreeGameList({
   showLeagues = true,
   includeAds = true,
 }: SpoilerFreeGameListProps) {
-  if (games.length === 0) {
+  const visibleGames = filterOutTbdGames(games);
+
+  if (visibleGames.length === 0) {
     return (
       <div className="rounded-lg border border-neutral-800 bg-neutral-900/40 px-4 py-8 text-center">
         <p className="text-sm text-neutral-400">No games are available for this window yet.</p>
@@ -49,13 +52,13 @@ export function SpoilerFreeGameList({
     );
   }
 
-  const teams = uniqueTeams(games);
+  const teams = uniqueTeams(visibleGames);
 
   return (
     <div className="space-y-4">
       {includeAds && <SeoContentAd position="intro" />}
       <div className="space-y-2">
-        {games.map((game, index) => (
+        {visibleGames.map((game, index) => (
           <div key={game.id} className="space-y-2">
             <Link
               href={gamePath(game)}
