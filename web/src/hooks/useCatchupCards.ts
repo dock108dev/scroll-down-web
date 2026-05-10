@@ -28,18 +28,16 @@ interface UseCatchupCardsReturn {
 /**
  * Loads the Scroll Down MLB deck for a single game.
  *
- * Live deck behavior (Phase 4 contract):
+ * Live deck behavior:
  *   1. Initial fetch renders the current deck.
- *   2. Polling fetches the deck. If `deckVersion` matches the one we're
- *      rendering, do nothing.
- *   3. If `deckVersion` is newer, store the new deck as `pendingDeck` and
- *      raise `hasNewDeck`. The visible cards do NOT change.
- *   4. The user clicks "Update deck" -> `applyPendingDeck()` swaps
- *      the visible deck to the pending one, in one intentional step.
- *
- * This replaces the previous behavior of auto-appending new cards to the
- * end of the visible deck during polling, which mutated the user's scroll
- * context unexpectedly.
+ *   2. Polling fetches the deck. If `deckVersion` matches the rendered
+ *      one, do nothing.
+ *   3. If `deckVersion` is newer, store as `pendingDeck` and raise
+ *      `hasNewDeck`. The hook does NOT decide when to swap — the parent
+ *      (CatchupExperience) auto-applies on the live tail card and shows
+ *      the "New moments" banner mid-deck. This split keeps the hook
+ *      stateless about user-position and avoids yanking scroll context.
+ *   4. `applyPendingDeck()` swaps visible → pending in one step.
  */
 export function useCatchupCards(gameId: number): UseCatchupCardsReturn {
   const [currentDeck, setCurrentDeck] = useState<SdmDeckResponse | null>(null);

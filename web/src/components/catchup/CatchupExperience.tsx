@@ -49,6 +49,19 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
   const [revealed, setRevealed] = useState(false);
   const [restartToken, setRestartToken] = useState(0);
 
+  // ── Take over the viewport while the catch-up flow is mounted ─
+  // The flow's page-shell is `height: 100dvh − topnav` and owns its own
+  // scroll surface (the scroller). Without locking the document body,
+  // the global Footer below `main` pushes total content past the
+  // viewport and the page scrolls *behind* the experience — which on
+  // iOS hides our catch-up header behind the URL bar shrink/grow
+  // dance. Lock body overflow to make the catch-up flow truly modal.
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, []);
+
   // ── Persist progress whenever the active card changes ───
   useEffect(() => {
     if (cards.length === 0) return;
@@ -111,6 +124,20 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
     return Math.min(Math.max(0, saved), slideKeys.length - 1);
   }, [savedEntry, cards.length, slideKeys.length]);
 
+  // ── Auto-apply newer decks when caught up ─────────────
+  // The hook stages newer decks as `pendingDeck` rather than swapping in
+  // place — that prevents yanking the user's scroll mid-deck. But on the
+  // live tail card the user *is* caught up and waiting for new plays;
+  // requiring them to tap the banner makes the live experience feel
+  // frozen. Auto-apply when the active slide is the tail and the deck
+  // hasn't been revealed yet. Mid-deck users still get the banner.
+  const onTail = !isFinal && cards.length > 0 && activeIndex >= slideKeys.length - 1;
+  useEffect(() => {
+    if (!hasNewDeck) return;
+    if (!onTail) return;
+    applyPendingDeck();
+  }, [hasNewDeck, onTail, applyPendingDeck]);
+
   if (loading && cards.length === 0) {
     return <CatchupSkeleton />;
   }
@@ -135,13 +162,13 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
   }
 
   return (
-    <>
+    <div className="catchup-page-shell">
       <CatchupHeader
         awayTeamAbbr={awayTeamAbbr}
         homeTeamAbbr={homeTeamAbbr}
         onRestart={handleRestart}
       />
-      <NewMomentsBanner visible={hasNewDeck && !revealed} onApply={applyPendingDeck} />
+      <NewMomentsBanner visible={hasNewDeck && !onTail && !revealed} onApply={applyPendingDeck} />
       <CatchupProgress
         total={slideKeys.length}
         currentIndex={activeIndex}
@@ -221,7 +248,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
           ),
         ].filter(Boolean) as React.ReactNode[]}
       </CatchupScrollContainer>
-    </>
+    </div>
   );
 }
 

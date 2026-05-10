@@ -281,10 +281,23 @@ body {
   --home-team-text:                  #f5f1e8;
 }
 
+/* ── Catch-up page shell ─────────────────────────────
+   Single flex-column container that owns the catch-up route's vertical
+   space. TopNav is above it (--header-h). Inside it: header → optional
+   banner → progress → scroller. The scroller flex-grows to fill, which is
+   what gives `.catchup-scroller-slide { height: 100% }` something
+   resolvable to anchor against. (Previously slides used min-height, which
+   broke percentage-height children — see fix-plan Phase 1.) */
+.catchup-page-shell {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--header-h, 56px));
+  background: var(--catchup-bg, #07080a);
+}
+
 /* ── Catch-up header (back/restart) ─────────────────── */
 .catchup-header {
-  position: sticky;
-  top: 0;
+  flex: 0 0 auto;
   z-index: 30;
   display: flex;
   align-items: center;
@@ -322,11 +335,13 @@ body {
 }
 
 /* ── Scroll-snap container ──────────────────────────── */
-/* Sized to leave room for the global TopNav (--header-h) plus our own
-   in-flow catch-up header (44px) so each snapped slide is exactly one
-   visible viewport. */
+/* Lives inside `.catchup-page-shell` as the flex-grow child. The shell
+   has explicit height (100dvh − topnav), so flex:1 here gives the scroller
+   a real used height — which is what makes child `height: 100%` resolve
+   on the slides below. Don't switch this to min-height. */
 .catchup-scroller {
-  height: calc(100dvh - var(--header-h, 56px) - 44px);
+  flex: 1 1 0;
+  min-height: 0;
   overflow-y: auto;
   scroll-snap-type: y mandatory;
   overscroll-behavior-y: contain;
@@ -360,9 +375,14 @@ body {
 }
 
 .catchup-scroller-slide {
-  min-height: calc(100dvh - var(--header-h, 56px) - 44px);
+  /* Each slide is exactly one viewport tall — so percentage / flex children
+     have something to anchor against. The scroller above flex:1's into a
+     parent with explicit height, so 100% here resolves cleanly. */
+  height: 100%;
   scroll-snap-align: start;
   scroll-snap-stop: always;
+  display: flex;
+  flex-direction: column;
 }
 
 /* ── Device-shell card ──────────────────────────────────
@@ -389,18 +409,24 @@ body {
   gap: 0;
   padding: 0;
   overflow: hidden;
-  height: 100%;
+  /* flex:1 fills the slide vertically — height:100% used to be here but
+     percentage-height needs an explicit-height parent and the slide used
+     min-height. Slide is now a flex column, so flex:1 wins. min-height:0
+     lets the field-cell (also flex:1) actually shrink/grow. */
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
   max-width: 28rem;
   margin: 1rem auto 1.5rem;
-  background:
-    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
-  border: 1px solid rgba(245, 181, 54, var(--lev-border-opacity));
+  /* Per BRAINDUMP: "stop treating scoreboard / field / captions as equal
+     panels". The card chassis is now near-transparent — leverage glow is
+     the only outer signal, the field shell is the visual stage. The
+     gradient + heavy border were making the card read as "an iOS card
+     with rounded corners" rather than a screen suspended in darkness. */
+  background: transparent;
+  border: 1px solid rgba(245, 181, 54, calc(var(--lev-border-opacity) * 0.4));
   border-radius: var(--device-radius);
   box-shadow:
-    inset 0 1px 0 var(--device-border-bevel),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-    0 8px 28px rgba(0, 0, 0, 0.55),
-    0 1px 0 rgba(0, 0, 0, 0.6),
     0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
   transition: border-color 600ms ease, box-shadow 600ms ease;
 }
@@ -452,28 +478,13 @@ body {
 }
 @keyframes leverage-settle-pulse {
   0% {
-    box-shadow:
-      inset 0 1px 0 var(--device-border-bevel),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 8px 28px rgba(0, 0, 0, 0.55),
-      0 1px 0 rgba(0, 0, 0, 0.6),
-      0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+    box-shadow: 0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
   }
   60% {
-    box-shadow:
-      inset 0 1px 0 var(--device-border-bevel),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 8px 28px rgba(0, 0, 0, 0.55),
-      0 1px 0 rgba(0, 0, 0, 0.6),
-      0 0 calc(var(--lev-glow-radius) * 1.6) rgba(246, 196, 83, calc(var(--lev-glow-alpha) + 0.18));
+    box-shadow: 0 0 calc(var(--lev-glow-radius) * 1.8) rgba(246, 196, 83, calc(var(--lev-glow-alpha) + 0.22));
   }
   100% {
-    box-shadow:
-      inset 0 1px 0 var(--device-border-bevel),
-      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-      0 8px 28px rgba(0, 0, 0, 0.55),
-      0 1px 0 rgba(0, 0, 0, 0.6),
-      0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+    box-shadow: 0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
   }
 }
 @media (max-width: 480px) {
@@ -712,13 +723,21 @@ body {
   text-shadow: 0 0 6px rgba(251, 191, 36, 0.55);
 }
 .catchup-card-score-num {
-  font-size: 1.5rem;
+  /* LED-segment-style numeral. Per the Mattel reference: heavy weight,
+     tight tracking, layered glow so the digit reads as "lit phosphor"
+     not "amber text". The dual shadow gives a tight inner bloom plus a
+     softer halo — same trick a real LED gives off through diffusion. */
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.625rem;
   font-weight: 900;
-  color: #fde68a;
-  text-shadow: 0 0 5px rgba(251, 191, 36, 0.55);
-  letter-spacing: -0.02em;
+  color: #ffe79a;
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.65),
+    0 0 4px rgba(251, 191, 36, 0.85),
+    0 0 10px rgba(251, 191, 36, 0.45);
+  letter-spacing: -0.01em;
   line-height: 1;
-  min-width: 1ch;
+  min-width: 1.1ch;
   text-align: center;
   font-variant-numeric: tabular-nums;
   display: inline-block;
@@ -1025,8 +1044,8 @@ body {
 
 /* ── Progress rail ──────────────────────────────────── */
 .catchup-progress {
-  position: sticky;
-  top: 0;
+  position: relative;
+  flex: 0 0 auto;
   z-index: 30;
   height: 3px;
   background: rgba(255, 255, 255, 0.04);
@@ -1085,24 +1104,24 @@ body {
    read as siblings on the same panel. */
 .field-shell {
   position: relative;
-  /* Aspect-ratio + height:100% lets the shell grow to fill the flex cell
-     vertically; width auto-derives from the 1/1 aspect ratio. The min-height
-     keeps the field readable when the flex cell collapses on tight
-     viewports. */
-  width: auto;
-  height: 100%;
-  max-width: min(22rem, 100%);
-  min-height: clamp(160px, 28vw, 22rem);
-  margin-inline: auto;
+  /* Aspect-1 LCD window. Width drives, aspect-ratio derives height,
+     max-height keeps it from overflowing the flex cell on short
+     viewports. Per BRAINDUMP "field becomes the unquestioned focal
+     point" — the shell no longer caps at 22rem; it grows to whichever
+     constraint hits first (width or available card height). The bezel
+     border is held to one near-invisible hairline so the field reads as
+     "screen suspended in darkness," not "boxed-in panel". */
+  width: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  margin: auto;
   aspect-ratio: 1 / 1;
   background: #000;
   border-radius: var(--device-radius-screen);
-  border: 1px solid var(--device-border-soft);
-  /* Sharper LCD-window bezel — tight inner shadow, not a soft glow. */
+  border: 1px solid rgba(245, 181, 54, 0.10);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.7),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.85),
-    inset 0 -1px 0 var(--device-border-bevel);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.85);
   isolation: isolate;
   overflow: visible;
 }
@@ -1589,7 +1608,8 @@ body {
    banner → matchup → CTA. Optional pitchers + venue lines between. */
 .scene-setter-slide {
   display: flex;
-  height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
   align-items: center;
   justify-content: center;
   padding: 1rem;
@@ -1601,14 +1621,11 @@ body {
   width: 100%;
   max-width: 28rem;
   padding: 0.75rem;
-  background:
-    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
-  border: 1px solid var(--device-border);
+  /* See .catchup-card-snap rationale — chassis goes near-transparent so
+     the inset screens carry the visual weight, not the bezel. */
+  background: transparent;
+  border: 1px solid rgba(245, 181, 54, 0.18);
   border-radius: var(--device-radius);
-  box-shadow:
-    inset 0 1px 0 var(--device-border-bevel),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-    0 8px 28px rgba(0, 0, 0, 0.55);
 }
 
 /* Inset-screen base — same treatment as the scoreboard / field / result
@@ -1778,7 +1795,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
   padding: 1rem;
   overflow: hidden;
 }
@@ -1803,14 +1821,9 @@ body {
   width: 100%;
   max-width: 24rem;
   padding: 1.25rem 1rem;
-  background:
-    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
-  border: 1px solid var(--device-border);
+  background: transparent;
+  border: 1px solid rgba(245, 181, 54, 0.18);
   border-radius: var(--device-radius);
-  box-shadow:
-    inset 0 1px 0 var(--device-border-bevel),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-    0 8px 28px rgba(0, 0, 0, 0.55);
 }
 .reveal-gate-headline {
   margin: 0;
@@ -1867,19 +1880,16 @@ body {
 .final-reveal {
   display: flex;
   flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
   gap: 0.5rem;
   padding: 0.75rem;
   margin: 1rem auto 1.5rem;
   width: calc(100% - 1.5rem);
   max-width: 28rem;
-  background:
-    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
-  border: 1px solid var(--device-border);
+  background: transparent;
+  border: 1px solid rgba(245, 181, 54, 0.18);
   border-radius: var(--device-radius);
-  box-shadow:
-    inset 0 1px 0 var(--device-border-bevel),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-    0 8px 28px rgba(0, 0, 0, 0.55);
 }
 .final-reveal-score {
   display: flex;
@@ -1913,11 +1923,11 @@ body {
 }
 .final-reveal-team-score {
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 2.25rem;
-  font-weight: 800;
+  font-size: 2.5rem;
+  font-weight: 900;
   color: var(--device-muted);
   line-height: 1;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 }
 .final-reveal-team-name {
   font-size: 0.75rem;
@@ -1927,8 +1937,11 @@ body {
   line-height: 1.2;
 }
 .final-reveal-team-winner .final-reveal-team-score {
-  color: var(--device-amber-bright);
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  color: #ffe79a;
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.65),
+    0 0 6px rgba(251, 191, 36, 0.85),
+    0 0 14px rgba(251, 191, 36, 0.45);
 }
 .final-reveal-team-winner .final-reveal-team-name {
   color: var(--device-text);
@@ -2036,7 +2049,8 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100%;
+  flex: 1 1 0;
+  min-height: 0;
   padding: 1rem;
 }
 .live-caught-up-inner {
@@ -2048,14 +2062,9 @@ body {
   max-width: 24rem;
   padding: 1.25rem 1rem;
   text-align: center;
-  background:
-    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
-  border: 1px solid var(--device-border);
+  background: transparent;
+  border: 1px solid rgba(245, 181, 54, 0.18);
   border-radius: var(--device-radius);
-  box-shadow:
-    inset 0 1px 0 var(--device-border-bevel),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-    0 8px 28px rgba(0, 0, 0, 0.55);
 }
 .live-caught-up-fineprint {
   margin: 0;
@@ -2324,10 +2333,14 @@ body {
   color: rgba(255, 220, 150, 0.55);
 }
 .rhythm-card-score-num {
-  font-size: 1.5rem;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.625rem;
   font-weight: 900;
-  color: #fde68a;
-  text-shadow: 0 0 5px rgba(251, 191, 36, 0.55);
+  color: #ffe79a;
+  text-shadow:
+    0 0 1px rgba(255, 255, 255, 0.65),
+    0 0 4px rgba(251, 191, 36, 0.85),
+    0 0 10px rgba(251, 191, 36, 0.45);
   line-height: 1;
 }
 .rhythm-card-score-sep {
