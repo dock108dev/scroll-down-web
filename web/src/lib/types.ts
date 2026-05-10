@@ -283,6 +283,14 @@ export interface PlayCardData {
   animationProfile?: PlayAnimationProfile;
   /** Hint for animation amplitude. */
   visualIntensity?: "low" | "medium" | "high";
+  /** Backend-computed leverage tier (0 routine, 1 elevated, 2 climactic).
+   *  Drives narrative pacing constants on the card. Defaults to 0 when the
+   *  backend doesn't provide it. */
+  leverageTier?: 0 | 1 | 2;
+  /** Backend-computed primary chip text — e.g. "GRAND SLAM", "STRIKEOUT". */
+  chipPrimary?: string;
+  /** Backend-computed secondary chip text — e.g. "RUN SCORES", "INNING OVER". */
+  chipSecondary?: string;
   /** Game state at the end of the previously-displayed card. Drives the
    *  bridging beat so the user sees state evolve between sampled plays. */
   priorAfter?: PriorAfterState;

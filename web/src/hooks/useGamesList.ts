@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "@/lib/api";
+import { getScrollDownMlbRecentGames } from "@/lib/scroll-down-mlb-api";
 import type { GameSummary } from "@/lib/types";
+import type { SdmRecentGame } from "@/types/scroll-down-mlb";
 import { POLLING } from "@/lib/config";
 
 interface UseGamesListReturn {
@@ -13,10 +14,14 @@ interface UseGamesListReturn {
 }
 
 /**
- * Spoiler-free home feed. Hits `/api/games/recent` (which strips score fields
- * server-side), refreshes when the tab regains focus, and polls in the
- * background while visible. No realtime — completed games don't change and
- * live games update on a 60s cadence which is plenty for a card list view.
+ * Spoiler-free home feed. Hits the SDA-backed
+ * `/api/v1/scroll-down-mlb/games/recent` endpoint via the BFF proxy.
+ *
+ * The SDA endpoint is spoiler-safe by construction (no scores, no
+ * winners). We adapt its `SdmRecentGame` shape onto the existing
+ * `GameSummary` renderer type — the home grid components were built
+ * around `GameSummary`, and rebuilding them is out of scope for the
+ * Phase 4 swap.
  */
 export function useGamesList(): UseGamesListReturn {
   const [games, setGames] = useState<GameSummary[]>([]);
@@ -29,9 +34,9 @@ export function useGamesList(): UseGamesListReturn {
     const controller = new AbortController();
     abortRef.current = controller;
     try {
-      const data = await api.recentGames({ signal: controller.signal });
+      const data = await getScrollDownMlbRecentGames({ signal: controller.signal });
       if (controller.signal.aborted) return;
-      setGames(data.games ?? []);
+      setGames((data.games ?? []).map(adaptRecentGame));
       setError(null);
     } catch (err) {
       if (controller.signal.aborted) return;
@@ -65,4 +70,31 @@ export function useGamesList(): UseGamesListReturn {
   }, [fetchAll]);
 
   return { games, loading, error, refetch: fetchAll };
+}
+
+
+function adaptRecentGame(g: SdmRecentGame): GameSummary {
+  return {
+    id: parseGameIdNumeric(g.gameId),
+    leagueCode: "mlb",
+    gameDate: g.startTime ?? g.gameDate ?? "",
+    localGameDate: g.gameDate ?? undefined,
+    status: (g.status ?? "scheduled") as GameSummary["status"],
+    homeTeam: g.homeTeam.displayName,
+    awayTeam: g.awayTeam.displayName,
+    homeTeamAbbr: g.homeTeam.abbreviation,
+    awayTeamAbbr: g.awayTeam.abbreviation,
+    homeTeamColorLight: g.homeTeam.colorLight ?? undefined,
+    homeTeamColorDark: g.homeTeam.colorDark ?? undefined,
+    awayTeamColorLight: g.awayTeam.colorLight ?? undefined,
+    awayTeamColorDark: g.awayTeam.colorDark ?? undefined,
+    isFinal: g.isFinal,
+    keyPlayCount: g.hasDeck ? 1 : 0,
+  };
+}
+
+
+function parseGameIdNumeric(gameId: string): number {
+  const n = Number(gameId);
+  return Number.isFinite(n) ? n : 0;
 }

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  computeLeverage,
   inningZone,
   leverageBand,
   leverageWeightMap,
@@ -8,37 +7,12 @@ import {
   NARRATIVE_SETTLE_BONUS_MS,
   NARRATIVE_TYPOGRAPHY_CLASS,
 } from "@/lib/leverage";
-import type { PlayCardData } from "@/lib/types";
 
-function buildCard(overrides: {
-  inning?: number;
-  scoreBefore?: { home: number; away: number };
-  scoreAfter?: { home: number; away: number };
-  outs?: number;
-  bases?: { first: boolean; second: boolean; third: boolean };
-} = {}): PlayCardData {
-  const before = overrides.scoreBefore ?? { home: 0, away: 0 };
-  const after = overrides.scoreAfter ?? before;
-  return {
-    kind: "play",
-    gameId: 1,
-    cardId: "c1",
-    index: 1,
-    playIndex: 1,
-    inning: overrides.inning ?? 2,
-    inningHalf: "top",
-    inningLabel: "Top 2nd",
-    description: "",
-    scoreBefore: before,
-    scoreAfter: after,
-    situationBefore: {
-      outs: overrides.outs ?? 0,
-      baseState: overrides.bases ?? { first: false, second: false, third: false },
-    },
-    outsAfter: (overrides.outs ?? 0),
-    baseStateAfter: { first: false, second: false, third: false },
-  };
-}
+/**
+ * `computeLeverage` was deleted in Phase 5 — leverage tier is decided
+ * server-side and arrives on `card.leverageTier`. This file now covers
+ * only the pure presentation helpers that survive on the frontend.
+ */
 
 describe("inningZone", () => {
   it("buckets innings 1–3 as early", () => {
@@ -95,85 +69,6 @@ describe("leverageWeightMap", () => {
     expect(leverageWeightMap.medium).toBeGreaterThan(leverageWeightMap.low);
     expect(leverageWeightMap.high).toBeGreaterThan(leverageWeightMap.medium);
     expect(leverageWeightMap.critical).toBe(1);
-  });
-});
-
-describe("computeLeverage", () => {
-  it("returns tier 0 for a 2nd-inning routine grounder with no runners", () => {
-    const card = buildCard({
-      inning: 2,
-      scoreBefore: { home: 4, away: 0 },
-      scoreAfter: { home: 4, away: 0 },
-      outs: 0,
-    });
-    expect(computeLeverage(card)).toBe(0);
-  });
-
-  it("returns tier 0 for a 5th-inning grounder in a blowout", () => {
-    const card = buildCard({
-      inning: 5,
-      scoreBefore: { home: 8, away: 1 },
-      scoreAfter: { home: 8, away: 1 },
-    });
-    expect(computeLeverage(card)).toBe(0);
-  });
-
-  it("returns tier 1 for a 6th-inning walk in a tied game", () => {
-    const card = buildCard({
-      inning: 6,
-      scoreBefore: { home: 3, away: 3 },
-      scoreAfter: { home: 3, away: 3 },
-    });
-    expect(computeLeverage(card)).toBe(1);
-  });
-
-  it("returns tier 1 for a 7th-inning 2-run double that ties (no lead flip)", () => {
-    const card = buildCard({
-      inning: 7,
-      scoreBefore: { home: 2, away: 0 },
-      scoreAfter: { home: 2, away: 2 },
-    });
-    expect(computeLeverage(card)).toBe(1);
-  });
-
-  it("escalates to tier 2 when the 2-run hit also flips the lead", () => {
-    const card = buildCard({
-      inning: 7,
-      scoreBefore: { home: 2, away: 1 },
-      scoreAfter: { home: 2, away: 3 },
-    });
-    expect(computeLeverage(card)).toBe(2);
-  });
-
-  it("returns tier 2 for an 8th-inning RBI single, 1-run game, 2 outs, bases loaded", () => {
-    const card = buildCard({
-      inning: 8,
-      scoreBefore: { home: 2, away: 1 },
-      scoreAfter: { home: 2, away: 2 },
-      outs: 2,
-      bases: { first: true, second: true, third: true },
-    });
-    expect(computeLeverage(card)).toBe(2);
-  });
-
-  it("returns tier 2 for a 9th-inning walk-off RBI single (lead flip)", () => {
-    const card = buildCard({
-      inning: 9,
-      scoreBefore: { home: 2, away: 3 },
-      scoreAfter: { home: 4, away: 3 },
-      outs: 2,
-      bases: { first: false, second: false, third: true },
-    });
-    expect(computeLeverage(card)).toBe(2);
-  });
-
-  it("ignores upstream runs when scoreBefore is identical to scoreAfter", () => {
-    const card = buildCard({
-      inning: 9,
-      scoreBefore: { home: 0, away: 0 },
-      scoreAfter: { home: 0, away: 0 },
-    });
-    expect(computeLeverage(card)).toBe(1);
   });
 });
 

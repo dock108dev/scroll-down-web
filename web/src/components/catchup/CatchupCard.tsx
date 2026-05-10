@@ -1,13 +1,12 @@
 "use client";
 
-import { forwardRef, useEffect, useMemo } from "react";
+import { forwardRef, useMemo } from "react";
 import type {
   BaseballBaseState,
   PlayCardData,
 } from "@/lib/types";
 import { findMlbTeam } from "@/lib/mlb-teams";
 import {
-  computeLeverage,
   inningZone,
   leverageBand,
   leverageWeightMap,
@@ -21,9 +20,8 @@ import {
   usePlayPhase,
   usePrefersReducedMotion,
 } from "@/lib/play-phases";
-import { resultChipLabel, resultChipTier, type ChipTier } from "@/lib/result-chip";
+import { resultChipTier, type ChipTier } from "@/lib/result-chip";
 import { buildRunnerMovements, totalRunnersDurationMs } from "@/lib/runner-paths";
-import { logValidationWarnings, validatePlayCard } from "@/lib/play-validation";
 import { BaseballLightField } from "./BaseballLightField";
 import { CardNarrative } from "./CardNarrative";
 
@@ -81,11 +79,11 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   // visually inherits the previous card's ending state on mount, then
   // transitions to this card's situationBefore by the time setup begins.
   const bridgeOverride = card.priorAfter ? BRIDGE_MS : undefined;
-  // Leverage tier — drives how much extra settle the play "breathes" before
-  // narrative reveal, plus typography weight + reveal-fade duration on
-  // CardNarrative. usePlayPhase already collapses settle to 1ms under
-  // reduced motion, so the bonus is automatically negated there.
-  const leverageTier = computeLeverage(card);
+  // Leverage tier comes from the backend deck DTO (`card.leverageTier`).
+  // Drives extra settle before narrative reveal + typography weight. Falls
+  // back to 0 (routine) when the backend doesn't ship a tier — unrealistic
+  // in practice but typed-safe for legacy data paths.
+  const leverageTier: 0 | 1 | 2 = card.leverageTier ?? 0;
   const settleBonus = NARRATIVE_SETTLE_BONUS_MS[leverageTier];
   const settleOverride = settleBonus > 0
     ? baseSchedule.settle + settleBonus
@@ -128,7 +126,13 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const score = showAfter ? card.scoreAfter : card.scoreBefore;
   const homeIncreased = card.scoreAfter.home > card.scoreBefore.home;
   const awayIncreased = card.scoreAfter.away > card.scoreBefore.away;
-  const chip = resultChipLabel(card);
+  // Chip text is precomputed by the backend (PlayPayload.label /
+  // PlayPayload.subLabel). The tier is a frontend-only visual classifier
+  // derived from already-decided data — kept here, not deck logic.
+  const chip = {
+    primary: card.chipPrimary ?? "PLAY",
+    secondary: card.chipSecondary,
+  };
   const chipTier = resultChipTier(card);
   const showChip = phase === "settle" || phase === "reveal";
 
@@ -143,14 +147,10 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const narrativeText = (card.narrative ?? card.description ?? "").trim();
   const narrativeVisible = phase === "settle" || phase === "reveal";
 
-  // Internal-consistency check — catches state we shouldn't be rendering
-  // (score delta with no runner home, strikeout without out increment,
-  // batter on the wrong base, etc.). Dev-only console.warn; production
-  // is guarded upstream by the chip + advance constraints.
-  const validation = useMemo(() => validatePlayCard(card), [card]);
-  useEffect(() => {
-    logValidationWarnings(validation);
-  }, [validation]);
+  // Validation moved to the backend in Phase 3. The deck endpoint runs
+  // play-card validation server-side and surfaces findings via
+  // `validationWarnings` on the response. Dev-only frontend assertion is
+  // no longer the source of truth.
 
   const battingTeamName = battingTeam?.name ?? card.battingTeamAbbr ?? null;
   const hasCount =
@@ -202,7 +202,6 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       data-leverage-band={band}
       data-leverage-tier={leverageTier}
       data-score-margin={clampedMargin}
-      data-validation-warnings={validation.warnings.join(",") || undefined}
       className="catchup-card-snap"
       style={phaseVars as React.CSSProperties}
     >

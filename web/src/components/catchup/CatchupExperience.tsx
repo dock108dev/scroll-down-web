@@ -11,6 +11,7 @@ import { RhythmCard } from "./RhythmCard";
 import { CatchupProgress } from "./CatchupProgress";
 import { RevealGate } from "./RevealGate";
 import { FinalReveal } from "./FinalReveal";
+import { NewMomentsBanner } from "./NewMomentsBanner";
 import type { CatchupCard as CatchupCardData } from "@/lib/types";
 
 interface CatchupExperienceProps {
@@ -30,7 +31,16 @@ interface CatchupExperienceProps {
  *   - live game → "you're caught up" with a manual refresh
  */
 export function CatchupExperience({ gameId }: CatchupExperienceProps) {
-  const { cards, isFinal, lastPlayIndex, loading, error, refresh } = useCatchupCards(gameId);
+  const {
+    cards,
+    isFinal,
+    lastPlayIndex,
+    loading,
+    error,
+    refresh,
+    hasNewDeck,
+    applyPendingDeck,
+  } = useCatchupCards(gameId);
   const savedEntry = useCatchupProgress((s) => s.entries[gameId]);
   const setProgress = useCatchupProgress((s) => s.setProgress);
   const markCompleted = useCatchupProgress((s) => s.markCompleted);
@@ -131,6 +141,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
         homeTeamAbbr={homeTeamAbbr}
         onRestart={handleRestart}
       />
+      <NewMomentsBanner visible={hasNewDeck && !revealed} onApply={applyPendingDeck} />
       <CatchupProgress
         total={slideKeys.length}
         currentIndex={activeIndex}

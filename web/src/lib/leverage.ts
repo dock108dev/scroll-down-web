@@ -1,4 +1,5 @@
-import type { PlayCardData } from "./types";
+// PlayCardData import removed in Phase 5 — `computeLeverage` is gone;
+// the renderer now reads `card.leverageTier` directly from the deck DTO.
 
 export type InningZone = "early" | "middle" | "late" | "extra";
 export type LeverageBand = "low" | "medium" | "high" | "critical";
@@ -78,47 +79,9 @@ export const NARRATIVE_TYPOGRAPHY_CLASS: Record<LeverageTier, string> = {
   2: "text-xl font-semibold tracking-tight",
 };
 
-/**
- * Pure tier classifier from a play card. All inputs come from existing
- * PlayCardData fields — no schema changes. Spoiler-safe: scoreAfter is
- * read but the function returns only a 0/1/2 integer, never the score.
- */
-export function computeLeverage(card: PlayCardData): LeverageTier {
-  const before = card.scoreBefore;
-  const after = card.scoreAfter;
-  const sit = card.situationBefore;
-
-  const isLate = card.inning >= 7;
-  const isClose = Math.abs(before.home - before.away) <= 2;
-  const isTied = before.home === before.away;
-  const twoOutsBefore = (sit.outs ?? 0) === 2;
-  const bases = sit.baseState;
-  const basesLoadedBefore = !!(bases.first && bases.second && bases.third);
-  const runsScored =
-    after.home + after.away - (before.home + before.away);
-  const bigScore = runsScored >= 2;
-
-  const beforeLead =
-    before.home > before.away ? "home"
-    : before.home < before.away ? "away"
-    : "tied";
-  const afterLead =
-    after.home > after.away ? "home"
-    : after.home < after.away ? "away"
-    : "tied";
-  const leadsChanged =
-    beforeLead !== "tied" && afterLead !== "tied" && beforeLead !== afterLead;
-
-  const score =
-    (isLate ? 1 : 0) +
-    (isClose ? 1 : 0) +
-    (isTied ? 1 : 0) +
-    (twoOutsBefore ? 1 : 0) +
-    (basesLoadedBefore ? 1 : 0) +
-    (bigScore ? 1 : 0) +
-    (leadsChanged ? 2 : 0);
-
-  if (score <= 1) return 0;
-  if (score <= 3) return 1;
-  return 2;
-}
+// Note: `computeLeverage` was removed in Phase 5. Leverage tier is now
+// decided server-side and arrives on `card.leverageTier`. The renderer
+// reads it directly. This module retains only the presentation tables
+// (CSS class maps, ms-duration constants) keyed off the backend-supplied
+// tier and the inningZone/leverageBand classifiers keyed off inning
+// + score margin (pure presentation, not deck-gen).

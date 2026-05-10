@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { api } from "@/lib/api";
+import { getScrollDownMlbReveal } from "@/lib/scroll-down-mlb-api";
 import { findMlbTeam, teamLogoPath } from "@/lib/mlb-teams";
 import { BOX_SCORE } from "@/lib/config";
-import type { CatchupSummaryResponse } from "@/lib/types";
+import type { SdmRevealResponse } from "@/types/scroll-down-mlb";
 
 interface FinalRevealProps {
   gameId: number;
@@ -13,12 +13,22 @@ interface FinalRevealProps {
   awayTeamAbbr: string;
   homeTeam: string;
   awayTeam: string;
+  /** SDA team IDs from the deck response, used to resolve which side
+   *  the `winnerTeamId` refers to. Optional — falls back to abbreviation
+   *  match if absent. */
+  homeTeamId?: string | null;
+  awayTeamId?: string | null;
 }
 
 /**
- * Post-tap reveal screen. Fetches /api/games/[gameId]/summary, animates the
- * final score in, renders the recap if available (or a graceful box-score
- * fallback if not), and offers the next-game CTA.
+ * Post-tap reveal screen. Fetches `/api/v1/scroll-down-mlb/games/{id}/reveal`
+ * (via the BFF), animates the final score in, renders the recap if
+ * available (or a graceful box-score fallback if not), and offers the
+ * next-game CTA.
+ *
+ * If the reveal endpoint returns 409 ("not available yet"), the
+ * `getScrollDownMlbReveal` client returns null and we render an honest
+ * "result isn't ready yet" message instead of crashing.
  */
 export function FinalReveal({
   gameId,
@@ -26,16 +36,22 @@ export function FinalReveal({
   awayTeamAbbr,
   homeTeam,
   awayTeam,
+  homeTeamId,
+  awayTeamId,
 }: FinalRevealProps) {
-  const [data, setData] = useState<CatchupSummaryResponse | null>(null);
+  const [data, setData] = useState<SdmRevealResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [notReady, setNotReady] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .summary(gameId)
+    getScrollDownMlbReveal(String(gameId))
       .then((res) => {
         if (cancelled) return;
+        if (res === null) {
+          setNotReady(true);
+          return;
+        }
         setData(res);
       })
       .catch((err) => {
@@ -46,6 +62,30 @@ export function FinalReveal({
       cancelled = true;
     };
   }, [gameId]);
+
+  if (notReady && !data) {
+    return (
+      <section data-testid="final-reveal-pending" className="final-reveal">
+        <p className="catchup-eyebrow">Final</p>
+        <p className="final-reveal-summary-fallback">
+          The result isn&rsquo;t ready yet. Try the box score for the latest.
+        </p>
+        <div className="final-reveal-actions">
+          <a
+            href={BOX_SCORE.url(gameId)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="final-reveal-secondary"
+          >
+            {BOX_SCORE.label}
+          </a>
+          <Link href="/" className="final-reveal-primary">
+            Back to games
+          </Link>
+        </div>
+      </section>
+    );
+  }
 
   if (error && !data) {
     return (
@@ -60,8 +100,9 @@ export function FinalReveal({
 
   if (!data) return <FinalRevealSkeleton awayTeam={awayTeam} homeTeam={homeTeam} />;
 
-  const homeWon = data.winner === "home";
-  const awayWon = data.winner === "away";
+  const winner = resolveWinner(data, { homeTeamId, awayTeamId, homeTeamAbbr, awayTeamAbbr });
+  const homeWon = winner === "home";
+  const awayWon = winner === "away";
 
   return (
     <section data-testid="final-reveal" className="final-reveal">
@@ -113,6 +154,27 @@ export function FinalReveal({
       </div>
     </section>
   );
+}
+
+function resolveWinner(
+  data: SdmRevealResponse,
+  ids: {
+    homeTeamId?: string | null;
+    awayTeamId?: string | null;
+    homeTeamAbbr: string;
+    awayTeamAbbr: string;
+  },
+): "home" | "away" | "tie" {
+  if (data.finalScore.home === data.finalScore.away) return "tie";
+  // Prefer SDA team-id match when available.
+  if (data.winnerTeamId) {
+    if (ids.homeTeamId && data.winnerTeamId === ids.homeTeamId) return "home";
+    if (ids.awayTeamId && data.winnerTeamId === ids.awayTeamId) return "away";
+    if (data.winnerTeamId === ids.homeTeamAbbr) return "home";
+    if (data.winnerTeamId === ids.awayTeamAbbr) return "away";
+  }
+  // Fallback: derive from final score.
+  return data.finalScore.home > data.finalScore.away ? "home" : "away";
 }
 
 function ScoreBlock({
