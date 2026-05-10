@@ -78,6 +78,10 @@ export interface SdmPlayPayload {
   description?: string | null;
   batterName?: string | null;
   pitcherName?: string | null;
+  /** Pre-formatted running line for the pitcher of record at this play,
+   *  e.g. "4.1 IP · 6 K · 1 BB · 2 R". Backend produces the string; the
+   *  renderer just shows it. Null when the pitcher isn't known. */
+  pitcherStatLine?: string | null;
   ballsBefore?: number | null;
   strikesBefore?: number | null;
   outsBefore?: number | null;

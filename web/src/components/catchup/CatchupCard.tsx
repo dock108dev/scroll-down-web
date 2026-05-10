@@ -243,26 +243,32 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
           </div>
         </div>
 
-        {(situation.batterName || situation.pitcherName) && (
+        {(situation.batterName || situation.pitcherName || hasCount) && (
           <div
             className="catchup-card-matchup"
             data-team-abbr={card.battingTeamAbbr ?? ""}
           >
             {situation.batterName && (
-              <span className="catchup-card-batter">{situation.batterName.toUpperCase()}</span>
+              <span className="catchup-card-batter">{compactName(situation.batterName).toUpperCase()}</span>
             )}
             {situation.batterName && situation.pitcherName && (
               <span className="catchup-card-vs" aria-hidden>vs</span>
             )}
             {situation.pitcherName && (
-              <span className="catchup-card-pitcher">{situation.pitcherName.toUpperCase()}</span>
+              <span className="catchup-card-pitcher">{compactName(situation.pitcherName).toUpperCase()}</span>
             )}
             {hasCount && (
               <span className="catchup-card-count">
-                · {situation.balls}-{situation.strikes}
+                {(situation.batterName || situation.pitcherName) ? "· " : ""}{situation.balls}-{situation.strikes}
               </span>
             )}
           </div>
+        )}
+
+        {situation.pitcherStatLine && (
+          <p className="catchup-card-pitcher-line" data-testid="pitcher-stat-line">
+            {situation.pitcherStatLine}
+          </p>
         )}
       </header>
 
@@ -432,6 +438,25 @@ function OutsDots({
       <span className="outs-dots-label">{after === 1 ? "OUT" : "OUTS"}</span>
     </span>
   );
+}
+
+/**
+ * Squeeze a full player name down for header display. The deck builder
+ * sometimes ships "First Last" and sometimes ships just "Last" — the
+ * matchup row should render the latter regardless. Strips a trailing
+ * Jr./Sr./II/III suffix the way the SDA narrative.py last-name helper
+ * does, so "Vladimir Guerrero Jr." → "GUERRERO".
+ */
+function compactName(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return trimmed;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const last = parts[parts.length - 1];
+  if (/^(jr\.?|sr\.?|ii|iii|iv)$/i.test(last) && parts.length >= 2) {
+    return parts[parts.length - 2].replace(/[.,;]$/, "");
+  }
+  return last.replace(/[.,;]$/, "");
 }
 
 /** True when the priorAfter snapshot disagrees with this card's situation

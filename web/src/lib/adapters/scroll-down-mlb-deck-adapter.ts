@@ -141,13 +141,28 @@ function adaptPlayCard(
   const runnerNamesBefore = play.runnerNamesBefore ?? {};
   const runnerNamesAfter = play.runnerNamesAfter ?? {};
 
-  const runnerAdvances = adaptRunnerMovements(card.visual?.runnerMovements ?? []);
+  const movements = card.visual?.runnerMovements ?? [];
+  const runnerAdvances = adaptRunnerMovements(movements);
 
   const ballPath = (card.visual?.trajectory as BallPath | null | undefined) ?? undefined;
   const animationProfile = (card.visual?.animationProfile as PlayAnimationProfile | null | undefined) ?? undefined;
   const visualIntensity = (card.visual?.intensity as "low" | "medium" | "high" | null | undefined) ?? undefined;
 
   const inningLabel = card.title ?? buildInningLabel(inning, inningHalf);
+
+  // Some upstream play rows don't carry batterName (the SDA `player_name`
+  // column is the underlying source — when it's null, `play.batterName`
+  // arrives null too). Recover it from the runner-movement plan: the
+  // batter is the one runner whose movement starts at home plate.
+  const inferredBatterName =
+    play.batterName ??
+    inferBatterFromMovements(movements, runnerNamesAfter, runnerNamesBefore);
+
+  // Splice the inferred batter name into the curated narrative if the
+  // backend narrator left the generic "the batter" placeholder. Falls
+  // back to the raw MLB play description as a last resort. Keeps the
+  // curated tone while restoring the player context.
+  const narrativeText = pickNarrative(card.description, play.description, inferredBatterName);
 
   return {
     kind: "play",
@@ -159,8 +174,8 @@ function adaptPlayCard(
     inningHalf,
     inningLabel,
     battingTeamAbbr,
-    description: card.description,
-    narrative: card.description !== play.description ? card.description : undefined,
+    description: narrativeText,
+    narrative: narrativeText !== play.description ? narrativeText : undefined,
     scoreBefore,
     scoreAfter,
     situationBefore: {
@@ -168,8 +183,9 @@ function adaptPlayCard(
       balls: play.ballsBefore ?? undefined,
       strikes: play.strikesBefore ?? undefined,
       baseState: baseStateBefore,
-      batterName: play.batterName ?? undefined,
+      batterName: inferredBatterName ?? undefined,
       pitcherName: play.pitcherName ?? undefined,
+      pitcherStatLine: play.pitcherStatLine ?? undefined,
     },
     outsAfter: play.outsAfter ?? 0,
     baseStateAfter,
@@ -258,6 +274,106 @@ function adaptRunnerMovements(
     to: m.to,
     outAt: m.outAt ?? undefined,
   }));
+}
+
+
+/**
+ * Recover the batter's name when the upstream play row didn't carry it
+ * directly. The batter is the one runner whose movement begins at home
+ * plate — every batted-ball event (single, HR, K, popup, walk, etc.)
+ * places a `from: "home"` movement, and its `runner` is the batter.
+ *
+ * Two fallback layers when that movement's runner string is empty:
+ *   1. `runnerNamesAfter[base]` for whichever base the batter ended up on
+ *      (single → first, double → second, etc.). Skipped when the batter
+ *      went to "out" or "home" (HR) because no after-name is recorded.
+ *   2. Diff `runnerNamesAfter` against `runnerNamesBefore` — any name that
+ *      appears in `after` but wasn't in `before` must be the batter who
+ *      just reached.
+ *
+ * Returns `null` (not `undefined`) when nothing resolves, so the caller's
+ * `??` chain falls through cleanly to that case.
+ */
+function inferBatterFromMovements(
+  movements: SdmRunnerMovement[],
+  runnerNamesAfter: Partial<Record<"first" | "second" | "third", string>>,
+  runnerNamesBefore: Partial<Record<"first" | "second" | "third", string>>,
+): string | null {
+  const batterMove = movements.find((m) => m.from === "home");
+  if (batterMove?.runner) return batterMove.runner;
+
+  // Did the batter reach a base safely? Check the destination of any
+  // home → base move.
+  if (batterMove && (batterMove.to === "first" || batterMove.to === "second" || batterMove.to === "third")) {
+    const atDest = runnerNamesAfter[batterMove.to];
+    if (atDest) return atDest;
+  }
+
+  // Diff after vs before for any newly-appeared runner name.
+  const bases: Array<"first" | "second" | "third"> = ["first", "second", "third"];
+  const before = new Set(bases.map((b) => runnerNamesBefore[b]).filter(Boolean) as string[]);
+  for (const base of bases) {
+    const name = runnerNamesAfter[base];
+    if (name && !before.has(name)) return name;
+  }
+  return null;
+}
+
+
+/**
+ * Choose the narrative sentence shown under the field.
+ *
+ * Order of preference:
+ *   1. Curated narrator output (`cardDescription`) when it already has a
+ *      name — emotionally framed, our preferred voice.
+ *   2. Curated narrator output with the inferred batter name spliced into
+ *      the "the batter" placeholder. Restores the actor without losing
+ *      tone.
+ *   3. Raw upstream MLB play-by-play (`playDescription`) — verbose but
+ *      always carries the actors. Last-resort fallback when (1) and (2)
+ *      both fail.
+ */
+function pickNarrative(
+  cardDescription: string,
+  playDescription: string | null | undefined,
+  inferredBatterName: string | null,
+): string {
+  const card = (cardDescription ?? "").trim();
+  const play = (playDescription ?? "").trim();
+  if (!card) return play;
+  if (!play && !inferredBatterName) return card;
+
+  const hasBatterPlaceholder = /\bthe batter\b/i.test(card);
+  const hasPitcherPlaceholder = /\bthe pitcher\b/i.test(card);
+
+  if (hasBatterPlaceholder && inferredBatterName) {
+    const last = lastNameOf(inferredBatterName);
+    // Replace the leading "The batter" (capitalized) once, then any
+    // remaining lowercase "the batter" references.
+    let out = card.replace(/^The batter\b/, last);
+    out = out.replace(/\bthe batter\b/gi, last.toLowerCase() === last ? last : last);
+    return out;
+  }
+
+  // Narrator gave up on names entirely and we couldn't infer one — the
+  // raw MLB text is wordier but at least carries them.
+  if ((hasBatterPlaceholder || hasPitcherPlaceholder) && play) {
+    return play;
+  }
+  return card;
+}
+
+
+function lastNameOf(full: string): string {
+  const trimmed = full.trim();
+  if (!trimmed) return trimmed;
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  const last = parts[parts.length - 1];
+  if (/^(jr\.?|sr\.?|ii|iii|iv)$/i.test(last) && parts.length >= 2) {
+    return parts[parts.length - 2].replace(/[.,;]$/, "");
+  }
+  return last.replace(/[.,;]$/, "");
 }
 
 

@@ -262,10 +262,17 @@ const EXTRA_TRAILS: Partial<Record<PlayAnimationProfile, ExtraTrailDef[]>> = {
 /** Resolve the extra trails for a profile/ball-path pairing. Profiles whose
  *  trail geometry depends on where the ball was hit (sacrifice_fly,
  *  deep_fly, line_drive) fall through so the fielder-to-home arc varies
- *  by ball direction. */
+ *  by ball direction.
+ *
+ *  `hasDefensiveThrowContext` is the gate that suppresses the relay arc
+ *  on plays where no runner is trying to score or advance into scoring
+ *  position — on a routine single up the middle with the bases empty,
+ *  drawing OF→cutoff→home reads as random extra lines on the diamond.
+ *  See ISSUE: user-reported "stray lines on a single". */
 function resolveExtraTrails(
   profile: PlayAnimationProfile,
   ballPath: BallPath,
+  hasDefensiveThrowContext: boolean,
 ): ExtraTrailDef[] {
   const base = EXTRA_TRAILS[profile];
   if (base) return base;
@@ -282,6 +289,7 @@ function resolveExtraTrails(
   // segments on deep_fly and line_drive instead, varying by ball path.
   // See ISSUE note: Step 4 fallback documented in catchup-cards.ts.
   if (profile === "deep_fly" || profile === "line_drive") {
+    if (!hasDefensiveThrowContext) return [];
     const relay = RELAY_THROW_PATHS[ballPath];
     if (relay) {
       return [
@@ -291,6 +299,34 @@ function resolveExtraTrails(
     }
   }
   return [];
+}
+
+
+/** True when this play has a runner whose movement justifies showing the
+ *  defensive relay throw — a runner crossing home, or a runner advancing
+ *  more than one base from second/third. On a clean single with nobody
+ *  on, the relay arc has no narrative referent and reads as visual
+ *  noise. */
+function hasDefensiveThrowContext(
+  movements: RunnerMovement[] | undefined,
+  scoreBefore: { home: number; away: number } | undefined,
+  scoreAfter: { home: number; away: number } | undefined,
+): boolean {
+  if (scoreBefore && scoreAfter) {
+    const runs =
+      Math.max(0, scoreAfter.home - scoreBefore.home) +
+      Math.max(0, scoreAfter.away - scoreBefore.away);
+    if (runs > 0) return true;
+  }
+  if (!movements) return false;
+  return movements.some((m) => {
+    if (m.to === "home") return true;
+    if (m.from === "second" && m.to === "third") return true;
+    if (m.from === "first" && m.to === "third") return true;
+    if (m.to === "out") return true;
+    if (m.style === "tagged_out" || m.style === "forced_out" || m.style === "double_play") return true;
+    return false;
+  });
 }
 
 // ── Component ─────────────────────────────────────────────
@@ -330,7 +366,8 @@ export function BaseballLightField({
   // string that bypassed the type system (e.g. stale persisted data).
   // See docs/audits/error-handling-report.md §G2.
   const glow = PROFILE_GLOW[animationProfile] ?? PROFILE_GLOW.other;
-  const extraTrails = resolveExtraTrails(animationProfile, ballPath);
+  const defensiveThrow = hasDefensiveThrowContext(runnerMovements, scoreBefore, scoreAfter);
+  const extraTrails = resolveExtraTrails(animationProfile, ballPath, defensiveThrow);
   const runnersStart = runnersBeginMs ?? milestones.runners;
 
   // Profile-scaled bloom radii for the ball dot SVG filter. The floors

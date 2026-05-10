@@ -601,6 +601,21 @@ body {
   white-space: nowrap;
 }
 
+/* Pitcher stat line — sits below the matchup row inside the same
+   scoreboard inset. Dim, monospaced, low-contrast so it reads as
+   "stat ribbon under the matchup" not as a second header line. */
+.catchup-card-pitcher-line {
+  margin: 0;
+  padding: 0.125rem 0.5rem 0;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.10em;
+  color: rgba(255, 220, 150, 0.62);
+  text-align: center;
+}
+
 /* ── Outs dots — three LED bulbs in the situation rail ─── */
 .outs-dots {
   display: inline-flex;

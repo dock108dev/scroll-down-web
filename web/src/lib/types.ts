@@ -217,6 +217,10 @@ export interface SituationBefore {
   baseState: BaseballBaseState;
   batterName?: string;
   pitcherName?: string;
+  /** Pre-formatted running stat line for the pitcher at this play,
+   *  e.g. "4.1 IP · 6 K · 1 BB · 2 R". Comes straight from the backend;
+   *  the renderer just displays it. Undefined when not available. */
+  pitcherStatLine?: string;
 }
 
 /**
