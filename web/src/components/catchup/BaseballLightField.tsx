@@ -70,24 +70,29 @@ const TRAIL_LENGTH = 800;
 
 // ── Per-profile fade/glow timing ──────────────────────────
 
+// Tightened across all profiles (Nov 2026) so the ball trail clears the
+// stage before runners begin moving. Combined with the
+// BALL_TO_RUNNERS_LEAD_IN_MS beat in play-phases.ts, this means the
+// "ball flight → ball gone → runners" sequence stages cleanly. Home
+// runs keep some lingering glow because the linger IS the moment.
 const PROFILE_GLOW: Record<PlayAnimationProfile, { fadeMs: number; fadeDelayMs: number; glow: number }> = {
-  home_run:             { fadeMs: 900, fadeDelayMs: 600, glow: 2.0 },
-  deep_fly:             { fadeMs: 600, fadeDelayMs: 380, glow: 1.4 },
-  shallow_fly:          { fadeMs: 380, fadeDelayMs: 220, glow: 1.0 },
-  popup:                { fadeMs: 320, fadeDelayMs: 200, glow: 0.8 },
-  line_drive:           { fadeMs: 360, fadeDelayMs: 220, glow: 1.2 },
-  routine_grounder:     { fadeMs: 240, fadeDelayMs: 140, glow: 0.7 },
-  hard_grounder:        { fadeMs: 280, fadeDelayMs: 160, glow: 1.0 },
-  foul:                 { fadeMs: 240, fadeDelayMs: 180, glow: 0.6 },
+  home_run:             { fadeMs: 700, fadeDelayMs: 500, glow: 2.0 },
+  deep_fly:             { fadeMs: 240, fadeDelayMs: 80,  glow: 1.4 },
+  shallow_fly:          { fadeMs: 180, fadeDelayMs: 40,  glow: 1.0 },
+  popup:                { fadeMs: 160, fadeDelayMs: 40,  glow: 0.8 },
+  line_drive:           { fadeMs: 180, fadeDelayMs: 40,  glow: 1.2 },
+  routine_grounder:     { fadeMs: 140, fadeDelayMs: 30,  glow: 0.7 },
+  hard_grounder:        { fadeMs: 160, fadeDelayMs: 30,  glow: 1.0 },
+  foul:                 { fadeMs: 160, fadeDelayMs: 60,  glow: 0.6 },
   walk:                 { fadeMs: 0,   fadeDelayMs: 0,   glow: 0   },
   strikeout:            { fadeMs: 0,   fadeDelayMs: 0,   glow: 0   },
   stolen_base:          { fadeMs: 0,   fadeDelayMs: 0,   glow: 0   },
-  wild_pitch:           { fadeMs: 280, fadeDelayMs: 200, glow: 0.8 },
-  double_play_grounder: { fadeMs: 280, fadeDelayMs: 120, glow: 1.0 },
-  double_play_fly:      { fadeMs: 380, fadeDelayMs: 260, glow: 1.2 },
-  sacrifice_fly:        { fadeMs: 380, fadeDelayMs: 240, glow: 1.0 },
+  wild_pitch:           { fadeMs: 160, fadeDelayMs: 60,  glow: 0.8 },
+  double_play_grounder: { fadeMs: 180, fadeDelayMs: 40,  glow: 1.0 },
+  double_play_fly:      { fadeMs: 220, fadeDelayMs: 80,  glow: 1.2 },
+  sacrifice_fly:        { fadeMs: 220, fadeDelayMs: 80,  glow: 1.0 },
   rundown:              { fadeMs: 0,   fadeDelayMs: 0,   glow: 0   },
-  other:                { fadeMs: 380, fadeDelayMs: 220, glow: 1.0 },
+  other:                { fadeMs: 200, fadeDelayMs: 60,  glow: 1.0 },
 };
 
 // ── Per-style runner dot weighting ────────────────────────
@@ -108,24 +113,32 @@ const DOT_RADIUS: Record<RunnerMovementStyle, number> = {
 };
 
 const DOT_OPACITY: Record<RunnerMovementStyle, number> = {
-  score:        1.0,
-  advance:      0.72,
-  steal:        0.9,
-  walk_shuffle: 0.65,
-  double_play:  1.0,
-  forced_out:   1.0,
-  tagged_out:   1.0,
+  // Lowered across the board so the ball dot reads as the dominant
+  // moving actor on the field (per BRAINDUMP: "ball must become the
+  // protagonist"). Scoring + retirement events keep more brightness
+  // because they're the narrative anchors of the play.
+  score:        0.92,
+  advance:      0.55,
+  steal:        0.72,
+  walk_shuffle: 0.50,
+  double_play:  0.85,
+  forced_out:   0.82,
+  tagged_out:   0.82,
   in_place_out: 0,
 };
 
 const TRAIL_WIDTH: Record<RunnerMovementStyle, number> = {
-  score:        2.2,
-  advance:      1.2,
-  steal:        1.8,
-  walk_shuffle: 1.0,
-  double_play:  1.6,
-  forced_out:   1.4,
-  tagged_out:   1.4,
+  // Reduced ~30% from the previous values. The ball trail is 3px wide
+  // with a 5px halo — runner trails now sit clearly under that visual
+  // weight, so a multi-runner play reads as ball-then-runners rather
+  // than a wash of equally-weighted lines.
+  score:        1.6,
+  advance:      0.9,
+  steal:        1.3,
+  walk_shuffle: 0.8,
+  double_play:  1.2,
+  forced_out:   1.0,
+  tagged_out:   1.0,
   in_place_out: 0,
 };
 

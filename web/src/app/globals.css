@@ -1407,10 +1407,14 @@ body {
   100% { fill: rgba(248, 113, 113, 0);    transform: scale(2.2); }
 }
 
-/* ── Run-scoring plate pulse — fires when a runner crosses home. ── */
+/* ── Run-scoring plate pulse — fires when a runner crosses home.
+   Aligned to `--ms-settle` so the bloom and the scoreboard tick happen
+   on the same beat. Previously fired ~140ms into the runners phase,
+   which produced a window where the home plate visibly "celebrated" a
+   run while the scoreboard still read scoreBefore — reads as a glitch
+   to a regular user. */
 [data-playing="true"][data-scoring="true"] .field-plate-score-pulse {
-  animation: field-plate-score 720ms ease-out
-    calc(var(--ms-runners, 1.2s) + 240ms) forwards;
+  animation: field-plate-score 720ms ease-out var(--ms-settle, 2.5s) forwards;
   transform-origin: center;
   transform-box: fill-box;
 }
@@ -1492,37 +1496,49 @@ body {
 
 /* ── Runner movement trails ────────────────────────── */
 /* Phosphor afterimage drawn behind each moving runner. Same trick as the
-   ball trail but lower-energy — runners are pressure carriers, not the
-   focal actor of the play. Reveal/draw/fade are SMIL <animate> elements
-   on the path itself so timing per-runner is exact. */
+   ball trail but distinctly lower-energy — runners carry pressure, not
+   the focal action of the play. Reveal/draw/fade are SMIL <animate>
+   elements on the path itself so timing per-runner is exact.
+
+   Visual subordination knobs (Nov 2026, after user feedback that
+   multi-runner plays read as a chaotic wash of equally-weighted lines):
+     - baseline stroke-opacity 0.45 (was 0.65 for advance, 1.0 default)
+     - 1px halo (was 3px)
+     - faster CSS-side fade tail
+   The ball trail keeps its 3px stroke + 5px halo + 1.0 opacity so it
+   reads as the protagonist when both are on screen together. */
 .field-runner-trail {
-  filter: drop-shadow(0 0 3px var(--field-accent));
+  filter: drop-shadow(0 0 1px var(--field-accent));
   opacity: 0;
+  stroke-opacity: 0.45;
 }
-/* Per-style halo intensity. Stroke-width is set inline from TRAIL_WIDTH
-   so each style gets its own visual weight; this layer only adjusts the
-   phosphor halo and any dash patterning that conveys grammar. */
 .field-runner-trail[data-style="steal"] {
-  filter: drop-shadow(0 0 2px var(--field-accent));
+  /* Steals are the sharpest grammar — keep the slight halo so the snap
+     reads, but stroke-opacity stays subordinate. */
+  filter: drop-shadow(0 0 1.5px var(--field-accent));
+  stroke-opacity: 0.55;
 }
 .field-runner-trail[data-style="walk_shuffle"] {
-  filter: drop-shadow(0 0 2px var(--field-accent));
-  stroke-opacity: 0.5;
+  filter: none;
+  stroke-opacity: 0.32;
 }
 .field-runner-trail[data-style="advance"] {
-  stroke-opacity: 0.65;
+  stroke-opacity: 0.42;
 }
 .field-runner-trail[data-style="score"] {
-  /* Scores get extra halo — the moment a runner crosses home should
-     read with a touch more weight than a routine advance. */
+  /* Scoring runs are the narrative anchor — push the halo a touch
+     above the baseline so the eye tracks the crossing-home moment.
+     Still well under the ball trail's bloom. */
   filter:
-    drop-shadow(0 0 2px var(--field-accent))
-    drop-shadow(0 0 6px var(--field-accent));
+    drop-shadow(0 0 1.5px var(--field-accent))
+    drop-shadow(0 0 4px var(--field-accent));
+  stroke-opacity: 0.62;
 }
 .field-runner-trail[data-style="double_play"] {
   /* DP transfers read as chained mechanics — a dashed trail (5px on,
      3px gap) is the unmistakable signal that this isn't a live runner. */
   stroke-dasharray: 5 3;
+  stroke-opacity: 0.50;
 }
 
 /* ── Runner advance dots ───────────────────────────── */

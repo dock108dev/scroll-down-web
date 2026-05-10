@@ -103,6 +103,32 @@ const SCHEDULES: Record<PlayAnimationProfile, PhaseSchedule> = {
 /** Default duration of the bridging beat when a priorAfter is attached. */
 export const BRIDGE_MS = 440;
 
+/**
+ * Beat inserted between the ball reaching the fielder and runners
+ * beginning to move. Without this, runner trails start drawing while
+ * the ball trail is still mid-fade, producing the visual wash that
+ * users have reported as "lines that aren't from the hit." This delay
+ * lets the ball trail clear the stage before the runners take over.
+ *
+ * Skipped for profiles with no ball path (walk/strikeout/stolen_base)
+ * because there's no trail to clear in the first place.
+ */
+const BALL_TO_RUNNERS_LEAD_IN_MS = 220;
+
+const PROFILES_WITH_BALL: ReadonlySet<PlayAnimationProfile> = new Set([
+  "home_run",
+  "deep_fly",
+  "shallow_fly",
+  "line_drive",
+  "popup",
+  "routine_grounder",
+  "hard_grounder",
+  "foul",
+  "double_play_grounder",
+  "double_play_fly",
+  "sacrifice_fly",
+]);
+
 export function getPhaseSchedule(
   profile: PlayAnimationProfile | undefined,
   overrides?: Partial<PhaseSchedule>,
@@ -116,12 +142,15 @@ export function getPhaseMilestones(
   overrides?: Partial<PhaseSchedule>,
 ): PhaseMilestones {
   const s = getPhaseSchedule(profile, overrides);
+  const leadIn = PROFILES_WITH_BALL.has(profile ?? "other")
+    ? BALL_TO_RUNNERS_LEAD_IN_MS
+    : 0;
   const bridge = 0;
   const setup = bridge + s.bridge;
   const pitch = setup + s.setup;
   const trigger = pitch + s.pitch;
   const ball = trigger + s.trigger;
-  const runners = ball + s.ball;
+  const runners = ball + s.ball + leadIn;
   const settle = runners + s.runners;
   const reveal = settle + s.settle;
   const ready = reveal + REVEAL_TO_READY_MS;
