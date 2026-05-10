@@ -208,8 +208,9 @@ jobs:
           username: ${{ secrets.HETZNER_USER }}
           key: ${{ secrets.HETZNER_SSH_KEY }}
           script: |
-            DEPLOY_PATH="${{ vars.DEPLOY_PATH || '/opt/scrolldown-web-dev' }}"
-            HOST_PORT="${{ vars.HOST_PORT || '3002' }}"
+            set -euo pipefail
+            DEPLOY_PATH="${{ vars.DEPLOY_PATH || '/opt/scrolldown-web' }}"
+            HOST_PORT="${{ vars.HOST_PORT || '3001' }}"
             export HOST_PORT
             cd "$DEPLOY_PATH"
             echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
