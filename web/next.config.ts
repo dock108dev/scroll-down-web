@@ -47,6 +47,8 @@ const nextConfig: NextConfig = {
               `connect-src ${connectSrc}`,
               "worker-src 'self'",
               "frame-ancestors 'none'",
+              "frame-src 'none'",
+              "object-src 'none'",
               "base-uri 'self'",
               "form-action 'self'",
             ].join("; "),

@@ -184,6 +184,7 @@ export type PlayAnimationProfile =
   | "double_play_grounder"
   | "double_play_fly"
   | "sacrifice_fly"
+  | "rundown"
   | "other";
 
 export type PlayEventType =
@@ -216,33 +217,6 @@ export interface SituationBefore {
   baseState: BaseballBaseState;
   batterName?: string;
   pitcherName?: string;
-  /** Batter's running line in this game UP TO (not including) this play.
-   *  Empty/zero on the batter's first PA. */
-  batterLine?: BatterLine;
-  /** Pitcher's running line in this game UP TO (not including) this play.
-   *  Computed by attributing each play to the pitcher of record (the team's
-   *  reliever-list cumulative-outs walk). */
-  pitcherLine?: PitcherLine;
-}
-
-export interface BatterLine {
-  /** At-bats — excludes BB, HBP, sacrifice; includes hits and outs at bat. */
-  atBats: number;
-  hits: number;
-  baseOnBalls: number;
-  strikeOuts: number;
-  homeRuns: number;
-  rbi: number;
-}
-
-export interface PitcherLine {
-  /** Outs recorded by this pitcher in this game so far. IP = outs/3. */
-  outs: number;
-  hits: number;
-  runs: number;
-  baseOnBalls: number;
-  strikeOuts: number;
-  homeRuns: number;
 }
 
 /**

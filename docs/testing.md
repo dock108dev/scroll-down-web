@@ -1,212 +1,122 @@
 # Testing
 
-## Overview
+Two test layers, both run from `web/`:
 
-The repo runs two test layers:
-
-- **Vitest unit tests** under `web/tests/unit/` — pure-logic and component tests using `jsdom` + `@testing-library/react`. Configured by `web/vitest.config.ts`.
-- **Playwright E2E tests** under `web/tests/` (excluding `unit/`) — two browser projects: desktop Chromium and mobile-viewport Chromium (390×844, touch enabled). Tests run against a live dev server on `localhost:3001`.
+- **Vitest** — pure-logic and component unit tests under `web/tests/unit/`. Configured by `web/vitest.config.ts`. Uses `jsdom` + `@testing-library/react`.
+- **Playwright** — E2E flows under `web/tests/` (excluding `unit/`). Two browser projects: desktop Chromium and mobile-viewport Chromium. Tests run against a live server on `localhost:3001`.
 
 ## Setup
 
 ```bash
-# Install Playwright browsers (first time only)
+cd web
+
+# Install Playwright browsers once
 npx playwright install chromium
 
-# Start the dev server in another terminal (Playwright only — Vitest does not need it)
-npm run dev
-
-# Run all Playwright tests
-npm test
-
-# Run smoke-only Playwright tests
-npm run test:smoke
-
-# Run with visible browser
-npm run test:headed
-
-# Run Playwright UI mode
-npm run test:ui
-
-# Run Vitest unit tests
+# Vitest
 npm run test:unit
 
-# Watch mode for unit tests
-npm run test:unit:watch
+# Playwright (auto-starts dev or `npm start` server via webServer config)
+npm test
 ```
 
 ## Configuration
 
-`playwright.config.ts` defines:
+### Vitest (`web/vitest.config.ts`)
 
-- **Global setup**: creates a test account via signup, saves auth state to `tests/.auth/user-state.json`
-- **Desktop project** (`chromium`): default viewport
-- **Mobile project** (`mobile`): 390x844 viewport, touch enabled, Chromium (not WebKit)
-- **Base URL**: `http://localhost:3001`
-- **Timeout**: 30s per test
-- **Retries**: 2 in CI, 0 locally
+- Globs: `tests/unit/**/*.test.ts(x)`
+- Setup file: `tests/unit/setup.ts` (`@testing-library/jest-dom` matchers, `fake-indexeddb`)
+- Coverage: v8 provider, output to `web/coverage/`
 
-## Auth Pattern
+### Playwright (`web/playwright.config.ts`)
 
-Tests that need authentication use the `authedPage` fixture, which loads saved auth state from the global setup run. The `page` fixture is unauthenticated.
+- `testDir: ./tests`, `testIgnore: ['**/unit/**']` so Playwright never tries to load Vitest specs
+- Base URL: `http://localhost:3001`
+- Timeout: 30s per test, 10s per assertion
+- Retries: 2 in CI, 0 locally
+- Workers: full parallelism in CI, default locally
+- Reporter: `[github, line]` in CI, HTML locally
+- `webServer`: runs `npm run dev` (or `npm start` in CI), reuses existing server when present, sets `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER=1` and forwards `SPORTS_DATA_API_KEY` / `SPORTS_API_KEY` / `API_KEY` from the parent shell
 
-```typescript
-import { test, expect } from "../helpers";
+### Projects
 
-test("requires auth", async ({ authedPage }) => {
-  // authedPage is logged in
-});
+| Name | Viewport | Notes |
+|------|----------|-------|
+| `setup` | — | Runs `tests/global-setup.ts` once |
+| `chromium` | `Desktop Chrome` | Depends on `setup` |
+| `mobile` | 390×844, `isMobile`, `hasTouch` | Chromium with mobile viewport (no WebKit dependency) |
 
-test("no auth needed", async ({ page }) => {
-  // page is a guest
-});
-```
+`tests/global-setup.ts` and `tests/helpers.ts` are committed; the captured `tests/.auth/*` state (if any) is gitignored.
 
-### Auth Staleness
+### Tags
 
-If the backend restarts between test runs, the saved JWT becomes invalid. Tests that depend on auth detect this (redirect to `/login`) and skip gracefully rather than fail. To force fresh auth:
+`@smoke` — fast subset gated in PR CI. PR CI excludes `@live-upstream` (tests that need real upstream data such as live game schedules). The `@live-upstream` set runs daily via `.github/workflows/e2e-daily.yml`.
+
+See `web/tests/SDA_HANDOFF.md` for fixture/handoff notes; `web/tests/MINIMAL_SDA_FIXTURES.md` documents the captured fixtures used by `/dev/catchup-lab` and the `tests/fixtures/` directory.
+
+## Vitest Coverage
+
+Unit tests live in `web/tests/unit/`. Current files:
+
+| Path | What it covers |
+|------|----------------|
+| `tests/unit/lib/api-server.test.ts` | `apiFetch`, `cachedApiFetch`, mojibake repair, error mapping |
+| `tests/unit/lib/catchup-cards.test.ts` | `buildCatchupCards`: tier-1 inclusion, tier-2 sampling, audit shape |
+| `tests/unit/lib/rhythm-planner.test.ts` | `planDeckWithReport` ordering and report contents |
+| `tests/unit/lib/leverage.test.ts` | Win Expectancy delta math |
+| `tests/unit/lib/play-validation.test.ts` (if present) | Play-shape validation |
+| `tests/unit/lib/field-geometry.test.ts` | Canonical field coordinates |
+| `tests/unit/lib/runner-paths.test.ts` | Runner path generation |
+| `tests/unit/lib/trajectory.test.ts` | Trajectory class personality (fly / line / ground) |
+| `tests/unit/lib/result-chip.test.ts` | Result chip / event personality |
+| `tests/unit/lib/game-filters.test.ts` | Spoiler-stripping for the home feed |
+| `tests/unit/lib/date-utils.test.ts` | Eastern-timezone date bucketing |
+| `tests/unit/lib/site-config.test.ts` | `getSiteUrl` / `isNoIndexSite` resolution order |
+| `tests/unit/lib/public-url.test.ts` | `publicBaseUrl` precedence (`PUBLIC_BASE_URL` → `MAGIC_LINK_BASE_URL` → site config → request host) |
+| `tests/unit/lib/rate-limit.test.ts` | Sliding-window rate-limit helper (used at the proxy boundary) |
+| `tests/unit/lib/types-status.test.ts` | `isFinal()` / status helpers |
+| `tests/unit/lib/utils.test.ts` | Generic helpers in `lib/utils.ts` |
+| `tests/unit/lib/top-banner-slot.test.tsx` | `top-banner-slot` rendering |
+| `tests/unit/qa/*` | Fixture-driven QA scenarios for the catch-up pipeline |
+
+Add new unit tests under `tests/unit/` — the config picks them up automatically.
+
+## Playwright Coverage
+
+E2E specs live under `web/tests/` (excluding `unit/`). The directory is the source of truth — there is no separate "expected suites" list to keep in sync. Browse `web/tests/` to see the current set, and use `--list` to enumerate:
 
 ```bash
-rm -f tests/.auth/user-state.json
-npm test
+npx playwright test --list
+npx playwright test --list --grep "@smoke"
 ```
 
-## Test Helpers
+When adding a new spec, place it under a subdirectory matching the surface (e.g. `tests/catchup/`, `tests/home/`) and tag with `@smoke` if it needs to run on every PR.
 
-`tests/helpers.ts` exports:
+## Resilience patterns
 
-| Helper | Purpose |
-|--------|---------|
-| `waitForLoad(page)` | Waits for skeleton loaders to disappear |
-| `waitForGameData(page, timeout?)` | Waits for game rows to appear; returns `false` if API unavailable |
-| `measureMs(fn)` | Times an async operation in milliseconds |
-| `loginViaUI(page, email, password)` | Fills login form and submits |
-| `signupViaUI(page, email, password)` | Fills signup form and submits |
-| `getAuthToken(page)` | Reads JWT from localStorage |
-| `clearAppState(page)` | Clears localStorage and sessionStorage |
+PRs run smoke against real upstream-derived data, so tests must handle environment variability:
 
-## Test Suites
+- **No game data** — skip rather than fail when the API returns an empty schedule.
+- **Slow upstream** — bound waits with the per-assertion 10s timeout; skip after a longer per-test timeout when the route is unresponsive.
+- **`@live-upstream`** — gate any test that depends on a real live game schedule with this tag, so PR CI excludes it.
 
-### Vitest (`web/tests/unit/`)
-
-| Path | Coverage |
-|------|----------|
-| `tests/unit/ads/AdSlot.test.tsx` | `<AdSlot>` renders placeholder height before mount, no-ops when `window.adsbygoogle` is missing |
-| `tests/unit/ads/shouldShowAds.test.ts` | `shouldShowAds()` matrix: kill switch, missing client ID, paid/admin/anonymous viewers |
-| `tests/unit/setup.ts` | Vitest setup: `@testing-library/jest-dom` matchers, `jsdom` polyfills |
-
-Add a new unit test by creating a `*.test.ts(x)` file under `tests/unit/` — `vitest.config.ts` picks them up automatically.
-
-### Playwright (feature suites)
-
-| Directory | Tests | Notes |
-|-----------|-------|-------|
-| `tests/ads/` | Ad placement gating, paid-user suppression | Verifies `<ins>` tags + script load behavior |
-| `tests/auth/` | Signup, login, logout, magic link, forgot password | Creates fresh accounts per test |
-| `tests/home/` | Game list, pinning, score reveal | Skips gracefully if no game data |
-| `tests/game/` | Detail page, reading position | Navigates via game row click |
-| `tests/fairbet/` | Odds display, live tab, parlay builder | Skips if API slow (>20s) |
-| `tests/freemium/` | Tier gating, Pro gate sheet, upgrade flow | Uses `?tier=pro` URL override |
-| `tests/golf/` | Tournament list, leaderboard display | Skips if golf API unavailable |
-| `tests/history/` | Date navigator, search, auth gate | Tests both admin and guest access |
-| `tests/analytics/` | Tab navigation, models page, batch simulation | Permission checks |
-| `tests/errors/` | 404 handling, API error resilience | Route interception for 500s/timeouts |
-| `tests/profile/` | Account info, password change, delete account | Skips if auth expired |
-| `tests/mobile/` | Bottom tabs, responsive layout | Mobile viewport (390×844) |
-| `tests/nav/` | Top nav, bottom tabs, route navigation | Cross-cutting nav coverage |
-| `tests/pwa/` | Service worker, install prompt, offline banner | PWA infrastructure smoke |
-| `tests/performance/` | Page load times, navigation speed | Threshold-based assertions |
-| `tests/cache/` | LocalStorage staleness, tab visibility | Simulates visibility changes |
-| `tests/realtime/` | SSE endpoint connectivity | Verifies proxy responds |
-| `tests/settings/` | Theme, score reveal mode, odds format | Toggles settings and verifies |
-| `tests/sync/` | Pro-tier reveal sync (`/api/sync/reveal`) | Cross-device sync semantics |
-
-## Resilience Patterns
-
-Tests are designed to handle environment variability:
-
-- **No game data**: tests using `waitForGameData()` skip with `test.skip(true, "No game data")` instead of failing
-- **Slow API**: FairBet tests catch timeouts and skip when the API doesn't respond within 20s
-- **Stale auth**: profile tests detect redirect to `/login` and skip
-- **Backend down**: signup/login tests skip when the backend doesn't respond within 15s
-- **Missing golf data**: golf tests skip when tournament API returns empty results
-
-## Data-testid Attributes
-
-Components expose `data-testid` attributes for stable test selectors:
-
-### Layout
-| Attribute | Component |
-|-----------|-----------|
-| `top-nav` | TopNav |
-| `bottom-tabs` | BottomTabs |
-| `search-bar` | SearchBar |
-
-### Home
-| Attribute | Component |
-|-----------|-----------|
-| `game-row` | GameRow |
-| `pinned-bar` | PinnedBar |
-| `pinned-chip` | PinnedBar (each chip) |
-| `league-filter` | Home page |
-| `page-home` | Home page root |
-
-### Game Detail
-| Attribute | Component |
-|-----------|-----------|
-| `page-game-detail` | Game detail page root |
-| `game-header` | GameHeader |
-| `section-nav` | SectionNav |
-| `stats-section` | PlayerStatsSection |
-| `odds-section` | OddsSection |
-| `timeline-section` | TimelineSection |
-| `mini-box-score` | MiniBoxScore |
-| `mini-scorebar` | MiniScorebar |
-| `player-stats-table` | PlayerStatsTable |
-| `wrap-up-section` | WrapUpSection |
-| `pregame-buzz-section` | PregameBuzzSection |
-| `flow-container` | FlowContainer |
-| `flow-block-card` | FlowBlockCard |
-
-### FairBet
-| Attribute | Component |
-|-----------|-----------|
-| `page-fairbet` | FairBet page root |
-| `bet-card` | BetCard |
-| `live-odds-panel` | LiveOddsPanel |
-| `parlay-sheet` | ParlaySheet |
-| `book-filters` | BookFilters |
-
-### Golf
-| Attribute | Component |
-|-----------|-----------|
-| `page-golf` | Golf page root |
-| `page-golf-event` | Golf event page root |
-| `tournament-card` | TournamentCard |
-| `leaderboard` | Leaderboard |
-| `leaderboard-row` | LeaderboardRow |
-
-### Shared
-| Attribute | Component |
-|-----------|-----------|
-| `loading-skeleton` | LoadingSkeleton (default variant) |
-| `auth-gate` | AuthGate (when gated) |
-| `settings-content` | SettingsContent |
-| `page-history` | History page root |
-
-## Running in CI
-
-The CI pipeline runs Playwright smoke tests (`@smoke`-tagged) on every push via the `playwright-smoke` job in `.github/workflows/ci.yml`. A separate daily workflow (`.github/workflows/e2e-daily.yml`) runs the full Playwright suite at 6 AM UTC. Both produce `playwright-report` artifacts.
-
-## NPM Scripts
+## NPM scripts (test only)
 
 | Command | Purpose |
 |---------|---------|
-| `npm test` | All Playwright tests |
-| `npm run test:smoke` | Smoke Playwright tests only (`@smoke` tag) |
-| `npm run test:smoke:pr` | Smoke tests excluding `@live-upstream`; mirrors the PR smoke job |
-| `npm run test:headed` | Playwright tests in visible browser |
+| `npm test` | Full Playwright suite |
+| `npm run test:smoke` | `@smoke` tests only |
+| `npm run test:smoke:pr` | `npm run build` then `@smoke` excluding `@live-upstream` (mirrors PR CI) |
+| `npm run test:headed` | Playwright with visible browser |
 | `npm run test:ui` | Playwright UI mode |
-| `npm run test:unit` | Vitest unit suite (`--passWithNoTests`) |
+| `npm run test:unit` | Vitest (`--passWithNoTests`) |
 | `npm run test:unit:watch` | Vitest watch mode |
-| `npm run test:unit:coverage` | Vitest with coverage |
+| `npm run test:unit:coverage` | Vitest with v8 coverage |
+
+## CI
+
+Defined in `.github/workflows/ci.yml`:
+
+- `web` job — runs `vitest run --coverage` on every push/PR (uploads `web-coverage` artifact).
+- `playwright-smoke` job — runs `@smoke` excluding `@live-upstream` on every push/PR with secrets available; skipped on fork PRs.
+- `e2e-daily.yml` — runs the full Playwright suite on a daily schedule.

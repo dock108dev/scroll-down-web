@@ -2,7 +2,7 @@
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Tailwind @theme — design token integration
-   Maps to iOS DesignSystem / GameTheme / FairBetTheme exactly.
+   Maps to iOS DesignSystem / GameTheme exactly.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 @theme {
   /* ── Neutral palette (defaults — overridden per-mode below) ── */
@@ -95,23 +95,6 @@
   --ds-card-border: rgba(0, 0, 0, 0.08);
   --ds-background: #ffffff;
 
-  /* ── FairBetTheme (light mode) ───────────────────── */
-  --fb-positive: rgb(22, 163, 74);
-  --fb-positive-muted: rgb(34, 120, 77);
-  --fb-success-soft: rgba(22, 163, 74, 0.08);
-  --fb-success-soft-muted: rgba(34, 120, 77, 0.06);
-  --fb-negative: rgb(185, 28, 28);
-  --fb-neutral: rgb(107, 114, 128);
-  --fb-info: rgb(37, 99, 235);
-  --fb-info-soft: rgba(37, 99, 235, 0.06);
-  --fb-card-bg: #ffffff;
-  --fb-surface-tint: #fafafa;
-  --fb-surface-secondary: #f5f5f5;
-  --fb-card-border: rgba(0, 0, 0, 0.08);
-  --fb-border-subtle: rgba(0, 0, 0, 0.06);
-
-  --ev-good-text: rgb(22, 101, 52);
-
   /* ── Default team colours (light mode) ───────────── */
   --ds-team-a: rgb(124, 58, 237);
   --ds-team-a-bg: rgba(124, 58, 237, 0.08);
@@ -165,23 +148,6 @@
   --ds-card-bg: rgb(28, 28, 30);
   --ds-card-border: rgba(255, 255, 255, 0.08);
   --ds-background: rgb(0, 0, 0);
-
-  /* ── FairBetTheme (dark mode) ────────────────────── */
-  --fb-positive: rgb(46, 184, 115);
-  --fb-positive-muted: rgb(89, 166, 128);
-  --fb-success-soft: rgba(46, 184, 115, 0.12);
-  --fb-success-soft-muted: rgba(89, 166, 128, 0.10);
-  --fb-negative: rgb(209, 107, 102);
-  --fb-neutral: rgb(140, 145, 158);
-  --fb-info: rgb(89, 140, 242);
-  --fb-info-soft: rgba(89, 140, 242, 0.10);
-  --fb-card-bg: rgb(36, 41, 51);
-  --fb-surface-tint: rgb(26, 31, 41);
-  --fb-surface-secondary: rgb(46, 51, 64);
-  --fb-card-border: rgba(255, 255, 255, 0.08);
-  --fb-border-subtle: rgba(255, 255, 255, 0.12);
-
-  --ev-good-text: rgb(134, 239, 172);
 
   /* ── Default team colours (dark mode) ────────────── */
   --ds-team-a: rgb(160, 130, 255);
@@ -286,6 +252,35 @@ body {
   color: var(--device-amber-dim, rgb(155, 118, 38));
 }
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Home deck
+   Selective vocabulary borrowed from the catch-up experience for the
+   home screen at list density. The featured card uses the most device
+   vocabulary (gradient shell + bevel + amber border); non-featured
+   cards stay flat with quieter amber borders so scanning isn't muddy.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.home-deck-page {
+  background-color: #080a0d;
+  min-height: 100dvh;
+}
+.home-deck {
+  --home-card-bg:                    #13141a;
+  --home-card-bg-featured:           #15161a;
+  --home-grad-featured:              linear-gradient(180deg, #1d1f24 0%, #15161a 100%);
+  --home-card-border:                rgba(245, 181, 54, 0.14);
+  --home-card-border-featured:       rgba(245, 181, 54, 0.32);
+  --home-card-border-hover:          rgba(245, 181, 54, 0.28);
+  --home-card-border-featured-hover: rgba(245, 181, 54, 0.50);
+  --home-cta-color:                  #f6c453;
+  --home-cta-bg:                     rgba(246, 196, 83, 0.12);
+  --home-cta-border:                 rgba(246, 196, 83, 0.38);
+  --home-badge-border:               rgba(245, 181, 54, 0.22);
+  --home-badge-border-soft:          rgba(245, 181, 54, 0.16);
+  --home-badge-text:                 #9b7626;
+  --home-sep-color:                  rgba(245, 181, 54, 0.30);
+  --home-team-text:                  #f5f1e8;
+}
+
 /* ── Catch-up header (back/restart) ─────────────────── */
 .catchup-header {
   position: sticky;
@@ -378,28 +373,114 @@ body {
    - the gap rhythm between inset screens
    - a viewport-tall slide so each card snaps cleanly */
 .catchup-card-snap {
+  /* Leverage tokens — overridden per [data-leverage-band]. The base values
+     hold for low-leverage cards (early innings, blowouts): no outer glow,
+     baseline border opacity, baseline amber color. */
+  --lev-amber:          var(--device-amber);
+  --lev-border-opacity: 0.32;
+  --lev-glow-radius:    8px;
+  --lev-glow-alpha:     0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
+  /* Zero padding + gap let the field-shell press to the device-shell edges
+     so the field reads as a true LCD window. Each inner section re-applies
+     its own outer margin for breathing room. overflow: hidden clips the
+     edge-to-edge field cleanly against the shell's rounded corners. */
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
   height: 100%;
   max-width: 28rem;
   margin: 1rem auto 1.5rem;
   background:
     linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
-  border: 1px solid var(--device-border);
+  border: 1px solid rgba(245, 181, 54, var(--lev-border-opacity));
   border-radius: var(--device-radius);
   box-shadow:
     inset 0 1px 0 var(--device-border-bevel),
     inset 0 -1px 0 rgba(0, 0, 0, 0.55),
     0 8px 28px rgba(0, 0, 0, 0.55),
-    0 1px 0 rgba(0, 0, 0, 0.6);
+    0 1px 0 rgba(0, 0, 0, 0.6),
+    0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+  transition: border-color 600ms ease, box-shadow 600ms ease;
+}
+
+/* Band-keyed overrides — same amber hue family, escalating intensity.
+   --lev-amber stays anchored to the device vocabulary; high/critical shift
+   toward brighter / hotter variants (still amber, never red). */
+.catchup-card-snap[data-leverage-band="medium"] {
+  --lev-border-opacity: 0.44;
+  --lev-glow-radius:   10px;
+}
+.catchup-card-snap[data-leverage-band="high"] {
+  --lev-amber:         #ffc947;
+  --lev-border-opacity: 0.58;
+  --lev-glow-radius:   14px;
+  --lev-glow-alpha:    0.18;
+}
+.catchup-card-snap[data-leverage-band="critical"] {
+  --lev-amber:         #ff9d2f;
+  --lev-border-opacity: 0.72;
+  --lev-glow-radius:   20px;
+  --lev-glow-alpha:    0.28;
+}
+
+/* Inactive cards (off-screen in the scroll-snap container) shouldn't
+   contribute compositing layers for the glow. Reset to baseline. */
+.catchup-card-snap[data-active="false"] {
+  --lev-glow-radius: 0px;
+  --lev-glow-alpha:  0;
+}
+
+/* Rhythm-card editorial overrides — late-game and final-setup beats are
+   pinned to critical-band heat regardless of computed leverage, since they
+   are the explicit pacing declarations of pressure. */
+.catchup-card-snap[data-rhythm-kind="late-game"],
+.catchup-card-snap[data-rhythm-kind="final-setup"] {
+  --lev-amber:         #ff9d2f;
+  --lev-border-opacity: 0.72;
+  --lev-glow-radius:   20px;
+  --lev-glow-alpha:    0.28;
+}
+
+/* Settle-phase pulse — high/critical leverage cards get a brief outer-glow
+   bloom as the result locks in. Triggered by the data-phase flip from
+   runners → settle, so the timing rides the existing phase machine. */
+.catchup-card-snap[data-leverage-band="high"][data-phase="settle"],
+.catchup-card-snap[data-leverage-band="critical"][data-phase="settle"] {
+  animation: leverage-settle-pulse 600ms ease-out;
+}
+@keyframes leverage-settle-pulse {
+  0% {
+    box-shadow:
+      inset 0 1px 0 var(--device-border-bevel),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+      0 8px 28px rgba(0, 0, 0, 0.55),
+      0 1px 0 rgba(0, 0, 0, 0.6),
+      0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+  }
+  60% {
+    box-shadow:
+      inset 0 1px 0 var(--device-border-bevel),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+      0 8px 28px rgba(0, 0, 0, 0.55),
+      0 1px 0 rgba(0, 0, 0, 0.6),
+      0 0 calc(var(--lev-glow-radius) * 1.6) rgba(246, 196, 83, calc(var(--lev-glow-alpha) + 0.18));
+  }
+  100% {
+    box-shadow:
+      inset 0 1px 0 var(--device-border-bevel),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+      0 8px 28px rgba(0, 0, 0, 0.55),
+      0 1px 0 rgba(0, 0, 0, 0.6),
+      0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+  }
 }
 @media (max-width: 480px) {
   .catchup-card-snap {
     margin: 0.5rem auto 1rem;
-    padding: 0.625rem;
-    /* Inherits --device-radius (8px) — no per-breakpoint softening. */
+    /* Padding stays 0 — inner sections re-apply their own outer margin.
+       Inherits --device-radius (8px) — no per-breakpoint softening. */
   }
 }
 
@@ -407,10 +488,15 @@ body {
    the inning + score row. */
 /* Scoreboard inset screen — dark LCD area with subtle inner shadow. */
 .catchup-card-header {
+  /* Reads as a thin instrumentation strip: tighter padding + gap drop the
+     header to ~52px so the field below dominates. Outer margin replaces the
+     shell padding (now zero) so the header still sits inside the device
+     bevel rather than bleeding to the edge. */
   display: flex;
   flex-direction: column;
-  gap: 0.375rem;
-  padding: 0.5rem 0.6875rem 0.5625rem;
+  gap: 0.25rem;
+  margin: 0.5rem 0.625rem 0;
+  padding: 0.25rem 0.5rem 0.3125rem;
   border: 1px solid var(--device-border-soft);
   border-radius: var(--device-radius-screen);
   background: var(--device-screen);
@@ -445,117 +531,44 @@ body {
   font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.16em;
-  color: #fde68a;
-  text-shadow: 0 0 8px rgba(251, 191, 36, 0.55);
+  color: var(--lev-amber, #fde68a);
+  text-shadow: 0 0 var(--lev-glow-radius, 8px) rgba(251, 191, 36, 0.55);
+  transition: color 600ms ease, text-shadow 600ms ease;
 }
 
-/* On-base row + matchup row separator */
-.catchup-card-runners-band {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
-  font-variant-numeric: tabular-nums;
-}
-.catchup-card-runners-band-changing {
-  display: inline-grid;
-  grid-template-areas: "stack";
-  align-items: center;
-}
-.catchup-card-runners-band-changing > .catchup-cell {
-  grid-area: stack;
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.375rem;
-}
-
-/* Matchup line — eyebrow labels above big bold names, with a clean "vs"
-   gap separator. The two halves are flex children of equal weight so the
-   row reads as a balanced scoreboard matchup. */
+/* Matchup line — single-line "BATTER vs PITCHER · 3-1". No eyebrows, no
+   logo, no stat lines. Centered, with overflow-safe truncation on names. */
 .catchup-card-matchup {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.4375rem 0.5rem 0.4375rem;
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0.4375rem;
+  padding: 0.375rem 0.5rem;
   border-top: 1px solid rgba(120, 100, 60, 0.25);
-  border-bottom: 1px solid rgba(120, 100, 60, 0.25);
   background:
     linear-gradient(180deg, rgba(251, 191, 36, 0.04) 0%, rgba(0, 0, 0, 0) 70%),
     rgba(0, 0, 0, 0.25);
-}
-.catchup-card-matchup-side {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 0.125rem;
-  flex: 1 1 0;
   min-width: 0;
 }
-.catchup-card-matchup-batter {
-  align-items: flex-start;
-  text-align: left;
-}
-.catchup-card-matchup-pitcher {
-  align-items: flex-end;
-  text-align: right;
-}
-.catchup-card-matchup-eyebrow {
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 0.5625rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: rgba(255, 220, 150, 0.55);
-  text-transform: uppercase;
-}
-.catchup-card-batter-row {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  min-width: 0;
-}
-.catchup-card-matchup-logo {
-  height: 14px;
-  width: 14px;
-  object-fit: contain;
-  flex: 0 0 auto;
-  opacity: 0.9;
-}
-.catchup-card-batter {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  color: #ffffff;
-  text-shadow: 0 0 6px rgba(251, 191, 36, 0.35);
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+.catchup-card-batter,
 .catchup-card-pitcher {
   font-size: 0.9375rem;
   font-weight: 700;
   letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.catchup-card-batter {
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.35);
+}
+.catchup-card-pitcher {
   color: rgba(255, 230, 180, 0.92);
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
-/* Stat line under each matchup name. Monospace, dim amber, very tight. */
-.catchup-card-stat-line {
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: rgba(255, 220, 150, 0.62);
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 0.0625rem;
-}
-.catchup-card-matchup-batter > .catchup-card-stat-line { padding-left: 1.25rem; }
 .catchup-card-vs {
   flex: 0 0 auto;
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
@@ -564,83 +577,17 @@ body {
   letter-spacing: 0.18em;
   color: rgba(255, 220, 150, 0.42);
   text-transform: uppercase;
-  padding: 0 0.25rem;
-  align-self: flex-end;
-  padding-bottom: 0.0625rem;
 }
-
-/* On-base pill row — sits below the matchup. Each occupied base renders
-   as a pill with a diamond glyph + last name + base label. */
-.catchup-card-onbase-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  min-height: 1rem;
-}
-.catchup-card-onbase-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3125rem;
-  padding: 0.125rem 0.4375rem;
-  border: 1px solid rgba(251, 191, 36, 0.35);
-  border-radius: 0.3125rem;
-  background: rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 0 6px rgba(251, 191, 36, 0.08);
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  color: #fde68a;
-}
-.catchup-card-onbase-glyph {
-  font-size: 0.5rem;
-  line-height: 1;
-  color: #fbbf24;
-  text-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.4);
-}
-.catchup-card-onbase-name {
-  letter-spacing: 0.10em;
-  color: #ffffff;
-}
-.catchup-card-onbase-base {
-  color: rgba(255, 220, 150, 0.55);
-  letter-spacing: 0.14em;
-}
-.catchup-card-onbase-empty {
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: rgba(255, 220, 150, 0.32);
-  text-transform: uppercase;
-}
-/* Pitch count chip — segmented scoreboard treatment. */
 .catchup-card-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.3125rem;
-  padding: 0.1875rem 0.5rem;
-  border: 1px solid rgba(251, 191, 36, 0.32);
-  border-radius: 0.3125rem;
-  background: rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 0 6px rgba(251, 191, 36, 0.08);
+  flex: 0 0 auto;
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-variant-numeric: tabular-nums;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.10em;
-  color: #fde68a;
-  text-shadow: 0 0 4px rgba(251, 191, 36, 0.6);
-}
-.catchup-card-count::before {
-  content: "B-S";
-  font-size: 0.625rem;
-  letter-spacing: 0.14em;
-  font-weight: 700;
-  color: rgba(255, 220, 150, 0.55);
-  text-shadow: none;
-  margin-right: 0.1875rem;
+  color: rgba(253, 230, 138, 0.85);
+  text-shadow: 0 0 4px rgba(251, 191, 36, 0.45);
+  white-space: nowrap;
 }
 
 /* ── Outs dots — three LED bulbs in the situation rail ─── */
@@ -716,30 +663,6 @@ body {
 @keyframes outs-fade-out {
   0%   { background: #fbbf24; box-shadow: 0 0 4px rgba(251, 191, 36, 0.85); }
   100% { background: transparent; box-shadow: none; border-color: rgba(251, 191, 36, 0.35); }
-}
-
-/* ── Generic cross-fade for changeable cells ─────────── */
-.catchup-cell {
-  display: inline-block;
-}
-.catchup-cell-pre  { opacity: 0; }
-.catchup-cell-post { opacity: 1; }
-[data-active="true"] .catchup-card-runners-band-changing > .catchup-cell-pre {
-  opacity: 1;
-  animation: catchup-cell-pre-fade 0.35s ease-out var(--ms-runners, 1.55s) forwards;
-}
-[data-active="true"] .catchup-card-runners-band-changing > .catchup-cell-post {
-  opacity: 0;
-  animation: catchup-cell-post-fade 0.35s ease-in calc(var(--ms-runners, 1.65s) + 100ms) forwards;
-}
-@keyframes catchup-cell-pre-fade {
-  0%   { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-4px); }
-}
-@keyframes catchup-cell-post-fade {
-  0%   { opacity: 0; transform: translateY(6px) scale(0.85); }
-  60%  { opacity: 1; transform: translateY(0) scale(1.18); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .catchup-card-score {
@@ -821,10 +744,27 @@ body {
 }
 
 .catchup-card-field {
-  flex: 0 0 auto;
+  /* Field claims all remaining vertical space — header/chip/footer remain
+     content-sized so the field reads as the dominant "stage." min-height: 0
+     prevents flex overflow on short viewports, position: relative anchors
+     the narration overlay scrim. */
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Landscape phones (e.g. iPhone 14 at 844x390) leave only ~200px of card
+   height after the app/catchup headers. Letting the field flex-grow into
+   that sliver collapses the SVG below readability — revert to content
+   sizing in that orientation so the page can scroll past the field
+   instead of squashing it. */
+@media (orientation: landscape) and (max-height: 500px) {
+  .catchup-card-field {
+    flex: 0 0 auto;
+    min-height: 200px;
+  }
 }
 
 /* Result LED strip — same inset-screen vocabulary as the scoreboard,
@@ -836,6 +776,7 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.125rem;
+  margin: 0 0.625rem;
   padding: 0.4375rem 0.875rem;
   min-height: 2.25rem;
   border: 1px solid var(--device-border);
@@ -878,11 +819,119 @@ body {
   line-height: 1.1;
 }
 
+/* ── Result chip — leverage tier overrides ─────────────
+   Personality by event magnitude. Selectors are intentionally
+   `[data-tier="N"][data-visible="true"]` so they outrank the base
+   `[data-visible="true"]` rule above without needing !important.
+   Tier 0 reads ambient, tier 3 reads epic. data-tier comes from
+   resultChipTier() in lib/result-chip.ts. */
+
+/* Tier 0 — AMBIENT: routine outs / walks / HBP. Quiet fade, no glow. */
+.catchup-result-chip[data-tier="0"][data-visible="true"] {
+  animation: chip-tier0-fade 220ms ease-in-out forwards;
+}
+.catchup-result-chip[data-tier="0"] .catchup-result-chip-primary {
+  font-size: 0.9375rem;
+  text-shadow: none;
+}
+@keyframes chip-tier0-fade {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Tier 1 — NOTABLE: singles, sac bunts, stolen bases. Soft pop, dim amber. */
+.catchup-result-chip[data-tier="1"][data-visible="true"] {
+  animation: chip-tier1-pop 190ms ease-out forwards;
+}
+.catchup-result-chip[data-tier="1"] .catchup-result-chip-primary {
+  font-size: 1.125rem;
+  text-shadow: 0 0 6px rgba(246, 196, 83, 0.35);
+}
+@keyframes chip-tier1-pop {
+  0%   { opacity: 0; transform: scale(0.90); }
+  70%  { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1.00); }
+}
+
+/* Tier 2 — SIGNIFICANT: doubles/triples, run-scores, inning-enders. */
+.catchup-result-chip[data-tier="2"][data-visible="true"] {
+  animation: chip-tier2-pop 150ms ease-out forwards;
+}
+.catchup-result-chip[data-tier="2"] .catchup-result-chip-primary {
+  font-size: 1.25rem;
+  text-shadow: 0 0 12px rgba(246, 196, 83, 0.65);
+}
+.catchup-result-chip[data-tier="2"] .catchup-result-chip-secondary {
+  color: var(--device-amber);
+}
+@keyframes chip-tier2-pop {
+  0%   { opacity: 0; transform: scale(0.85); }
+  65%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1.00); }
+}
+
+/* Tier 3 — EPIC: home runs, triple plays, multi-run plays. Three-keyframe
+   elastic pop layered with a 600ms brightness pulse, three iterations. */
+.catchup-result-chip[data-tier="3"][data-visible="true"] {
+  animation:
+    chip-tier3-epic 120ms ease-out forwards,
+    chip-glow-pulse 600ms ease-in-out 120ms 3;
+}
+.catchup-result-chip[data-tier="3"] .catchup-result-chip-primary {
+  font-size: 1.5rem;
+  letter-spacing: 0.08em;
+  text-shadow:
+    0 0 20px rgba(255, 217, 122, 0.9),
+    0 0 40px rgba(246, 196, 83, 0.45),
+    0 0 2px rgba(255, 255, 255, 0.6);
+}
+.catchup-result-chip[data-tier="3"] .catchup-result-chip-secondary {
+  font-size: 0.9375rem;
+  color: var(--device-amber-bright);
+  text-shadow: 0 0 8px rgba(246, 196, 83, 0.5);
+}
+@keyframes chip-tier3-epic {
+  0%   { opacity: 0; transform: scale(0.80); }
+  50%  { opacity: 1; transform: scale(1.12); }
+  78%  { opacity: 1; transform: scale(1.02); }
+  100% { opacity: 1; transform: scale(1.00); }
+}
+@keyframes chip-glow-pulse {
+  0%, 100% { filter: brightness(1.0); }
+  50%      { filter: brightness(1.3); }
+}
+
+/* Reveal-phase persistence — chip yields to the narration sentence by
+   tier. Routine plays dim fast; epic chips hold their bloom. The phase
+   selector lives on the parent <article> via usePlayPhase. */
+.catchup-card-snap[data-phase="reveal"] .catchup-result-chip[data-tier="0"] {
+  opacity: 0.35;
+  transition: opacity 500ms ease-in-out 0ms;
+}
+.catchup-card-snap[data-phase="reveal"] .catchup-result-chip[data-tier="1"] {
+  opacity: 0.40;
+  transition: opacity 500ms ease-in-out 100ms;
+}
+.catchup-card-snap[data-phase="reveal"] .catchup-result-chip[data-tier="2"] {
+  opacity: 0.55;
+  transition: opacity 500ms ease-in-out 700ms;
+}
+.catchup-card-snap[data-phase="reveal"] .catchup-result-chip[data-tier="3"] {
+  opacity: 0.70;
+  transition: opacity 500ms ease-in-out 1200ms;
+}
+
 /* Narration caption — soft inset rectangle, reads as the "ticker"
-   panel on the device. The narrative <p> inside fades in at reveal. */
+   panel on the device. The narrative <p> inside fades in at reveal.
+   Collapsed via grid-template-rows: 0fr until data-visible="true" so the
+   bordered black box doesn't sit dead under the field through every
+   pre-settle phase. */
 .catchup-card-body {
   flex: 0 0 auto;
-  min-height: 3.25rem;
+  display: grid;
+  grid-template-rows: 0fr;
+  min-height: 0;
+  margin: 0 0.625rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--device-border-soft);
   border-radius: var(--device-radius-screen);
@@ -891,6 +940,42 @@ body {
     inset 0 1px 0 rgba(0, 0, 0, 0.5),
     inset 0 0 10px rgba(0, 0, 0, 0.45);
   text-align: left;
+  opacity: 0;
+  overflow: hidden;
+  transition: grid-template-rows 240ms ease-out, opacity 200ms ease-out;
+}
+.catchup-card-body > * {
+  overflow: hidden;
+}
+.catchup-card-body[data-visible="true"] {
+  grid-template-rows: 1fr;
+  min-height: 3.25rem;
+  opacity: 1;
+}
+
+/* Narration overlay variant — body sits inside .catchup-card-field as a
+   bottom-anchored caption rather than a separate inset panel below the
+   field. This removes the body's height contribution from the flex column
+   so the field claims the full vertical span, and gives the narration the
+   "subtitle scrim" feel of a true LCD stage. The gradient scrim keeps the
+   text legible against the amber line work without painting an opaque
+   panel over the field. */
+.catchup-card-body.catchup-card-body--overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.75rem 0.875rem 0.5rem;
+  border: none;
+  border-radius: 0 0 var(--device-radius-screen) var(--device-radius-screen);
+  background: linear-gradient(
+    to top,
+    rgba(6, 7, 10, 0.92) 60%,
+    transparent 100%
+  );
+  box-shadow: none;
+  z-index: 5;
 }
 
 /* Scroll-cue chevron — hidden until the card reaches the reveal phase,
@@ -898,6 +983,7 @@ body {
 .catchup-card-footer {
   display: flex;
   justify-content: center;
+  margin: 0.25rem auto 0.5rem;
   color: rgba(251, 191, 36, 0.40);
   opacity: 0;
   transition: opacity 320ms ease-out;
@@ -913,17 +999,22 @@ body {
 }
 
 /* ── Narrative fade-in ──────────────────────────────── */
-/* The phase machine times the reveal — no transition-delay needed; we just
-   transition opacity when the parent flips data-active="true" (which the
-   card does only when phase === "reveal"). */
+/* The phase machine times the reveal — the parent flips data-active="true"
+   when phase === "reveal", and we transition opacity/transform from there.
+   Reveal duration is parameterized so leverage tier can vary the bloom
+   speed; transition-delay lets the container expansion (240ms) lead the
+   text fade-in for a staged "container appears → text materializes" feel. */
 .catchup-narrative {
   margin: 0;
   font-size: 0.9375rem;
-  line-height: 1.55;
+  line-height: 1.42;
   color: #f5f1e8;
   opacity: 0;
   transform: translateY(6px);
-  transition: opacity 320ms ease-out, transform 320ms ease-out;
+  transition:
+    opacity var(--narrative-reveal-dur, 320ms) ease-out,
+    transform var(--narrative-reveal-dur, 320ms) ease-out;
+  transition-delay: var(--narrative-text-delay, 120ms);
 }
 /* Spec: no opacity below 0.65 for normal text. Active reveal goes to
    full 1.0 — narration is critical content, never dim. */
@@ -994,8 +1085,14 @@ body {
    read as siblings on the same panel. */
 .field-shell {
   position: relative;
-  width: 100%;
-  max-width: 22rem;
+  /* Aspect-ratio + height:100% lets the shell grow to fill the flex cell
+     vertically; width auto-derives from the 1/1 aspect ratio. The min-height
+     keeps the field readable when the flex cell collapses on tight
+     viewports. */
+  width: auto;
+  height: 100%;
+  max-width: min(22rem, 100%);
+  min-height: clamp(160px, 28vw, 22rem);
   margin-inline: auto;
   aspect-ratio: 1 / 1;
   background: #000;
@@ -1449,7 +1546,11 @@ body {
 
 /* ── Reduced-motion fallback: skip every animation, show settled state. */
 @media (prefers-reduced-motion: reduce) {
-  .catchup-narrative { transition: none; opacity: 1; transform: none; }
+  .catchup-narrative { transition: none; transition-delay: 0ms; opacity: 1; transform: none; }
+  /* Body still gates on data-visible so it stays collapsed pre-reveal, but
+     the grid-height + opacity transitions are dropped so it appears
+     instantly when the phase machine jumps to reveal. */
+  .catchup-card-body { transition: none; }
   .catchup-card-footer { opacity: 1; transition: none; animation: none; }
   [data-playing="true"] .field-mound-dot,
   [data-playing="true"] .field-base-bulb,
@@ -1463,6 +1564,8 @@ body {
   [data-playing="true"][data-homer="true"] .field-homer-pulse,
   [data-playing="true"][data-scoring="true"] .field-plate-score-pulse,
   [data-active="true"] .catchup-card-score-num[data-flash="true"],
+  .catchup-card-snap[data-leverage-band="high"][data-phase="settle"],
+  .catchup-card-snap[data-leverage-band="critical"][data-phase="settle"],
   .field-stadium-glow,
   .field-svg,
   .field-mound-dot,
@@ -1576,9 +1679,14 @@ body {
 }
 .scene-setter-team-name {
   margin: 0;
-  font-size: 0.875rem;
+  /* Monospace + warm off-white keeps the device vocabulary; 1.0625rem makes
+     the matchup the dominant text element on the card (above CTA primary
+     at 0.8125rem and eyebrow at 0.6875rem). */
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.0625rem;
   font-weight: 700;
   line-height: 1.15;
+  letter-spacing: 0.02em;
   color: var(--device-text);
 }
 .scene-setter-team-abbr {
@@ -1596,6 +1704,11 @@ body {
   gap: 0.75rem;
   padding: 0.625rem 0.875rem;
 }
+.scene-setter-pitcher {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
 .scene-setter-pitcher-label {
   margin: 0 0 0.125rem;
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
@@ -1606,9 +1719,13 @@ body {
 }
 .scene-setter-pitcher-name {
   margin: 0;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--device-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .scene-setter-venue {
@@ -1641,10 +1758,14 @@ body {
 }
 .scene-setter-cta-sub {
   margin: 0;
-  font-size: 0.75rem;
-  line-height: 1.4;
-  color: var(--device-muted);
+  /* Mirror .catchup-narrative type scale (0.9375rem / 1.42 / #f5f1e8) so the
+     prose voice carries unchanged into the first play card. */
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.9375rem;
+  line-height: 1.42;
+  color: #f5f1e8;
   max-width: 22rem;
+  text-align: center;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2091,37 +2212,6 @@ body {
   box-shadow: 0 0 4px rgba(251, 191, 36, 0.85);
 }
 
-/* Runners band — prior cell fades OUT at the bridge→setup boundary; pre
-   cell fades IN at the same instant, then later fades out at runners as
-   before. The conditional [data-has-bridge] selector keeps non-bridged
-   cards on the original pre→post timing. */
-.catchup-cell-prior { opacity: 1; }
-[data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-prior {
-  opacity: 1;
-}
-[data-active="true"][data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-prior {
-  animation: catchup-cell-prior-fade 0.32s ease-out var(--ms-setup, 0.4s) forwards;
-}
-@keyframes catchup-cell-prior-fade {
-  0%   { opacity: 1; transform: translateY(0); }
-  100% { opacity: 0; transform: translateY(-3px); }
-}
-/* When a bridge is present, the pre cell starts hidden and emerges at
-   bridge end. It still fades out at runners (handled by the existing rule
-   below). */
-[data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-pre {
-  opacity: 0;
-}
-[data-active="true"][data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-pre {
-  animation:
-    catchup-cell-pre-emerge 0.32s ease-out var(--ms-setup, 0.4s) forwards,
-    catchup-cell-pre-fade 0.35s ease-out var(--ms-runners, 1.55s) forwards;
-}
-@keyframes catchup-cell-pre-emerge {
-  0%   { opacity: 0; transform: translateY(4px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-
 /* Field — prior bulbs fade out at bridge end; "pre" bulbs that emerged
    during bridge get a brief light-up. */
 .field-base-bulb[data-lifecycle="prior"] {
@@ -2161,6 +2251,15 @@ body {
   justify-content: center;
   text-align: center;
   gap: 1rem;
+  /* The base .catchup-card-snap is now zero-padded so the play card's
+     field-shell can press to the device edges. Pacing cards still need
+     interior breathing room for the inset rhythm-card-inner panel. */
+  padding: 0.75rem;
+}
+@media (max-width: 480px) {
+  .rhythm-card {
+    padding: 0.625rem;
+  }
 }
 .rhythm-card-inner {
   display: flex;
@@ -2409,6 +2508,16 @@ body {
   padding: 1.5rem;
   font-size: 0.875rem;
 }
+.lab-error {
+  color: #fca5a5;
+  background: rgba(127, 29, 29, 0.18);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  border-radius: 0.375rem;
+  padding: 0.625rem 0.75rem;
+  font-size: 0.8125rem;
+  font-family: ui-monospace, monospace;
+  margin-bottom: 0.75rem;
+}
 .lab-fixture-header h2 {
   margin: 0;
   font-size: 1rem;
@@ -2473,6 +2582,224 @@ body {
   height: 100%;
   width: 100%;
   max-width: 28rem;
+}
+
+/* Trail toggle — hides ball + runner trail SVG groups without stopping
+   the rest of the play animation. Uses CSS visibility so SMIL timelines
+   continue to advance under the hood. */
+.lab-deck-shell[data-trails="off"] .field-ball-trail,
+.lab-deck-shell[data-trails="off"] .field-runner-trail {
+  visibility: hidden;
+}
+
+/* Per-card slot inside the deck — holds the card and an optional debug
+   overlay badge stacked above it. */
+.lab-card-slot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.lab-debug-badge {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.25rem 0.4375rem;
+  background: rgba(7, 8, 10, 0.78);
+  border: 1px solid var(--lab-border);
+  border-radius: 4px;
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.625rem;
+  color: var(--lab-amber);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+.lab-debug-badge-line {
+  white-space: nowrap;
+}
+
+/* Toolbar — the row of controls above the deck. */
+.lab-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.625rem;
+  background: var(--lab-panel);
+  border: 1px solid var(--lab-border);
+  border-radius: 6px;
+  font-size: 0.6875rem;
+}
+.lab-toolbar-button {
+  background: rgba(245, 181, 54, 0.1);
+  border: 1px solid var(--lab-border);
+  color: var(--lab-amber);
+  padding: 0.3125rem 0.625rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lab-toolbar-button:hover { background: rgba(245, 181, 54, 0.2); }
+.lab-toolbar-button--primary {
+  font-weight: 700;
+  background: rgba(245, 181, 54, 0.18);
+}
+.lab-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.lab-toolbar-label {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--lab-muted);
+  margin-right: 0.125rem;
+}
+.lab-toolbar-pill {
+  background: transparent;
+  border: 1px solid var(--lab-border);
+  color: var(--lab-muted);
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  font-family: inherit;
+}
+.lab-toolbar-pill:hover { color: var(--lab-text); }
+.lab-toolbar-pill[data-active="true"] {
+  background: rgba(245, 181, 54, 0.2);
+  border-color: var(--lab-amber);
+  color: var(--lab-amber);
+}
+.lab-toolbar-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  background: transparent;
+  border: 1px solid var(--lab-border);
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+  color: var(--lab-text);
+  font-family: inherit;
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lab-toolbar-toggle-label { color: var(--lab-muted); }
+.lab-toolbar-toggle-state {
+  font-weight: 700;
+  color: var(--lab-muted);
+}
+.lab-toolbar-toggle[data-on="true"] {
+  border-color: rgba(245, 181, 54, 0.5);
+}
+.lab-toolbar-toggle[data-on="true"] .lab-toolbar-toggle-state {
+  color: var(--lab-amber);
+}
+.lab-toolbar-counter {
+  margin-left: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: var(--lab-muted);
+  letter-spacing: 0.08em;
+}
+
+/* Leverage arc — one pip per play, height + opacity scale with tier. */
+.lab-leverage-arc {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  padding: 0.25rem 0;
+  min-height: 18px;
+}
+.lab-leverage-pip {
+  flex: 1 1 auto;
+  min-width: 3px;
+  border-radius: 1px;
+  background: var(--lab-amber);
+}
+.lab-leverage-pip[data-tier="0"] {
+  height: 6px;
+  background: rgba(245, 181, 54, 0.25);
+}
+.lab-leverage-pip[data-tier="1"] {
+  height: 12px;
+  background: rgba(245, 181, 54, 0.6);
+}
+.lab-leverage-pip[data-tier="2"] {
+  height: 18px;
+  background: var(--lab-amber);
+}
+
+/* Audit table — selected vs omitted plays. */
+.lab-audit-filter {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.4375rem;
+}
+.lab-audit-table-scroll {
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid var(--lab-border);
+  border-radius: 4px;
+}
+.lab-audit-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: ui-monospace, monospace;
+  font-size: 0.625rem;
+  color: var(--lab-text);
+}
+.lab-audit-table th,
+.lab-audit-table td {
+  padding: 0.25rem 0.375rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(245, 181, 54, 0.08);
+  vertical-align: top;
+}
+.lab-audit-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--lab-panel);
+  color: var(--lab-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+  font-size: 0.5625rem;
+}
+.lab-audit-table tbody tr[data-selected="false"] {
+  color: var(--lab-muted);
+}
+.lab-audit-sel {
+  text-align: center;
+  font-weight: 700;
+}
+.lab-audit-table tbody tr[data-selected="true"] .lab-audit-sel {
+  color: #6ee7b7;
+}
+.lab-audit-table tbody tr[data-selected="false"] .lab-audit-sel {
+  color: #fb7185;
+}
+.lab-audit-event {
+  display: inline-block;
+  max-width: 7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lab-audit-reason {
+  color: var(--lab-muted);
+  font-size: 0.5625rem;
 }
 
 .lab-debug {
@@ -2593,27 +2920,8 @@ body {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Scroll depth gradients
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-.scroll-fade-top, .scroll-fade-bottom {
-  position: fixed; left: 0; right: 0; height: 40px;
-  pointer-events: none; z-index: 10;
-}
-.scroll-fade-top {
-  top: 0;
-  background: linear-gradient(to bottom, rgb(10 10 10), transparent);
-  opacity: 0.06;
-}
-.scroll-fade-bottom {
-  bottom: 0;
-  background: linear-gradient(to top, rgb(10 10 10), transparent);
-  opacity: 0.06;
-}
-
-/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    Scroll padding — keep scrollIntoView (and Playwright's auto-scroll)
-   from landing target elements behind the FairBet sticky filter
-   bar (which is ≈350px tall on mobile in pro view) or the BottomTabs.
+   from landing target elements behind the sticky header.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 html {
   scroll-padding-top: var(--header-h, 56px);

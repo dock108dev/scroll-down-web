@@ -2,246 +2,148 @@
 
 ## Environment Variables
 
+All variables read from the runtime env. None are required at build time except the Docker `ARG`s noted in [`deployment.md`](deployment.md#build-time-vs-runtime-env).
+
 ### Required
 
-| Variable | Used By | Purpose |
+| Variable | Read in | Purpose |
 |----------|---------|---------|
-| `SPORTS_DATA_API_KEY` | `api-server.ts`, SSE route | API key sent as `X-API-Key` header to backend. Fallback chain: `SPORTS_DATA_API_KEY` > `SPORTS_API_KEY` > `API_KEY` > empty string. |
+| `SPORTS_DATA_API_KEY` | `web/src/lib/api-server.ts:9` | Sent as `X-API-Key` to the upstream backend on every server-side fetch. Fallback chain: `SPORTS_DATA_API_KEY` → `SPORTS_API_KEY` → `API_KEY` → `""`. |
 
 ### Optional
 
 | Variable | Default | Purpose |
 |----------|---------|---------|
-| `SPORTS_API_INTERNAL_URL` | `https://sda.dock108.dev` | Server-side backend URL. Use this in Docker to hit the backend via internal network instead of public DNS. |
-| `ANTHROPIC_API_KEY` | — | Required for AI story generation routes (`/api/ai/*`). Server-side only. |
-| `STRIPE_SECRET_KEY` | — | Required for billing routes (`/api/billing/*`). Server-side only. |
-| `STRIPE_WEBHOOK_SECRET` | — | Required to validate Stripe webhook payloads. |
-| `MAGIC_LINK_SECRET` | — | Secret for signing magic-link tokens. |
-| `DATABASE_URL` | — | Database connection string for magic-link auth (user accounts, sessions). |
-| `PUBLIC_BASE_URL` | `https://scrolldownsports.com` in production fallback | Canonical public origin used for metadata, sitemap/robots, magic-link URLs, and billing return URLs. Set per deployed environment (`.com` for prod, `.dev` for dev). |
-| `SITE_NOINDEX` | `auto` (`true` on `.dev`, `false` otherwise) | Force robots/crawl behavior. Set `true` for dev deployments, `false` for production. |
-| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | Derived from `PUBLIC_BASE_URL` hostname | Optional explicit Plausible `data-domain` override. |
-| `GOOGLE_SITE_VERIFICATION` | — | Optional Google Search Console verification token emitted as a metadata verification tag. |
-| `BING_SITE_VERIFICATION` | — | Optional Bing Webmaster Tools verification token emitted as `msvalidate.01`. |
-| `MAGIC_LINK_FROM_EMAIL` | `noreply@mail.scrolldownsports.com` | Sender address for sign-in emails. |
+| `SPORTS_API_INTERNAL_URL` | `https://sda.dock108.dev` (`BACKEND_BASE_URL`) | Override the backend URL. Use the Docker network DNS name when running both behind the same reverse proxy. |
+| `SPORTS_GAMEFLOW_PATH` | `/api/admin/sports/games/{id}/gameflow` | Override the per-game recap path used by `/api/games/[gameId]/summary`. |
+| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | `getSiteHost()` | Plausible `data-domain` injected on the loader script. |
+| `PUBLIC_BASE_URL` | — | Canonical site origin used by SEO metadata, sitemap, and `publicBaseUrl()` in API routes that need to mint outbound URLs. |
+| `SITE_URL` | — | Alias for `PUBLIC_BASE_URL`, read second by `getSiteUrl()`. |
+| `MAGIC_LINK_BASE_URL` | — | Legacy alias accepted by `publicBaseUrl()` so existing deployments don't need to rename their env file when this repo migrated off magic-link auth. No magic-link code path consumes it today. |
+| `SITE_NOINDEX` | auto (`true` on the `.dev` host, `false` otherwise) | `true` forces `noindex` in `robots.ts` / `sitemap.ts` and the root metadata. |
+| `NODE_ENV` | (set by Next.js) | `production` makes `/dev/*` routes return 404 and is also the fallback gate in `getSiteUrl`. |
+| `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER` | unset | Set to `1` by `playwright.config.ts` so `/api/health` skips upstream pings during E2E. |
+| `NEXT_TELEMETRY_DISABLED` | `1` in Dockerfile + CI | Disable Next.js telemetry. |
 
-### Build-time
+### Currently-defined-but-unused (deployment plumbing only)
 
-| Variable | Set By | Purpose |
-|----------|--------|---------|
-| `NEXT_TELEMETRY_DISABLED=1` | Dockerfile, CI | Disable Next.js telemetry |
+These are accepted by the Dockerfile / CI but **not consumed by application code in this repo**. They are leftover from a previous product direction and are documented only because someone reading the deployment yaml will see them. Removing them does not change runtime behavior.
+
+| Variable | Where it appears | Notes |
+|----------|------------------|-------|
+| `NEXT_PUBLIC_ADS_ENABLED` | Dockerfile `ARG`, ci.yml build-args | No reader in `web/src/`. |
+| `NEXT_PUBLIC_ADSENSE_CLIENT_ID` | Dockerfile, ci.yml | No reader. |
+| `NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT` | Dockerfile, ci.yml | No reader. |
+| `NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT` | Dockerfile, ci.yml | No reader. |
+| `NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT` | Dockerfile, ci.yml | No reader. |
+| `NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT` | Dockerfile, ci.yml | No reader. |
+| `MAGIC_LINK_SECRET` | ci.yml (with hardcoded fallback) | No reader. The CI fallback exists so fork PRs without org secrets still build. |
 
 ## Centralized Config
 
-All tunables live in `src/lib/config.ts`. No magic numbers elsewhere in the codebase.
+All in-app tunables live in `web/src/lib/config.ts`. Only the constants currently exported from that file are listed here.
 
-### Cache TTLs
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `CACHE.GAMES_TTL_MS` | 90s | Max age before games list is considered stale |
-| `CACHE.GAMES_FRESH_MS` | 45s | Skip network entirely if cache is younger |
-| `CACHE.GAME_DETAIL_TTL_MS` | 5 min | Per-game detail cache lifetime |
-| `CACHE.FLOW_TTL_MS` | 5 min | Per-game flow narrative cache lifetime |
-| `CACHE.FAIRBET_TTL_MS` | 3 min | FairBet odds cache lifetime |
-| `CACHE.FAIRBET_FRESH_MS` | 90s | Show cached + silent background refresh if within this window |
-| `CACHE.VISIBILITY_AWAY_MS` | 5s | Force refresh when tab hidden longer than this |
-
-### Polling Intervals
+### Backend & league
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `POLLING.GAMES_REFRESH_MS` | 60s | Background game list refresh interval |
-| `POLLING.LIVE_GAME_POLL_MS` | 45s | Live game detail polling interval |
-| `POLLING.LIVE_ODDS_REFRESH_MS` | 15s | Live FairBet odds polling interval |
-| `POLLING.READING_RESUME_DELAY_MS` | 300ms | Delay before scrolling to saved reading position |
-| `POLLING.FOLLOWING_LIVE_TTL_MS` | 2 hours | Auto-disable Following Live after inactivity |
-| `POLLING.FOLLOWING_LIVE_CHECK_MS` | 60s | How often to check for inactivity expiry |
-| `POLLING.TOKEN_REFRESH_MS` | 10 min | Silent JWT refresh cadence (legacy auth) |
-| `POLLING.GOLF_LEADERBOARD_REFRESH_MS` | 60s | Golf leaderboard polling interval |
-| `POLLING.GOLF_TOURNAMENTS_REFRESH_MS` | 5 min | Golf tournament list refresh interval |
+| `BACKEND_BASE_URL` | `"https://sda.dock108.dev"` | Default upstream host (overridable via `SPORTS_API_INTERNAL_URL`) |
+| `LEAGUE` | `"mlb"` | The only league this app serves. Enforced at the proxy boundary. |
 
-### Storage Bounds
+### `POLLING`
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `STORAGE.MAX_READING_POSITIONS` | 50 | Max saved scroll positions |
-| `STORAGE.MAX_SECTION_LAYOUTS` | 50 | Max saved section expansion states |
-| `STORAGE.MAX_REVEALED_IDS` | 500 | Max tracked revealed game IDs |
-| `STORAGE.MAX_SNAPSHOTS` | 20 | Max score snapshots |
-| `STORAGE.POSITION_MAX_AGE_DAYS` | 30 | Auto-prune reading positions older than this |
-| `LAYOUT.MAX_PINNED_GAMES` | 10 | Max simultaneously pinned games |
+| `POLLING.GAMES_REFRESH_MS` | 60_000 | Home feed refresh cadence when foregrounded |
+| `POLLING.LIVE_CARDS_POLL_MS` | 45_000 | Per-game card poll cadence while the deck is open and game is live |
 
-### localStorage Keys
-
-All keys are prefixed with `sd-` to avoid collisions.
-
-| Key | Store | Contents |
-|-----|-------|----------|
-| `sd-auth` | `auth.ts` | JWT token, role, email, userId |
-| `sd-settings` | `settings.ts` | Theme, score reveal mode, odds format, Following Live, etc. |
-| `sd-pinned-games` | `pinned-games.ts` | Pinned game IDs + display metadata |
-| `sd-read-state` | `reveal.ts` | Revealed game IDs + score snapshots |
-| `sd-section-layout` | `section-layout.ts` | Expanded/collapsed sections per game |
-| `sd-reading-position` | `reading-position.ts` | Scroll position per game (play index) |
-| `sd-games-cache` | `stale-cache.ts` | Cached game data for degraded-state fallback |
-| `sd-fairbet-cache` | `stale-cache.ts` | Cached FairBet odds for degraded-state fallback |
-| `sd-golf-cache` | `stale-cache.ts` | Cached golf tournaments for degraded-state fallback |
-
-Additional keys used by newer features:
-
-| Key | Store / File | Contents |
-|-----|-------------|----------|
-| `sd-tier` | `tier.ts` | Free/pro tier + anonymous UUID |
-| `sd-anon-id` | `tier.ts` (cookie) | Anonymous user UUID (also in cookie) |
-| `sd-session` | `session.ts` (cookie) | HttpOnly session cookie (set by server) |
-| `sd-onboarding-seen` | `localStorage` | Whether the reveal onboarding has been shown |
-| `sd-pwa-install-dismissed` | `localStorage` | Whether the PWA install prompt was dismissed |
-| `sd-pwa-session-count` | `localStorage` | Number of sessions (for install prompt threshold) |
-
-Note: `home-scroll` store is in-memory only (not persisted to localStorage). Cache keys (`sd-*-cache`) are written by data-fetching hooks on successful fetch and read on cold start for stale fallback.
-
-### API
+### `API`
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `API.GAMES_LIMIT` | 200 | Max games per API request |
-| `API.FAIRBET_PAGE_SIZE` | 100 | FairBet bets per page |
-| `API.FAIRBET_MAX_CONCURRENT` | 3 | Max concurrent FairBet page fetches |
-| `API.FAIRBET_REQUEST_TIMEOUT_MS` | 12_000 | Per-page FairBet request timeout |
-| `API.FAIRBET_PAGE_RETRY_ATTEMPTS` | 2 | Retry attempts per FairBet page on transient failure |
-| `API.FAIRBET_PAGE_RETRY_DELAY_MS` | 800 | Delay between FairBet page retries |
-| `API.HEALTH_BACKEND_PING_TIMEOUT_MS` | 15_000 | `/api/health` upstream ping timeout (CI cold start headroom) |
-| `API.ISR_REVALIDATE_S` | 60 | Next.js ISR revalidation for cached API proxy routes |
+| `API.GAMES_LIMIT` | 200 | Max games per upstream request |
+| `API.HEALTH_BACKEND_PING_TIMEOUT_MS` | 15_000 | Timeout for `/api/health` upstream ping |
+| `API.HEALTH_CACHE_MS` | 30_000 | In-memory cache for `/api/health` result |
+| `API.ISR_REVALIDATE_S` | 60 | Default `revalidate` for proxy routes that opt in |
+| `API.BFF_CACHE_MAX_ENTRIES` | 100 | LRU cap for the in-memory BFF response cache |
+| `API.GAMES_BFF_FRESH_MS` | 15_000 | Game list: serve cache without re-fetch under this age |
+| `API.GAMES_BFF_STALE_MS` | 5 × 60_000 | Game list: serve stale on upstream 429/5xx within this window |
+| `API.CARDS_LIVE_BFF_FRESH_MS` | 10_000 | Per-game cards (live): fresh window |
+| `API.CARDS_LIVE_BFF_STALE_MS` | 3 × 60_000 | Per-game cards (live): stale-if-error window |
+| `API.CARDS_FINAL_BFF_FRESH_MS` | 24h | Per-game cards (final): cache hard, content immutable |
+| `API.CARDS_FINAL_BFF_STALE_MS` | 7d | Per-game cards (final): stale window |
+| `API.SUMMARY_BFF_FRESH_MS` | 24h | Final-score summary: fresh window |
+| `API.SUMMARY_BFF_STALE_MS` | 7d | Final-score summary: stale window |
+| `API.HOME_WINDOW_MS` | 48h | How far back the home feed reaches |
 
-### Realtime
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `REALTIME.WS_FAIL_THRESHOLD` | 2 | WebSocket failures before switching to SSE |
-| `REALTIME.WS_FAIL_WINDOW_MS` | 60s | Window in which failures count toward the threshold |
-| `REALTIME.SSE_FALLBACK_DURATION_MS` | 5 min | How long SSE runs before retrying WebSocket |
-| `REALTIME.BACKOFF_INITIAL_MS` | 1s | Initial reconnect backoff |
-| `REALTIME.BACKOFF_MAX_MS` | 30s | Max reconnect backoff (exponential) |
-| `REALTIME.FRESHNESS_INDICATOR_MS` | 20s | Freshness threshold used by the realtime indicator UI |
-| `REALTIME.RECOVERY_MIN_INTERVAL_MS` | 8s | Minimum gap between recovery re-fetches per channel |
-
-### FairBet
+### `LAYOUT`
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
-| `FAIRBET.MIN_BOOKS` | 3 | Hide bets with fewer than this many books posting a price |
-| `FAIRBET.EV_HIGHLIGHT_THRESHOLD` | 5 | EV% at which a bet gets the strong-positive color |
-| `FAIRBET.ATTRIBUTION_FRESH_MS` | 2 min | No staleness label if data is younger than this |
-| `FAIRBET.ATTRIBUTION_STALE_MS` | 15 min | "May be delayed" amber label if older than this |
-| `FAIRBET.ATTRIBUTION_UPDATE_INTERVAL_MS` | 30s | How often to re-evaluate the attribution label |
-| `FAIRBET.CONFIDENCE_SAMPLE_HIGH` | 30 | Min `confidence` value for the high EV-confidence tier |
-| `FAIRBET.CONFIDENCE_SAMPLE_MEDIUM` | 10 | Min `confidence` value for the medium EV-confidence tier |
-| `FAIRBET.MONTE_CARLO_TRIALS` | 10_000 | Trials per Win Probability Monte Carlo run |
+| `LAYOUT.HEADER_HEIGHT_DEFAULT` | `"56px"` | Top-nav height used by sticky offsets |
 
-### Freshness Labels
+### `STORAGE_KEYS`
 
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `FRESHNESS.LABEL_MIN_MS` | 10 min | No label shown unless live data has gone meaningfully stale |
-| `FRESHNESS.RED_THRESHOLD_MS` | 15 min | Amber "May be delayed" from 10–15 min; red "Data delayed" above 15 min |
-| `FRESHNESS.UPDATE_INTERVAL_MS` | 30s | Re-evaluate label every 30 seconds |
+| Constant | Value |
+|----------|-------|
+| `STORAGE_KEYS.SETTINGS` | `"sd-settings"` |
+| `STORAGE_KEYS.ONBOARDING` | `"sd-onboarding"` |
+| `STORAGE_KEYS.CATCHUP_STATE` | `"sd-catchup-state"` |
+| `STORAGE_KEYS.PWA_INSTALL_DISMISSED` | `"sd-pwa-install-dismissed"` |
+| `STORAGE_KEYS.PWA_SESSION_COUNT` | `"sd-pwa-session-count"` |
+| `STORAGE_KEYS.ANON_ID` | `"sd-anon-id"` |
 
-### Render
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `RENDER.FAIRBET_BATCH` | 25 | Number of FairBet cards to render per batch (virtual list chunking) |
-
-### Validation
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `isValidEmailFormat()` | `(email: string) => boolean` | Email format guard (replaces the old `VALIDATION.EMAIL_RE` regex): linear-time, no ReDoS; requires exactly one `@`, non-empty local part ≤64 chars, domain with at least one `.` with non-empty sides, no whitespace/`@` in local or domain, total length ≤254. |
-| `VALIDATION.PASSWORD_MIN_LENGTH` | 8 | Minimum password length |
-
-### Attribution
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `ATTRIBUTION.DATA_SOURCE_LABEL` | `"SportsDataAPI"` | Label shown in game detail footer: "Game data provided by SportsDataAPI" |
-
-### AI Story
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `AI_STORY.BANNED_PHRASES` | `[...]` | Generic filler phrases that cause a story to be rejected |
-| `AI_STORY.MAX_SENTENCES` | 6 | Total sentence budget per story |
-| `AI_STORY.MAX_SENTENCES_PER_SECTION` | 2 | Sentence cap per narrative section |
-| `AI_STORY.MAX_WORDS` | 150 | Word cap per story |
-| `AI_STORY.MODEL` | `"claude-haiku-4-5-20251001"` | Anthropic model used for story generation |
-| `STORY_QUALITY_GATE` | `true` | When `true`, hides the AI story section for all games. Set to `false` after passing the 50-story review bar. |
-
-### Feature Gates
-
-Canonical Pro-tier gate keys. All server routes and client hooks that enforce a paywall must reference one of these via `lib/pro-gate.ts` or `hooks/useProGate.ts` — never use string literals for gate checks.
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `FEATURE_GATES.LIVE_ODDS` | `"live_odds"` | Real-time in-game odds |
-| `FEATURE_GATES.FULL_FAIRBET` | `"full_fairbet"` | Full FairBet access with all markets |
-| `FEATURE_GATES.ALL_BOOKS` | `"all_books"` | All sportsbooks in comparisons |
-| `FEATURE_GATES.ALL_MARKETS` | `"all_markets"` | Alt lines and prop markets |
-| `FEATURE_GATES.CROSS_DEVICE_SYNC` | `"cross_device_sync"` | Sync across devices |
-| `FEATURE_GATES.ADVANCED_FILTERS` | `"advanced_filters"` | Advanced FairBet filter controls |
-| `FEATURE_GATES.LINE_MOVEMENT` | `"line_movement"` | Line-movement history |
-| `FEATURE_GATES.EV_SIMULATOR` | `"ev_simulator"` | Custom EV / simulation tools |
-| `FEATURE_GATES.CLV_TRACKING` | `"clv_tracking"` | Closing-line-value tracking |
-| `FEATURE_GATES.WIN_PROBABILITY` | `"win_probability"` | Win-probability sheet (uses `FAIRBET.MONTE_CARLO_TRIALS`) |
-| `FEATURE_GATES.HISTORY` | `"history"` | Historical games archive |
-
-### Auth
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `AUTH.MAGIC_TOKEN_TTL_MS` | 15 min | Magic-link token expires after this duration |
-| `AUTH.SESSION_TTL_S` | 30 days | Session cookie lifetime |
-| `AUTH.SEND_LINK_RATE_MAX` | 5 | Max magic-link sends per IP per window |
-| `AUTH.SEND_LINK_RATE_WINDOW_MS` | 10 min | Rate-limit window for magic-link sends |
-
-### Ads
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `ADS.TOP_FEED_AFTER_INDEX` | 2 | Render the home `top-feed` `FeedAd` after this game-row index in the Today section |
-| `ADS.MID_FEED_AFTER_INDEX` | 6 | Render the home `mid-feed` `FeedAd` after this game-row index in the Today section |
-
-AdSense slot IDs and the kill switch live in env vars (read in
-`web/src/lib/ads/config.ts`), not in `web/src/lib/config.ts`. See
-[ADS_SETUP.md](ADS_SETUP.md) for the env-var matrix.
-
-### Defaults
-
-| Constant | Value | Meaning |
-|----------|-------|---------|
-| `DEFAULTS.HOME_EXPANDED` | `[]` | Date sections expanded by default on home page |
-| `DEFAULTS.TIMELINE_TIERS` | `[1, 2, 3]` | Play importance tiers shown in timeline by default |
-| `DEFAULTS.ODDS_FORMAT` | `"american"` | Default odds format |
-| `DEFAULTS.THEME` | `"system"` | Default color theme |
-| `DEFAULTS.AWAY_ABBR_FALLBACK` | `"AWY"` | Fallback abbreviation when away team is unknown |
-| `DEFAULTS.HOME_ABBR_FALLBACK` | `"HME"` | Fallback abbreviation when home team is unknown |
-
-### Headline Stats
-
-Sport-specific collapsed stat labels shown per player row before expansion. Keys match `leagueCode.toLowerCase()` or typed table variants (`nhl_skater`, `nhl_goalie`, `mlb_batter`, `mlb_pitcher`).
-
-| Key | Labels |
-|-----|--------|
-| `nba` / `ncaab` | PTS, REB, AST |
-| `nfl` / `ncaaf` | YDS, TD |
-| `nhl_skater` | G, A, PTS |
-| `nhl_goalie` | SV, GA, SV% |
-| `mlb_batter` | H, RBI, AVG |
-| `mlb_pitcher` | IP, K, ERA |
-
-### PWA
+### `PWA`
 
 | Constant | Value | Meaning |
 |----------|-------|---------|
 | `PWA.INSTALL_MIN_SESSIONS` | 2 | Show install prompt after this many sessions |
-| `PWA.OFFLINE_AUTO_DISMISS_MS` | 3s | Auto-dismiss the offline banner this long after reconnecting |
+| `PWA.OFFLINE_AUTO_DISMISS_MS` | 3_000 | Auto-dismiss the offline banner this long after reconnecting |
+
+### `STORAGE`
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `STORAGE.MAX_CATCHUP_ENTRIES` | 200 | Cap on per-game progress entries |
+| `STORAGE.CATCHUP_MAX_AGE_DAYS` | 60 | Older entries are pruned on every write |
+
+### `ATTRIBUTION`
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `ATTRIBUTION.DATA_SOURCE_LABEL` | `"SportsDataAPI"` | Footer attribution label |
+
+### `CATCHUP`
+
+Deck sizing for `buildCatchupCards`. Tier 1 (scoring + late-game high-leverage) plays are always included; tier 2 is deterministically sampled per `gameId`.
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `CATCHUP.TARGET_TOTAL` | 12 | Preferred deck size for an "ordinary" game |
+| `CATCHUP.SOFT_MIN` | 5 | Floor for boring games (e.g. 1-0 duel) |
+| `CATCHUP.HARD_MAX` | 18 | Ceiling that tier-2 sampling stops at; tier 1 can exceed |
+
+Tuning bands documented in code: boring → 5-8, ordinary (5-3 / 6-4) → 8-14, wild (extras / comebacks) → 14-18.
+
+### `BOX_SCORE`
+
+Outbound box-score destination on the FinalReveal screen.
+
+| Constant | Value | Meaning |
+|----------|-------|---------|
+| `BOX_SCORE.url(gameId)` | `https://www.mlb.com/gameday/${gameId}/final/box` | Full box score URL |
+| `BOX_SCORE.label` | `"Full box score on MLB.com"` | Anchor label |
+
+### `DEFAULTS`
+
+| Constant | Value |
+|----------|-------|
+| `DEFAULTS.THEME` | `"system"` |
+| `DEFAULTS.AWAY_ABBR_FALLBACK` | `"AWY"` |
+| `DEFAULTS.HOME_ABBR_FALLBACK` | `"HME"` |
+
+## Helpers exported alongside config
+
+| Export | Purpose |
+|--------|---------|
+| `isPlaywrightServerEnv()` | Returns `true` when `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER === "1"`; used for CI-only branches (e.g. health route shortcut). |

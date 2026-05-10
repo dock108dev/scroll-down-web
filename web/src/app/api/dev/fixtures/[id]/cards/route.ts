@@ -3,7 +3,6 @@ import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import {
   buildCatchupCards,
-  type UpstreamBatter,
   type UpstreamPitcher,
 } from "@/lib/catchup-cards";
 import { planDeckWithReport, summarizeHalfInnings } from "@/lib/rhythm-planner";
@@ -36,7 +35,6 @@ interface UpstreamFixture {
   /** Optional — present on fixtures captured with the latest schema; the
    *  lab gracefully degrades when absent (matchup row hides pitcher). */
   mlbPitchers?: UpstreamPitcher[];
-  mlbBatters?: UpstreamBatter[];
 }
 
 export async function GET(
@@ -90,7 +88,6 @@ export async function GET(
     venue: fx.game.venueName ?? fx.game.venue ?? fx.game.location ?? null,
     plays: fx.plays,
     mlbPitchers: fx.mlbPitchers,
-    mlbBatters: fx.mlbBatters,
     isFinal: true,
     withAudit: true,
   });

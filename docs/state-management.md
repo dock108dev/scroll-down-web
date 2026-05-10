@@ -1,160 +1,89 @@
 # State Management
 
-## Overview
-
-All client-side state is managed by Zustand stores. Most stores persist to localStorage for offline resilience and cross-session continuity. For authenticated users, a subset of state syncs to the backend server.
+The app has three Zustand stores. All persist to `localStorage` via `persist` middleware. There is no in-memory-only store, no preference sync, no auth store, no realtime sequence state. Everything else (server-fetched game data, catch-up cards) lives in component-local state inside the data hooks.
 
 ## Stores
 
-### `auth` (persisted: `sd-auth`)
+### `useSettings` — `sd-settings`, version 2
 
-Authentication state. Holds JWT token, user role, email, and userId.
+File: `web/src/stores/settings.ts`.
 
-- `login(email, password)` — POST to `/api/auth/login`, stores token, triggers preference sync
-- `signup(email, password)` — POST to `/api/auth/signup`
-- `refreshMe()` — validates stored token via `GET /api/auth/me`; auto-logouts on 401
-- `logout()` — clears token, stops preference sync
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `theme` | `"system" \| "light" \| "dark"` | `DEFAULTS.THEME` (`"system"`) | Applied by `ThemeProvider` |
+| `showStaleBanners` | `boolean` | `true` | Controls whether degraded-state banners are shown to the user |
 
-### `game-data` (not persisted)
+Actions: `setTheme`, `setShowStaleBanners`.
 
-Canonical store for all game data. In-memory only — rebuilt from API on each session.
+The v1→v2 migration (in the same file) deletes legacy fields from a previous product surface: `scoreRevealMode`, `scoreHideLeagues`, `scoreHideTeams`, `timelineDefaultTiers`, `followingLive`, `followingLiveAt`, `autoResumePosition`, `preferredSportsbook`, `oddsFormat`, `hideLimitedData`, `homeExpandedSections`. Any of these in a returning user's `localStorage` are dropped on first load.
 
-- Normalized: `Map<gameId, { core, detail, flow, timestamps }>`
-- List tracking: `Map<listKey, { fetchedAt, gameIds }>`
-- Realtime state: per-channel sequence numbers, desync flags
-- Mutations: `upsertFromList`, `upsertFromDetail`, `applyGamePatch`, `appendPbp`
-- Selectors: `getCore(id)`, `getDetail(id)`, `getFlow(id)` return stable references
+### `useOnboarding` — `sd-onboarding`, version 1
 
-### `game-core` (not persisted)
+File: `web/src/stores/onboarding.ts`.
 
-Supporting store for the `GameCore` shape — minimal score/status/clock fields used by realtime patches and quick-render selectors. Backed by `game-data`; kept separate so `applyGamePatch` and pinned-bar selectors don't pull the full detail object.
+| Field | Type | Default | Notes |
+|-------|------|---------|-------|
+| `onboarded` | `boolean` | `false` | Becomes `true` after the user picks a team or skips |
+| `favoriteTeam` | `string \| null` | `null` | 3-letter MLB abbreviation or `null` if user skipped |
 
-### `settings` (persisted: `sd-settings`)
+Actions: `setFavoriteTeam(abbr)` (validates against `findMlbTeam` in `lib/mlb-teams.ts`), `skipOnboarding`, `clearFavoriteTeam`, `resetOnboarding`.
 
-User preferences. All settings have sensible defaults and work without auth.
+`FirstVisitGate` (in `components/onboarding/`) reads `onboarded` and renders `TeamPickerOverlay` over the home page until it flips. The favorite team is currently used by `FirstVisitGate` only — it does not change feed ordering or filtering.
 
-| Setting | Type | Default | Description |
-|---------|------|---------|-------------|
-| `theme` | `"system" \| "light" \| "dark"` | `"system"` | Color theme |
-| `scoreRevealMode` | `"onMarkRead" \| "always"` | `"onMarkRead"` | Whether scores are hidden until revealed |
-| `oddsFormat` | `"american" \| "decimal" \| "fractional"` | `"american"` | Odds display format |
-| `preferredSportsbook` | `string` | `""` | Highlight a specific book in odds displays |
-| `autoResumePosition` | `boolean` | `true` | Scroll to last play on game detail revisit |
-| `homeExpandedSections` | `string[]` | `[]` | Which date sections are expanded on home |
-| `hideLimitedData` | `boolean` | `true` | Hide thin-market odds |
-| `timelineDefaultTiers` | `number[]` | `[1, 2, 3]` | Which play tiers to show in timeline |
-| `followingLive` | `boolean` | `false` | Following Live mode (continuous score updates) |
-| `followingLiveAt` | `number` | `0` | Timestamp when Following Live was activated |
-| `showStaleBanners` | `boolean` | `true` | Admin-only: show banner when displaying stale cached data |
+### `useCatchupProgress` — `sd-catchup-state`, version 1
 
-### `reveal` (persisted: IndexedDB)
+File: `web/src/stores/catchup-progress.ts`.
 
-Tracks which games the user has "read" (revealed scores for).
+```typescript
+interface CatchupEntry {
+  cardIndex: number;            // index into the rendered deck (0 = scene-setter)
+  completed: boolean;            // user tapped through the FinalReveal
+  lastSeenPlayIndex: number;     // last play index the client knew about
+  updatedAt: number;             // ms epoch
+}
 
-- `revealedIds: Set<number>` — game IDs the user has revealed (max 500 via `STORAGE.MAX_REVEALED_IDS`)
-- `snapshots: Map<number, RevealSnapshot>` — score snapshot at reveal time (max 20 via `STORAGE.MAX_SNAPSHOTS`)
-- Batch operations: `revealBatch()`, `hideBatch()` for bulk actions
-- Snapshots detect "new data" — if live score differs from snapshot, show UPDATE indicator
-- Persistence is IndexedDB (DB `scroll-down`), not Zustand `persist` middleware. `lib/reveal-idb.ts` handles read/write and a one-shot migration from the legacy `sd-read-state` localStorage key.
+state.entries: Record<number /* gameId */, CatchupEntry>;
+```
 
-### `pinned-games` (persisted: `sd-pinned-games`)
+Actions:
 
-- `pinnedIds: Set<number>` — max 10 (`LAYOUT.MAX_PINNED_GAMES`)
-- `pinMeta: Map<number, { away, home abbreviations }>` — for chip display
-- Auto-prune: removes pins for games no longer in current date range
+- `getEntry(gameId)` — read accessor
+- `setProgress(gameId, cardIndex, lastSeenPlayIndex)` — used by `CatchupExperience` while the user scrolls
+- `markCompleted(gameId)` — flipped by `FinalReveal`
+- `clearAll()`
 
-### `reading-position` (persisted: `sd-reading-position`)
+`pruneEntries()` runs on every write: it drops entries older than `STORAGE.CATCHUP_MAX_AGE_DAYS` (60d) and caps total entries at `STORAGE.MAX_CATCHUP_ENTRIES` (200), keeping the most recently updated.
 
-Per-game scroll position tracking for timeline resume.
+`lastSeenPlayIndex` is what gets passed back to `/api/games/[gameId]/cards?since=<n>` on the next live poll, so the upstream/proxy can return only new cards when the game has progressed.
 
-- Stores: play index, period, clock, total plays, timestamp
-- Auto-prune: entries older than 30 days, capped at 50 entries
-- Resume: scrolls to saved play after 300ms render delay
+## What is **not** in a store
 
-### `section-layout` (persisted: `sd-section-layout`)
+- **Game list and catch-up cards** — fetched by `useGamesList` and `useCatchupCards` in `web/src/hooks/`, held in component-local state. There is no normalized game cache, no list-key map, no "in-flight" tracking outside `apiFetch`'s `inflight` map.
+- **Health status** — `useHealthStatus` exposes a module-level boolean via `useSyncExternalStore`. Not a Zustand store.
+- **Theme application** — `ThemeProvider` reads `useSettings.theme` and toggles `<html class="dark">`; the class itself is DOM state, not persisted by Zustand.
+- **Scroll position / IntersectionObserver state** — kept inside the catch-up scroll container; resetting on navigation is intentional.
 
-Per-game section expansion state (which collapsible sections are open/closed). Capped at 50 entries.
+## Storage keys
 
-### `home-scroll` (not persisted)
+All keys are constants in `STORAGE_KEYS` in `web/src/lib/config.ts`:
 
-Saves home page scroll Y position for restoration on back navigation. In-memory only — resets on page reload.
+| Constant | Key |
+|----------|-----|
+| `STORAGE_KEYS.SETTINGS` | `sd-settings` |
+| `STORAGE_KEYS.ONBOARDING` | `sd-onboarding` |
+| `STORAGE_KEYS.CATCHUP_STATE` | `sd-catchup-state` |
+| `STORAGE_KEYS.PWA_INSTALL_DISMISSED` | `sd-pwa-install-dismissed` |
+| `STORAGE_KEYS.PWA_SESSION_COUNT` | `sd-pwa-session-count` |
+| `STORAGE_KEYS.ANON_ID` | `sd-anon-id` |
 
-### `ui` (not persisted)
+The two `PWA_*` keys are read/written directly by `PWAInstallPrompt` (not via a store). `ANON_ID` is reserved but not currently consumed.
 
-Transient UI state: `settingsOpen` boolean for the settings drawer.
+## Migration policy
 
-### `session` (not persisted)
+When changing a store's persisted shape:
 
-Magic-link / HttpOnly cookie auth state. Hydrated on app load by `SessionProvider` via `GET /api/auth/session`.
+1. Increment `version` in the `persist` config.
+2. Add a `migrate(persisted, fromVersion)` that drops removed fields, normalizes types, and provides defaults for new fields.
+3. Avoid silent shape drift — if a field was deleted from the type, explicitly `delete` it in `migrate` so old `localStorage` entries don't ship stale junk to the rest of the app.
 
-- `status: "loading" | "authenticated" | "anonymous"` — current auth state
-- `email: string | null` — authenticated user's email
-- `tier: "free" | "pro"` — subscription tier from session
-- `userId: string | null` — authenticated user ID
-- `refresh()` — re-fetches `/api/auth/session` and updates store
-- `signOut()` — POSTs to `/api/auth/sign-out`, clears cookie, resets to anonymous
-
-This store coexists with the legacy `auth` store during transition. New sign-in flows use magic-link.
-
-### `tier` (persisted: `sd-tier`)
-
-Free/Pro tier tracking with anonymous identity.
-
-- `tier: "free" | "pro"` — subscription tier
-- `anonId: string` — stable UUID for anonymous users (generated on first load, persists)
-- `initialized: boolean` — hydration flag
-- `initialize()` — generates anonId if missing, syncs tier + anonId to cookies for server-side access, applies dev override (`?tier=pro` query param in non-production)
-- `isAllowed(feature: FeatureGateKey)` — returns `true` only if `tier === "pro"` and the key is in `FEATURE_GATES`
-
-In non-production environments, `?tier=pro` or `?tier=free` in the URL overrides the persisted tier for testing.
-
-### `pro-gate-sheet` (not persisted)
-
-Ephemeral UI state for the Pro upgrade bottom sheet.
-
-- `open: boolean` — whether the sheet is visible
-- `feature: FeatureGateKey | null` — which gated feature triggered the sheet
-- `show(feature)` / `hide()` — open/close actions
-
-The sheet is a global overlay rendered in the root layout. Any component can trigger it via the store without prop drilling.
-
-### `my-bets` (persisted: `sd-my-bets`)
-
-User-saved bet records with outcomes tracking, surfaced at `/settings/my-bets`.
-
-- Saved bet shape: market, selection, line, price, book, sport, optional `gameId`
-- Outcome states: pending, win, loss, push (set after the game finishes)
-- Cap: 200 entries (`STORAGE.MAX_MY_BETS`)
-- Outcomes are reconciled against `/api/analytics/prediction-outcomes` and `/api/analytics/record-outcomes`
-
-## Preference Sync
-
-For authenticated users, preferences sync bidirectionally with the server via `src/lib/preferences-sync.ts`.
-
-### What syncs
-
-- All settings (theme, score reveal mode, odds format, etc.)
-- Pinned game IDs
-- Revealed game IDs
-
-### What does not sync
-
-- Score snapshots (display-only cache, rebuilt locally)
-- Reading positions (too granular for server sync)
-- Section layouts (too granular for server sync)
-- Home scroll position (transient)
-
-### Sync flow
-
-1. **On login**: `pullAndStartSync()` fetches server preferences, hydrates local stores
-2. **On change**: any settings/pins/reveals change triggers a debounced push (2s delay)
-3. **On logout**: sync stops; localStorage retained for guest browsing
-4. **On tab close**: `flushPreferences()` with `keepalive: true` for best-effort final push
-
-### Error handling
-
-Push failures are handled with backoff: after 3 consecutive failures, pushing stops until the next login. When the health endpoint reports degraded state, push/pull are skipped entirely. Only the first failure is logged to console to avoid noise.
-
-### Conflict resolution
-
-Server is authoritative for pinned IDs and revealed IDs. On pull, local state is replaced (not merged). Settings are hydrated field-by-field from server (non-null values win).
+`web/src/stores/settings.ts:27-46` is the canonical example.

@@ -1,10 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCatchupCards,
-  computeBatterTimeline,
   computePitcherTimeline,
   computeTimeline,
-  formatOutsAsIP,
   humanizeDescription,
   parseDescriptionAdvances,
   sampleTier2,
@@ -715,16 +713,6 @@ describe("computeTimeline (description-derived advances)", () => {
   });
 });
 
-describe("formatOutsAsIP", () => {
-  it("converts outs to MLB IP-string", () => {
-    expect(formatOutsAsIP(0)).toBe("0.0");
-    expect(formatOutsAsIP(1)).toBe("0.1");
-    expect(formatOutsAsIP(3)).toBe("1.0");
-    expect(formatOutsAsIP(16)).toBe("5.1");
-    expect(formatOutsAsIP(24)).toBe("8.0");
-  });
-});
-
 describe("computePitcherTimeline", () => {
   it("attributes plays to the right pitcher by walking outs", () => {
     // Two NYY pitchers: Blackburn (1 inning = 3 outs), then Beck.
@@ -764,66 +752,5 @@ describe("computePitcherTimeline", () => {
     expect(tl.get(3)?.name).toBe("Paul Blackburn");
     // After 3 outs, Beck takes over.
     expect(tl.get(4)?.name).toBe("Brendan Beck");
-  });
-
-  it("accumulates a running line snapshot up to (not including) each play", () => {
-    const plays: PlayEntry[] = [
-      { playIndex: 1, tier: 1, quarter: 1, periodLabel: "1st",
-        teamAbbreviation: "TEX", playerName: "A", playType: "WALK",
-        description: "A walks." },
-      { playIndex: 2, tier: 1, quarter: 1, periodLabel: "1st",
-        teamAbbreviation: "TEX", playerName: "B", playType: "STRIKEOUT",
-        description: "B strikes out." },
-      { playIndex: 3, tier: 1, quarter: 1, periodLabel: "1st",
-        teamAbbreviation: "TEX", playerName: "C", playType: "SINGLE",
-        description: "C singles." },
-    ];
-    const pitchers = [
-      { team: "New York Yankees", playerName: "Solo Pitcher",
-        inningsPitched: "9.0", hits: 0, runs: 0, baseOnBalls: 0,
-        strikeOuts: 0, homeRuns: 0 },
-    ];
-    const tl = computePitcherTimeline(
-      plays, pitchers,
-      "New York Yankees", "Texas Rangers", "NYY",
-    );
-    // Before play 1 — fresh line.
-    expect(tl.get(1)?.line.outs).toBe(0);
-    expect(tl.get(1)?.line.baseOnBalls).toBe(0);
-    // Before play 2 — A's walk has been logged.
-    expect(tl.get(2)?.line.baseOnBalls).toBe(1);
-    expect(tl.get(2)?.line.outs).toBe(0);
-    // Before play 3 — A's walk + B's K logged.
-    expect(tl.get(3)?.line.baseOnBalls).toBe(1);
-    expect(tl.get(3)?.line.strikeOuts).toBe(1);
-    expect(tl.get(3)?.line.outs).toBe(1);
-  });
-});
-
-describe("computeBatterTimeline", () => {
-  it("counts a batter's PAs across multiple appearances", () => {
-    const plays: PlayEntry[] = [
-      { playIndex: 1, tier: 1, quarter: 1, periodLabel: "1st",
-        teamAbbreviation: "TEX", playerName: "Marcell Ozuna", playType: "STRIKEOUT",
-        description: "Marcell Ozuna strikes out swinging." },
-      { playIndex: 2, tier: 1, quarter: 3, periodLabel: "3rd",
-        teamAbbreviation: "TEX", playerName: "Marcell Ozuna", playType: "WALK",
-        description: "Marcell Ozuna walks." },
-      { playIndex: 3, tier: 1, quarter: 5, periodLabel: "5th",
-        teamAbbreviation: "TEX", playerName: "Marcell Ozuna", playType: "SINGLE",
-        description: "Marcell Ozuna singles." },
-    ];
-    const tl = computeBatterTimeline(plays);
-    // First PA — empty line.
-    expect(tl.get(1)?.line.atBats).toBe(0);
-    expect(tl.get(1)?.line.strikeOuts).toBe(0);
-    // Second PA — 0-1 with a K.
-    expect(tl.get(2)?.line.atBats).toBe(1);
-    expect(tl.get(2)?.line.hits).toBe(0);
-    expect(tl.get(2)?.line.strikeOuts).toBe(1);
-    // Third PA — 0-1 with K, BB doesn't increment AB.
-    expect(tl.get(3)?.line.atBats).toBe(1);
-    expect(tl.get(3)?.line.baseOnBalls).toBe(1);
-    expect(tl.get(3)?.line.strikeOuts).toBe(1);
   });
 });

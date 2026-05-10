@@ -99,7 +99,7 @@ export function FinalReveal({
         <a
           href={BOX_SCORE.url(gameId)}
           target="_blank"
-          rel="noreferrer"
+          rel="noopener noreferrer"
           className="final-reveal-secondary"
         >
           {BOX_SCORE.label}

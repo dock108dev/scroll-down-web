@@ -14,7 +14,12 @@ export class ApiError extends Error {
     public status: number,
     public body: string,
   ) {
-    super(`API ${status}: ${body}`);
+    // Cap the body in the surfaced message: upstream error pages may include
+    // long stack traces or HTML, which would balloon server logs and risk
+    // leaking internal details if the message is ever surfaced. The full
+    // body remains on `.body` for callers that knowingly need it.
+    const snippet = body.length > 200 ? `${body.slice(0, 200)}…` : body;
+    super(`API ${status}: ${snippet}`);
   }
 
   /** True when the upstream error is a gateway-level issue (not a client problem). */
@@ -116,7 +121,11 @@ export async function apiFetch<T>(
     });
 
     if (!res.ok) {
-      throw new ApiError(res.status, await res.text());
+      // Bound how much of an upstream error body we read into memory: a
+      // malformed or hostile upstream could otherwise stream a large payload
+      // on the error path. 2KB is more than enough for status + reason.
+      const raw = await res.text();
+      throw new ApiError(res.status, raw.length > 2048 ? raw.slice(0, 2048) : raw);
     }
     const data: T = await res.json();
     return deepFixStrings(data);

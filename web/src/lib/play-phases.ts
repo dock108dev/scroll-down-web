@@ -96,6 +96,7 @@ const SCHEDULES: Record<PlayAnimationProfile, PhaseSchedule> = {
   double_play_grounder: { bridge: 0, setup: 800, pitch: 460, trigger: 360, ball: 500,  runners: 1100, settle: 800  },
   double_play_fly:      { bridge: 0, setup: 800, pitch: 460, trigger: 400, ball: 800,  runners: 1100, settle: 800  },
   sacrifice_fly:        { bridge: 0, setup: 800, pitch: 460, trigger: 380, ball: 700,  runners: 800,  settle: 900},
+  rundown:              { bridge: 0, setup: 800, pitch: 460, trigger: 360, ball: 0,    runners: 1400, settle: 800  },
   other:                DEFAULT,
 };
 
@@ -235,7 +236,7 @@ export function usePlayPhase(
   return { phase, runId: state.runId, milestones };
 }
 
-function usePrefersReducedMotion(): boolean {
+export function usePrefersReducedMotion(): boolean {
   const [reduce, setReduce] = useState(false);
   useEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia) return;

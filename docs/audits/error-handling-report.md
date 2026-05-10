@@ -1,3 +1,283 @@
+# Error Handling & Suppression Audit
+
+> **Pass-4 (2026-05-09)** — incremental sweep of the new dev-only Catchup
+> Lab page (`web/src/app/dev/catchup-lab/page.tsx`) added on top of the
+> Pass-3 working tree. Two silent fetch swallows tightened; everything
+> else inherited from Pass-3 still applies. Pass-4 changes are summarized
+> below under **## Changes made (Pass-4)**; per-item rationale lives
+> under **§H — Pass-4 findings (dev-tool diff)**.
+>
+> **Pass-3 (2026-05-09)** — narrow follow-up on the in-flight catchup-card
+> diff (rundown profile, leverage band, narration-panel rework, extra-trail
+> system). Pass-1 / Pass-2 (2026-04-28) covered the broader tree and remain
+> below in full. Pass-3 changes are summarized under
+> **## Changes made (Pass-3)**; per-item rationale lives under
+> **§G — Pass-3 findings (catchup diff)** further down.
+
+---
+
+## Changes made (Pass-4)
+
+Working-tree edits on top of the Pass-3 state. Scope: the new dev-only
+Catchup Lab page that ships under `/dev/catchup-lab` (404'd in production
+by `web/src/app/dev/layout.tsx`).
+
+| File | What changed | Disposition |
+|------|--------------|-------------|
+| `web/src/app/dev/catchup-lab/page.tsx` (manifest fetch, line ~119) | Replaced `.catch(() => {})` with a `console.error` + `setManifestError(msg)` so a backend hiccup or non-OK response surfaces in the sidebar instead of presenting as an empty fixture list. Added `if (!r.ok) throw` so HTTP errors no longer parse as `{ fixtures: [] }`. | **Acted (tighten)** — §H1 |
+| `web/src/app/dev/catchup-lab/page.tsx` (`loadFixture`, line ~134) | Added a `catch` to the previously try/finally-only async load. Logs with a tag (`[catchup-lab] failed to load fixture …`) and renders `Failed to load deck …` in-pane via new `loadError` state. Added `if (!r.ok) throw` so a 4xx/5xx no longer JSON-parses an error envelope into the deck shape. | **Acted (tighten)** — §H2 |
+| `web/src/app/globals.css` (`.lab-error`) | Added a single error-banner style (red-tinted muted card) so the new error states above have a visible affordance instead of unstyled red text. | **Acted (support)** — §H1/H2 |
+
+No production behavior change. The /dev tree is gated by
+`web/src/app/dev/layout.tsx` (`NODE_ENV === "production"` → `notFound()`),
+and the consumed routes (`/api/dev/fixtures`, `/api/dev/fixtures/:id/cards`)
+also 404 in production. The hardening only changes what an internal
+operator sees during qualitative review.
+
+### Pass-4 counts by severity
+
+| Severity | Count | Action |
+|----------|-------|--------|
+| Critical | 0 | — |
+| High     | 0 | — |
+| Medium   | 0 | — |
+| Low      | 2 | Acted (2) — §H1, §H2 |
+| Note     | 2 | Justified (2) — §H3, §H4 |
+
+### Pass-4 inventory of suppressions in the diff
+
+Other diff-resident suppressions inspected and left unchanged:
+
+- `web/src/app/api/dev/fixtures/route.ts:36-39` — JSON-parse catch
+  echoes `err.message` in the response body. Dev-only route (404 in
+  prod), no auth surface, the operator running the lab is the only
+  consumer. **Justified** — §H3.
+- `web/src/app/api/dev/fixtures/[id]/cards/route.ts:69-73` — same
+  pattern, same justification. **Justified** — §H3.
+- `web/src/components/home/GameRow.tsx:62,76` — `<img onError>`
+  hides broken team logos by setting `display: none`. Pre-existing
+  pattern preserved across the visual refactor; correct posture for
+  static assets where retry has no effect. **Justified** — §H4.
+- `web/src/lib/seo.ts:144-148` — new `jsonLdScript` helper.
+  *Hardening*, not a suppression: replaces an inline `JSON.stringify`
+  in `web/src/app/layout.tsx` and escapes `<` to `<` so a
+  schema string can't break out of the `<script>` tag. Already
+  picked up by the security audit; mentioned here for cross-reference.
+- `web/src/lib/api-server.ts:127-128` — bounds upstream error body
+  to 2KB before throwing `ApiError`. Hardening, not suppression.
+- `web/src/components/catchup/FinalReveal.tsx:99` — `target="_blank"`
+  link upgraded from `rel="noreferrer"` to `rel="noopener noreferrer"`.
+  Hardening, not suppression.
+- `web/src/lib/leverage.ts`, `web/src/lib/result-chip.ts` — pure
+  helpers, no inputs from outside the typed render path; no error
+  handling needed (the leverage module's contract was already
+  documented in Pass-3 §G3).
+
+### Posture verdict for Pass-4
+
+**Acceptable.** No critical/high/medium issues introduced. The two Low
+findings are now loud-in-dev with a visible operator surface; the four
+Notes are dev-only routes, presentational image fallbacks, or
+hardenings (not suppressions). The Pass-3 verdict ("Acceptable") stands.
+
+---
+
+## §H — Pass-4 findings (dev-tool diff)
+
+### H1 — Catchup Lab manifest fetch silently swallowed every error
+
+- **Location**: `web/src/app/dev/catchup-lab/page.tsx`
+  (`useEffect` around line 119)
+- **Risk lens**: Reliability / observability (operator-facing only)
+- **Severity**: Low — dev-only tool, no end-user exposure
+- **Disposition**: **Acted** — added `if (!r.ok) throw new Error(...)`
+  before the JSON parse, replaced `.catch(() => {})` with a logging +
+  state-setting catch, and rendered the error in the sidebar.
+
+**Why not throw?** This is a passive load on mount; throwing would
+unmount the page and present the operator with a generic Next.js error
+boundary. The lab's whole purpose is qualitative review — surfacing the
+underlying message ("HTTP 500", "Failed to fetch") in the sidebar gives
+the operator a faster signal than the boundary would.
+
+**Why is the inner `if (!r.ok) throw` necessary?** Without it, a 500
+response from `/api/dev/fixtures` gets JSON-parsed as `{ fixtures: [] }`
+and the sidebar silently shows zero fixtures — indistinguishable from
+"no fixtures captured yet."
+
+### H2 — `loadFixture` had `try/finally` with no `catch`
+
+- **Location**: `web/src/app/dev/catchup-lab/page.tsx`
+  (`loadFixture`, line ~134)
+- **Risk lens**: Reliability / observability (operator-facing only)
+- **Severity**: Low — dev-only tool
+- **Disposition**: **Acted** — added a `catch` block that logs and sets
+  in-pane `loadError` state, plus an `if (!r.ok) throw` guard before the
+  JSON parse.
+
+The previous `try/finally` only existed to flip `setLoading(false)` —
+the actual fetch/parse rejection escaped as an unhandled promise
+rejection (no React error boundary catches `useCallback`-returned
+promises). The operator saw the spinner clear with no deck and no
+explanation; the rejection only showed up in the dev console.
+
+The new error surface uses the same `.lab-error` style added for §H1
+and lives directly under the toolbar so the failure shows up in the
+operator's primary focal area.
+
+### H3 — Dev fixture routes echo `err.message` in 500 bodies
+
+- **Location**:
+  `web/src/app/api/dev/fixtures/route.ts:36-39`,
+  `web/src/app/api/dev/fixtures/[id]/cards/route.ts:69-73`
+- **Risk lens**: Security observability (information disclosure)
+- **Severity**: Note
+- **Disposition**: **Justified** — both routes early-return
+  `404 "Not Found"` when `NODE_ENV === "production"`, so the
+  echo only happens in dev/CI. The "leaked" message is a Node.js
+  `JSON.parse` error against a fixture the operator authored. Not
+  a class-of-bug worth suppressing for the same reasons F8 (LLM error
+  echo, Pass-2) was: the attack surface there was authenticated
+  production users; here it's the operator running `npm run dev`
+  on their own machine.
+
+### H4 — `<img onError>` logo fallback in `GameRow`
+
+- **Location**: `web/src/components/home/GameRow.tsx:62,76`
+- **Risk lens**: Reliability / UX
+- **Severity**: Note
+- **Disposition**: **Justified** — `<img>` 404s on team logos hide the
+  element via `style.display = "none"`. Retry has no effect (static
+  asset URL was wrong or the file was removed); the surrounding row
+  still renders the team name, so the user-visible degradation is a
+  missing 24×24 logo, not a broken card. Pre-existing pattern; the
+  Pass-4 visual refactor only renamed the wrapper class. No log because
+  team-logo `<img>` errors are noisy on dev (asset cache priming) and
+  not actionable in prod (operator already monitors logo asset coverage
+  out-of-band).
+
+---
+
+## Changes made (Pass-3)
+
+Working-tree edits on top of the in-flight catchup-card diff:
+
+| File | What changed | Disposition |
+|------|--------------|-------------|
+| `web/src/components/catchup/BaseballLightField.tsx:1322` (`extraTrailStartPoint`) | Replaced silent `return POS.home` on regex miss with a dev-only `console.error` and an added non-finite-coord guard. Prod still falls back to home plate so a single bad path entry can't blank the field, but the failure is no longer invisible during local dev / tests. | **Acted (tighten)** — §G1 |
+| `web/src/components/catchup/BaseballLightField.tsx:328` (`PROFILE_GLOW` lookup) | Annotated the `?? PROFILE_GLOW.other` fallback with a comment explaining it's a runtime guard for off-type strings (stale persisted data), not a silent suppression of unknown profiles. | **Justified** — §G2 |
+| `web/src/lib/leverage.ts:1` (module preamble) | Added a docstring explaining why these pure helpers carry no input validation — inputs are typed `number` and originate from `catchup-cards.ts` with `?? 0` fallbacks at every assembly point. | **Justified** — §G3 |
+| `web/src/components/catchup/CatchupCard.tsx:106` (`narrativeText` fallback) | Extended the existing comment to record that the empty-string fallback is intentional: missing narration is non-actionable for the user and upstream feed gaps are already tracked by `validatePlayCard`'s dev-only warnings. | **Justified** — §G4 |
+
+No production behavior change. `extraTrailStartPoint`'s prod path is
+unchanged; the dev-only `console.error` only fires if a future commit ships
+an EXTRA_TRAILS / SAC_FLY_RELAY_PATHS / RELAY_THROW_PATHS entry whose path
+string doesn't begin with `M${num} ${num}`.
+
+### Pass-3 counts by severity
+
+| Severity | Count | Action |
+|----------|-------|--------|
+| Critical | 0 | — |
+| High     | 0 | — |
+| Medium   | 0 | — |
+| Low      | 1 | Acted (1) — §G1 |
+| Note     | 3 | Justified (3) — §G2, §G3, §G4 |
+
+### Pass-3 inventory of suppressions in the diff
+
+Other suppressions and dev-only guards landed in the diff that did **not**
+warrant a code change:
+
+- `catchup-cards.ts:298` `console.warn` for unmapped `classifyEvent`
+  descriptions: dev-only (`NODE_ENV !== "production"` gate). Existing
+  pattern, untouched.
+- `catchup-cards.ts:631-639` `downgradeImplausible` dev warns: same
+  dev-only pattern. Existing.
+- `catchup-cards.ts:497` documents why `relay_throw` was not added as a
+  classifier branch (the regex would never match the current MLB fixture
+  corpus). The comment links forward to `BaseballLightField`'s
+  `resolveExtraTrails`. This is a deliberate dead-code-avoidance
+  decision, not a suppression. No action.
+- New rundown classifier branch (`catchup-cards.ts:519`): regex match
+  before the event switch. A miss falls through to existing classifier
+  logic — correct cascade, no error suppression.
+- New schedule entry in `play-phases.ts` (`rundown`): pure data, no
+  control flow.
+
+### Posture verdict for Pass-3
+
+**Acceptable.** The diff did not introduce broad catches, retries, silent
+returns, fire-and-forget promises, or env-gated strictness changes. The
+single new silent fallback (`extraTrailStartPoint`) is now annotated and
+loud-in-dev. All other diff-resident suppressions are dev-only warns or
+documented non-suppressions.
+
+---
+
+## §G — Pass-3 findings (catchup diff)
+
+### G1 — `extraTrailStartPoint` silently returned home plate on regex miss
+
+- **Location**: `web/src/components/catchup/BaseballLightField.tsx:1322`
+  (was `:1325` pre-edit)
+- **Risk lens**: Reliability / observability
+- **Severity**: Low (impossible under current data, but a footgun for
+  future maintainers — a malformed path string would render as a glowing
+  dot pinned to home plate, masking the bug visually)
+- **Disposition**: **Acted** — added dev-only `console.error` on regex
+  miss and on non-finite parsed coords. Prod still returns `POS.home` so
+  a single bad path entry doesn't blank the entire field while the rest
+  of the play continues to render.
+
+**Why not throw?** This is render-time, called per-frame on every active
+card. A hard throw would unmount the field and lose the user's place in
+the catch-up flow over a cosmetic bug. Dev-loud / prod-soft is the right
+posture for SVG geometry assertions.
+
+### G2 — `PROFILE_GLOW[animationProfile] ?? PROFILE_GLOW.other`
+
+- **Location**: `web/src/components/catchup/BaseballLightField.tsx:328`
+- **Risk lens**: Reliability
+- **Severity**: Note
+- **Disposition**: **Justified** — `PROFILE_GLOW` is a fully-keyed
+  `Record<PlayAnimationProfile, ...>`, so the `?? other` is unreachable
+  through the type system. It exists as a runtime guard against
+  off-type strings (e.g. an older animation profile persisted in
+  client-side IndexedDB before a type rename). Comment now states this
+  intent at the call site.
+
+### G3 — `leverage.ts` has no input validation
+
+- **Location**: `web/src/lib/leverage.ts` (entire module)
+- **Risk lens**: Reliability
+- **Severity**: Note
+- **Disposition**: **Justified** — `inningZone` and `leverageBand` are
+  pure deterministic helpers consumed only by `CatchupCard`. Their
+  numeric inputs come from `PlayCardData`, whose `inning` and
+  `scoreBefore.{home,away}` fields are assembled in `catchup-cards.ts`
+  with `?? 0` fallbacks at every site. NaN therefore cannot reach these
+  functions through the typed render path; if it ever did via stale
+  persisted state, the band cascade lands on `"high"` (still-coherent
+  CSS data attribute) rather than a crash. CSS variables derived from
+  these labels degrade silently if unexpected. Module preamble now
+  states this contract.
+
+### G4 — `(card.narrative ?? card.description ?? "").trim()` empty-fallback
+
+- **Location**: `web/src/components/catchup/CatchupCard.tsx:111`
+- **Risk lens**: Reliability / UX
+- **Severity**: Note
+- **Disposition**: **Justified** — the fallback is the mechanism that
+  hides the narration panel when the upstream feed has no copy.
+  Surfacing an error to the user would not be actionable (it's
+  upstream data); upstream feed gaps are already monitored by
+  `validatePlayCard`'s dev-only warnings (already running on every
+  card mount via `useEffect`, see `CatchupCard.tsx:118-121`).
+  Comment now states this intent and links here.
+
+---
+
 # Error Handling & Suppression Audit — 2026-04-28
 
 Scope: every `try`/`catch`, `.catch()`, lint disable, silent default, fire-and-forget,

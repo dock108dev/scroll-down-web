@@ -122,7 +122,6 @@ PUBLIC_BASE_URL=https://scrolldownsports.dev
 SITE_NOINDEX=true
 # Optional:
 # NEXT_PUBLIC_PLAUSIBLE_DOMAIN=scrolldownsports.dev
-# MAGIC_LINK_FROM_EMAIL=noreply@mail.scrolldownsports.com
 ```
 
 ## Prod env file (example)
@@ -133,22 +132,15 @@ PUBLIC_BASE_URL=https://scrolldownsports.com
 SITE_NOINDEX=false
 # Optional:
 # NEXT_PUBLIC_PLAUSIBLE_DOMAIN=scrolldownsports.com
-# MAGIC_LINK_FROM_EMAIL=noreply@mail.scrolldownsports.com
 ```
 
 Both envs can share same source data/backend settings.
 
 ---
 
-## 6) AdSense + `.com` Requirements
+## 6) Reserved (formerly AdSense)
 
-In AdSense:
-
-1. Add `scrolldownsports.com` in **Sites**
-2. Complete site verification/review for `.com`
-3. Confirm `https://scrolldownsports.com/ads.txt` is reachable and authorized
-
-You can keep same ad slot IDs unless you intentionally split monetization by domain.
+This section previously covered AdSense site verification for `scrolldownsports.com`. The current build does not render AdSense ad units (the `NEXT_PUBLIC_ADSENSE_*` Docker build-args are still wired in CI but no application code consumes them — see [`deployment.md`](deployment.md#build-time-vs-runtime-env)). Skip until ad work resumes.
 
 ---
 
@@ -178,10 +170,7 @@ No routine SSH needed after initial server/domain bootstrap.
 - `https://scrolldownsports.com/sitemap.xml` returns sitemap entries
 - `https://scrolldownsports.com/robots.txt` allows indexing
 - Submit `https://scrolldownsports.com/sitemap.xml` in Google Search Console
-- Verify `https://scrolldownsports.com/ads.txt` is crawlable and still includes the Google publisher line
-- Use URL Inspection for `/`, `/fairbet`, one live `/game/{id}`, `/games/{today}`, and `/sports/mlb`
-- Magic-link and billing return URLs resolve to `.com`
-- Ads render for free users; paid/admin still suppressed
+- Use URL Inspection for `/` and one live `/catchup/{id}`
 
 ## `.dev` (dev)
 
@@ -240,6 +229,5 @@ Only for one-time/bootstrap or break-glass cases:
 - [ ] `DEPLOY_PATH` set per env
 - [ ] `HOST_PORT` set per env (`3001` prod, `3002` dev suggested)
 - [ ] Server env files set (`PUBLIC_BASE_URL`, `SITE_NOINDEX`)
-- [ ] AdSense site added for `.com`
 - [ ] Run `Promote Prod` workflow
 - [ ] Verify `.com` indexable + `.dev` noindex

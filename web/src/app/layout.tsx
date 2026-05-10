@@ -11,6 +11,7 @@ import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/layout/PWAInstallPrompt";
 import { FirstVisitGate } from "@/components/onboarding/FirstVisitGate";
 import { getSiteHost, getSiteUrl, isNoIndexSite } from "@/lib/site-config";
+import { jsonLdScript } from "@/lib/seo";
 
 export const viewport: Viewport = {
   viewportFit: "cover",
@@ -89,19 +90,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         `}</Script>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "WebApplication",
-              name: "Scroll Down MLB",
-              url: siteUrl,
-              description:
-                "Spoiler-free catch-up on MLB games — walk through the key plays and reveal the final score when you're ready.",
-              applicationCategory: "SportsApplication",
-              operatingSystem: "Web",
-              offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
-            }),
-          }}
+          dangerouslySetInnerHTML={jsonLdScript({
+            "@context": "https://schema.org",
+            "@type": "WebApplication",
+            name: "Scroll Down MLB",
+            url: siteUrl,
+            description:
+              "Spoiler-free catch-up on MLB games — walk through the key plays and reveal the final score when you're ready.",
+            applicationCategory: "SportsApplication",
+            operatingSystem: "Web",
+            offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+          })}
         />
       </head>
       <body className="bg-neutral-950 text-neutral-50 antialiased">

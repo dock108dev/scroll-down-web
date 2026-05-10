@@ -3,15 +3,25 @@
 import { forwardRef, useEffect, useMemo } from "react";
 import type {
   BaseballBaseState,
-  BatterLine,
-  PitcherLine,
   PlayCardData,
-  RunnerNames,
 } from "@/lib/types";
-import { formatOutsAsIP } from "@/lib/catchup-cards";
-import { findMlbTeam, teamLogoPath } from "@/lib/mlb-teams";
-import { BRIDGE_MS, getPhaseMilestones, getPhaseSchedule, usePlayPhase } from "@/lib/play-phases";
-import { resultChipLabel } from "@/lib/result-chip";
+import { findMlbTeam } from "@/lib/mlb-teams";
+import {
+  computeLeverage,
+  inningZone,
+  leverageBand,
+  leverageWeightMap,
+  NARRATIVE_REVEAL_DUR_MS,
+  NARRATIVE_SETTLE_BONUS_MS,
+} from "@/lib/leverage";
+import {
+  BRIDGE_MS,
+  getPhaseMilestones,
+  getPhaseSchedule,
+  usePlayPhase,
+  usePrefersReducedMotion,
+} from "@/lib/play-phases";
+import { resultChipLabel, resultChipTier, type ChipTier } from "@/lib/result-chip";
 import { buildRunnerMovements, totalRunnersDurationMs } from "@/lib/runner-paths";
 import { logValidationWarnings, validatePlayCard } from "@/lib/play-validation";
 import { BaseballLightField } from "./BaseballLightField";
@@ -31,8 +41,7 @@ interface CatchupCardProps {
  * Header layout:
  *   ┌─────────────────────────────────────────────────────┐
  *   │ TOP 1ST · ●●○                       TEX 0 — NYY 0    │
- *   │ AT BAT  Seager        vs        PITCHING  Rodón      │
- *   │ ◆ DURAN 2B   ◆ NIMMO 1B                3-1           │
+ *   │            SEAGER vs RODÓN · 3-1                     │
  *   ├─────────────────────────────────────────────────────┤
  *   │            animated baseball field                   │
  *   ├─────────────────────────────────────────────────────┤
@@ -72,16 +81,31 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   // visually inherits the previous card's ending state on mount, then
   // transitions to this card's situationBefore by the time setup begins.
   const bridgeOverride = card.priorAfter ? BRIDGE_MS : undefined;
-  const overrides = (runnersOverride !== undefined || bridgeOverride !== undefined)
-    ? {
-        ...(runnersOverride !== undefined ? { runners: runnersOverride } : {}),
-        ...(bridgeOverride !== undefined ? { bridge: bridgeOverride } : {}),
-      }
+  // Leverage tier — drives how much extra settle the play "breathes" before
+  // narrative reveal, plus typography weight + reveal-fade duration on
+  // CardNarrative. usePlayPhase already collapses settle to 1ms under
+  // reduced motion, so the bonus is automatically negated there.
+  const leverageTier = computeLeverage(card);
+  const settleBonus = NARRATIVE_SETTLE_BONUS_MS[leverageTier];
+  const settleOverride = settleBonus > 0
+    ? baseSchedule.settle + settleBonus
     : undefined;
+  const overrides =
+    runnersOverride !== undefined ||
+    bridgeOverride !== undefined ||
+    settleOverride !== undefined
+      ? {
+          ...(runnersOverride !== undefined ? { runners: runnersOverride } : {}),
+          ...(bridgeOverride !== undefined ? { bridge: bridgeOverride } : {}),
+          ...(settleOverride !== undefined ? { settle: settleOverride } : {}),
+        }
+      : undefined;
 
   const { phase, runId } = usePlayPhase(isActive, card.animationProfile, overrides);
   const milestones = getPhaseMilestones(card.animationProfile, overrides);
   const schedule = getPhaseSchedule(card.animationProfile, overrides);
+  const reduceMotion = usePrefersReducedMotion();
+  const narrativeRevealDur = reduceMotion ? 0 : NARRATIVE_REVEAL_DUR_MS[leverageTier];
 
   const situation = card.situationBefore;
   const outsBefore = situation.outs ?? 0;
@@ -96,11 +120,6 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
     () => priorAfter !== undefined && bridgingHasDelta(priorAfter, baseStateBefore, outsBefore),
     [priorAfter, baseStateBefore, outsBefore],
   );
-  const runnersBefore = describeRunnerSlots(baseStateBefore, card.runnerNamesBefore);
-  const runnersAfter = describeRunnerSlots(baseStateAfter, card.runnerNamesAfter);
-  const runnersPrior = priorAfter
-    ? describeRunnerSlots(priorAfter.baseState, priorAfter.runnerNames)
-    : runnersBefore;
 
   // Score progression — scoreBefore is shown until settle (the result lock
   // beat). Showing scoreAfter sooner would spoil scoring plays. CSS pulses
@@ -110,7 +129,19 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const homeIncreased = card.scoreAfter.home > card.scoreBefore.home;
   const awayIncreased = card.scoreAfter.away > card.scoreBefore.away;
   const chip = resultChipLabel(card);
+  const chipTier = resultChipTier(card);
   const showChip = phase === "settle" || phase === "reveal";
+
+  // The narration panel coexists with the ResultChip beat: settle locks the
+  // result, reveal is the terminal state. The reveal branch is required for
+  // reduced-motion mode — usePlayPhase collapses straight to reveal at 1ms,
+  // skipping settle entirely. A whitespace-only description renders no
+  // panel at all so we never paint an empty bordered box. The empty-string
+  // fallback below is intentional: missing narration is non-actionable for
+  // the user and upstream feed gaps are tracked by validatePlayCard's
+  // dev-only warnings. See docs/audits/error-handling-report.md §G4.
+  const narrativeText = (card.narrative ?? card.description ?? "").trim();
+  const narrativeVisible = phase === "settle" || phase === "reveal";
 
   // Internal-consistency check — catches state we shouldn't be rendering
   // (score delta with no runner home, strikeout without out increment,
@@ -124,7 +155,13 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const battingTeamName = battingTeam?.name ?? card.battingTeamAbbr ?? null;
   const hasCount =
     typeof situation.balls === "number" && typeof situation.strikes === "number";
-  const showOnBaseRow = runnersPrior.length > 0 || runnersBefore.length > 0 || runnersAfter.length > 0 || hasCount;
+
+  // Leverage context — drives ambient visual weight (glow radius, amber
+  // intensity, border opacity) so late-inning close games feel hotter.
+  const scoreMargin = Math.abs(card.scoreBefore.home - card.scoreBefore.away);
+  const clampedMargin = Math.min(9, scoreMargin);
+  const zone = inningZone(card.inning);
+  const band = leverageBand(card.inning, scoreMargin);
 
   // Phase milestone CSS variables cascade to all descendants — outs dots,
   // runners cell, score-flash, etc. all key off the same schedule.
@@ -144,6 +181,9 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
     "--d-trigger":  `${schedule.trigger}ms`,
     "--d-ball":     `${schedule.ball}ms`,
     "--d-runners":  `${schedule.runners}ms`,
+    "--leverage-weight": `${leverageWeightMap[band]}`,
+    "--inning-heat":     `${Math.min(1, Math.max(0, (card.inning - 1) / 8))}`,
+    "--score-urgency":   `${Math.max(0, 1 - scoreMargin / 5)}`,
   };
 
   return (
@@ -156,6 +196,12 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       data-active={isActive ? "true" : "false"}
       data-phase={phase}
       data-has-bridge={hasMeaningfulBridge ? "true" : "false"}
+      data-inning={card.inning}
+      data-inning-half={card.inningHalf}
+      data-inning-zone={zone}
+      data-leverage-band={band}
+      data-leverage-tier={leverageTier}
+      data-score-margin={clampedMargin}
       data-validation-warnings={validation.warnings.join(",") || undefined}
       className="catchup-card-snap"
       style={phaseVars as React.CSSProperties}
@@ -201,60 +247,20 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
         {(situation.batterName || situation.pitcherName) && (
           <div
             className="catchup-card-matchup"
-            data-testid="matchup-row"
             data-team-abbr={card.battingTeamAbbr ?? ""}
           >
             {situation.batterName && (
-              <span className="catchup-card-matchup-side catchup-card-matchup-batter">
-                <span className="catchup-card-matchup-eyebrow">AT BAT</span>
-                <span className="catchup-card-batter-row">
-                  {card.battingTeamAbbr && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={teamLogoPath(card.battingTeamAbbr)}
-                      alt=""
-                      width={14}
-                      height={14}
-                      className="catchup-card-matchup-logo"
-                      onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
-                    />
-                  )}
-                  <span className="catchup-card-batter">{situation.batterName.toUpperCase()}</span>
-                </span>
-                {situation.batterLine && (
-                  <span className="catchup-card-stat-line" data-testid="batter-line">
-                    {formatBatterLine(situation.batterLine)}
-                  </span>
-                )}
-              </span>
+              <span className="catchup-card-batter">{situation.batterName.toUpperCase()}</span>
             )}
             {situation.batterName && situation.pitcherName && (
               <span className="catchup-card-vs" aria-hidden>vs</span>
             )}
             {situation.pitcherName && (
-              <span className="catchup-card-matchup-side catchup-card-matchup-pitcher">
-                <span className="catchup-card-matchup-eyebrow">PITCHING</span>
-                <span className="catchup-card-pitcher">{situation.pitcherName.toUpperCase()}</span>
-                {situation.pitcherLine && (
-                  <span className="catchup-card-stat-line" data-testid="pitcher-line">
-                    {formatPitcherLine(situation.pitcherLine)}
-                  </span>
-                )}
-              </span>
+              <span className="catchup-card-pitcher">{situation.pitcherName.toUpperCase()}</span>
             )}
-          </div>
-        )}
-
-        {showOnBaseRow && (
-          <div className="catchup-card-onbase-row" data-testid="bases-summary">
-            <RunnerPills
-              prior={hasMeaningfulBridge ? runnersPrior : undefined}
-              before={runnersBefore}
-              after={runnersAfter}
-            />
             {hasCount && (
               <span className="catchup-card-count">
-                {situation.balls}-{situation.strikes}
+                · {situation.balls}-{situation.strikes}
               </span>
             )}
           </div>
@@ -281,20 +287,28 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
           accentColor={accent}
           isActive={isActive}
         />
+        {narrativeText && (
+          <div
+            className="catchup-card-body catchup-card-body--overlay"
+            data-visible={narrativeVisible ? "true" : "false"}
+            data-testid="play-narration-panel"
+          >
+            <CardNarrative
+              text={narrativeText}
+              isActive={narrativeVisible}
+              leverage={leverageTier}
+              revealDur={narrativeRevealDur}
+            />
+          </div>
+        )}
       </div>
 
       <ResultChip
         primary={chip.primary}
         secondary={chip.secondary}
+        tier={chipTier}
         visible={showChip}
       />
-
-      <div className="catchup-card-body" data-testid="play-narration-panel">
-        <CardNarrative
-          text={card.narrative ?? card.description}
-          isActive={phase === "reveal"}
-        />
-      </div>
 
       <footer className="catchup-card-footer" aria-hidden>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -312,10 +326,12 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
 function ResultChip({
   primary,
   secondary,
+  tier,
   visible,
 }: {
   primary: string;
   secondary?: string;
+  tier: ChipTier;
   visible: boolean;
 }) {
   return (
@@ -324,6 +340,7 @@ function ResultChip({
       data-testid="result-badge"
       data-primary={primary}
       data-secondary={secondary ?? ""}
+      data-tier={tier}
       data-visible={visible ? "true" : "false"}
       role="status"
       aria-live="polite"
@@ -418,84 +435,6 @@ function OutsDots({
   );
 }
 
-type RunnerSlot = { base: "1B" | "2B" | "3B"; name: string | null };
-
-/** Pill row that visualizes who's on base. Same cross-fade lifecycle as the
- *  retired text band — the cells inherit `.catchup-cell-pre/post/prior`
- *  classes so the runners-phase opacity animation continues to work. */
-function RunnerPills({
-  prior,
-  before,
-  after,
-}: {
-  prior?: RunnerSlot[];
-  before: RunnerSlot[];
-  after: RunnerSlot[];
-}) {
-  const beforeKey = serializeSlots(before);
-  const afterKey = serializeSlots(after);
-  const priorKey = prior !== undefined ? serializeSlots(prior) : undefined;
-  const hasBridge = priorKey !== undefined && priorKey !== beforeKey;
-  const hasPlay = beforeKey !== afterKey;
-
-  if (!hasBridge && !hasPlay) {
-    return (
-      <div
-        className="catchup-card-runners-band"
-        data-bases={afterKey || "EMPTY"}
-      >
-        {renderPills(after)}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className="catchup-card-runners-band catchup-card-runners-band-changing"
-      data-bases-prior={priorKey ?? ""}
-      data-bases-before={beforeKey}
-      data-bases-after={afterKey}
-      data-has-bridge={hasBridge ? "true" : "false"}
-      data-has-play={hasPlay ? "true" : "false"}
-    >
-      {hasBridge && (
-        <span className="catchup-cell catchup-cell-prior">
-          {renderPills(prior!)}
-        </span>
-      )}
-      <span className="catchup-cell catchup-cell-pre">
-        {renderPills(before)}
-      </span>
-      {hasPlay && (
-        <span className="catchup-cell catchup-cell-post">
-          {renderPills(after)}
-        </span>
-      )}
-    </div>
-  );
-}
-
-function renderPills(slots: RunnerSlot[]) {
-  if (slots.length === 0) {
-    return <span className="catchup-card-onbase-empty">BASES EMPTY</span>;
-  }
-  return slots.map((s) => (
-    <span key={s.base} className="catchup-card-onbase-pill" data-base={s.base}>
-      <span className="catchup-card-onbase-glyph" aria-hidden>◆</span>
-      {s.name && (
-        <span className="catchup-card-onbase-name">{lastNameOnly(s.name).toUpperCase()}</span>
-      )}
-      <span className="catchup-card-onbase-base">{s.base}</span>
-    </span>
-  ));
-}
-
-function serializeSlots(slots: RunnerSlot[]): string {
-  // Stable key for diffing: `1B:Nimmo|3B:Osuna`. Used to decide whether
-  // before/after differ and whether a cross-fade should run.
-  return slots.map((s) => `${s.base}:${s.name ?? ""}`).join("|");
-}
-
 /** True when the priorAfter snapshot disagrees with this card's situation
  *  before — i.e. one or more plays slipped in between sampled cards. */
 function bridgingHasDelta(
@@ -509,53 +448,4 @@ function bridgingHasDelta(
     prior.baseState.second !== before.second ||
     prior.baseState.third !== before.third
   );
-}
-
-/** Last word of a player's name — shown in the situation rail to keep the
- *  line compact ("Clemens on 3rd" vs the full "Kody Clemens on 3rd"). */
-function lastNameOnly(full: string): string {
-  const trimmed = full.trim();
-  if (!trimmed) return trimmed;
-  const parts = trimmed.split(/\s+/);
-  if (parts.length === 1) return parts[0];
-  const last = parts[parts.length - 1];
-  if (/^(Jr\.?|Sr\.?|II|III|IV)$/.test(last) && parts.length >= 2) {
-    return `${parts[parts.length - 2]} ${last}`;
-  }
-  return last;
-}
-
-function describeRunnerSlots(
-  state: BaseballBaseState,
-  names: RunnerNames | undefined,
-): RunnerSlot[] {
-  const slots: RunnerSlot[] = [];
-  if (state.first)  slots.push({ base: "1B", name: names?.first ?? null });
-  if (state.second) slots.push({ base: "2B", name: names?.second ?? null });
-  if (state.third)  slots.push({ base: "3B", name: names?.third ?? null });
-  return slots;
-}
-
-/** Compact MLB-style batter line: "1-3, BB, K, HR".
- *  Empty (first PA): null — caller hides the slot. */
-function formatBatterLine(line: BatterLine): string | null {
-  if (line.atBats === 0 && line.baseOnBalls === 0 && line.strikeOuts === 0) {
-    return null;
-  }
-  const parts: string[] = [`${line.hits}-${line.atBats}`];
-  if (line.homeRuns > 0) parts.push(line.homeRuns === 1 ? "HR" : `${line.homeRuns}HR`);
-  if (line.baseOnBalls > 0) parts.push(line.baseOnBalls === 1 ? "BB" : `${line.baseOnBalls}BB`);
-  if (line.strikeOuts > 0) parts.push(line.strikeOuts === 1 ? "K" : `${line.strikeOuts}K`);
-  if (line.rbi > 0) parts.push(line.rbi === 1 ? "1 RBI" : `${line.rbi} RBI`);
-  return parts.join(", ");
-}
-
-/** Pitcher line, scoreboard convention: "5.1 IP  6H 5R 3BB 3K". */
-function formatPitcherLine(line: PitcherLine): string | null {
-  // Hide on the very first batter the pitcher faces — nothing to report yet.
-  if (line.outs === 0 && line.hits === 0 && line.baseOnBalls === 0 &&
-      line.strikeOuts === 0 && line.runs === 0) {
-    return null;
-  }
-  return `${formatOutsAsIP(line.outs)} IP · ${line.hits}H ${line.runs}R ${line.baseOnBalls}BB ${line.strikeOuts}K`;
 }

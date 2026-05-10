@@ -1,27 +1,30 @@
 # Deployment
 
-## Environment Setup
+## Runtime
 
-The app runs as a standalone Next.js server in a Docker container on a Hetzner VPS.
+The app runs as a standalone Next.js server in a Docker container on a Hetzner VPS. CI ships every `main` push to dev; prod is promoted manually.
 
 ### Docker
 
-- **Base image**: `node:22-alpine`
-- **Build**: multi-stage (deps, builder, runner) for minimal image size
-- **Runtime**: `node server.js` (Next.js standalone output, no `next` CLI needed)
-- **Port**: 3001 (bound to `127.0.0.1` in compose — expects a reverse proxy for public access)
-- **User**: non-root `nextjs` user (UID 1001)
+- Base image: `node:22-alpine` (multi-stage: `deps` → `builder` → `runner`)
+- Runtime: `node server.js` (Next.js standalone output — no `next` CLI)
+- Port: 3001 inside the container
+- User: non-root `nextjs` (uid 1001)
 
-### docker-compose.yml
+### docker-compose
+
+`web/docker-compose.yml`:
 
 ```yaml
 services:
   scrolldown-web:
     image: ghcr.io/dock108dev/scroll-down-web/web:latest
-    container_name: scrolldown-web
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "127.0.0.1:3001:3001"
+      - "127.0.0.1:${HOST_PORT:-3001}:3001"
     env_file:
       - .env.production
     healthcheck:
@@ -32,113 +35,117 @@ services:
       start_period: 10s
 ```
 
-### Runtime Environment Files
+`HOST_PORT` is injected by the deploy job per environment so dev and prod can co-exist on the same host. There is no fixed `container_name` (different deploy paths give compose different project scopes).
 
-Create environment files on the server (never committed).
+### Build-time vs runtime env
 
-Production (`.com`) example:
+`NEXT_PUBLIC_*` are inlined into the client bundle at build time, so the Dockerfile takes them as `ARG`s and the CI workflow passes them as `build-args`:
+
+```
+NEXT_PUBLIC_ADS_ENABLED
+NEXT_PUBLIC_ADSENSE_CLIENT_ID
+NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT
+NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT
+NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT
+NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT
+```
+
+These are accepted by the Dockerfile/CI today but are **not consumed by application code** in this repo — they are leftover plumbing from a previous product direction. The current app reads no `NEXT_PUBLIC_ADS_*` values. Unsetting the GitHub Actions repo Variables that supply them, or removing the build-args, has no runtime effect on the app and is safe whenever the AdSense plumbing is permanently retired.
+
+`SPORTS_DATA_API_KEY` (server-only) and `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` are runtime values from the env file on the server.
+
+### Runtime env files
+
+Created on the server and loaded via `env_file: .env.production`. Real values are never committed. Examples:
+
+Production:
 
 ```bash
 SPORTS_DATA_API_KEY=<real-api-key>
 PUBLIC_BASE_URL=https://scrolldownsports.com
 SITE_NOINDEX=false
-# Optional (defaults to host in PUBLIC_BASE_URL)
-# NEXT_PUBLIC_PLAUSIBLE_DOMAIN=scrolldownsports.com
-# Optional sender override
-# MAGIC_LINK_FROM_EMAIL=noreply@mail.scrolldownsports.com
 # Optional: internal Docker network URL to backend
 # SPORTS_API_INTERNAL_URL=http://backend:8000
 ```
 
-Development (`.dev`) example:
+Development:
 
 ```bash
 SPORTS_DATA_API_KEY=<real-api-key>
 PUBLIC_BASE_URL=https://scrolldownsports.dev
 SITE_NOINDEX=true
-# Optional (defaults to host in PUBLIC_BASE_URL)
-# NEXT_PUBLIC_PLAUSIBLE_DOMAIN=scrolldownsports.dev
-# Optional sender override
-# MAGIC_LINK_FROM_EMAIL=noreply@mail.scrolldownsports.com
-# Optional: internal Docker network URL to backend
-# SPORTS_API_INTERNAL_URL=http://backend:8000
 ```
 
-### Health Check
+### Health check
 
-The app exposes `GET /api/health` which returns:
+`GET /api/health`:
 
 ```json
-{ "status": "ok", "timestamp": "2026-03-25T12:00:00.000Z" }
+{ "status": "ok", "timestamp": "..." }
 ```
 
-Returns `"degraded"` with a 503 status if the backend API is unreachable. The app still serves pages in degraded mode; only API-dependent data will be missing.
+Returns `503` with `{status: "degraded"}` when the upstream ping at `/api/admin/sports/games?limit=1` fails or exceeds `API.HEALTH_BACKEND_PING_TIMEOUT_MS` (15s). The result is cached for `API.HEALTH_CACHE_MS` (30s) so the `DegradedBanner` poll doesn't re-ping on every check.
 
-### Security Headers
+Playwright's `webServer` sets `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER=1`, which makes the route return `ok` immediately without pinging upstream.
 
-`next.config.ts` sets security headers on all responses: `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (restricts camera/mic/geo), `Strict-Transport-Security` (HSTS, 2 years), `Content-Security-Policy` (restricts script/connect sources to self + Plausible + backend, prevents framing), `X-DNS-Prefetch-Control: off`. API routes also get `Cache-Control: no-store`.
+### Security headers
 
-## CI/CD Pipeline
+Set in `web/next.config.ts` and applied to every response. `Cache-Control: no-store` is added to `/api/*`. Full CSP and the rest of the headers are documented in [`architecture.md`](architecture.md#security-headers).
 
-GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push/PR to `main`:
+## CI/CD
 
-### Jobs
+`.github/workflows/ci.yml` runs on every push and PR to `main`:
 
-1. **web** — lint, type check (`tsc --noEmit`), production build
-2. **playwright-smoke** — runs `@smoke`-tagged Playwright tests against a dev server
-3. **docker** (main branch only, after web passes) — build Docker image, push to `ghcr.io`
-4. **deploy-dev** (after docker) — SSH into Hetzner, pull latest image, restart **dev** container/environment
+| Job | Trigger | What it does |
+|-----|---------|--------------|
+| `web` | always | `npm ci`, `npm audit --omit=dev --audit-level=high`, ESLint, `tsc --noEmit`, `vitest run --coverage`, `next build`. Uploads `web/coverage/` artifact. |
+| `playwright-smoke` | always (skipped on fork PRs without secrets) | Builds, then runs `npx playwright test --grep "@smoke" --grep-invert "@live-upstream"`. Uploads HTML report. |
+| `docker` | `main` push only, after `web` | Builds + pushes `ghcr.io/<repo>/web:latest` and `ghcr.io/<repo>/web:<sha>`. Inlines the `NEXT_PUBLIC_ADSENSE_*` build-args from repo Variables (currently ignored by the app — see note above). |
+| `deploy-dev` | after `docker` | SSHes into Hetzner, `docker pull` + `docker compose up -d --no-deps --wait`. Uses `vars.DEPLOY_PATH` (default `/opt/scrolldown-web-dev`) and `vars.HOST_PORT` (default `3002`). |
 
-Production promotion is intentionally separate:
+Production promotion is manual:
 
-- **Promote Prod** (`.github/workflows/promote-prod.yml`) — manual `workflow_dispatch` that pulls current `web:latest` and restarts the production container/environment.
+- `.github/workflows/promote-prod.yml` (`workflow_dispatch`) — same SSH pattern as `deploy-dev`, but uses the `production` environment with default `DEPLOY_PATH=/opt/scrolldown-web` and `HOST_PORT=3001`.
 
-### Image Tags
+Other workflows:
 
-Every main-branch push produces two tags:
-- `ghcr.io/<repo>/web:latest`
-- `ghcr.io/<repo>/web:<commit-sha>`
+- `.github/workflows/e2e-daily.yml` — full Playwright suite on a schedule
+- `.github/workflows/codeql.yml` — JavaScript/TypeScript CodeQL scan
 
-### Required Secrets
+### Required secrets (per GitHub environment)
 
 | Secret | Purpose |
 |--------|---------|
-| `HETZNER_HOST` | Server IP/hostname |
-| `HETZNER_USER` | SSH username |
-| `HETZNER_SSH_KEY` | SSH private key |
-| `GHCR_TOKEN` | GitHub Container Registry auth token |
+| `SPORTS_DATA_API_KEY` | Used by `playwright-smoke` for the build/run env |
+| `HETZNER_HOST`, `HETZNER_USER`, `HETZNER_SSH_KEY` | SSH into the deploy host |
+| `GHCR_TOKEN` | `docker login ghcr.io` on the host |
+| `MAGIC_LINK_SECRET` | Read in CI via `${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-...' }}` and exported into the build. **Not consumed by application code today** — leftover from a previous auth design; the fallback default keeps the build green for forks. Safe to leave unset. |
 
-Set these in both GitHub Environments used by deploy jobs (`development` and `production`) unless you intentionally share one environment secret scope.
+### Required variables (per GitHub environment)
 
-### Required Environment Variables (GitHub Environments)
+| Variable | Example dev | Example prod | Purpose |
+|----------|-------------|--------------|---------|
+| `DEPLOY_PATH` | `/opt/scrolldown-web-dev` | `/opt/scrolldown-web` | Compose project directory |
+| `HOST_PORT` | `3002` | `3001` | Host-side port binding |
+| `NEXT_PUBLIC_ADSENSE_*` (4 vars) | — | — | Currently consumed at Docker build time but **not by application code**. Treat as no-op until ad work resumes. |
 
-| Variable | Example (dev) | Example (prod) | Purpose |
-|----------|----------------|----------------|---------|
-| `DEPLOY_PATH` | `/opt/scrolldown-web-dev` | `/opt/scrolldown-web` | Remote folder where `docker compose` is executed. |
+### Image tags
 
-### Other Workflows
+Every `main`-branch build produces:
 
-- **E2E daily** (`.github/workflows/e2e-daily.yml`) — runs all Playwright tests daily at 6 AM UTC
-- **CodeQL** (`.github/workflows/codeql.yml`) — weekly security scanning (JavaScript/TypeScript)
-- **Dependabot** (`.github/dependabot.yml`) — weekly dependency update PRs
+- `ghcr.io/<repo>/web:latest`
+- `ghcr.io/<repo>/web:<commit-sha>`
 
-## Local Development
+## Build verification
 
-```bash
-npm ci
-cp .env.local.example .env.local
-# Set SPORTS_DATA_API_KEY in .env.local
-npm run dev
-```
-
-Dev server runs on port 3001 with webpack (hot reload). The app proxies all `/api/*` requests to the backend, so no local backend is needed — it uses the production API by default.
-
-## Build Verification
+Run before merging anything that touches the web app:
 
 ```bash
-npm run lint          # ESLint
-npx tsc --noEmit      # Type check
-npm run build         # Production build
+cd web
+npm run lint
+npx tsc --noEmit
+npm run test:unit
+npm run build
 ```
 
-All three must pass before merge (enforced by CI).
+The CI `web` job runs all four (and adds `npm audit`).

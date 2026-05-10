@@ -33,13 +33,17 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
     ? completed
       ? "Watched"
       : inProgress
-        ? "Resume catch-up"
-        : "Start catch-up"
+        ? "Resume reconstruction"
+        : "Reconstruct"
     : completed
       ? "Watched"
       : inProgress
         ? "Resume"
-        : "Catch up";
+        : "Reconstruct";
+
+  const teamNameClass = featured
+    ? "text-base font-semibold text-[#f5f1e8]"
+    : "text-sm font-medium text-[#f5f1e8]";
 
   const inner = (
     <>
@@ -55,17 +59,11 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
               className={featured ? "h-8 w-8 object-contain" : "h-6 w-6 object-contain"}
               onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
             />
-            <span
-              className={
-                featured
-                  ? "text-base font-semibold text-neutral-100"
-                  : "text-sm font-medium text-neutral-100"
-              }
-            >
+            <span className={teamNameClass}>
               {away?.name ?? game.awayTeam}
             </span>
           </div>
-          <span className="text-neutral-600">@</span>
+          <span className="text-[rgba(245,181,54,0.30)]">@</span>
           <div className="flex items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -76,13 +74,7 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
               className={featured ? "h-8 w-8 object-contain" : "h-6 w-6 object-contain"}
               onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = "none")}
             />
-            <span
-              className={
-                featured
-                  ? "text-base font-semibold text-neutral-100"
-                  : "text-sm font-medium text-neutral-100"
-              }
-            >
+            <span className={teamNameClass}>
               {home?.name ?? game.homeTeam}
             </span>
           </div>
@@ -93,8 +85,8 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
             status.tone === "live"
               ? "shrink-0 inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400"
               : status.tone === "final"
-                ? "shrink-0 rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-400"
-                : "shrink-0 rounded-full border border-neutral-700 px-2 py-0.5 text-[10px] font-medium text-neutral-400"
+                ? "shrink-0 rounded-sm border border-[rgba(245,181,54,0.22)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#9b7626]"
+                : "shrink-0 rounded-sm border border-[rgba(245,181,54,0.16)] px-2 py-0.5 text-[10px] font-medium text-[#9b7626]"
           }
         >
           {status.tone === "live" && (
@@ -112,10 +104,10 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
           <span
             className={
               featured
-                ? "inline-flex items-center gap-1 rounded-full bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white"
+                ? "inline-flex items-center gap-1 rounded-md border border-[rgba(246,196,83,0.38)] bg-[rgba(246,196,83,0.12)] px-3 py-1.5 text-xs font-semibold text-[#f6c453]"
                 : completed
                   ? "text-xs text-neutral-500"
-                  : "text-xs font-medium text-blue-400 inline-flex items-center gap-1"
+                  : "text-xs font-medium text-[#f6c453] inline-flex items-center gap-1"
             }
           >
             {cta}
@@ -140,8 +132,8 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
   );
 
   const className = featured
-    ? "block rounded-2xl border border-neutral-800 bg-neutral-900/50 px-5 py-5 transition hover:border-neutral-600"
-    : "block rounded-xl border border-neutral-800 bg-neutral-900/40 px-4 py-3 transition hover:border-neutral-700";
+    ? "block rounded-lg border border-[rgba(245,181,54,0.32)] [background:linear-gradient(180deg,#1d1f24_0%,#15161a_100%)] px-5 py-5 transition hover:border-[rgba(245,181,54,0.50)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_4px_16px_rgba(0,0,0,0.45)]"
+    : "block rounded-lg border border-[rgba(245,181,54,0.14)] bg-[#13141a] px-4 py-3 transition hover:border-[rgba(245,181,54,0.28)]";
 
   if (pregame) {
     return (

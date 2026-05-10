@@ -11,6 +11,10 @@ interface CatchupScrollContainerProps {
   onActiveIndexChange?: (index: number) => void;
   /** Bumping this value snaps the scroller back to slide 0 (used by Restart). */
   restartToken?: number;
+  /** Imperative scroll target. Whenever this number changes, the container
+   *  smooth-scrolls the matching slide into view. Used by the catch-up lab
+   *  for autoplay and keyboard navigation. */
+  targetIndex?: number;
   children: React.ReactNode;
 }
 
@@ -33,6 +37,7 @@ export function CatchupScrollContainer({
   initialIndex = 0,
   onActiveIndexChange,
   restartToken,
+  targetIndex,
   children,
 }: CatchupScrollContainerProps) {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -107,6 +112,13 @@ export function CatchupScrollContainer({
     if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
     setActiveIndex(0);
   }, [restartToken]);
+
+  // ── External scroll target: smooth-scroll the requested slide into view ─
+  useEffect(() => {
+    if (targetIndex === undefined) return;
+    const target = slideRefs.current.get(targetIndex);
+    if (target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [targetIndex]);
 
   const slots = useMemo(() => itemKeys.map((_, i) => i), [itemKeys]);
   const slotsRefMap = slideRefs.current;

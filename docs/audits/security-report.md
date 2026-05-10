@@ -1,4 +1,151 @@
+# Security Audit & Hardening Pass — 2026-05-09
+
+Scope: working tree against `origin/main` (the MLB-focused catchup overhaul,
+plus the fixture-fed dev "Catchup Lab" tooling). The codebase has since
+shrunk significantly from the prior pass (no auth, no billing, no ads, no
+file-backed stores) — the previous 2026-04-29 audit appears below for
+historical context but its surfaces no longer exist on this branch.
+
+Verification:
+
+| Check                                   | Result          |
+| --------------------------------------- | --------------- |
+| `npx tsc --noEmit`                      | exit 0          |
+| `npx eslint --max-warnings=0 src`       | clean           |
+| `vitest run` (unit)                     | 18 files / 289 passed |
+
+## Changes made this pass
+
+- `web/src/components/catchup/FinalReveal.tsx` — external box-score link now
+  uses `rel="noopener noreferrer"` (was `noreferrer` only); closes the
+  reverse-tabnabbing gap on browsers where `noreferrer` doesn't imply
+  `noopener`.
+- `web/src/app/layout.tsx` — inline JSON-LD now goes through the `jsonLdScript`
+  helper from `@/lib/seo` instead of an unsanitized `JSON.stringify`. The
+  helper escapes `<` to `<`, preventing `</script>` injection if any of
+  the embedded fields ever picks up user-derived content. Today all values
+  are constants, but the divergence from the helper used in `app/page.tsx`
+  was a foot-gun.
+- `web/next.config.ts` — CSP tightened: added explicit `object-src 'none'`
+  and `frame-src 'none'`. `default-src 'self'` already covered these, but
+  explicit nones close the legacy-browser fallback gap and clearly signal
+  intent.
+- `web/src/lib/api-server.ts` — two bounds added on the upstream-error path:
+  - `ApiError`'s message now truncates the upstream body to 200 chars (full
+    body still on `.body` for callers that need it). Prevents server logs
+    from spilling stack traces / HTML error pages from `sda.dock108.dev`.
+  - `apiFetch` caps the upstream error body it reads to 2KB before throwing
+    `ApiError`. A malformed/hostile upstream can no longer make us read a
+    multi-MB error page into memory.
+- `web/src/app/dev/layout.tsx` (new) — server-side gate that calls
+  `notFound()` when `NODE_ENV === "production"`. The Catchup Lab page at
+  `/dev/catchup-lab` is dev tooling; its API endpoints are already
+  `NODE_ENV`-gated, so in prod the page rendered as a perpetual loading
+  shell. Defense in depth — the page is now genuinely unreachable in prod
+  even if a future change re-points its data source.
+
+## Trust boundaries reachable from this branch
+
+```
+Browser ──► Next.js (port 3001) ──► Backend API (sda.dock108.dev)
+              │                       │
+              ├─ /api/games/recent     ├─ /api/admin/sports/games
+              │   (allowlist projection — strips score fields)
+              ├─ /api/games/[gameId]/cards
+              │   (numeric id; league-locked to MLB; shape-validated)
+              ├─ /api/games/[gameId]/summary
+              │   (numeric id; league-locked to MLB; final-score gated)
+              ├─ /api/health
+              └─ /api/dev/fixtures, /api/dev/fixtures/[id]/cards
+                  (NODE_ENV != "production" only; numeric-only id regex)
+```
+
+There is no client-trusted state, no auth, no PII, and no user-generated
+content. The only outbound link is a fixed `https://www.mlb.com/...` URL
+constructed from a numeric `gameId`. The frontend renders all upstream
+strings as React text nodes (no `dangerouslySetInnerHTML` over upstream
+data; the only `dangerouslySetInnerHTML` sites are SEO JSON-LD blocks
+built from server-controlled data, all routed through `jsonLdScript`).
+
+## Sensitive surfaces in scope
+
+- `SPORTS_DATA_API_KEY` / `SPORTS_API_KEY` / `API_KEY` — server-only env
+  vars. Read by `sportsApiKey()` and forwarded as `X-API-Key` to the
+  backend. Never exposed to the client bundle (no `NEXT_PUBLIC_*` alias).
+- The fixture filesystem under `web/tests/fixtures/games/` — read by the
+  dev fixture routes. Path is built as `${cwd}/tests/fixtures/games/${id}.json`
+  with `id` validated against `/^[0-9]+$/`, so traversal is unreachable.
+
+## Findings — not changed in this pass
+
+### F1 — Rate limiter exists but is not wired up
+
+**Severity / confidence:** Low / High.
+**Evidence:** `web/src/lib/rate-limit.ts` exports a working sliding-window
+limiter, but `grep -r createRateLimiter web/src` shows zero call sites.
+Every API route is unrestricted. The proxy fans out to one upstream per
+request, with short BFF caching that absorbs duplicate hits, so a
+cold-cache flood would still apply pressure to `sda.dock108.dev`.
+**Why not acted:** Wiring rate limits per-route is a behavior change with
+operational risk (Playwright already needs the `NEXT_PUBLIC_SCROLLDOWN_E2E`
+bypass; production has no Redis and the in-memory limiter only works for
+single-instance Hetzner deploys, which is current state but a near-future
+constraint). Out of scope for a behavior-preserving security pass.
+**Smallest next step:** Add the limiter to `/api/games/recent` and
+`/api/games/[gameId]/cards` keyed on `req.headers.get("x-forwarded-for")
+?? "anon"`, with `window: 60_000, max: 120`. One-line guard at the top of
+each handler. Confirm the Playwright bypass still applies before merging.
+
+### F2 — `Cache-Control: no-store` on `/api/:path*` overrides per-route caching headers
+
+**Severity / confidence:** Low / Medium.
+**Evidence:** `web/next.config.ts` adds `Cache-Control: no-store` to
+`/api/:path*`. The cards and summary routes set their own `Cache-Control`
+(e.g. `private, max-age=86400, stale-if-error=604800, immutable` for
+final-game cards). Next merges these per the order in `headers()` — the
+config-level `no-store` is applied last and wins. Result: the per-route
+caching the handlers configure isn't actually doing anything at the edge.
+**Why not acted:** Both behaviors have a defensible rationale (defense-in-
+depth no-store vs. immutable final-game cache hits), and choosing between
+them is a product/perf decision, not a security decision. The current
+state is the safer one (no-store = no edge caching of API responses), so
+no action this pass.
+**Smallest next step:** Decide whether final-game card payloads should be
+edge-cacheable. If yes, scope the `no-store` config rule to non-cards
+routes (e.g. `/api/(health|dev|games/recent)/:path*`). If no, delete the
+unused `Cache-Control` headers from the route handlers so the intent is
+unambiguous.
+
+### F3 — `script-src 'unsafe-inline'` in production CSP
+
+**Severity / confidence:** Low / High.
+**Evidence:** `next.config.ts` sets `script-src 'self' 'unsafe-inline'
+https://plausible.io` (plus `'unsafe-eval'` in dev). The inline scripts
+that need it are the SW registration block in `layout.tsx` and the
+JSON-LD blocks (now routed through `jsonLdScript`).
+**Why not acted:** Removing `'unsafe-inline'` requires either nonce-per-
+request CSP (Next 15+ supports this with `headers()` returning a function
+or via middleware) or hashing each inline block. Both are real changes
+with non-zero risk to deploy. Not behavior-preserving for a hardening pass.
+**Smallest next step:** Move to nonce-based CSP via Next middleware:
+generate a per-request nonce, attach to inline `<Script>` tags via the
+`nonce` prop, and emit `script-src 'self' 'nonce-<nonce>'
+https://plausible.io` in the CSP header. Plausible already supports
+nonces. Estimated 30-line middleware addition.
+
+## Escalations
+
+None. Every fix above is in the working tree; every unfixed finding is
+justified with a concrete next step rather than a bare TODO.
+
+---
+
 # Security Audit & Hardening Pass — 2026-04-29
+
+> Historical record. The auth, billing, ads, and file-backed-store
+> surfaces below have all been removed from the codebase since this pass
+> ran — left in place for traceability. Trust boundaries on the current
+> branch are documented in the 2026-05-09 pass above.
 
 Scope: every diff on the working tree against `origin/main`, weighted toward
 the in-flight ads rollout (Google AdSense, new ad components, broadened CSP)

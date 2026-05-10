@@ -1,6 +1,6 @@
 # Development
 
-Guide for local development, testing, and debugging.
+Guide for local development, debugging, and manual QA.
 
 ---
 
@@ -8,32 +8,41 @@ Guide for local development, testing, and debugging.
 
 ```bash
 cd web
-cp .env.local.example .env.local   # Add your SPORTS_DATA_API_KEY
-npm install
+cp .env.local.example .env.local   # set SPORTS_DATA_API_KEY
+npm ci
 npm run dev                         # http://localhost:3001
 ```
 
 ## Environment Variables
 
 | Variable | Required | Purpose |
-|---|---|---|
-| `SPORTS_DATA_API_KEY` | Yes | API authentication sent as `X-API-Key` header. Server-side only — never exposed to browser. |
-| `SPORTS_API_INTERNAL_URL` | No | Override backend URL for server-side fetches. Default: `https://sda.dock108.dev` (hardcoded in `src/lib/config.ts`). |
+|----------|----------|---------|
+| `SPORTS_DATA_API_KEY` | Yes | Sent as `X-API-Key` to the upstream backend. Server-side only. |
+| `SPORTS_API_INTERNAL_URL` | No | Override the backend URL (default: `https://sda.dock108.dev`, hardcoded in `web/src/lib/config.ts`). |
+| `SPORTS_GAMEFLOW_PATH` | No | Override the per-game gameflow recap path (default: `/api/admin/sports/games/{id}/gameflow`). |
+| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | No | Plausible `data-domain`. Defaults to the site host. |
+| `PUBLIC_BASE_URL` / `SITE_URL` | No | Canonical origin for SEO metadata. Defaults to `scrolldownsports.com` in production, `scrolldownsports.dev` otherwise. |
+| `SITE_NOINDEX` | No | `true` forces noindex robots/sitemap behavior. Auto-true on the `.dev` host. |
 
-See `.env.local.example` for local development defaults.
+See `web/.env.local.example` for the local-development defaults. The full list of optional env vars is in [`env-and-config.md`](env-and-config.md).
 
 ## Commands
 
 | Command | Purpose |
 |---------|---------|
-| `npm run dev` | Development server with hot reload (port 3001) |
-| `npm run build` | Production build (`.next/standalone/`) |
-| `npm start` | Start production server (port 3001, runs `node .next/standalone/server.js`) |
-| `npm run lint` | ESLint check |
+| `npm run dev` | Next.js dev server (webpack, port 3001) |
+| `npm run build` | Production build → `.next/standalone/` |
+| `npm start` | Run the standalone server (port 3001) |
+| `npm run lint` | ESLint |
 | `npx tsc --noEmit` | TypeScript type check |
-| `npm run test:unit` | Vitest unit tests |
-| `npm run test:smoke` | Playwright smoke suite (`@smoke` tag) |
-| `npm test` | Full Playwright suite (requires dev server running on port 3001) |
+| `npm run test:unit` | Vitest unit suite (`--passWithNoTests`) |
+| `npm run test:unit:watch` | Vitest watch mode |
+| `npm run test:unit:coverage` | Vitest with v8 coverage |
+| `npm run test:smoke` | Playwright `@smoke` tests |
+| `npm run test:smoke:pr` | Build + run `@smoke` excluding `@live-upstream` (mirrors PR CI) |
+| `npm test` | Full Playwright suite |
+| `npm run test:headed` | Playwright with visible browser |
+| `npm run test:ui` | Playwright UI mode |
 
 ## Docker (Local)
 
@@ -43,238 +52,90 @@ docker build -t scrolldown-web .
 docker run -p 3001:3001 --env-file .env.local scrolldown-web
 ```
 
+The Dockerfile inlines `NEXT_PUBLIC_*` build args from CI for the bundle. Locally those args are unset, which is fine — the app does not currently render any client-bundled `NEXT_PUBLIC_*` values besides `NEXT_PUBLIC_PLAUSIBLE_DOMAIN`.
+
 ## How Data Flows
 
-1. **Browser** calls a client-side API function (e.g., `api.games()`)
-2. Request goes to a **Next.js API route** (e.g., `/api/games`)
-3. The API route calls the **backend** with `apiFetch()`, which adds the `X-API-Key` header
-4. Response flows back through the same chain
-5. A **React hook** (`useGamesList`, `useGameDetail`, etc.) stores the data in state
-6. **Components** render from hook state and Zustand stores
+1. **Browser** calls a hook (e.g. `useGamesList`).
+2. The hook hits a Next.js API route (e.g. `/api/games/recent`).
+3. The route handler calls upstream via `apiFetch` / `cachedApiFetch` in `web/src/lib/api-server.ts`, which injects `X-API-Key`.
+4. Response is cached in the BFF in-memory LRU (max 100 entries) per the route's fresh/stale windows.
+5. The hook stores data in component state; `useCatchupProgress` and `useSettings` persist user-facing state to `localStorage`.
 
-For live games, realtime updates arrive via WebSocket/SSE and are applied directly to the Zustand store by the centralized dispatcher. Components re-render automatically.
+The `SPORTS_DATA_API_KEY` never reaches the browser. Client code only talks to local `/api/*` routes.
 
-The API key never leaves the server. Client-side code only talks to local `/api/*` routes.
+## Catch-up Pipeline (in dev)
 
-## Key Behaviors
+`/dev/catchup-lab` (dev-only — 404 in production via `web/src/app/dev/layout.tsx`) runs captured fixtures in `web/tests/fixtures/games/` through the production `buildCatchupCards` + `planDeckWithReport` pipeline. The page lists all manifest entries, renders the resulting deck, and shows the planner's reasoning report side-by-side. Use it to validate selection / rhythm changes before they hit live games.
 
-### Score Reveal
-- Default mode (`onMarkRead`): scores hidden until user taps to reveal
-- `always` mode: scores always visible
-- Revealed live game scores **freeze** at the moment of reveal
-- When a live game goes final while frozen, scores auto-hide
+## Manual QA Checklist
 
-### Realtime Updates
-- WebSocket primary transport, SSE fallback after repeated WS failures
-- Centralized dispatcher routes events by type (game patches, PBP appends, FairBet refreshes)
-- Sequence-numbered events with gap detection and recovery
-- Visibility-driven refresh when tab regains focus: triggers if hidden >5 seconds *or* if realtime is offline (via `useVisibilityRefresh` hook)
-- Check browser console for WebSocket/SSE connection events
+### Home (`/`)
 
-### FairBet Loading
-- Pre-Game tab: first 100 bets render immediately, remaining pages load in background (3 concurrent fetches)
-- Live tab: discovers all live games, fetches odds in parallel with 15s auto-refresh
-- Client filters, sorts, and deduplicates the full pre-game bet list
-- Parlay evaluation is client-side (`parlayProbIndependent()` in `fairbet-utils.ts`)
+- [ ] Last-48h + today's MLB games render
+- [ ] No score, win indicator, or final-state visible in any row (server strips them)
+- [ ] Tapping a row opens `/catchup/[gameId]`
+- [ ] `DegradedBanner` appears within ~30s if `/api/health` returns 503
+- [ ] Theme toggle (system/light/dark) applies immediately
 
-### Theming
-- CSS variable system: `:root` = light, `.dark` = dark
-- `ThemeProvider` toggles `.dark` class on `<html>`
-- Uses `@theme` (not `@theme inline`) in Tailwind CSS 4 so utilities reference CSS variables
-- FairBet has dedicated `--fb-*` CSS variables
+### Catchup viewer (`/catchup/[gameId]`)
 
-## QA Checklist
+- [ ] Scene-setter card shows venue + probable pitchers
+- [ ] Cards advance via scroll/swipe (`CatchupScrollContainer`)
+- [ ] `RhythmCard` half-inning summaries appear between play groups
+- [ ] `CatchupCard` renders the field, runner paths, and trajectory
+- [ ] Result chip / event personality matches the play type (`lib/result-chip.ts`)
+- [ ] `FinalReveal` is locked until the user reaches the end (`RevealGate`)
+- [ ] Tapping reveal shows final score + gameflow recap
+- [ ] Refreshing returns to the user's last `cardIndex` (per `useCatchupProgress`)
+- [ ] Live game polls every 45s with `?since=<lastSeenPlayIndex>`
 
-### Home Page
-- [ ] Date sections render (Yesterday, Today)
-- [ ] League filter works (All, NBA, NCAAB, NFL, NCAAF, MLB, NHL)
-- [ ] Search filters by team name
-- [ ] Game rows navigate to game detail
-- [ ] Pin/unpin games from rows (star icon)
-- [ ] Pinned games appear in header bar with mini scores
-- [ ] Section expand/collapse persists
-- [ ] "Mark All Read" bulk action works
-- [ ] Scores respect reveal mode setting
+### Onboarding
 
-### Game Detail
-- [ ] Sections render based on status (Pregame Buzz, Flow, Timeline, Player Stats, Team Stats, Odds, Wrap-Up)
-- [ ] Flow blocks display for completed games
-- [ ] Timeline shows tiered plays for live games
-- [ ] Odds table shows cross-book comparison with category tabs
-- [ ] NHL games show skater/goalie stats instead of generic player stats
-- [ ] Reading position saves on scroll and restores on return
-- [ ] Score freeze works for revealed live games (frozen scores, amber dot on new data)
-- [ ] Mini scorebar appears when scrolling past header
+- [ ] First visit shows `TeamPickerOverlay` over the home feed
+- [ ] Selecting an MLB team marks `onboarded: true` and stores the abbr
+- [ ] "Skip" sets `onboarded: true` with `favoriteTeam: null`
+- [ ] Reload does not re-show the gate
 
-### Analytics Landing (`/analytics`)
-- [ ] Four sport cards render (MLB, NBA, NHL, NCAAB)
-- [ ] MLB card navigates to `/analytics/simulator`
-- [ ] NBA/NHL/NCAAB cards navigate to `/analytics/{sport}`
-- [ ] AuthGate blocks guests with signup prompt
+### Settings (`/settings`)
 
-### Multi-Sport Simulators (`/analytics/nba`, `/analytics/nhl`, `/analytics/ncaab`)
-- [ ] Team dropdowns populate from API
-- [ ] Selecting two different teams enables "Run Simulation"
-- [ ] Simulation runs and shows win probabilities, expected scores, most likely scores
-- [ ] AuthGate blocks guests with signup prompt
+- [ ] Theme switcher persists
+- [ ] "Show stale banners" toggle persists
 
-### Analytics Tab Navigation
-- [ ] Tab bar visible on all analytics sub-pages (Simulator, Profiles, Models, Batch Sims)
-- [ ] Active tab highlighted with blue underline
-- [ ] Non-admin users see only Simulator and Profiles tabs
-- [ ] Admin users see all 4 tabs
-- [ ] `/analytics/mlb` redirects to `/analytics/simulator`
+### Dev tooling (`/dev/catchup-lab`)
 
-### MLB PA Simulator (`/analytics/simulator`)
-- [ ] Team dropdowns populate from API (no duplicate abbreviations across sports)
-- [ ] Selecting a team loads its roster (batters + pitchers)
-- [ ] LineupBuilder auto-fills top 9 batters and top pitcher per team
-- [ ] User can swap batters and reorder lineup
-- [ ] User can change starting pitcher
-- [ ] Starter innings hardcoded to 6 (no UI slider)
-- [ ] Simulation requires both 9-man lineups + both starters selected
-- [ ] Simulation runs and shows lineup mode badge
-- [ ] Win probability bars render with correct percentages
-- [ ] Expected scores and O/U display
-- [ ] Most likely final scores display (top 5) as ranked cards
-- [ ] PA probability profiles show for both teams
-- [ ] AuthGate blocks guests with signup prompt
+- [ ] Lists every fixture from `tests/fixtures/games/_manifest.json`
+- [ ] Selecting a fixture renders the deck and the planner report
+- [ ] Returns 404 when `NODE_ENV === "production"`
 
-### Team Profiles (`/analytics/profiles`)
-- [ ] Team selector populates from API
-- [ ] Rolling window selector works (7/14/30/60 days)
-- [ ] Profile metrics display with league baselines
-- [ ] Multiple teams can be compared side-by-side
-- [ ] Data coverage panel shows game count and date range
-- [ ] AuthGate blocks guests with signup prompt
+### PWA
 
-### Models (`/analytics/models`) — Admin
-- [ ] Training section: start training, cancel running jobs
-- [ ] Training jobs poll for status updates
-- [ ] Model registry: list models, activate toggle
-- [ ] Performance: calibration report and degradation alerts
-- [ ] AuthGate blocks non-admin users
-
-### Batch Sims (`/analytics/batch`) — Admin
-- [ ] Launch form: date picker, optional model ID, iterations
-- [ ] Jobs list with expandable summary (avg win prob, total, duration)
-- [ ] Jobs poll for status updates while running
-- [ ] Record outcomes button works
-- [ ] Prediction outcomes table shows correct/incorrect tracking
-- [ ] AuthGate blocks non-admin users
-
-### Golf (`/golf`)
-- [ ] Tournament list loads with cards grouped by status (This Week, Upcoming, Recent Results)
-- [ ] Tournament cards show name, course, dates, purse, status badge
-- [ ] Clicking a tournament navigates to `/golf/[eventId]`
-- [ ] Event page shows tournament details and leaderboard
-- [ ] Leaderboard rows show position, player name, total score, today score, thru, round scores
-- [ ] Leaderboard polls for updates (60s interval)
-
-### FairBet
-- [ ] Pre-Game tab: odds load with progressive pagination
-- [ ] BetCard shows EV, fair odds, book chips
-- [ ] FairExplainer sheet opens with method explanation
-- [ ] Filters work (league, market, +EV only, search)
-- [ ] Parlay builder works (select bets, client-side evaluation)
-- [ ] Live tab: game picker populates with live games
-- [ ] Live tab: closing lines, live snapshot, and history display
-- [ ] Live tab: auto-refreshes every 15s
-
-### History
-- [ ] Date navigator works (start/end date selection)
-- [ ] League filter works
-- [ ] Search filters by team name
-- [ ] Sort modes work (Away, Home, Time)
-- [ ] Infinite scroll loads more games
-- [ ] URL params persist across navigation
-
-### Authentication
-- [ ] Login with valid credentials succeeds and redirects to `/`
-- [ ] Login with wrong credentials shows "Invalid email or password"
-- [ ] Signup with new email succeeds and redirects to `/`
-- [ ] Signup with existing email shows "An account with this email already exists"
-- [ ] Signup validates: email format, password min 8 chars, confirm match
-- [ ] Auth state persists across page refresh (token in localStorage)
-- [ ] Expired token clears on next `/auth/me` call (auto-logout)
-- [ ] 401 from any API route triggers auto-logout
-- [ ] Guest sees "Log In" in top nav; authenticated user sees avatar initial
-- [ ] Profile page: change email, change password, delete account all work
-- [ ] Settings page: guests see "Sign in to sync" prompt; users see email + role + logout
-- [ ] AuthGate on FairBet Live tab shows signup prompt for guests
-- [ ] AuthGate on Analytics page shows signup prompt for guests
-- [ ] "Forgot password?" link on login page navigates to `/forgot-password`
-- [ ] Forgot password: submitting email shows confirmation message
-- [ ] Reset password: page without `?token=` shows invalid link state
-- [ ] Reset password: valid token + new password redirects to login on success
-- [ ] Reset password: expired/invalid token shows error with link to request new one
-
-### Preference Sync
-- [ ] Login pulls server preferences (settings, pins, reveals overwrite local)
-- [ ] Changing a setting while logged in pushes to server (check Network tab for PUT after ~2s)
-- [ ] Signup pushes current local state as initial preferences
-- [ ] Logout stops syncing; localStorage stays for guest browsing
-- [ ] Following Live toggle persists across login/logout cycle
-- [ ] Following Live auto-expires after 2 hours of inactivity
-
-### Settings
-- [ ] Theme toggle works (system, light, dark)
-- [ ] Score reveal mode toggle works
-- [ ] Odds format toggle works
-
-### Degraded State & Stale Cache
-- [ ] Block API (devtools Network offline), refresh — cached data shown silently
-- [ ] Admin sees stale data banner (yellow), regular user sees nothing
-- [ ] Admin can toggle off stale banners in Settings > Admin
-- [ ] Cold start with no cache + API down shows skeleton → error state
-- [ ] Console errors stay under 5 during degraded session (no flooding)
-- [ ] Manual Retry button always works regardless of degraded state
-
-### Analytics & Feedback
-- [ ] Plausible script loads (check Network tab for plausible.io)
-- [ ] Revealing a score fires `reveal_score` event (check /api/analytics-event in Network)
-- [ ] Opening a game fires `game_view` event
-- [ ] Scrolling past 50%/90% fires `scroll_50`/`scroll_90` once
-- [ ] Inline feedback (+1/-1) works on game, fairbet, golf pages
-- [ ] Feedback shows "Thanks!" after voting
-
-### Cross-Cutting
-- [ ] Light and dark themes display correctly
-- [ ] No hardcoded white/dark colors in light mode
-- [ ] Loading skeletons appear during data fetch
-- [ ] Empty states show contextual messages
-- [ ] Error states show retry button
-- [ ] Realtime connection indicator (green dot on FairBet page)
-- [ ] Game page has dynamic title and OG image in page source
+- [ ] Service worker registers on a non-localhost host
+- [ ] Service worker is *un*registered on localhost / `*.local`
+- [ ] `OfflineBanner` appears when the browser goes offline; auto-dismisses ~3s after reconnect
+- [ ] `PWAInstallPrompt` appears after `PWA.INSTALL_MIN_SESSIONS` (2) sessions
 
 ## Common Issues
 
-**API errors (500):**
-- Check `SPORTS_DATA_API_KEY` is set in `.env.local`
-- Check backend is reachable (default: `https://sda.dock108.dev`, override with `SPORTS_API_INTERNAL_URL`)
-- Check browser Network tab for the failing `/api/*` request
+**API errors (502 from `/api/games/*`):**
+- Confirm `SPORTS_DATA_API_KEY` is set in `.env.local`.
+- Confirm upstream is reachable (`SPORTS_API_INTERNAL_URL` if you point at a non-default backend).
+- The proxy maps upstream `401/403/5xx` to `502` so the browser doesn't blame itself — check the dev console / server logs for the original status.
+
+**`/api/health` reports degraded but upstream is up:**
+- Health pings `/api/admin/sports/games?limit=1` with a 15s timeout (`API.HEALTH_BACKEND_PING_TIMEOUT_MS`). A slow upstream can register as degraded even when it eventually succeeds.
+- Playwright sets `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER=1` to bypass the upstream ping; if a stuck env var leaks into your dev shell, health will always return ok.
 
 **Stale data after code changes:**
-- `npm run dev` hot-reloads components but API route changes may need a server restart
-- Delete `.next/` directory for a clean build if caching issues persist
+- `npm run dev` hot-reloads components, but route-handler / config changes need a full restart.
+- Delete `.next/` for a clean build if caching seems stuck.
 
 **Type errors:**
-- Run `npx tsc --noEmit` to check all types
-- Web types are in `web/src/lib/types.ts` — keep in sync with API responses
+- `npx tsc --noEmit` covers everything. Shared API/domain types are in `web/src/lib/types.ts`.
 
-**Light mode issues:**
-- Ensure `@theme` (not `@theme inline`) in `globals.css`
-- Check for hardcoded `text-white`, `bg-white`, or inline `style={{ color: "white" }}` — use `text-neutral-50`, `bg-neutral-50`, or `var(--ds-text-primary)` instead
-- FairBet components should use `var(--fb-*)` CSS variables for backgrounds/borders
+**Service worker pollution on localhost:**
+- The root layout's inline registration *unregisters* SW on localhost and clears caches. If you switched between localhost and a tunnel host, hard-refresh once.
 
-**Auth issues (401 / unexpected logout):**
-- Check that `sd-auth` key in localStorage has a valid JWT token
-- Expired tokens are cleared automatically on the next `/auth/me` call
-- API routes forward the Authorization header via `forwardAuth()` — verify it's included in the route handler
-- Auth proxy (`/api/auth/*`) does NOT send X-API-Key — this is intentional
-
-**Realtime not connecting:**
-- Check browser console for WebSocket connection errors
-- Verify backend is running and `/v1/ws` endpoint is accessible
-- Check browser console for WebSocket/SSE connection events
-- Check the green/gray dot on the FairBet page for connection status
+**Catchup deck is empty / wrong on a live game:**
+- Open `/api/games/[gameId]/cards?debug=true` to see the planner report and per-card audit.
+- Replay the same gameId on `/dev/catchup-lab` against a captured fixture if there is one.

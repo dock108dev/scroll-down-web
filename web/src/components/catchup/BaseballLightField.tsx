@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { Fragment, useId } from "react";
 import type {
   BallPath,
   BaseballBaseState,
@@ -86,6 +86,7 @@ const PROFILE_GLOW: Record<PlayAnimationProfile, { fadeMs: number; fadeDelayMs: 
   double_play_grounder: { fadeMs: 280, fadeDelayMs: 120, glow: 1.0 },
   double_play_fly:      { fadeMs: 380, fadeDelayMs: 260, glow: 1.2 },
   sacrifice_fly:        { fadeMs: 380, fadeDelayMs: 240, glow: 1.0 },
+  rundown:              { fadeMs: 0,   fadeDelayMs: 0,   glow: 0   },
   other:                { fadeMs: 380, fadeDelayMs: 220, glow: 1.0 },
 };
 
@@ -139,11 +140,158 @@ const STYLE_DOT_CLASS: Record<RunnerMovementStyle, string> = {
   in_place_out: "",
 };
 
-// Secondary trail (DP throw across).
-const SECONDARY_TRAILS: Partial<Record<PlayAnimationProfile, string>> = {
-  double_play_grounder: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} L${FIELDER_POS.first_base.x} ${FIELDER_POS.first_base.y}`,
-  double_play_fly:      `M${FIELDER_POS.cf.x} ${FIELDER_POS.cf.y} Q${POS.mound.x} ${POS.mound.y + 20} ${POS.home.x} ${POS.home.y}`,
+// ── Extra trails (chained memory-trail system) ────────────
+// Generalizes the old single-slot SECONDARY_TRAILS map into an array per
+// profile. Each entry is a self-contained throw segment with its own
+// timing window (offset from runnersStart, duration, fade tail). Rendering
+// iterates the array — adding a profile here requires no changes to the
+// JSX render loop, only data.
+
+interface ExtraTrailDef {
+  /** SVG path d-string. May use M, L, Q, C. */
+  path: string;
+  /** ms offset from runnersStart when the dot appears and motion begins. */
+  beginOffsetMs: number;
+  /** ms to traverse the full path (SMIL dur). */
+  durationMs: number;
+  /** ms between motion end and dot fade. */
+  fadeTailMs: number;
+  /** Optional glow intensity multiplier for the trail line. Defaults to 1.0. */
+  glowScale?: number;
+}
+
+// Outfielder-to-home throw arcs for sacrifice flies, keyed by ball path.
+// Direction varies by fielder: LF arcs through the third-base side, RF
+// through the first-base side, CF straight over the mound.
+const SAC_FLY_RELAY_PATHS: Partial<Record<BallPath, string>> = {
+  fly_lf:  `M${FIELDER_POS.lf.x} ${FIELDER_POS.lf.y} Q${POS.third.x} ${POS.third.y} ${POS.home.x} ${POS.home.y}`,
+  fly_lcf: `M${FIELDER_POS.lcf.x} ${FIELDER_POS.lcf.y} Q${POS.third.x + 12} ${POS.third.y - 8} ${POS.home.x} ${POS.home.y}`,
+  fly_cf:  `M${FIELDER_POS.cf.x} ${FIELDER_POS.cf.y} Q${POS.mound.x} ${POS.mound.y + 20} ${POS.home.x} ${POS.home.y}`,
+  fly_rcf: `M${FIELDER_POS.rcf.x} ${FIELDER_POS.rcf.y} Q${POS.first.x - 10} ${POS.first.y - 12} ${POS.home.x} ${POS.home.y}`,
+  fly_rf:  `M${FIELDER_POS.rf.x} ${FIELDER_POS.rf.y} Q${POS.first.x} ${POS.first.y} ${POS.home.x} ${POS.home.y}`,
 };
+
+// Two-segment relay throw paths (OF → cutoff infielder → home), keyed by
+// ball path. The cutoff man is SS for left-side balls, 2B for right-side
+// balls, and SS for center. Used by deep_fly and line_drive profiles —
+// see resolveExtraTrails().
+const RELAY_THROW_PATHS: Partial<Record<BallPath, { ofToCutoff: string; cutoffToHome: string }>> = {
+  fly_lf: {
+    ofToCutoff:   `M${FIELDER_POS.lf.x} ${FIELDER_POS.lf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
+    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+  fly_lcf: {
+    ofToCutoff:   `M${FIELDER_POS.lcf.x} ${FIELDER_POS.lcf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
+    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+  fly_cf: {
+    ofToCutoff:   `M${FIELDER_POS.cf.x} ${FIELDER_POS.cf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
+    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+  fly_rcf: {
+    ofToCutoff:   `M${FIELDER_POS.rcf.x} ${FIELDER_POS.rcf.y} L${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y}`,
+    cutoffToHome: `M${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y} Q${POS.mound.x + 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+  fly_rf: {
+    ofToCutoff:   `M${FIELDER_POS.rf.x} ${FIELDER_POS.rf.y} L${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y}`,
+    cutoffToHome: `M${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y} Q${POS.mound.x + 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+  line_left: {
+    ofToCutoff:   `M${FIELDER_POS.lf.x} ${FIELDER_POS.lf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
+    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+  line_center: {
+    ofToCutoff:   `M${FIELDER_POS.cf.x} ${FIELDER_POS.cf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
+    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+  line_right: {
+    ofToCutoff:   `M${FIELDER_POS.rf.x} ${FIELDER_POS.rf.y} L${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y}`,
+    cutoffToHome: `M${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y} Q${POS.mound.x + 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
+  },
+};
+
+const EXTRA_TRAILS: Partial<Record<PlayAnimationProfile, ExtraTrailDef[]>> = {
+  // SS pivot to first base on a 6-4-3 / 6-3 turn.
+  double_play_grounder: [
+    {
+      path: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} L${FIELDER_POS.first_base.x} ${FIELDER_POS.first_base.y}`,
+      beginOffsetMs: 240,
+      durationMs: 360,
+      fadeTailMs: 80,
+      glowScale: 1.0,
+    },
+  ],
+  // CF tag-up relay back to home on a fly-DP.
+  double_play_fly: [
+    {
+      path: `M${FIELDER_POS.cf.x} ${FIELDER_POS.cf.y} Q${POS.mound.x} ${POS.mound.y + 20} ${POS.home.x} ${POS.home.y}`,
+      beginOffsetMs: 240,
+      durationMs: 360,
+      fadeTailMs: 80,
+      glowScale: 1.1,
+    },
+  ],
+  // Rundown: three-throw sequence between 1B and home, ending at the tag
+  // point partway up the line. Canonical 1B–home geometry; alternate
+  // base-pair rundowns can be encoded later when the data calls for them.
+  rundown: [
+    {
+      path: `M${POS.first.x} ${POS.first.y} Q${POS.mound.x + 25} ${POS.mound.y + 30} ${POS.home.x} ${POS.home.y}`,
+      beginOffsetMs: 120,
+      durationMs: 280,
+      fadeTailMs: 40,
+      glowScale: 0.8,
+    },
+    {
+      path: `M${POS.home.x} ${POS.home.y} Q${POS.mound.x + 25} ${POS.mound.y + 30} ${POS.first.x} ${POS.first.y}`,
+      beginOffsetMs: 500,
+      durationMs: 280,
+      fadeTailMs: 40,
+      glowScale: 0.8,
+    },
+    {
+      path: `M${POS.first.x} ${POS.first.y} L${(POS.first.x + POS.home.x) / 2} ${(POS.first.y + POS.home.y) / 2}`,
+      beginOffsetMs: 880,
+      durationMs: 180,
+      fadeTailMs: 120,
+      glowScale: 1.2,
+    },
+  ],
+};
+
+/** Resolve the extra trails for a profile/ball-path pairing. Profiles whose
+ *  trail geometry depends on where the ball was hit (sacrifice_fly,
+ *  deep_fly, line_drive) fall through so the fielder-to-home arc varies
+ *  by ball direction. */
+function resolveExtraTrails(
+  profile: PlayAnimationProfile,
+  ballPath: BallPath,
+): ExtraTrailDef[] {
+  const base = EXTRA_TRAILS[profile];
+  if (base) return base;
+  if (profile === "sacrifice_fly") {
+    const path = SAC_FLY_RELAY_PATHS[ballPath];
+    if (path) {
+      return [{ path, beginOffsetMs: 180, durationMs: 340, fadeTailMs: 80, glowScale: 0.9 }];
+    }
+  }
+  // relay_throw was originally specced as a top-level profile gated by a
+  // /\brelay\b|\bcutoff\b/i description regex. The current MLB fixture
+  // corpus contains zero matches for those terms, so the classifier
+  // would never assign it — silently dead code. Demoted to two ExtraTrail
+  // segments on deep_fly and line_drive instead, varying by ball path.
+  // See ISSUE note: Step 4 fallback documented in catchup-cards.ts.
+  if (profile === "deep_fly" || profile === "line_drive") {
+    const relay = RELAY_THROW_PATHS[ballPath];
+    if (relay) {
+      return [
+        { path: relay.ofToCutoff,   beginOffsetMs: 160,           durationMs: 300, fadeTailMs: 60, glowScale: 1.0 },
+        { path: relay.cutoffToHome, beginOffsetMs: 160 + 300 + 80, durationMs: 320, fadeTailMs: 80, glowScale: 1.0 },
+      ];
+    }
+  }
+  return [];
+}
 
 // ── Component ─────────────────────────────────────────────
 
@@ -172,14 +320,17 @@ export function BaseballLightField({
   // keep them isolated.
   const reactId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
   const trailPathId = `${reactId}-trail`;
-  const secondaryTrailPathId = `${reactId}-trail-2`;
   const ballGlowFilterId = `${reactId}-ball-glow`;
   // The schedule used by the field MUST agree with what CatchupCard passed
   // as runnersBeginMs — fall back to the profile default when unset.
   const milestones = getPhaseMilestones(animationProfile);
   const schedule = getPhaseSchedule(animationProfile);
+  // PROFILE_GLOW is `Record<PlayAnimationProfile, ...>` so the lookup is
+  // always defined under TS — the `?? other` is a runtime guard for a
+  // string that bypassed the type system (e.g. stale persisted data).
+  // See docs/audits/error-handling-report.md §G2.
   const glow = PROFILE_GLOW[animationProfile] ?? PROFILE_GLOW.other;
-  const secondaryTrail = SECONDARY_TRAILS[animationProfile];
+  const extraTrails = resolveExtraTrails(animationProfile, ballPath);
   const runnersStart = runnersBeginMs ?? milestones.runners;
 
   // Profile-scaled bloom radii for the ball dot SVG filter. The floors
@@ -197,12 +348,6 @@ export function BaseballLightField({
   const ballAppearMs = milestones.trigger;
   const ballMoveMs = milestones.ball;
   const ballFadeMs = milestones.ball + schedule.ball + glow.fadeDelayMs;
-  // DP secondary throw — fires partway through the runners phase, draws
-  // 360ms. Times match the secondary-trail CSS window.
-  const secondaryAppearMs = runnersStart + 240;
-  const secondaryMoveMs = runnersStart + 240;
-  const secondaryDurMs = 360;
-  const secondaryFadeMs = secondaryMoveMs + secondaryDurMs + 80;
 
   const showContact =
     eventType !== "strikeout" &&
@@ -536,33 +681,39 @@ export function BaseballLightField({
           />
         )}
 
-        {secondaryTrail && (
-          <>
-            <path
-              id={secondaryTrailPathId}
-              className="field-ball-trail field-ball-trail-secondary"
-              d={secondaryTrail}
-              fill="none"
-              stroke="var(--field-accent)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeDasharray={TRAIL_LENGTH}
-              strokeDashoffset={TRAIL_LENGTH}
-            />
-            <g filter={`url(#${ballGlowFilterId})`}>
-              <BallDot
-                pathId={secondaryTrailPathId}
-                start={secondaryStartPoint(secondaryTrail)}
-                appearMs={secondaryAppearMs}
-                moveMs={secondaryMoveMs}
-                durMs={secondaryDurMs}
-                fadeMs={secondaryFadeMs}
-                fadeDurMs={glow.fadeMs > 0 ? glow.fadeMs : 220}
-                size={2.4}
+        {extraTrails.map((def, i) => {
+          const pathId = `${reactId}-trail-${i + 2}`;
+          const appearMs = runnersStart + def.beginOffsetMs;
+          const moveMs = appearMs;
+          const fadeMs = moveMs + def.durationMs + def.fadeTailMs;
+          return (
+            <Fragment key={pathId}>
+              <path
+                id={pathId}
+                className="field-ball-trail field-ball-trail-secondary"
+                d={def.path}
+                fill="none"
+                stroke="var(--field-accent)"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeDasharray={TRAIL_LENGTH}
+                strokeDashoffset={TRAIL_LENGTH}
               />
-            </g>
-          </>
-        )}
+              <g filter={`url(#${ballGlowFilterId})`}>
+                <BallDot
+                  pathId={pathId}
+                  start={extraTrailStartPoint(def.path)}
+                  appearMs={appearMs}
+                  moveMs={moveMs}
+                  durMs={def.durationMs}
+                  fadeMs={fadeMs}
+                  fadeDurMs={glow.fadeMs > 0 ? glow.fadeMs : 220}
+                  size={2.4}
+                />
+              </g>
+            </Fragment>
+          );
+        })}
 
         {/* Runner movement trails — phosphor afterimage for each runner.
             Drawn FIRST so dots render on top. */}
@@ -840,9 +991,12 @@ function RunnerDotSvg({
   }
 
   // Resolve the destination — either the safe target base or the tagged-out
-  // base. Both share the same basepath-following render path.
+  // base. Both share the same basepath-following render path. Inlining the
+  // `movement.to === "out"` check (rather than using the `isOut` alias)
+  // lets TS narrow `movement.to` from `BaseName | "out"` to `BaseName` on
+  // the false branch.
   const isOut = movement.to === "out";
-  const destination = isOut ? movement.outAt! : movement.to;
+  const destination = movement.to === "out" ? movement.outAt! : movement.to;
   const path = basepathSvgPath(movement.from, destination);
   const isHome = movement.scores;
   const isOutShrink =
@@ -1169,11 +1323,38 @@ function BallDot({
   );
 }
 
-/** Pull the move-to coordinate from a secondary trail's path string. The
- *  secondary trails always start with `M${x} ${y}` so we can parse the
- *  start point without re-deriving it from profile data. */
-function secondaryStartPoint(d: string): { x: number; y: number } {
+/** Parse the initial move-to from an extra-trail path string. ExtraTrail
+ *  paths always start with `M${x} ${y}` so we can read the dot's resting
+ *  position without threading the trail's origin point separately.
+ *
+ *  See docs/audits/error-handling-report.md §G1. The regex miss is
+ *  unreachable for any path we ship today (every entry in EXTRA_TRAILS,
+ *  SAC_FLY_RELAY_PATHS, and RELAY_THROW_PATHS is constructed from a
+ *  template literal whose head is `M${num} ${num}`), but the silent
+ *  fallback to home plate would mask a future misconfiguration as a
+ *  random glowing dot. Surface it loudly in dev; keep the fallback in
+ *  prod so a single bad path entry can't blank the whole field. */
+function extraTrailStartPoint(d: string): { x: number; y: number } {
   const m = d.match(/^M\s*([-\d.]+)\s+([-\d.]+)/);
-  if (!m) return POS.home;
-  return { x: Number(m[1]), y: Number(m[2]) };
+  if (!m) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error(
+        "[BaseballLightField] extra-trail path missing M-prefix; check EXTRA_TRAILS / SAC_FLY_RELAY_PATHS / RELAY_THROW_PATHS",
+        { path: d },
+      );
+    }
+    return POS.home;
+  }
+  const x = Number(m[1]);
+  const y = Number(m[2]);
+  if (!Number.isFinite(x) || !Number.isFinite(y)) {
+    if (process.env.NODE_ENV !== "production") {
+      console.error(
+        "[BaseballLightField] extra-trail path has non-finite start coords",
+        { path: d, x, y },
+      );
+    }
+    return POS.home;
+  }
+  return { x, y };
 }

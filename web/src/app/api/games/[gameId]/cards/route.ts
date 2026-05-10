@@ -3,7 +3,6 @@ import { ApiError, cachedApiFetch } from "@/lib/api-server";
 import {
   buildCatchupCards,
   isValidCard,
-  type UpstreamBatter,
   type UpstreamPitcher,
 } from "@/lib/catchup-cards";
 import { API } from "@/lib/config";
@@ -37,7 +36,6 @@ interface UpstreamGameDetail {
   /** Per-pitcher game lines — used to reconstruct pitcher of record per
    *  play. Optional; absent on live games before the box is settled. */
   mlbPitchers?: UpstreamPitcher[];
-  mlbBatters?: UpstreamBatter[];
 }
 
 function readVenue(g: UpstreamGameDetail["game"]): string | null {
@@ -90,7 +88,6 @@ export async function GET(
       venue: readVenue(data.game),
       plays: data.plays ?? [],
       mlbPitchers: data.mlbPitchers,
-      mlbBatters: data.mlbBatters,
       sincePlayIndex,
       isFinal: finalGame,
       withAudit,

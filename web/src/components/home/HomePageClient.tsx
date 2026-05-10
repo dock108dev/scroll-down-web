@@ -68,34 +68,40 @@ export default function HomePageClient() {
 
   if (loading && games.length === 0) {
     return (
-      <div data-testid="page-home" className="mx-auto max-w-2xl px-4 py-6 space-y-4">
-        <LoadingSkeleton className="h-48" />
-        <LoadingSkeleton className="h-20" count={4} />
+      <div className="home-deck-page">
+        <div data-testid="page-home" className="home-deck mx-auto max-w-2xl px-4 py-6 space-y-4">
+          <LoadingSkeleton className="h-48" />
+          <LoadingSkeleton className="h-20" count={4} />
+        </div>
       </div>
     );
   }
 
   if (error && games.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl px-4 py-12 text-center space-y-4">
-        <p className="text-sm text-neutral-400">We couldn&rsquo;t load today&rsquo;s games.</p>
-        <button
-          onClick={() => refetch()}
-          className="rounded-lg bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-700 min-h-[44px]"
-        >
-          Retry
-        </button>
+      <div className="home-deck-page">
+        <div className="mx-auto max-w-2xl px-4 py-12 text-center space-y-4">
+          <p className="text-sm text-neutral-400">We couldn&rsquo;t load today&rsquo;s games.</p>
+          <button
+            onClick={() => refetch()}
+            className="rounded-lg bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-700 min-h-[44px]"
+          >
+            Retry
+          </button>
+        </div>
       </div>
     );
   }
 
   if (games.length === 0) {
     return (
-      <div data-testid="page-home" className="mx-auto max-w-2xl px-4 py-16 text-center space-y-3">
-        <h1 className="text-lg font-semibold text-neutral-100">No games in the last 48 hours.</h1>
-        <p className="text-sm text-neutral-400 max-w-sm mx-auto leading-relaxed">
-          Check back when MLB is on the schedule. During the All-Star break and off-season this view stays empty.
-        </p>
+      <div className="home-deck-page">
+        <div data-testid="page-home" className="home-deck mx-auto max-w-2xl px-4 py-16 text-center space-y-3">
+          <h1 className="text-lg font-semibold text-neutral-100">No games in the last 48 hours.</h1>
+          <p className="text-sm text-neutral-400 max-w-sm mx-auto leading-relaxed">
+            Check back when MLB is on the schedule. During the All-Star break and off-season this view stays empty.
+          </p>
+        </div>
       </div>
     );
   }
@@ -103,53 +109,55 @@ export default function HomePageClient() {
   const favTeam = favoriteTeam ? findMlbTeam(favoriteTeam) : null;
 
   return (
-    <div data-testid="page-home" className="mx-auto max-w-2xl px-4 pt-4 pb-10">
-      <header className="mb-6">
-        <h1 className="text-xl font-bold text-neutral-50 tracking-tight">
-          {favTeam ? `${favTeam.name} catch-up` : "Catch up — spoiler-free"}
-        </h1>
-        <p className="mt-1 text-sm text-neutral-400 leading-snug">
-          {favTeam
-            ? `Start with the ${favTeam.name}, or pick another game below. Scores stay hidden until you reveal.`
-            : "MLB games from the last 48 hours. Tap one and walk through the key plays — no scores until the reveal."}
-        </p>
-      </header>
+    <div className="home-deck-page">
+      <div data-testid="page-home" className="home-deck mx-auto max-w-2xl px-4 pt-4 pb-10">
+        <header className="mb-6">
+          <h1 className="text-xl font-bold text-neutral-50 tracking-tight">
+            {favTeam ? `${favTeam.name} catch-up` : "Catch up — spoiler-free"}
+          </h1>
+          <p className="mt-1 text-sm text-neutral-400 leading-snug">
+            {favTeam
+              ? `Start with the ${favTeam.name}, or pick another game below. Scores stay hidden until you reveal.`
+              : "MLB games from the last 48 hours. Tap one and walk through the key plays — no scores until the reveal."}
+          </p>
+        </header>
 
-      {hero && (
-        <section aria-label="Hero game" className="mb-6">
-          {hero.reason === "fallback" && favTeam && (
-            <p className="mb-2 text-xs text-neutral-500">
-              {favTeam.name} aren&rsquo;t playing — here&rsquo;s a recent game instead.
-            </p>
-          )}
-          <GameRow
-            game={hero.game}
-            featured
-            completed={Boolean(completedEntries[hero.game.id]?.completed)}
-            inProgress={Boolean(
-              completedEntries[hero.game.id] && !completedEntries[hero.game.id].completed,
+        {hero && (
+          <section aria-label="Hero game" className="mb-6">
+            {hero.reason === "fallback" && favTeam && (
+              <p className="mb-2 text-xs text-neutral-500">
+                {favTeam.name} aren&rsquo;t playing — here&rsquo;s a recent game instead.
+              </p>
             )}
-          />
-        </section>
-      )}
-
-      {otherGames.length > 0 && (
-        <section aria-label="Other games" className="space-y-2">
-          <h2 className="text-xs uppercase tracking-wider text-neutral-500 mb-2">
-            More games
-          </h2>
-          {otherGames.map((g) => (
             <GameRow
-              key={g.id}
-              game={g}
-              completed={Boolean(completedEntries[g.id]?.completed)}
+              game={hero.game}
+              featured
+              completed={Boolean(completedEntries[hero.game.id]?.completed)}
               inProgress={Boolean(
-                completedEntries[g.id] && !completedEntries[g.id].completed,
+                completedEntries[hero.game.id] && !completedEntries[hero.game.id].completed,
               )}
             />
-          ))}
-        </section>
-      )}
+          </section>
+        )}
+
+        {otherGames.length > 0 && (
+          <section aria-label="Other games" className="space-y-2">
+            <h2 className="catchup-eyebrow mb-2">
+              Recent reconstructions
+            </h2>
+            {otherGames.map((g) => (
+              <GameRow
+                key={g.id}
+                game={g}
+                completed={Boolean(completedEntries[g.id]?.completed)}
+                inProgress={Boolean(
+                  completedEntries[g.id] && !completedEntries[g.id].completed,
+                )}
+              />
+            ))}
+          </section>
+        )}
+      </div>
     </div>
   );
 }

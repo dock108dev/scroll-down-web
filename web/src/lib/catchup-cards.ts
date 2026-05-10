@@ -1,11 +1,9 @@
 import type {
   BallPath,
   BaseballBaseState,
-  BatterLine,
   CatchupCard,
   CatchupCardsResponse,
   GameSummary,
-  PitcherLine,
   PlayAnimationProfile,
   PlayCardData,
   PlayEntry,
@@ -17,9 +15,13 @@ import type {
   SelectionReason,
   SituationBefore,
 } from "./types";
+import { CATCHUP } from "./config";
+import { narrativeForCard } from "./narrative";
+import { planDeck, summarizeHalfInnings } from "./rhythm-planner";
 
 /** Lightweight upstream pitcher record — only the fields we read for
- *  reconstructing pitcher of record + running line. */
+ *  reconstructing pitcher of record. `inningsPitched` is the cumulative-outs
+ *  hint used to decide when one reliever hands off to the next. */
 export interface UpstreamPitcher {
   team: string;
   playerName: string;
@@ -32,16 +34,6 @@ export interface UpstreamPitcher {
   strikeOuts?: number | null;
   homeRuns?: number | null;
 }
-
-/** Lightweight upstream batter record — kept for symmetry with pitcher
- *  input, though the running batter line is fully derivable from plays. */
-export interface UpstreamBatter {
-  team: string;
-  playerName: string;
-}
-import { CATCHUP } from "./config";
-import { narrativeForCard } from "./narrative";
-import { planDeck, summarizeHalfInnings } from "./rhythm-planner";
 
 /**
  * Tier 1 = scoring + late-game high-leverage. Tier 2 = extra-base hits and
@@ -493,11 +485,28 @@ export function humanizeDescription(raw: string): string {
  * timing + persistence + double-play choreography in the field component.
  * BallPath still owns the actual path string; the profile is purely a
  * "behavior" axis layered on top.
+ *
+ * Note on `relay_throw`: the original ISSUE-006 spec proposed a top-level
+ * `relay_throw` profile gated by a /\brelay\b|\bcutoff\b/i description
+ * regex on hit/field_out events. The current MLB fixture corpus contains
+ * zero descriptions matching those terms, so a classifier branch would be
+ * silently dead. The two-segment relay throw was instead demoted to an
+ * ExtraTrailDef pair attached to `deep_fly` and `line_drive` profiles in
+ * BaseballLightField's EXTRA_TRAILS — see resolveExtraTrails() there.
  */
 export function classifyAnimationProfile(
   event: PlayEventType,
   description: string,
 ): PlayAnimationProfile {
+  // Rundown: caught in a rundown between bases. Detected before the
+  // event-specific switch so it wins over the generic field_out /
+  // caught_stealing fallthroughs.
+  if (
+    (event === "caught_stealing" || event === "field_out") &&
+    /\brundown\b/i.test(description)
+  ) {
+    return "rundown";
+  }
   switch (event) {
     case "home_run":  return "home_run";
     case "walk":      return "walk";
@@ -1144,14 +1153,10 @@ function readUpstreamRunnerNames(raw: unknown): RunnerNames | undefined {
 }
 
 // ── Pitcher + batter running timelines ────────────────────
-// Upstream gives us total per-game stats only (`mlbPitchers`, `mlbBatters`),
-// not per-play. We reconstruct running snapshots by walking plays in order,
-// so each card can show "the pitcher's line up to this play" and "this
-// batter's PAs in this game so far" without spoiling the final box.
-//
-// Pitcher of record is unattributed in the feed — we recover it by walking
+// Upstream gives us total per-game pitcher stats only (`mlbPitchers`); the
+// pitcher of record per play is unattributed. We recover it by walking the
 // outs accumulated for each pitching team and indexing into that team's
-// pitcher list (chronological from upstream). Each pitcher's IP-as-outs
+// reliever list (chronological from upstream). Each pitcher's IP-as-outs
 // defines the boundary at which the next reliever takes over.
 
 /** "5.1" → 16 outs. "0" / null / unparseable → 0. */
@@ -1164,28 +1169,14 @@ function inningsPitchedToOuts(ip: string | null | undefined): number {
   return innings * 3 + partOuts;
 }
 
-/** Format outs as MLB-style "X.Y" (Y in [0,1,2]). */
-export function formatOutsAsIP(outs: number): string {
-  const innings = Math.floor(outs / 3);
-  const part = outs % 3;
-  return `${innings}.${part}`;
-}
-
 interface PitcherSnapshot {
   /** Full name as carried in upstream (e.g. "Tim Hill"). */
   name: string;
-  /** Running line up to (not including) this play. */
-  line: PitcherLine;
-}
-
-interface BatterSnapshot {
-  /** Running line up to (not including) this play. */
-  line: BatterLine;
 }
 
 /**
  * Walk the upstream plays once and produce, per playIndex, the pitcher of
- * record + their running line at the moment that play starts.
+ * record at the moment that play starts.
  *
  * Attribution rule: the pitcher whose cumulative-outs threshold (drawn
  * from `inningsPitched` in upstream `mlbPitchers`) hasn't been crossed
@@ -1231,9 +1222,8 @@ export function computePitcherTimeline(
     });
   }
 
-  // Per-team running line accumulator, keyed by pitcher name.
-  const lineByPitcher = new Map<string, PitcherLine>();
-  // Outs already recorded by each pitching team (game-wide).
+  // Outs already recorded by each pitching team (game-wide). Drives the
+  // hand-off boundary between consecutive relievers.
   const outsByTeam: Record<string, number> = {};
 
   const sorted = [...plays].sort((a, b) => a.playIndex - b.playIndex);
@@ -1258,96 +1248,12 @@ export function computePitcherTimeline(
     if (!onMound) {
       result.set(play.playIndex, undefined);
     } else {
-      const lineNow = lineByPitcher.get(onMound.name) ?? {
-        outs: 0, hits: 0, runs: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0,
-      };
-      // Snapshot the line BEFORE this play resolves.
-      result.set(play.playIndex, {
-        name: onMound.name,
-        line: { ...lineNow },
-      });
-
-      // Accumulate this play's contribution to the on-mound pitcher.
-      const event = classifyEvent(play);
-      const outsDelta = outsDeltaFor(event);
-      const isHit = event === "single" || event === "double" ||
-        event === "triple" || event === "home_run";
-      const runsScored = inferRunsScored(play);
-      const updated: PitcherLine = {
-        outs: lineNow.outs + outsDelta,
-        hits: lineNow.hits + (isHit ? 1 : 0),
-        runs: lineNow.runs + runsScored,
-        baseOnBalls: lineNow.baseOnBalls + (event === "walk" ? 1 : 0),
-        strikeOuts: lineNow.strikeOuts + (event === "strikeout" ? 1 : 0),
-        homeRuns: lineNow.homeRuns + (event === "home_run" ? 1 : 0),
-      };
-      lineByPitcher.set(onMound.name, updated);
-      outsByTeam[pitchingTeamFull] = outsSoFar + outsDelta;
+      // Snapshot the pitcher of record BEFORE this play resolves.
+      result.set(play.playIndex, { name: onMound.name });
+      // Advance the team's outs counter so the next play sees the right
+      // reliever after a pitcher's IP threshold is reached.
+      outsByTeam[pitchingTeamFull] = outsSoFar + outsDeltaFor(classifyEvent(play));
     }
-  }
-
-  return result;
-}
-
-/** How many runs this play scored. Reads upstream score deltas first; falls
- *  back to `pointsScored` when only that's present. */
-function inferRunsScored(play: PlayEntry): number {
-  const before = play.scoreBefore;
-  const after = play.score;
-  if (before && after &&
-      typeof before.home === "number" && typeof before.away === "number" &&
-      typeof after.home === "number" && typeof after.away === "number") {
-    return Math.max(0,
-      (after.home - before.home) + (after.away - before.away));
-  }
-  if (typeof play.pointsScored === "number") return Math.max(0, play.pointsScored);
-  return 0;
-}
-
-/**
- * Walk plays once and produce, per playIndex, the batter's running line
- * UP TO (not including) this play. The batter for a play is the
- * `playerName` field — descriptions sometimes carry alternate spellings,
- * but the per-play `playerName` is consistent enough to use as a key.
- */
-export function computeBatterTimeline(
-  plays: PlayEntry[],
-): Map<number, BatterSnapshot | undefined> {
-  const result = new Map<number, BatterSnapshot | undefined>();
-  const lineByBatter = new Map<string, BatterLine>();
-
-  const sorted = [...plays].sort((a, b) => a.playIndex - b.playIndex);
-  for (const play of sorted) {
-    const name = (play.playerName || "").trim();
-    if (!name) {
-      result.set(play.playIndex, undefined);
-      continue;
-    }
-
-    const lineNow = lineByBatter.get(name) ?? {
-      atBats: 0, hits: 0, baseOnBalls: 0, strikeOuts: 0, homeRuns: 0, rbi: 0,
-    };
-    result.set(play.playIndex, { line: { ...lineNow } });
-
-    const event = classifyEvent(play);
-    const isHit = event === "single" || event === "double" ||
-      event === "triple" || event === "home_run";
-    // Plate appearances that don't count as at-bats: BB, HBP, sacrifice,
-    // catcher's interference. Strikeouts and most outs DO count as ABs.
-    const countsAsAB = !(
-      event === "walk" || event === "hit_by_pitch" ||
-      event === "sacrifice" || event === "catcher_interference"
-    );
-    const rbi = inferRunsScored(play); // close enough for display purposes
-    const updated: BatterLine = {
-      atBats: lineNow.atBats + (countsAsAB ? 1 : 0),
-      hits: lineNow.hits + (isHit ? 1 : 0),
-      baseOnBalls: lineNow.baseOnBalls + (event === "walk" ? 1 : 0),
-      strikeOuts: lineNow.strikeOuts + (event === "strikeout" ? 1 : 0),
-      homeRuns: lineNow.homeRuns + (event === "home_run" ? 1 : 0),
-      rbi: lineNow.rbi + rbi,
-    };
-    lineByBatter.set(name, updated);
   }
 
   return result;
@@ -1628,7 +1534,6 @@ export function toPlayCard(
   timeline: TimelineEntry,
   opposingPitchers?: { home?: string | null; away?: string | null },
   pitcherSnapshot?: PitcherSnapshot,
-  batterSnapshot?: BatterSnapshot,
 ): PlayCardData {
   const enriched = play as PlayEntry & RawPlaySituation;
   // Use the timeline's forward-propagated baseStateBefore so the card always
@@ -1644,14 +1549,10 @@ export function toPlayCard(
   // kicks in when we have no pitcher data at all.
   if (pitcherSnapshot) {
     situationBefore.pitcherName = pitcherSnapshot.name;
-    situationBefore.pitcherLine = pitcherSnapshot.line;
   } else if (!situationBefore.pitcherName && opposingPitchers) {
     const fallback =
       timeline.half === "top" ? opposingPitchers.home : opposingPitchers.away;
     if (fallback) situationBefore.pitcherName = fallback;
-  }
-  if (batterSnapshot) {
-    situationBefore.batterLine = batterSnapshot.line;
   }
 
   const ballPath = ballPathFromEvent(timeline.eventType, play.description ?? "");
@@ -1840,12 +1741,9 @@ function selectPlays(
 export interface BuildCardsInput extends SceneSetterInput {
   plays: PlayEntry[];
   /** Upstream `mlbPitchers` — per-game pitcher lines used to reconstruct
-   *  pitcher of record + running line per play. Optional; without it the
-   *  matchup row falls back to probable-pitcher defaults. */
+   *  pitcher of record per play. Optional; without it the matchup row
+   *  falls back to probable-pitcher defaults. */
   mlbPitchers?: UpstreamPitcher[];
-  /** Upstream `mlbBatters` — currently informational; the running batter
-   *  line is computed from plays directly. */
-  mlbBatters?: UpstreamBatter[];
   sincePlayIndex?: number;
   isFinal: boolean;
   /** When true, returns the per-play audit table on the response. */
@@ -1868,8 +1766,9 @@ export function buildCatchupCards(input: BuildCardsInput): CatchupCardsResponse 
     home: input.homeProbablePitcher ?? null,
     away: input.awayProbablePitcher ?? null,
   };
-  // Pitcher of record + running line per play. Walks every play (not just
-  // the sampled ones) so attribution stays accurate across the deck.
+  // Pitcher of record per play. Walks every play (not just the sampled
+  // ones) so the cumulative-outs hand-off between relievers stays accurate
+  // across the deck.
   const pitcherTimeline = computePitcherTimeline(
     input.plays,
     input.mlbPitchers,
@@ -1877,7 +1776,6 @@ export function buildCatchupCards(input: BuildCardsInput): CatchupCardsResponse 
     input.game.awayTeam,
     input.game.homeTeamAbbr,
   );
-  const batterTimeline = computeBatterTimeline(input.plays);
   const playCards: PlayCardData[] = [];
   for (const play of selectedPlays) {
     const t = timeline.get(play.playIndex);
@@ -1885,7 +1783,6 @@ export function buildCatchupCards(input: BuildCardsInput): CatchupCardsResponse 
     playCards.push(toPlayCard(
       input.game.id, 0, play, t, probablePitchers,
       pitcherTimeline.get(play.playIndex),
-      batterTimeline.get(play.playIndex),
     ));
   }
 
