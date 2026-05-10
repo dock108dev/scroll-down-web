@@ -1,332 +1,131 @@
 "use client";
 
-import Link from "next/link";
-import { useSettings } from "@/stores/settings";
-import { useAuth } from "@/stores/auth";
-import { useUI } from "@/stores/ui";
-import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { useSettings, type ThemeMode } from "@/stores/settings";
+import { useOnboarding } from "@/stores/onboarding";
+import { useCatchupProgress } from "@/stores/catchup-progress";
+import { findMlbTeam } from "@/lib/mlb-teams";
+import { TeamPickerOverlay } from "@/components/onboarding/TeamPickerOverlay";
 import { Section, Row } from "@/components/shared/FormPrimitives";
-import { ScoreHideBlacklistControls } from "./ScoreHideBlacklistControls";
+import { cn } from "@/lib/utils";
 
-const KNOWN_BOOKS = [
-  "DraftKings",
-  "FanDuel",
-  "BetMGM",
-  "Caesars",
-  "bet365",
-  "ESPN BET",
-  "Fanatics",
-  "Hard Rock Bet",
-  "Pinnacle",
-  "BetRivers",
-] as const;
-
-const HOME_SECTIONS = ["Yesterday", "Today"] as const;
 export function SettingsContent() {
-  const {
-    theme,
-    setTheme,
-    scoreRevealMode,
-    setScoreRevealMode,
-    scoreHideLeagues,
-    scoreHideTeams,
-    addScoreHideLeague,
-    removeScoreHideLeague,
-    addScoreHideTeam,
-    removeScoreHideTeam,
-    oddsFormat,
-    setOddsFormat,
-    preferredSportsbook,
-    setPreferredSportsbook,
-    hideLimitedData,
-    setHideLimitedData,
-    homeExpandedSections,
-    toggleHomeSection,
-    timelineDefaultTiers,
-    toggleTimelineTier,
-    showStaleBanners,
-    setShowStaleBanners,
-  } = useSettings();
+  const theme = useSettings((s) => s.theme);
+  const setTheme = useSettings((s) => s.setTheme);
+  const showStaleBanners = useSettings((s) => s.showStaleBanners);
+  const setShowStaleBanners = useSettings((s) => s.setShowStaleBanners);
 
-  const { token, email: authEmail, role, logout } = useAuth();
-  const closeSettings = useUI((s) => s.closeSettings);
+  const favoriteTeam = useOnboarding((s) => s.favoriteTeam);
+  const setFavoriteTeam = useOnboarding((s) => s.setFavoriteTeam);
+  const clearFavoriteTeam = useOnboarding((s) => s.clearFavoriteTeam);
+  const resetOnboarding = useOnboarding((s) => s.resetOnboarding);
+  const clearAllProgress = useCatchupProgress((s) => s.clearAll);
 
-  const buildLoginHref = (signup = false) => {
-    const base = signup ? "/login?tab=signup" : "/login";
-    if (typeof window === "undefined") return base;
-    const current = window.location.pathname + window.location.search;
-    // Only carry over internal paths that aren't the login flow itself
-    if (!current.startsWith("/login") && /^\/[^/\\]/.test(current)) {
-      const sep = base.includes("?") ? "&" : "?";
-      return `${base}${sep}redirect=${encodeURIComponent(current)}`;
-    }
-    return base;
-  };
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const fav = favoriteTeam ? findMlbTeam(favoriteTeam) : null;
 
   return (
     <div data-testid="settings-content" className="space-y-6">
-      {/* ─── Account ──────────────────────────────────────── */}
-      <Section title="Account">
-        {token ? (
-          <>
-            <div className="px-4 py-3">
-              <p className="text-sm text-neutral-200">{authEmail}</p>
-              <span
-                className={cn(
-                  "inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full",
-                  role === "admin"
-                    ? "bg-purple-500/20 text-purple-400"
-                    : "bg-blue-500/20 text-blue-400",
-                )}
-              >
-                {role}
-              </span>
-            </div>
-            <div className="flex items-center gap-3 px-4 py-3">
-              <Link
-                href="/profile"
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                Manage Account
-              </Link>
-              <button
-                onClick={logout}
-                className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
-              >
-                Log Out
-              </button>
-            </div>
-          </>
-        ) : (
-          <div className="px-4 py-3 space-y-2">
-            <p className="text-xs text-neutral-500">
-              Sign in to sync your preferences and access all features.
-              Settings are saved locally on this device.
-            </p>
-            <div className="flex items-center gap-3">
-              <Link
-                href={buildLoginHref(false)}
-                onClick={closeSettings}
-                className="text-sm font-medium text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                Log In
-              </Link>
-              <Link
-                href={buildLoginHref(true)}
-                onClick={closeSettings}
-                className="text-sm text-neutral-400 hover:text-neutral-200 transition-colors"
-              >
-                Sign Up
-              </Link>
-            </div>
-          </div>
-        )}
+      <Section title="Favorite team" description="Anchors the home page on your team's most recent game.">
+        <Row label="Team">
+          {fav ? (
+            <span className="text-sm font-medium text-neutral-100">{fav.name} ({fav.abbr})</span>
+          ) : (
+            <span className="text-sm text-neutral-500">Not set</span>
+          )}
+        </Row>
+        <div className="px-4 pb-3 pt-1 flex flex-wrap gap-2">
+          <button
+            data-testid="settings-pick-team"
+            onClick={() => setPickerOpen(true)}
+            className="rounded-lg bg-neutral-800 px-4 py-2 text-sm font-medium text-neutral-100 hover:bg-neutral-700 transition min-h-[40px]"
+          >
+            {fav ? "Change team" : "Pick a team"}
+          </button>
+          {fav && (
+            <button
+              onClick={clearFavoriteTeam}
+              className="rounded-lg border border-neutral-700 px-4 py-2 text-sm text-neutral-300 hover:text-neutral-100 transition min-h-[40px]"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </Section>
 
-      {/* ─── Appearance ──────────────────────────────────── */}
       <Section title="Appearance">
         <Row label="Theme">
           <SegmentedControl
-            testId="theme-selector"
             options={[
               { value: "system", label: "System" },
               { value: "light", label: "Light" },
               { value: "dark", label: "Dark" },
             ]}
             value={theme}
-            onChange={(v) => setTheme(v as "system" | "light" | "dark")}
+            onChange={(v) => setTheme(v as ThemeMode)}
           />
         </Row>
       </Section>
 
-      {/* ─── Recaps — Default Expanded ──────────────────── */}
-      <Section title="Recaps — Default Expanded" collapsible defaultOpen={false} description="Choose which date sections start expanded on the home page.">
-        {HOME_SECTIONS.map((section) => (
-          <SettingsCheckRow
-            key={section}
-            label={section}
-            checked={homeExpandedSections.includes(section)}
-            onToggle={() => toggleHomeSection(section)}
-          />
-        ))}
-      </Section>
-
-      {/* ─── Timeline — Default Tiers ────────────────────── */}
-      <Section title="Timeline — Default Tiers" collapsible defaultOpen={false} description="Pick which play tiers are visible by default in game timelines.">
-        {([
-          { tier: 1, label: "Key Plays", desc: "Scoring, turnovers, big moments" },
-          { tier: 2, label: "Secondary", desc: "Fouls, rebounds, stoppages" },
-          { tier: 3, label: "Minor", desc: "Subs, period starts, low-signal" },
-        ] as const).map(({ tier, label, desc }) => (
-          <button
-            key={tier}
-            role="checkbox"
-            aria-checked={timelineDefaultTiers.includes(tier)}
-            aria-label={label}
-            onClick={() => toggleTimelineTier(tier)}
-            className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
-          >
-            <div>
-              <span className="text-sm text-neutral-200">{label}</span>
-              <p className="text-xs text-neutral-500">{desc}</p>
-            </div>
-            {timelineDefaultTiers.includes(tier) && (
-              <span className="text-green-400 text-sm font-medium">&#10003;</span>
-            )}
-          </button>
-        ))}
-        <div className="px-4 pb-3 pt-2">
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            Controls which play tiers are visible by default in the timeline.
-            You can also toggle tiers per-game from the timeline header.
-          </p>
-        </div>
-      </Section>
-
-      {/* ─── Score Display ──────────────────────────────── */}
-      <Section title="Score Display" collapsible defaultOpen={true} description="Control how and when scores are revealed on game cards.">
-        <Row label="Score visibility">
-          <DarkSelect
-            value={scoreRevealMode}
-            onChange={(v) =>
-              setScoreRevealMode(v as "always" | "onMarkRead" | "blacklist")
-            }
-            options={[
-              {
-                value: "onMarkRead",
-                label: "Hidden until reveal",
-              },
-              { value: "blacklist", label: "Selective hide (league or team)" },
-              { value: "always", label: "Always show scores" },
-            ]}
-          />
-        </Row>
-        {scoreRevealMode === "blacklist" && (
-          <ScoreHideBlacklistControls
-            token={token}
-            scoreHideLeagues={scoreHideLeagues}
-            scoreHideTeams={scoreHideTeams}
-            addScoreHideLeague={addScoreHideLeague}
-            removeScoreHideLeague={removeScoreHideLeague}
-            addScoreHideTeam={addScoreHideTeam}
-            removeScoreHideTeam={removeScoreHideTeam}
-          />
-        )}
-        {scoreRevealMode !== "blacklist" && (
-          <div className="px-4 pb-3 pt-2">
-            <p className="text-xs text-neutral-500 leading-relaxed">
-              Hidden until reveal keeps live and final scores hidden until you tap. Always show displays scores automatically.
-            </p>
-          </div>
-        )}
-      </Section>
-
-      {/* ─── Odds ───────────────────────────────────────── */}
-      <Section title="Odds" collapsible defaultOpen={true} description="Set your preferred sportsbook, odds format, and market filters for FairBet.">
-        <Row label="Default Book">
-          <DarkSelect
-            value={preferredSportsbook}
-            onChange={setPreferredSportsbook}
-            options={[
-              { value: "", label: "Best available price" },
-              ...KNOWN_BOOKS.map((b) => ({
-                value: b.toLowerCase().replace(/\s+/g, ""),
-                label: b,
-              })),
-            ]}
-          />
-        </Row>
-        <Row label="Odds Format">
-          <SegmentedControl
-            options={[
-              { value: "american", label: "American" },
-              { value: "decimal", label: "Decimal" },
-            ]}
-            value={oddsFormat}
-            onChange={(v) =>
-              setOddsFormat(v as "american" | "decimal")
-            }
-          />
-        </Row>
+      <Section title="Diagnostics" collapsible defaultOpen={false}>
         <SettingsToggle
-          label="Hide Thin Markets"
-          hint="Markets with only 1–2 sportsbooks"
-          checked={hideLimitedData}
-          onChange={setHideLimitedData}
+          label="Show stale data banners"
+          hint="Display a banner when we serve cached data during upstream blips."
+          checked={showStaleBanners}
+          onChange={setShowStaleBanners}
         />
-        <div className="px-4 pb-3 pt-2">
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            Filters out bets where only a few books are posting or they
-            can&apos;t agree on a number. If the market is thin, the fair
-            estimate is just one book&apos;s opinion.
-          </p>
+        <div className="px-4 py-3 space-y-2">
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              if (window.confirm("Clear catch-up progress for every game?")) {
+                clearAllProgress();
+              }
+            }}
+            className="text-sm text-neutral-300 hover:text-neutral-100"
+          >
+            Reset catch-up progress
+          </button>
+          <button
+            onClick={() => {
+              if (typeof window === "undefined") return;
+              if (window.confirm("Show the welcome team picker again on next visit?")) {
+                resetOnboarding();
+              }
+            }}
+            className="block text-sm text-neutral-300 hover:text-neutral-100"
+          >
+            Show welcome screen on next visit
+          </button>
         </div>
       </Section>
 
-      {/* ─── Admin ─────────────────────────────────────── */}
-      {role === "admin" && (
-        <Section title="Admin" collapsible defaultOpen={false}>
-          <SettingsToggle
-            label="Show Stale Data Banners"
-            hint="Show a banner when displaying cached data during API outages"
-            checked={showStaleBanners}
-            onChange={setShowStaleBanners}
-          />
-        </Section>
-      )}
-
-      {/* ─── Disclaimer ────────────────────────────────── */}
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-4 space-y-2">
-        <h2 className="text-xs font-semibold text-yellow-500/80 uppercase tracking-wide">
-          Disclaimer
-        </h2>
-        <p className="text-xs text-neutral-500 leading-relaxed">
-          +EV does not mean a bet will win &mdash; it means the number is off.
-          Data is delayed; lines and scores update on a timer. Nothing here is
-          guaranteed. This is meant to help you think, not think for you.
-        </p>
-      </div>
-
-      {/* ─── About ──────────────────────────────────────── */}
       <Section title="About">
         <Row label="Version">
           <span className="text-sm text-neutral-400">0.1.0</span>
         </Row>
-        <Row label="Build">
-          <span className="text-sm text-neutral-400">Web</span>
-        </Row>
         <div className="px-4 py-3 space-y-2">
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            Scroll Down Sports
-          </a>
-          <a
-            href="/privacy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            Privacy Policy
-          </a>
-          <a
-            href="/terms"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block text-sm text-blue-400 hover:text-blue-300 transition-colors"
-          >
-            Terms of Service
-          </a>
+          <a href="/privacy" className="block text-sm text-blue-400 hover:text-blue-300">Privacy Policy</a>
+          <a href="/terms" className="block text-sm text-blue-400 hover:text-blue-300">Terms of Service</a>
         </div>
       </Section>
+
+      {pickerOpen && (
+        <TeamPickerOverlay
+          heading={fav ? "Change favorite team" : "Pick your team"}
+          subhead="Used to anchor the home page. You can change this any time."
+          showSkip={false}
+          initialSelected={favoriteTeam}
+          onPick={(abbr) => {
+            setFavoriteTeam(abbr);
+            setPickerOpen(false);
+          }}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
-
-/* ─── Settings-specific Sub-components ──────────────────────────── */
 
 function SettingsToggle({
   label,
@@ -351,13 +150,13 @@ function SettingsToggle({
         aria-label={label}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200",
+          "relative inline-flex h-7 w-12 items-center rounded-full transition-colors",
           checked ? "bg-green-500" : "bg-neutral-700",
         )}
       >
         <span
           className={cn(
-            "inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform duration-200",
+            "inline-block h-5 w-5 transform rounded-full bg-white transition-transform",
             checked ? "translate-x-6" : "translate-x-1",
           )}
         />
@@ -366,44 +165,17 @@ function SettingsToggle({
   );
 }
 
-function SettingsCheckRow({
-  label,
-  checked,
-  onToggle,
-}: {
-  label: string;
-  checked: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <button
-      role="checkbox"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={onToggle}
-      className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-neutral-800/30 transition-colors"
-    >
-      <span className="text-sm text-neutral-200">{label}</span>
-      {checked && (
-        <span className="text-green-400 text-sm font-medium">&#10003;</span>
-      )}
-    </button>
-  );
-}
-
 function SegmentedControl({
   options,
   value,
   onChange,
-  testId,
 }: {
   options: { value: string; label: string }[];
   value: string;
   onChange: (v: string) => void;
-  testId?: string;
 }) {
   return (
-    <div role="radiogroup" data-testid={testId} className="flex rounded-lg bg-neutral-800 p-0.5">
+    <div role="radiogroup" className="flex rounded-lg bg-neutral-800 p-0.5">
       {options.map((opt) => (
         <button
           key={opt.value}
@@ -412,38 +184,12 @@ function SegmentedControl({
           onClick={() => onChange(opt.value)}
           className={cn(
             "px-3 py-1 text-xs font-medium rounded-md transition-all",
-            value === opt.value
-              ? "bg-neutral-600 text-neutral-50 shadow-sm"
-              : "text-neutral-400 hover:text-neutral-200",
+            value === opt.value ? "bg-neutral-600 text-neutral-50" : "text-neutral-400 hover:text-neutral-200",
           )}
         >
           {opt.label}
         </button>
       ))}
     </div>
-  );
-}
-
-function DarkSelect({
-  value,
-  onChange,
-  options,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-}) {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-neutral-50 appearance-none cursor-pointer min-w-[160px]"
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
   );
 }

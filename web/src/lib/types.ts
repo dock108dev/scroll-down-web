@@ -12,38 +12,10 @@ export type GameStatus =
   | "postponed"
   | "canceled";
 
-export type MarketType =
-  | "spread"
-  | "moneyline"
-  | "total"
-  | "alternate_spread"
-  | "alternate_total"
-  | "player_points"
-  | "player_rebounds"
-  | "player_assists"
-  | "player_threes"
-  | "player_blocks"
-  | "player_steals"
-  | "player_goals"
-  | "player_shots_on_goal"
-  | "player_total_saves"
-  | "player_pra"
-  | "team_total";
-
-export type MediaType = "video" | "image" | "none";
-
-export type OddsFormat = "american" | "decimal" | "fractional";
-
-export type BlockRole =
-  | "setup"
-  | "momentum_shift"
-  | "response"
-  | "decision_point"
-  | "resolution"
-  | "unknown";
-
 // ─── Game List / Summary ────────────────────────────────
-// Admin API returns camelCase
+// The proxy strips score fields before this reaches the client. The shape
+// keeps optional score/status fields for any internal callers that still
+// consume the raw upstream payload.
 
 export interface GameListResponse {
   games: GameSummary[];
@@ -53,285 +25,427 @@ export interface GameListResponse {
   total?: number;
   nextOffset?: number;
   lastUpdatedAt?: string;
-  withAdvancedStatsCount?: number;
 }
 
 export interface GameSummary {
   id: number;
   leagueCode: string;
+  /** ISO timestamp of first pitch (with time + timezone). */
   gameDate: string;
   /** YYYY-MM-DD schedule date in league/venue-local calendar (authoritative for grouping). */
   localGameDate?: string;
   status: GameStatus;
   homeTeam: string;
   awayTeam: string;
-  // Backend sends nested score: { home, away }. Older callers/fixtures may
-  // still send flat homeScore/awayScore, so we keep both shapes here and
-  // the adapter reads nested first, flat as fallback.
-  score?: { home?: number | null; away?: number | null } | null;
-  homeScore?: number | null;
-  awayScore?: number | null;
-  currentPeriod?: number;
-  gameClock?: string;
-  hasBoxscore?: boolean;
-  hasPlayerStats?: boolean;
-  hasOdds?: boolean;
-  hasSocial?: boolean;
-  hasPbp?: boolean;
-  hasFlow?: boolean;
-  hasAdvancedStats?: boolean;
-  playCount?: number;
-  socialPostCount?: number;
-  hasRequiredData?: boolean;
-  scrapeVersion?: number;
-  lastScrapedAt?: string;
-  lastIngestedAt?: string;
-  lastPbpAt?: string;
-  lastSocialAt?: string;
-  lastAdvancedStatsAt?: string;
   homeTeamColorLight?: string;
   homeTeamColorDark?: string;
   awayTeamColorLight?: string;
   awayTeamColorDark?: string;
   homeTeamAbbr?: string;
   awayTeamAbbr?: string;
-  derivedMetrics?: Record<string, unknown>;
   isLive?: boolean;
   isFinal?: boolean;
   isPregame?: boolean;
-  isTrulyCompleted?: boolean;
-  readEligible?: boolean;
-  currentPeriodLabel?: string;
-  dateSection?: string;
-  liveSnapshot?: {
-    periodLabel?: string;
-    timeLabel?: string;
-    score?: { home?: number | null; away?: number | null } | null;
-    homeScore?: number;
-    awayScore?: number;
-    gameClock?: string;
-    currentPeriod?: number;
-  } | null;
+  /** Number of key plays available — used to size progress bars. Score-free. */
+  keyPlayCount?: number;
+  /** Latest play index produced upstream — used for live "since=" polling. */
+  lastPlayIndex?: number;
 }
 
-// ─── Game Detail ────────────────────────────────────────
+// ─── Catch-up Cards ─────────────────────────────────────
+// Sent to the client during the spoiler-free flow.
+//
+// Spoiler model: each card carries the situation entering the play
+// (`scoreBefore`, runners, outs, batter, pitcher) plus the play description.
+// The card never carries score-AFTER; the user infers the result from the
+// next card's situation and from the visual animation. The final score lives
+// only on the /summary endpoint, fetched after explicit reveal.
 
-export interface GameDetailResponse {
-  game: Game;
-  teamStats: TeamStat[];
-  playerStats: PlayerStat[];
-  odds: OddsEntry[];
-  socialPosts: SocialPostEntry[];
-  plays: PlayEntry[];
-  derivedMetrics: Record<string, unknown>;
-  rawPayloads: Record<string, unknown>;
-  groupedPlays?: ServerTieredPlayGroup[];
-  nhlSkaters?: NHLSkaterStat[];
-  nhlGoalies?: NHLGoalieStat[];
-  mlbBatters?: MLBBatterStat[];
-  mlbPitchers?: MLBPitcherStat[];
-  mlbAdvancedStats?: MLBAdvancedTeamStats[];
-  mlbAdvancedPlayerStats?: MLBAdvancedPlayerStats[];
-  dataHealth?: NHLDataHealth;
-  oddsTable?: OddsTableGroup[];
-  statAnnotations?: StatAnnotation[];
-}
+export type CatchupCardKind =
+  | "scene-setter"
+  | "play"
+  | "inning-transition"
+  | "quiet-stretch"
+  | "late-game"
+  | "final-setup";
 
-export interface Game {
-  id: number;
-  leagueCode: string;
-  season?: number;
-  seasonType?: string;
-  gameDate: string;
-  /** YYYY-MM-DD schedule date in league/venue-local calendar (authoritative for grouping). */
-  localGameDate?: string;
+export interface SceneSetterCard {
+  kind: "scene-setter";
+  gameId: number;
+  cardId: string;
+  index: number;
+  homeTeamAbbr: string;
+  awayTeamAbbr: string;
   homeTeam: string;
   awayTeam: string;
-  score?: { home?: number | null; away?: number | null } | null;
-  homeScore?: number | null;
-  awayScore?: number | null;
-  status: GameStatus;
-  currentPeriod?: number;
-  gameClock?: string;
-  scrapeVersion?: number;
-  lastScrapedAt?: string;
-  hasBoxscore?: boolean;
-  hasPlayerStats?: boolean;
-  hasOdds?: boolean;
-  hasSocial?: boolean;
-  hasPbp?: boolean;
-  hasFlow?: boolean;
-  hasAdvancedStats?: boolean;
-  playCount?: number;
-  socialPostCount?: number;
-  homeTeamXHandle?: string;
-  awayTeamXHandle?: string;
-  homeTeamAbbr?: string;
-  awayTeamAbbr?: string;
-  homeTeamColorLight?: string;
-  homeTeamColorDark?: string;
-  awayTeamColorLight?: string;
-  awayTeamColorDark?: string;
-  lastIngestedAt?: string;
-  lastPbpAt?: string;
-  lastSocialAt?: string;
-  lastOddsAt?: string;
-  lastAdvancedStatsAt?: string;
-  isLive?: boolean;
-  isFinal?: boolean;
-  isPregame?: boolean;
-  isTrulyCompleted?: boolean;
-  readEligible?: boolean;
-  currentPeriodLabel?: string;
-  dateSection?: string;
-  liveSnapshot?: {
-    periodLabel?: string;
-    timeLabel?: string;
-    score?: { home?: number | null; away?: number | null } | null;
-    homeScore?: number;
-    awayScore?: number;
-    gameClock?: string;
-    currentPeriod?: number;
-  } | null;
+  /** ISO first-pitch timestamp. */
+  firstPitch: string;
+  /** Optional probable starters; backend may omit until ~lineups posted. */
+  homeProbablePitcher?: string | null;
+  awayProbablePitcher?: string | null;
+  /** Optional venue (city or park name). */
+  venue?: string | null;
 }
 
-// ─── Stats ──────────────────────────────────────────────
-
-export interface NormalizedStat {
-  key: string;
-  displayLabel: string;
-  group: string;
-  value: number | string | null;
-  formatType: string;
+export interface BaseballBaseState {
+  first: boolean;
+  second: boolean;
+  third: boolean;
 }
 
-export interface TeamStat {
-  team: string;
-  isHome: boolean;
-  stats: Record<string, unknown>;
-  normalizedStats?: NormalizedStat[] | null;
-  source?: string;
-  updatedAt?: string;
+/** Names of the runners occupying each base, when known. Parallel to
+ *  BaseballBaseState — populated by forward-simulating across the play
+ *  feed, so even when upstream doesn't ship per-play runner objects we
+ *  still know who's on what. */
+export interface RunnerNames {
+  first?: string;
+  second?: string;
+  third?: string;
 }
 
-export interface PlayerStat {
-  team: string;
-  playerName: string;
-  minutes?: number;
-  points?: number;
-  rebounds?: number;
-  assists?: number;
-  yards?: number;
-  touchdowns?: number;
-  rawStats: Record<string, unknown>;
-  source?: string;
-  updatedAt?: string;
+export type BallPath =
+  | "none"
+  | "pitch"
+  | "foul"
+  // Home runs — exit OVER the wall toward the appropriate outfield zone.
+  // No vertical-beam path; HR direction comes from the play description.
+  | "home_run_left"
+  | "home_run_center"
+  | "home_run_right"
+  // Grounders — terminate at the fielder's position, not the mound.
+  | "ground_3b"
+  | "ground_ss"
+  | "ground_p"
+  | "ground_2b"
+  | "ground_1b"
+  // Line drives — straight, low, into the gap.
+  | "line_left"
+  | "line_center"
+  | "line_right"
+  // Outfield flies — endpoints stay INSIDE the wall (HR is the only path
+  // that intentionally leaves the field of play).
+  | "fly_lf"
+  | "fly_lcf"
+  | "fly_cf"
+  | "fly_rcf"
+  | "fly_rf"
+  // Infield popup — small loop above the plate.
+  | "popup";
+
+export interface RunnerAdvance {
+  from: "home" | "first" | "second" | "third";
+  to: "first" | "second" | "third" | "home" | "out";
+  /** When the runner is out, the spot they were tagged or forced. Drives
+   *  the runner-dot animation: instead of flaring in place, the dot first
+   *  travels to `outAt` and then flares out there. */
+  outAt?: "first" | "second" | "third" | "home";
 }
 
-export interface NHLSkaterStat {
-  team: string;
-  playerName: string;
-  toi?: string;
-  goals?: number;
-  assists?: number;
-  points?: number;
-  shotsOnGoal?: number;
-  plusMinus?: number;
-  penaltyMinutes?: number;
-  hits?: number;
-  blockedShots?: number;
-  rawStats?: Record<string, unknown>;
-  source?: string;
-  updatedAt?: string;
+/**
+ * Movement class for a runner. Drives per-movement timing, afterimage
+ * persistence, and pulse intensity in the field renderer. Each class has
+ * its own grammar — a steal snaps, a walk shuffles, a score gets extra
+ * weight, a double-play transfer chains.
+ *
+ * Classified at render time from (RunnerAdvance, eventType) so the data
+ * model stays event-agnostic; the visual layer owns the choreography.
+ */
+export type RunnerMovementStyle =
+  | "advance"      // routine safe advance — single, sac, RBI hit
+  | "score"        // crossing home — extra emphasis on arrival
+  | "steal"        // SB / WP / PB / balk — fast, snappy, no stagger
+  | "walk_shuffle" // walk / HBP / catcher's interference — slower, lower energy
+  | "double_play"  // chained out within a DP — feeds the secondary throw
+  | "forced_out"   // FC / pickoff / caught stealing — short travel, hard cut
+  | "tagged_out"   // out somewhere along the path (e.g. out at home)
+  | "in_place_out"; // strikeout/popup flare at home with no travel
+
+/**
+ * Per-event animation grammar. Drives trail timing, fade persistence, glow
+ * intensity, and whether the play has a secondary segment (e.g. a DP throw).
+ *
+ * Each profile is meant to read distinctly: home runs linger with afterglow,
+ * grounders fade quickly, double plays show catch-then-throw choreography,
+ * walks have no trail at all.
+ */
+export type PlayAnimationProfile =
+  | "home_run"
+  | "deep_fly"
+  | "shallow_fly"
+  | "popup"
+  | "line_drive"
+  | "routine_grounder"
+  | "hard_grounder"
+  | "foul"
+  | "walk"
+  | "strikeout"
+  | "stolen_base"
+  | "wild_pitch"
+  | "double_play_grounder"
+  | "double_play_fly"
+  | "sacrifice_fly"
+  | "other";
+
+export type PlayEventType =
+  | "single"
+  | "double"
+  | "triple"
+  | "home_run"
+  | "walk"
+  | "hit_by_pitch"
+  | "strikeout"
+  | "field_out"
+  | "double_play"
+  | "triple_play"
+  | "fielders_choice"
+  | "error"
+  | "stolen_base"
+  | "caught_stealing"
+  | "pickoff"
+  | "wild_pitch"
+  | "passed_ball"
+  | "balk"
+  | "sacrifice"
+  | "catcher_interference"
+  | "other";
+
+export interface SituationBefore {
+  outs?: number;
+  balls?: number;
+  strikes?: number;
+  baseState: BaseballBaseState;
+  batterName?: string;
+  pitcherName?: string;
+  /** Batter's running line in this game UP TO (not including) this play.
+   *  Empty/zero on the batter's first PA. */
+  batterLine?: BatterLine;
+  /** Pitcher's running line in this game UP TO (not including) this play.
+   *  Computed by attributing each play to the pitcher of record (the team's
+   *  reliever-list cumulative-outs walk). */
+  pitcherLine?: PitcherLine;
 }
 
-export interface NHLGoalieStat {
-  team: string;
-  playerName: string;
-  toi?: string;
-  shotsAgainst?: number;
-  saves?: number;
-  goalsAgainst?: number;
-  savePercentage?: number;
-  rawStats?: Record<string, unknown>;
-  source?: string;
-  updatedAt?: string;
+export interface BatterLine {
+  /** At-bats — excludes BB, HBP, sacrifice; includes hits and outs at bat. */
+  atBats: number;
+  hits: number;
+  baseOnBalls: number;
+  strikeOuts: number;
+  homeRuns: number;
+  rbi: number;
 }
 
-export interface NHLDataHealth {
-  skaterCount?: number;
-  goalieCount?: number;
-  isHealthy?: boolean;
-  issues?: string[];
+export interface PitcherLine {
+  /** Outs recorded by this pitcher in this game so far. IP = outs/3. */
+  outs: number;
+  hits: number;
+  runs: number;
+  baseOnBalls: number;
+  strikeOuts: number;
+  homeRuns: number;
 }
 
-// ─── MLB Stats ───────────────────────────────────────────
-
-export interface MLBBatterStat {
-  team: string;
-  playerName: string;
-  position?: string | null;
-  atBats?: number | null;
-  hits?: number | null;
-  runs?: number | null;
-  rbi?: number | null;
-  homeRuns?: number | null;
-  baseOnBalls?: number | null;
-  strikeOuts?: number | null;
-  stolenBases?: number | null;
-  avg?: string | null;
-  obp?: string | null;
-  slg?: string | null;
-  ops?: string | null;
-  rawStats?: Record<string, unknown>;
+/**
+ * Snapshot of the game state at the END of the previously-displayed card.
+ * Attached to play cards so the front-end can render that ending state on
+ * mount, then "bridge" to this card's `situationBefore` during the opening
+ * beat — so the user sees outs / runners progress between sampled plays
+ * rather than jumping abruptly.
+ *
+ * Absent on the first play card after a scene setter (no prior state) and
+ * after an inning-transition card (the transition itself bridges).
+ */
+export interface PriorAfterState {
+  score: { home: number; away: number };
+  baseState: BaseballBaseState;
+  runnerNames: RunnerNames;
+  outs: number;
+  inning: number;
+  inningHalf: "top" | "bottom";
 }
 
-export interface MLBPitcherStat {
-  team: string;
-  playerName: string;
-  inningsPitched?: string | null;
-  hits?: number | null;
-  runs?: number | null;
-  earnedRuns?: number | null;
-  baseOnBalls?: number | null;
-  strikeOuts?: number | null;
-  homeRuns?: number | null;
-  era?: string | null;
-  pitchCount?: number | null;
-  strikes?: number | null;
-  rawStats?: Record<string, unknown>;
+export interface PlayCardData {
+  kind: "play";
+  gameId: number;
+  cardId: string;
+  /** Position in the rendered deck (0 = scene setter). */
+  index: number;
+  /** Monotonic order from the upstream play feed. */
+  playIndex: number;
+  /** Inning number (1+). */
+  inning: number;
+  /** Top or bottom of the inning. */
+  inningHalf: "top" | "bottom";
+  /** "Top 3rd", "Bottom 7th" — kept as a denormalized display label. */
+  inningLabel: string;
+  /** Three-letter abbreviation of the team currently at bat. */
+  battingTeamAbbr?: string;
+  description: string;
+  /** Optional richer narrative sentence — when present the UI shows this
+   *  instead of `description`. Templates are factual extensions of the
+   *  upstream play; they never invent detail not implied by the data. */
+  narrative?: string;
+  /** Score state ENTERING this play. */
+  scoreBefore: { home: number; away: number };
+  /** Score state EXITING this play. The card animates from before → after
+   *  during the runner-advance phase so the scoreboard moves with the play. */
+  scoreAfter: { home: number; away: number };
+  situationBefore: SituationBefore;
+  /** Outs after the play resolves. Always present — derived from the event
+   *  type when upstream doesn't ship it directly. */
+  outsAfter: number;
+  /** Base occupancy after the play resolves. Always present; predicted from
+   *  the event type when upstream doesn't ship it. */
+  baseStateAfter: BaseballBaseState;
+  /** Names of the runners on base entering this play. Empty entries mean the
+   *  base is empty OR we don't know who's on it. */
+  runnerNamesBefore?: RunnerNames;
+  /** Names of the runners on base after the play resolves. */
+  runnerNamesAfter?: RunnerNames;
+  runnerAdvances?: RunnerAdvance[];
+  ballPath?: BallPath;
+  eventType?: PlayEventType;
+  /** Drives the per-event animation timing/grammar in the field. */
+  animationProfile?: PlayAnimationProfile;
+  /** Hint for animation amplitude. */
+  visualIntensity?: "low" | "medium" | "high";
+  /** Game state at the end of the previously-displayed card. Drives the
+   *  bridging beat so the user sees state evolve between sampled plays. */
+  priorAfter?: PriorAfterState;
 }
 
-export interface MLBAdvancedTeamStats {
-  team: string;
-  isHome: boolean;
-  totalPitches: number;
-  ballsInPlay: number;
-  zSwingPct?: number | null;
-  oSwingPct?: number | null;
-  zContactPct?: number | null;
-  oContactPct?: number | null;
-  avgExitVelo?: number | null;
-  hardHitPct?: number | null;
-  barrelPct?: number | null;
+/**
+ * Inserted between play cards when the half-inning changes between them.
+ * Pure rhythm card — no animation timeline beyond a fade-in. The user
+ * scrolls past it as a breath between innings.
+ *
+ * `phase` is "end" when a half ended cleanly (3 outs were burned and we're
+ * now in the next half), "mid" when transitioning into the bottom of an
+ * inning that has at least one displayed play (rare; mostly covers the
+ * 7th-inning-stretch beat).
+ */
+export interface InningTransitionCard {
+  kind: "inning-transition";
+  gameId: number;
+  cardId: string;
+  index: number;
+  /** "END 3RD" / "MID 7TH" — uppercase headline. */
+  label: string;
+  phase: "end" | "mid";
+  score: { home: number; away: number };
+  homeTeamAbbr: string;
+  awayTeamAbbr: string;
+  /** Optional flavor line — e.g. "Yankees lead by 1." */
+  subtitle?: string;
+  /** What inning we're transitioning OUT of. */
+  fromInning: number;
+  fromHalf: "top" | "bottom";
+  /** What inning the next play card belongs to. */
+  toInning: number;
+  toHalf: "top" | "bottom";
 }
 
-export interface MLBAdvancedPlayerStats {
-  team: string;
-  playerName: string;
-  isHome: boolean;
-  totalPitches: number;
-  ballsInPlay: number;
-  zSwingPct?: number | null;
-  oSwingPct?: number | null;
-  zContactPct?: number | null;
-  oContactPct?: number | null;
-  avgExitVelo?: number | null;
-  hardHitPct?: number | null;
-  barrelPct?: number | null;
+/**
+ * Pacing card — non-play cards that the rhythm planner inserts to give
+ * the deck breath, compress dead innings, set up late-game tension, and
+ * frame the final beat. Distinct from `inning-transition` (which handles
+ * single-half rolls) and `scene-setter` (which is the game intro).
+ *
+ * The kind discriminator drives subtle visual treatment but the data
+ * shape is uniform, since these cards exist purely as text + score
+ * snapshots. The planner decides when each kind is appropriate.
+ */
+export type RhythmCardKind = "quiet-stretch" | "late-game" | "final-setup";
+
+export interface RhythmCard {
+  kind: RhythmCardKind;
+  gameId: number;
+  cardId: string;
+  index: number;
+  /** Headline — usually inning-range or a stage marker.
+   *  e.g. "INNINGS 4-6", "LATE INNINGS", "FINAL APPROACH". */
+  label: string;
+  /** Flavor line under the headline. Always factual / spoiler-safe.
+   *  e.g. "Both pitchers in command.", "Game tied entering the 7th." */
+  subtitle: string;
+  score: { home: number; away: number };
+  homeTeamAbbr: string;
+  awayTeamAbbr: string;
+  /** Inning context when meaningful (quiet stretches span a range). */
+  fromInning?: number;
+  fromHalf?: "top" | "bottom";
+  toInning?: number;
+  toHalf?: "top" | "bottom";
 }
 
-// ─── Plays / Timeline ───────────────────────────────────
+export type CatchupCard =
+  | SceneSetterCard
+  | PlayCardData
+  | InningTransitionCard
+  | RhythmCard;
+
+export interface CatchupCardsResponse {
+  gameId: number;
+  /** Mirrors the latest play index so a client can poll with `?since=`. */
+  lastPlayIndex: number;
+  /** True once the upstream game is in a terminal status. */
+  isFinal: boolean;
+  cards: CatchupCard[];
+  /** Populated when the route is called with `?debug=true`. One entry per
+   *  upstream play, including those filtered out of the deck. */
+  audit?: SelectionAuditRow[];
+}
+
+export type SelectionReason =
+  | "tier-1"
+  | "scoring"
+  | "tying"
+  | "lead-change"
+  | "late-leverage"
+  | "tier-2-sampled"
+  | "tier-2-not-sampled"
+  | "tier-3-skipped"
+  | "no-tier-not-sampled"
+  | "missing-data";
+
+export interface SelectionAuditRow {
+  playIndex: number;
+  inning: number;
+  half: "top" | "bottom" | "unknown";
+  outsBefore: number;
+  outsAfter: number;
+  scoreBefore: { home: number; away: number };
+  scoreAfter: { home: number; away: number };
+  runsScored: number;
+  baseStateBefore: BaseballBaseState;
+  baseStateAfter: BaseballBaseState;
+  eventType: PlayEventType;
+  description: string;
+  battingTeamAbbr?: string;
+  batterName?: string;
+  pitcherName?: string;
+  tier: number;
+  isScoringPlay: boolean;
+  isTyingPlay: boolean;
+  isLeadChangePlay: boolean;
+  isLateLeverage: boolean;
+  isSelectedForCatchup: boolean;
+  selectionReasons: SelectionReason[];
+}
+
+// ─── Reveal / Summary ───────────────────────────────────
+
+export interface CatchupSummaryResponse {
+  gameId: number;
+  finalScore: { home: number; away: number };
+  winner: "home" | "away" | "tie";
+  /** Single narrative summary string from the gameflow endpoint. */
+  summary: string;
+}
+
+// ─── Plays / Timeline (raw upstream shape) ──────────────
+// Kept so server-side adapters can read upstream plays. Not consumed by the
+// catch-up UI; that uses `PlayCardData` from the cards proxy.
 
 export interface PlayEntry {
   eventId?: string;
@@ -342,7 +456,6 @@ export interface PlayEntry {
   teamAbbreviation?: string;
   playerName?: string;
   description?: string;
-  // Some sports flatten this; NHL/MLB ship the object form below. Read both.
   homeScore?: number;
   awayScore?: number;
   score?: { home?: number; away?: number } | null;
@@ -358,341 +471,12 @@ export interface PlayEntry {
   phase?: string;
 }
 
-export interface ServerTieredPlayGroup {
-  startIndex: number;
-  endIndex: number;
-  playIndices: number[];
-  summaryLabel: string;
-}
-
-export interface OddsTableGroup {
-  market: string;
-  rows: OddsTableRow[];
-}
-
-export interface OddsTableRow {
-  label: string;
-  cells: Record<string, { value: string; isBest?: boolean }>;
-}
-
-export interface StatAnnotation {
-  text: string;
-  category?: string;
-}
-
-// ─── Odds (from game detail — camelCase) ────────────────
-
-export interface OddsEntry {
-  book: string;
-  marketType: MarketType;
-  marketCategory?: string;
-  playerName?: string;
-  description?: string;
-  side?: string;
-  line?: number;
-  price?: number;
-  isClosingLine: boolean;
-  observedAt?: string;
-  isBest?: boolean;
-}
-
-// ─── Social ─────────────────────────────────────────────
-
-export interface SocialPostEntry {
-  id: number;
-  postUrl: string;
-  postedAt: string;
-  hasVideo: boolean;
-  teamAbbreviation: string;
-  tweetText?: string;
-  videoUrl?: string;
-  imageUrl?: string;
-  sourceHandle?: string;
-  mediaType?: MediaType;
-  gamePhase?: string;
-  revealLevel?: string; // "pre" | "post" — for spoiler gating
-  likesCount?: number;
-  retweetsCount?: number;
-  repliesCount?: number;
-}
-
-// ─── Flow ───────────────────────────────────────────────
-
-export interface GameFlowResponse {
-  gameId: number;
-  sport?: string;
-  flow?: {
-    blocks: FlowBlock[];
-    moments: FlowMoment[];
-  };
-  blocks?: FlowBlock[];
-  moments?: FlowMoment[];
-  plays: FlowPlay[];
-  validationPassed: boolean;
-  validationErrors: string[];
-  homeTeam?: string;
-  awayTeam?: string;
-  homeTeamAbbr?: string;
-  awayTeamAbbr?: string;
-  leagueCode?: string;
-  homeTeamColorLight?: string;
-  homeTeamColorDark?: string;
-  awayTeamColorLight?: string;
-  awayTeamColorDark?: string;
-}
-
-export interface FlowBlock {
-  blockIndex: number;
-  role: BlockRole;
-  momentIndices: number[];
-  periodStart: number;
-  periodEnd: number;
-  scoreBefore: number[];
-  scoreAfter: number[];
-  playIds: number[];
-  keyPlayIds: number[];
-  narrative: string;
-  miniBox?: BlockMiniBox | null;
-  embeddedSocialPostId?: number | null;
-}
-
-export interface FlowPlay {
-  playId: number;
-  playIndex: number;
-  period: number;
-  clock?: string;
-  playType?: string;
-  description?: string;
-  team?: string;
-  playerName?: string;
-  homeScore?: number;
-  awayScore?: number;
-}
-
-export interface FlowMoment {
-  playIds: number[];
-  explicitlyNarratedPlayIds: number[];
-  period: number;
-  startClock?: string;
-  endClock?: string;
-  scoreBefore: number[];
-  scoreAfter: number[];
-}
-
-export interface BlockMiniBox {
-  home: BlockTeamMiniBox;
-  away: BlockTeamMiniBox;
-  blockStars: string[];
-}
-
-export interface BlockTeamMiniBox {
-  team: string;
-  players: BlockPlayerStat[];
-}
-
-export interface BlockPlayerStat {
-  name: string;
-  // Basketball
-  pts?: number;
-  reb?: number;
-  ast?: number;
-  deltaPts?: number;
-  deltaReb?: number;
-  deltaAst?: number;
-  // Hockey
-  goals?: number;
-  assists?: number;
-  sog?: number;
-  plusMinus?: number;
-  deltaGoals?: number;
-  deltaAssists?: number;
-  // Baseball
-  hits?: number;
-  rbi?: number;
-  hr?: number;
-  sb?: number;
-  ip?: number;
-  k?: number;
-  er?: number;
-  deltaHits?: number;
-  deltaRbi?: number;
-  deltaHr?: number;
-  deltaK?: number;
-}
-
-// ─── FairBet (snake_case from fairbet API) ──────────────
-
-export interface BetsResponse {
-  bets: APIBet[];
-  total: number;
-  books_available: string[];
-  games_available?: GameDropdown[];
-  market_categories_available?: string[];
-  ev_diagnostics?: EVDiagnostics;
-  ev_config?: { min_books_for_display?: number; ev_color_thresholds?: { strong_positive?: number; positive?: number } };
-}
-
-export interface APIBet {
-  game_id: number;
-  league_code: string;
-  home_team: string;
-  away_team: string;
-  /** ≤10-char team abbreviation (e.g. "POR"). Nullable when the upstream
-   *  team mapping is missing for this bet's game. Required by the simulator
-   *  endpoints — see MonteCarloSheet for usage. */
-  home_team_abbr?: string | null;
-  away_team_abbr?: string | null;
-  game_date: string;
-  market_key: string;
-  selection_key: string;
-  line_value?: number;
-  books: BookPrice[];
-  market_category?: string;
-  has_fair?: boolean;
-  player_name?: string;
-  ev_method?: string;
-  ev_confidence_tier?: string;
-  ev_disabled_reason?: string;
-  true_prob?: number;
-  reference_price?: number;
-  opposite_reference_price?: number;
-  bet_description?: string;
-  description?: string;
-  // API snake_case fields
-  fair_american_odds?: number;
-  selection_display?: string;
-  market_display_name?: string;
-  best_book?: string;
-  best_ev_percent?: number;
-  confidence_display_label?: string;
-  ev_method_display_name?: string;
-  ev_method_explanation?: string;
-  is_reliably_positive?: boolean;
-  estimated_sharp_price?: number | null;
-  extrapolation_ref_line?: number | null;
-  extrapolation_distance?: number | null;
-  confidence?: number;
-  opening_line?: number;
-  confidence_flags?: string[];
-  explanation_steps?: ExplanationStep[] | null;
-  // Client-enriched camelCase aliases
-  fairAmericanOdds?: number;
-  selectionDisplay?: string;
-  marketDisplayName?: string;
-  bestBook?: string;
-  bestEvPercent?: number;
-  confidenceDisplayLabel?: string;
-  evMethodDisplayName?: string;
-  evMethodExplanation?: string;
-}
-
-export interface ExplanationStep {
-  step_number: number;
-  title: string;
-  description?: string;
-  detail_rows?: { label: string; value: string; is_highlight?: boolean }[];
-}
-
-export interface BookPrice {
-  book: string;
-  price: number;
-  observed_at: string;
-  ev_percent?: number;
-  display_ev?: number;
-  implied_prob?: number;
-  true_prob?: number;
-  is_sharp?: boolean;
-  ev_method?: string;
-  ev_confidence_tier?: string;
-  book_abbr?: string;
-  price_decimal?: number;
-  ev_tier?: string;
-  // Client aliases
-  bookAbbr?: string;
-  priceDecimal?: number;
-  evTier?: string;
-}
-
-export interface GameDropdown {
-  game_id: number;
-  matchup: string;
-  game_date: string;
-}
-
-export interface EVDiagnostics {
-  total_pairs?: number;
-  total_unpaired?: number;
-  eligible?: number;
-  no_pair?: number;
-  reference_missing?: number;
-  extrapolated?: number;
-}
-
-// ─── FairBet Live Game Discovery ──────────────────────────
-
-export interface LiveGameInfo {
-  game_id: number;
-  league_code: string;
-  home_team: string;
-  away_team: string;
-  game_date: string;
-  status: string;
-}
-
-// ─── FairBet Live Odds ───────────────────────────────────
-
-export interface FairbetLiveResponse {
-  game_id: number;
-  league_code?: string;
-  home_team?: string;
-  away_team?: string;
-  bets: APIBet[];
-  total: number;
-  books_available: string[];
-  market_categories_available?: string[];
-  last_updated_at?: string | null;
-  ev_diagnostics?: {
-    total_pairs?: number;
-    total_unpaired?: number;
-    passed?: number;
-    reference_missing?: number;
-  };
-  ev_config?: {
-    min_books_for_display?: number;
-    ev_color_thresholds?: { strong_positive?: number; positive?: number };
-  };
-}
-
-// ─── CLV / My Bets ───────────────────────────────────────
-
-export interface LoggedBet {
-  /** Unique ID: `{game_id}::{market_key}::{selection_key}::{line_value}::{logged_at_ms}` */
-  id: string;
-  gameId: number;
-  leagueCode: string;
-  homeTeam: string;
-  awayTeam: string;
-  gameDate: string;
-  marketKey: string;
-  marketLabel: string;
-  selectionDisplay: string;
-  book: string;
-  placedOdds: number;
-  stake: number;
-  loggedAt: string;
-  closingOdds?: number;
-  clvPercent?: number;
-  outcome?: "win" | "loss" | "push";
-}
-
 // ─── Helpers ────────────────────────────────────────────
 
 export const TERMINAL_STATUSES: GameStatus[] = ["final", "recap_ready", "completed", "archived", "postponed", "canceled"];
 export const PREGAME_STATUSES: GameStatus[] = ["pregame", "scheduled"];
 
 export function isLive(status: GameStatus, game?: { isLive?: boolean }): boolean {
-  // Status is authoritative — a terminal or pregame status is never "live",
-  // even if a stale boolean override says otherwise.
   if (TERMINAL_STATUSES.includes(status) || PREGAME_STATUSES.includes(status)) return false;
   if (game?.isLive !== undefined) return game.isLive;
   return status === "live" || status === "in_progress";
@@ -708,17 +492,4 @@ export function isPregame(status: GameStatus, game?: { isPregame?: boolean }): b
   if (PREGAME_STATUSES.includes(status)) return true;
   if (game?.isPregame !== undefined) return game.isPregame;
   return false;
-}
-
-// ─── Golf ────────────────────────────────────────────────
-
-/** Normalized golf leaderboard entry returned by /api/golf/leaderboard. */
-export interface GolfLeaderboardEntry {
-  playerId: string;
-  name: string;
-  position: string;
-  totalScore: number;
-  todayScore: number;
-  thru: string;
-  status: string;
 }

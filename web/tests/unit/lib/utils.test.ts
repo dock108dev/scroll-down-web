@@ -1,22 +1,12 @@
 import { describe, it, expect } from "vitest";
 import {
-  formatOdds,
   cn,
   resolveTeamColor,
   teamColorStyle,
   cardDisplayName,
 } from "@/lib/utils";
 
-describe("utils odds and classnames", () => {
-  it("formats odds in all supported formats", () => {
-    expect(formatOdds(120, "american")).toBe("+120");
-    expect(formatOdds(-110, "american")).toBe("-110");
-    expect(formatOdds(120, "decimal")).toBe("2.20");
-    expect(formatOdds(-110, "decimal")).toBe("1.91");
-    expect(formatOdds(150, "fractional")).toBe("3/2");
-    expect(formatOdds(-200, "fractional")).toBe("1/2");
-  });
-
+describe("utils classnames", () => {
   it("joins truthy class names only", () => {
     expect(cn("base", false, undefined, "active", null)).toBe("base active");
   });
@@ -41,13 +31,8 @@ describe("utils team color resolution", () => {
 });
 
 describe("utils card display names", () => {
-  it("returns pro nicknames and college school names", () => {
-    expect(cardDisplayName("Portland Trail Blazers", "nba")).toBe("Trail Blazers");
-    expect(cardDisplayName("North Carolina Tar Heels", "ncaab")).toBe("North Carolina");
-    expect(cardDisplayName("Oakland Golden Grizzlies", "ncaab")).toBe("Oakland");
-  });
-
-  it("falls back to abbreviation for long derived names", () => {
-    expect(cardDisplayName("University of Texas Rio Grande Valley Vaqueros", "ncaab", "UTRGV")).toBe("UTRGV");
+  it("returns pro nicknames", () => {
+    expect(cardDisplayName("Los Angeles Dodgers", "mlb")).toBe("Dodgers");
+    expect(cardDisplayName("New York Yankees", "mlb")).toBe("Yankees");
   });
 });

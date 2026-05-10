@@ -1,58 +1,68 @@
 import { apiFetch } from "@/lib/api-server";
 import { addDaysCalendar, easternCalendarToday } from "@/lib/date-utils";
 import { filterOutTbdGames } from "@/lib/game-filters";
+import { LEAGUE } from "@/lib/config";
 import type { GameListResponse, GameSummary } from "@/lib/types";
 
 export const SEO_REVALIDATE_SECONDS = 60;
 export const SEO_FETCH_TIMEOUT_MS = 5_000;
 
-export interface GameWindowOptions {
+interface GameWindowOptions {
   startDate: string;
   endDate: string;
-  league?: string;
   limit?: number;
 }
 
-export async function fetchSeoGameWindow({
+/**
+ * SEO-time game fetch for the home page. Goes straight to the upstream API
+ * with the same MLB lock the proxy uses, then drops every score-revealing
+ * field before handing the list to the renderer. Even server-rendered HTML
+ * never carries a final score.
+ */
+async function fetchSeoGameWindow({
   startDate,
   endDate,
-  league,
-  limit = 500,
+  limit = 200,
 }: GameWindowOptions): Promise<GameSummary[]> {
   const params = new URLSearchParams({
     startDate,
     endDate,
     limit: String(limit),
+    league: LEAGUE,
   });
-  if (league) params.set("league", league);
-  const data = await apiFetch<GameListResponse>(
+  const data = await apiFetch<GameListResponse & { games: Array<Record<string, unknown>> }>(
     `/api/admin/sports/games?${params}`,
     {
       revalidate: SEO_REVALIDATE_SECONDS,
       timeoutMs: SEO_FETCH_TIMEOUT_MS,
     },
   );
-  return filterOutTbdGames(data.games);
-}
-
-export async function fetchSeoGamesForDate(date: string, league?: string): Promise<GameSummary[]> {
-  return fetchSeoGameWindow({ startDate: date, endDate: date, league });
-}
-
-export async function fetchRollingSeoGames(pastDays = 14, futureDays = 7): Promise<GameSummary[]> {
-  const today = easternCalendarToday();
-  return fetchSeoGameWindow({
-    startDate: addDaysCalendar(today, -pastDays),
-    endDate: addDaysCalendar(today, futureDays),
-    limit: 700,
-  });
+  const games: GameSummary[] = (data.games ?? []).map((g) => ({
+    id: Number(g.id),
+    leagueCode: String(g.leagueCode ?? "mlb"),
+    gameDate: String(g.gameDate),
+    localGameDate: typeof g.localGameDate === "string" ? g.localGameDate : undefined,
+    status: g.status as GameSummary["status"],
+    homeTeam: String(g.homeTeam ?? ""),
+    awayTeam: String(g.awayTeam ?? ""),
+    homeTeamColorLight: typeof g.homeTeamColorLight === "string" ? g.homeTeamColorLight : undefined,
+    homeTeamColorDark: typeof g.homeTeamColorDark === "string" ? g.homeTeamColorDark : undefined,
+    awayTeamColorLight: typeof g.awayTeamColorLight === "string" ? g.awayTeamColorLight : undefined,
+    awayTeamColorDark: typeof g.awayTeamColorDark === "string" ? g.awayTeamColorDark : undefined,
+    homeTeamAbbr: typeof g.homeTeamAbbr === "string" ? g.homeTeamAbbr : undefined,
+    awayTeamAbbr: typeof g.awayTeamAbbr === "string" ? g.awayTeamAbbr : undefined,
+    isLive: typeof g.isLive === "boolean" ? g.isLive : undefined,
+    isFinal: typeof g.isFinal === "boolean" ? g.isFinal : undefined,
+    isPregame: typeof g.isPregame === "boolean" ? g.isPregame : undefined,
+  }));
+  return filterOutTbdGames(games);
 }
 
 export async function fetchHomeSeoGames(): Promise<GameSummary[]> {
   const today = easternCalendarToday();
   return fetchSeoGameWindow({
-    startDate: addDaysCalendar(today, -1),
-    endDate: addDaysCalendar(today, 2),
+    startDate: addDaysCalendar(today, -2),
+    endDate: today,
     limit: 200,
   });
 }

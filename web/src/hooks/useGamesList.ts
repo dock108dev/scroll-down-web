@@ -1,404 +1,68 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type { GameSummary } from "@/lib/types";
-import { useGameData } from "@/stores/game-data";
-import type { GameCore } from "@/stores/game-data";
-import { CACHE, API, POLLING, STORAGE_KEYS } from "@/lib/config";
-import { useRealtimeSubscription } from "@/realtime/useRealtimeSubscription";
-import { gameListChannel } from "@/realtime/channels";
-import {
-  addDaysCalendar,
-  easternCalendarToday,
-  gameScheduleDateStr,
-} from "@/lib/date-utils";
-import { hasTbdMatchup, filterOutTbdGames } from "@/lib/game-filters";
-import { useVisibilityRefresh } from "./useVisibilityRefresh";
-import { readCache, writeCache } from "@/lib/stale-cache";
-
-// ── Section date ranges ────────────────────────────────────
-
-export type SectionKey = "Yesterday" | "Today" | "Upcoming";
-
-export const SECTION_ORDER: SectionKey[] = [
-  "Yesterday",
-  "Today",
-  "Upcoming",
-];
-
-interface DateRange {
-  startDate: string;
-  endDate: string;
-}
-
-function getSectionDateRanges(): Record<SectionKey, DateRange> {
-  const today = easternCalendarToday();
-  return {
-    Yesterday: {
-      startDate: addDaysCalendar(today, -1),
-      endDate: addDaysCalendar(today, -1),
-    },
-    Today: {
-      startDate: today,
-      endDate: today,
-    },
-    Upcoming: {
-      startDate: addDaysCalendar(today, 1),
-      endDate: addDaysCalendar(today, 2),
-    },
-  };
-}
-
-// ── Fetch the full home window ──────────────────────────────
-
-async function fetchWindow(
-  ranges: Record<SectionKey, DateRange>,
-  league?: string,
-  init?: RequestInit,
-): Promise<GameSummary[]> {
-  const params = new URLSearchParams();
-  params.set("startDate", ranges.Yesterday.startDate);
-  params.set("endDate", ranges.Upcoming.endDate);
-  params.set("limit", String(API.GAMES_LIMIT));
-  if (league) params.set("league", league);
-  const data = await api.games(params, init);
-  return data.games;
-}
-
-function bucketGamesBySection(
-  games: GameSummary[],
-  ranges: Record<SectionKey, DateRange>,
-): Record<SectionKey, GameSummary[]> {
-  const buckets: Record<SectionKey, GameSummary[]> = {
-    Yesterday: [],
-    Today: [],
-    Upcoming: [],
-  };
-  for (const game of games) {
-    const date = gameScheduleDateStr(game);
-    for (const key of SECTION_ORDER) {
-      if (date >= ranges[key].startDate && date <= ranges[key].endDate) {
-        buckets[key].push(game);
-        break;
-      }
-    }
-  }
-  return buckets;
-}
-
-// ── Client-side search filter ──────────────────────────────
-
-function matchesSearch(core: GameCore, query: string): boolean {
-  if (!query) return true;
-  const q = query.toLowerCase();
-  return (
-    core.homeTeam.toLowerCase().includes(q) ||
-    core.awayTeam.toLowerCase().includes(q) ||
-    (core.homeTeamAbbr?.toLowerCase().includes(q) ?? false) ||
-    (core.awayTeamAbbr?.toLowerCase().includes(q) ?? false)
-  );
-}
-
-// ── Hook return type ───────────────────────────────────────
-
-export interface SectionData {
-  key: SectionKey;
-  games: GameCore[];
-}
+import { POLLING } from "@/lib/config";
 
 interface UseGamesListReturn {
-  sections: SectionData[];
-  allGames: GameCore[];
+  games: GameSummary[];
   loading: boolean;
   error: string | null;
-  stale: boolean;
-  staleAt: number | null;
   refetch: () => Promise<void>;
 }
 
-// ── localStorage cache shape ──────────────────────────────
-interface GamesCacheData {
-  dateKey: string;
-  sectionIds: Record<SectionKey, number[]>;
-  cores: Array<{ id: number; core: GameCore }>;
-}
-
-// ── Track list fetch freshness per listKey ──────────────────
-
-const listFetchTimestamps = new Map<string, number>();
-
-// ── Hook ───────────────────────────────────────────────────
-
-export function useGamesList(league?: string, search?: string): UseGamesListReturn {
-  const leagueKey = league || "all";
-  const upsertFromList = useGameData((s) => s.upsertFromList);
-  const games = useGameData((s) => s.games);
-  const listFetches = useGameData((s) => s.listFetches);
-  const realtimeStatus = useGameData((s) => s.realtimeStatus);
-  const needsListRefresh = useGameData((s) => s.needsListRefresh);
-  const clearListRefresh = useGameData((s) => s.clearListRefresh);
-
-  // Recompute section ranges if the Eastern calendar day changes while app is open.
-  const todayKey = easternCalendarToday();
-  // Align realtime channels with list cache keys by league+date pair
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- todayKey intentionally triggers recompute on day change
-  const ranges = useMemo(() => getSectionDateRanges(), [todayKey]);
-
-  const channels = useMemo(() => {
-    return SECTION_ORDER.map((key) =>
-      gameListChannel(leagueKey, ranges[key].startDate),
-    );
-  }, [leagueKey, ranges]);
-
-  // listKey per section (matches channel naming)
-  const listKeys = useMemo(
-    () => SECTION_ORDER.map((key) => gameListChannel(leagueKey, ranges[key].startDate)),
-    [leagueKey, ranges],
-  );
-
-  // Track section keys per league (Yesterday/Today game IDs).
-  const [sectionIds, setSectionIds] = useState<Record<SectionKey, number[]>>(
-    () => {
-      const result: Record<SectionKey, number[]> = { Yesterday: [], Today: [], Upcoming: [] };
-      for (const key of SECTION_ORDER) {
-        const lk = gameListChannel(leagueKey, ranges[key].startDate);
-        const meta = listFetches.get(lk);
-        if (!meta) continue;
-        for (const id of meta.gameIds) {
-          const entry = games.get(id);
-          if (!entry) continue;
-          const d = gameScheduleDateStr(entry.core);
-          if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
-            result[key].push(id);
-          }
-        }
-      }
-      return result;
-    },
-  );
-
-  const hasCached = listKeys.some((lk) => listFetches.has(lk));
-  const [loading, setLoading] = useState(!hasCached);
+/**
+ * Spoiler-free home feed. Hits `/api/games/recent` (which strips score fields
+ * server-side), refreshes when the tab regains focus, and polls in the
+ * background while visible. No realtime — completed games don't change and
+ * live games update on a 60s cadence which is plenty for a card list view.
+ */
+export function useGamesList(): UseGamesListReturn {
+  const [games, setGames] = useState<GameSummary[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [stale, setStale] = useState(false);
-  const [staleAt, setStaleAt] = useState<number | null>(null);
-  const prevLeagueRef = useRef(league);
   const abortRef = useRef<AbortController | null>(null);
 
-  // ── Seed from localStorage on cold start ────────────────────
-  const seededRef = useRef(false);
-  useEffect(() => {
-    if (seededRef.current || hasCached) return;
-    seededRef.current = true;
-    const cached = readCache<GamesCacheData>(STORAGE_KEYS.GAMES_CACHE);
-    if (!cached) return;
-    // Only hydrate if the cache was generated for the same Eastern day.
-    if (cached.data.dateKey !== ranges.Today.startDate) return;
-    const { sectionIds: cachedIds, cores } = cached.data;
-    // Hydrate game-data store directly with cached GameCore objects.
-    // GameCore has the same camelCase field names as GameSummary, so
-    // we cast through unknown to satisfy the type checker.
-    for (const key of SECTION_ORDER) {
-      const lk = gameListChannel(leagueKey, ranges[key].startDate);
-      const ids = new Set(cachedIds[key] ?? []);
-      const sectionCores = cores.filter((c) => ids.has(c.id));
-      if (sectionCores.length > 0) {
-        upsertFromList(lk, sectionCores.map((c) => c.core as unknown as GameSummary));
-      }
-    }
-    setSectionIds(cachedIds);
-    setStale(true);
-    setStaleAt(cached.savedAt);
-    setLoading(false);
-  }, [hasCached, leagueKey, ranges, upsertFromList]);
-
-  const fetchAll = useCallback(async (showLoading?: boolean, force?: boolean) => {
-    // Check freshness per listKey — skip if all recently fetched (unless forced)
-    if (!force) {
-      const allFresh = listKeys.every((lk) => {
-        const last = listFetchTimestamps.get(lk);
-        return last && !showLoading && Date.now() - last < CACHE.GAMES_FRESH_MS;
-      });
-      if (allFresh) return;
-    }
-
-    // Abort any in-flight request
+  const fetchAll = useCallback(async () => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
-
-    // Safety timeout — abort after 10s to prevent stuck loading state
-    let timedOut = false;
-    const timeout = setTimeout(() => { timedOut = true; controller.abort(); }, 10_000);
-
-    if (showLoading) setLoading(true);
-    setError(null);
-
     try {
-      const init = { signal: controller.signal };
-      const windowGames = filterOutTbdGames(await fetchWindow(ranges, league, init));
+      const data = await api.recentGames({ signal: controller.signal });
       if (controller.signal.aborted) return;
-
-      // Upsert per section with aligned listKeys
-      const windowBuckets = bucketGamesBySection(windowGames, ranges);
-      const sections: [SectionKey, GameSummary[]][] = SECTION_ORDER.map((key) => [
-        key,
-        windowBuckets[key],
-      ]);
-      const buckets: Record<SectionKey, number[]> = { Yesterday: [], Today: [], Upcoming: [] };
-
-      for (const [key, summaries] of sections) {
-        const lk = gameListChannel(leagueKey, ranges[key].startDate);
-        const deduped = new Map<number, GameSummary>();
-        for (const g of summaries) deduped.set(g.id, g);
-        upsertFromList(lk, Array.from(deduped.values()));
-        listFetchTimestamps.set(lk, Date.now());
-
-        for (const g of deduped.values()) {
-          const d = gameScheduleDateStr(g);
-          if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
-            buckets[key].push(g.id);
-          }
-        }
-      }
-
-      setSectionIds(buckets);
-      setStale(false);
-      setStaleAt(null);
-      setLoading(false);
-
-      // Persist to localStorage for cold-start fallback
-      const allIds = [...buckets.Yesterday, ...buckets.Today, ...buckets.Upcoming];
-      const store = useGameData.getState();
-      const cores = allIds
-        .map((id) => {
-          const entry = store.games.get(id);
-          return entry ? { id, core: entry.core } : null;
-        })
-        .filter((c): c is { id: number; core: GameCore } => c !== null);
-      writeCache<GamesCacheData>(STORAGE_KEYS.GAMES_CACHE, {
-        dateKey: ranges.Today.startDate,
-        sectionIds: buckets,
-        cores,
-      });
+      setGames(data.games ?? []);
+      setError(null);
     } catch (err) {
-      // Ignore aborts from cleanup/new-fetch, but treat timeouts as errors
-      if (controller.signal.aborted && !timedOut) return;
-      // If we have existing data (in-memory or from localStorage), show it as stale
-      const store = useGameData.getState();
-      const hasData = listKeys.some((lk) => {
-        const meta = store.listFetches.get(lk);
-        return meta && meta.gameIds.length > 0;
-      });
-      if (hasData) {
-        setStale(true);
-        setStaleAt((prev) => prev ?? Date.now());
-        setError(null);
-      } else {
-        setError(
-          timedOut ? "Request timed out" : (err instanceof Error ? err.message : "Failed to fetch games"),
-        );
-      }
-      setLoading(false);
+      if (controller.signal.aborted) return;
+      setError(err instanceof Error ? err.message : "Failed to load games");
     } finally {
-      clearTimeout(timeout);
+      if (!controller.signal.aborted) setLoading(false);
     }
-  }, [league, leagueKey, ranges, listKeys, upsertFromList]);
+  }, []);
 
-  // Initial fetch + refetch on league change
   useEffect(() => {
-    const isLeagueChange = prevLeagueRef.current !== league;
-    prevLeagueRef.current = league;
-    if (isLeagueChange) {
-      // Reset section IDs immediately so counts don't show stale numbers
-      // while the new fetch is in flight. Try to seed from cache first.
-      const store = useGameData.getState();
-      const seeded: Record<SectionKey, number[]> = { Yesterday: [], Today: [], Upcoming: [] };
-      for (const key of SECTION_ORDER) {
-        const lk = gameListChannel(leagueKey, ranges[key].startDate);
-        const meta = store.listFetches.get(lk);
-        if (!meta) continue;
-        for (const id of meta.gameIds) {
-          const entry = store.games.get(id);
-          if (!entry) continue;
-          const d = gameScheduleDateStr(entry.core);
-          if (d >= ranges[key].startDate && d <= ranges[key].endDate) {
-            seeded[key].push(id);
-          }
-        }
-      }
-      setSectionIds(seeded);
-    }
-    fetchAll(isLeagueChange || loading);
-    return () => { abortRef.current?.abort(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchAll();
+    return () => abortRef.current?.abort();
   }, [fetchAll]);
 
-  // ── Realtime subscription (channels only — dispatcher handles events) ──
-
-  useRealtimeSubscription(channels);
-
-  // ── Watch recovery flags set by dispatcher ──────────────────
-
+  // Refresh on tab focus.
   useEffect(() => {
-    const pending = listKeys.filter((lk) => needsListRefresh.has(lk));
-    if (pending.length === 0) return;
-    // Clear flags first to prevent re-trigger
-    for (const lk of pending) clearListRefresh(lk);
-    fetchAll(false, true);
-  }, [needsListRefresh, listKeys, clearListRefresh, fetchAll]);
+    const handler = () => {
+      if (typeof document !== "undefined" && !document.hidden) fetchAll();
+    };
+    document.addEventListener("visibilitychange", handler);
+    return () => document.removeEventListener("visibilitychange", handler);
+  }, [fetchAll]);
 
-  // ── Visibility change: refresh after prolonged background or offline ──
-  // `enabled` only gates on `error` — when stale, refreshing on visibility is
-  // exactly how the user recovers. `fetchAll`'s freshness window dedupes
-  // redundant calls if realtime/polling already fetched recently.
-
-  useVisibilityRefresh(
-    () => fetchAll(false, true),
-    realtimeStatus.connected,
-    !error,
-  );
-
-  // ── Polling fallback: refresh on a fixed cadence while tab is visible ──
-  // Realtime is the primary path; polling guarantees recovery when realtime
-  // is dropped silently or the dispatcher misses a state transition (e.g. a
-  // game flipping from live → final overnight). `fetchAll` self-deduplicates
-  // via the GAMES_FRESH_MS window, so this is cheap when other paths are
-  // already keeping data fresh.
-
+  // Background poll while visible.
   useEffect(() => {
     const id = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
-      fetchAll(false, false).catch(() => {
-        /* fetchAll surfaces errors via state; nothing to do here */
-      });
+      fetchAll().catch(() => {});
     }, POLLING.GAMES_REFRESH_MS);
     return () => clearInterval(id);
   }, [fetchAll]);
 
-  // Derive sections from store using tracked section IDs
-  const sections: SectionData[] = useMemo(() => {
-    return SECTION_ORDER.map((key) => {
-      const ids = sectionIds[key] ?? [];
-      const cores: GameCore[] = [];
-      for (const id of ids) {
-        const entry = games.get(id);
-        if (entry) {
-          const core = entry.core;
-          if (!hasTbdMatchup(core) && matchesSearch(core, search ?? "")) {
-            cores.push(core);
-          }
-        }
-      }
-      return { key, games: cores };
-    });
-  }, [sectionIds, games, search]);
-
-  const allGames = useMemo(
-    () => sections.flatMap((s) => s.games),
-    [sections],
-  );
-
-  return { sections, allGames, loading, error, stale, staleAt, refetch: fetchAll };
+  return { games, loading, error, refetch: fetchAll };
 }

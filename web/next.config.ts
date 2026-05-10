@@ -1,5 +1,25 @@
 import type { NextConfig } from "next";
 
+const isDev = process.env.NODE_ENV !== "production";
+
+// Next.js dev needs `'unsafe-eval'` (React Refresh runtime) and direct WS to
+// the dev server for HMR. We only widen the CSP in dev; production stays
+// locked down.
+const scriptSrc = [
+  "'self'",
+  "'unsafe-inline'",
+  "https://plausible.io",
+  ...(isDev ? ["'unsafe-eval'"] : []),
+].join(" ");
+
+const connectSrc = [
+  "'self'",
+  "https://plausible.io",
+  "https://sda.dock108.dev",
+  "wss://sda.dock108.dev",
+  ...(isDev ? ["ws://localhost:*", "http://localhost:*"] : []),
+].join(" ");
+
 const nextConfig: NextConfig = {
   output: "standalone",
   experimental: {
@@ -20,12 +40,11 @@ const nextConfig: NextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' https://plausible.io https://partners.draftkings.com https://affiliates.betmgm.com https://pagead2.googlesyndication.com https://partner.googleadservices.com https://adservice.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://securepubads.g.doubleclick.net https://www.googletagservices.com https://www.gstatic.com",
+              `script-src ${scriptSrc}`,
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://www.gstatic.com https://www.google.com https://adservice.google.com https://cm.g.doubleclick.net https://stats.g.doubleclick.net",
+              "img-src 'self' data: blob:",
               "font-src 'self'",
-              "connect-src 'self' https://plausible.io https://sda.dock108.dev wss://sda.dock108.dev https://api.stripe.com https://partners.draftkings.com https://affiliates.betmgm.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com https://securepubads.g.doubleclick.net https://partner.googleadservices.com https://cm.g.doubleclick.net https://stats.g.doubleclick.net",
-              "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://pagead2.googlesyndication.com https://partner.googleadservices.com",
+              `connect-src ${connectSrc}`,
               "worker-src 'self'",
               "frame-ancestors 'none'",
               "base-uri 'self'",

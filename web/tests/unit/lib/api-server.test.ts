@@ -3,8 +3,6 @@ import {
   sportsApiBaseUrl,
   sportsApiKey,
   ApiError,
-  deepSnakeKeys,
-  forwardAuth,
   apiFetch,
   cachedApiFetch,
   clearApiResponseCache,
@@ -52,32 +50,6 @@ describe("ApiError", () => {
 
   it("stringifies with status", () => {
     expect(String(new ApiError(500, "oops"))).toContain("500");
-  });
-});
-
-describe("deepSnakeKeys", () => {
-  it("recursively snake_cases plain object keys", () => {
-    const out = deepSnakeKeys({
-      fooBar: 1,
-      nested: { innerKey: [{ camelCase: true }] },
-      skipDate: new Date("2026-01-01"),
-    });
-    expect(out).toEqual({
-      foo_bar: 1,
-      nested: { inner_key: [{ camel_case: true }] },
-      skip_date: expect.any(Date),
-    });
-  });
-});
-
-describe("forwardAuth", () => {
-  it("forwards Authorization when present", () => {
-    expect(
-      forwardAuth({
-        headers: { get: (n) => (n.toLowerCase() === "authorization" ? "Bearer x" : null) },
-      }),
-    ).toEqual({ Authorization: "Bearer x" });
-    expect(forwardAuth({ headers: { get: () => null } })).toEqual({});
   });
 });
 

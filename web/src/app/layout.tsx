@@ -2,22 +2,14 @@ import type { Metadata, Viewport } from "next";
 import Script from "next/script";
 import "./globals.css";
 import { TopNav } from "@/components/layout/TopNav";
-import { BottomTabs } from "@/components/layout/BottomTabs";
-import { SettingsDrawer } from "@/components/layout/SettingsDrawer";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
-import { RealtimeProvider } from "@/components/layout/RealtimeProvider";
-import { AuthProvider } from "@/components/auth/AuthProvider";
 import { Footer } from "@/components/layout/Footer";
 import { BetaBanner } from "@/components/layout/BetaBanner";
 import { DegradedBanner } from "@/components/layout/DegradedBanner";
 import { AnalyticsProvider } from "@/components/layout/AnalyticsProvider";
-import { RevealIDBProvider } from "@/components/layout/RevealIDBProvider";
-import { SessionProvider } from "@/components/auth/SessionProvider";
 import { OfflineBanner } from "@/components/layout/OfflineBanner";
 import { PWAInstallPrompt } from "@/components/layout/PWAInstallPrompt";
-import { ProGateSheet } from "@/components/fairbet/ProGateSheet";
-import { TierBootstrap } from "@/components/layout/TierBootstrap";
-import { AdSenseScript } from "@/components/ads/AdSenseScript";
+import { FirstVisitGate } from "@/components/onboarding/FirstVisitGate";
 import { getSiteHost, getSiteUrl, isNoIndexSite } from "@/lib/site-config";
 
 export const viewport: Viewport = {
@@ -28,17 +20,12 @@ export const viewport: Viewport = {
 export function generateMetadata(): Metadata {
   const siteUrl = getSiteUrl();
   const noIndex = isNoIndexSite();
-  const verificationOther: Record<string, string> = {};
-  if (process.env.BING_SITE_VERIFICATION) {
-    verificationOther["msvalidate.01"] = process.env.BING_SITE_VERIFICATION;
-  }
+  const title = "Scroll Down MLB — Catch up on last night's game, no spoilers";
+  const description =
+    "Missed last night's game? Walk through the key plays one at a time and reveal the final score when you're ready.";
   return {
-    title: {
-      default: "Scroll Down Sports — Catch Up on Games Your Way",
-      template: "%s | Scroll Down Sports",
-    },
-    description:
-      "Follow MLB, NBA, NHL, and college basketball on your schedule. Live scores when you want them, play by play timelines, betting analytics, and matchup simulators in one place.",
+    title: { default: title, template: "%s | Scroll Down MLB" },
+    description,
     metadataBase: new URL(siteUrl),
     alternates: { canonical: "/" },
     manifest: "/manifest.webmanifest",
@@ -51,36 +38,23 @@ export function generateMetadata(): Metadata {
     },
     openGraph: {
       type: "website",
-      siteName: "Scroll Down Sports",
-      title: "Scroll Down Sports — Catch Up on Games Your Way",
-      description:
-        "Live scores when you want them, play by play timelines, betting analytics, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
+      siteName: "Scroll Down MLB",
+      title,
+      description,
       url: siteUrl,
-      images: [{ url: "/app-icon.png", width: 1024, height: 1024, alt: "Scroll Down Sports" }],
+      images: [{ url: "/app-icon.png", width: 1024, height: 1024, alt: "Scroll Down MLB" }],
     },
     twitter: {
       card: "summary",
-      title: "Scroll Down Sports",
-      description:
-        "Live scores when you want them, real time timelines, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
+      title,
+      description,
       images: ["/app-icon.png"],
     },
-    robots: {
-      index: !noIndex,
-      follow: !noIndex,
-    },
-    verification: {
-      google: process.env.GOOGLE_SITE_VERIFICATION || undefined,
-      other: Object.keys(verificationOther).length ? verificationOther : undefined,
-    },
+    robots: { index: !noIndex, follow: !noIndex },
   };
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   const siteUrl = getSiteUrl();
   const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? getSiteHost();
   return (
@@ -93,11 +67,24 @@ export default function RootLayout({
         />
         <Script id="sw-register" strategy="afterInteractive">{`
           if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-              navigator.serviceWorker.register('/sw.js').catch(function (err) {
-                console.warn('SW registration failed:', err);
+            var host = location.hostname;
+            var isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+            if (isLocal) {
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                regs.forEach(function (r) { r.unregister(); });
+              }).catch(function () {});
+              if (window.caches && caches.keys) {
+                caches.keys().then(function (keys) {
+                  keys.forEach(function (k) { caches.delete(k); });
+                }).catch(function () {});
+              }
+            } else {
+              window.addEventListener('load', function () {
+                navigator.serviceWorker.register('/sw.js').catch(function (err) {
+                  console.warn('SW registration failed:', err);
+                });
               });
-            });
+            }
           }
         `}</Script>
         <script
@@ -106,45 +93,30 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "WebApplication",
-              name: "Scroll Down Sports",
+              name: "Scroll Down MLB",
               url: siteUrl,
               description:
-                "Live scores when you want them, play by play timelines, betting analytics, and matchup simulators for MLB, NBA, NHL, and NCAAB.",
+                "Spoiler-free catch-up on MLB games — walk through the key plays and reveal the final score when you're ready.",
               applicationCategory: "SportsApplication",
               operatingSystem: "Web",
-              offers: {
-                "@type": "Offer",
-                price: "0",
-                priceCurrency: "USD",
-              },
+              offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
             }),
           }}
         />
       </head>
       <body className="bg-neutral-950 text-neutral-50 antialiased">
         <ThemeProvider>
-          <AdSenseScript />
-          <AuthProvider />
-          <SessionProvider />
-          <TierBootstrap />
-          <RealtimeProvider />
           <AnalyticsProvider />
-          <RevealIDBProvider />
           <div className="min-h-screen flex flex-col">
             <OfflineBanner />
             <PWAInstallPrompt />
             <BetaBanner />
             <DegradedBanner />
             <TopNav />
-            <main className="flex-1 min-h-[60vh] pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
-              <div className="scroll-fade-top" />
-              <div className="scroll-fade-bottom" />
-              {children}
+            <main className="flex-1 min-h-[60vh]">
+              <FirstVisitGate>{children}</FirstVisitGate>
             </main>
             <Footer />
-            <BottomTabs />
-            <SettingsDrawer />
-            <ProGateSheet />
           </div>
         </ThemeProvider>
       </body>

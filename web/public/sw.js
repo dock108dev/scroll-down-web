@@ -1,16 +1,14 @@
-// Service worker for Scroll Down Sports
+// Service worker for Scroll Down MLB
 // Cache First: /_next/static/** (immutable hashed assets)
 // Network First: /api/games/** (list and detail) — both reflect fast-moving
-//   live state. SWR was serving stale "LIVE" snapshots after games had ended,
-//   and on the detail page it left the play-by-play stuck at the snapshot
-//   captured the first time the user viewed the game. Cache is now used only
-//   as an offline fallback.
+//   live state. Cache is used only as an offline fallback.
 //
-// Cache version bumped to v2 to evict poisoned responses cached under the
-// previous SWR strategy on existing clients.
+// Versions bumped (sd-mlb-*) to evict every cache populated by previous
+// builds (including the unrelated Scroll Down Sports app that may have run on
+// the same origin/port in dev).
 
-const STATIC_CACHE = "sd-static-v1";
-const API_CACHE = "sd-api-v2";
+const STATIC_CACHE = "sd-mlb-static-v1";
+const API_CACHE = "sd-mlb-api-v1";
 
 // ─── Install ────────────────────────────────────────────────────────────────
 

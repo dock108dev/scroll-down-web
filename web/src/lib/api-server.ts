@@ -20,7 +20,7 @@ export class ApiError extends Error {
   /** True when the upstream error is a gateway-level issue (not a client problem). */
   get isUpstreamGatewayError(): boolean {
     // 401/403 from the upstream API means our API key or gateway auth is
-    // misconfigured — the *client* didn't do anything wrong.  Map these to
+    // misconfigured — the *client* didn't do anything wrong. Map these to
     // 502 so the browser doesn't think it has an auth problem.
     return [401, 403, 502, 503, 504].includes(this.status);
   }
@@ -88,38 +88,6 @@ function deepFixStrings<T>(obj: T): T {
     return fixed as T;
   }
   return obj;
-}
-
-// ── camelCase → snake_case key normalizer ────────────────────
-// Upstream FairBet endpoints return camelCase; the client still
-// expects snake_case. Normalize at the proxy boundary so we don't
-// have to rewrite types and every consumer.
-
-function camelToSnakeKey(k: string): string {
-  // Leave already-snake keys alone; otherwise convert fooBar → foo_bar
-  return k.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
-}
-
-export function deepSnakeKeys<T>(obj: T): T {
-  if (Array.isArray(obj)) return obj.map(deepSnakeKeys) as T;
-  if (obj && typeof obj === "object" && (obj as object).constructor === Object) {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(obj as Record<string, unknown>)) {
-      out[camelToSnakeKey(k)] = deepSnakeKeys(v);
-    }
-    return out as T;
-  }
-  return obj;
-}
-
-// ── Helpers ──────────────────────────────────────────────────
-
-/** Extract Authorization header from an incoming request to forward upstream. */
-export function forwardAuth(
-  req: { headers: { get(name: string): string | null } },
-): Record<string, string> {
-  const auth = req.headers.get("authorization");
-  return auth ? { Authorization: auth } : {};
 }
 
 // ── Fetch wrapper ───────────────────────────────────────────

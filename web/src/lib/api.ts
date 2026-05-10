@@ -1,19 +1,10 @@
 import type {
+  CatchupCardsResponse,
+  CatchupSummaryResponse,
   GameListResponse,
-  GameDetailResponse,
-  GameFlowResponse,
-  BetsResponse,
-  FairbetLiveResponse,
-  LiveGameInfo,
 } from "./types";
-import type {
-  GolfTournamentListResponse,
-  GolfTournament,
-  GolfLeaderboardResponse,
-} from "./golf-types";
-import { useAuth } from "@/stores/auth";
 
-const FETCH_TIMEOUT_MS = 3_000;
+const FETCH_TIMEOUT_MS = 5_000;
 
 type FetchApiInit = RequestInit & { timeoutMs?: number };
 
@@ -23,32 +14,19 @@ function buildRequestSignal(
 ) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-  const onUserAbort = () => {
-    controller.abort();
-  };
-
+  const onUserAbort = () => controller.abort();
   if (userSignal) {
-    if (userSignal.aborted) {
-      controller.abort();
-    } else {
-      userSignal.addEventListener("abort", onUserAbort, { once: true });
-    }
+    if (userSignal.aborted) controller.abort();
+    else userSignal.addEventListener("abort", onUserAbort, { once: true });
   }
-
   const cleanup = () => {
     clearTimeout(timeoutId);
-    if (userSignal) {
-      userSignal.removeEventListener("abort", onUserAbort);
-    }
+    if (userSignal) userSignal.removeEventListener("abort", onUserAbort);
   };
-
   return { signal: controller.signal, cleanup };
 }
 
 export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T> {
-  const token = useAuth.getState().token;
-  // Normalize any HeadersInit form (Headers, [k,v][], or object) into a plain record
   const headers: Record<string, string> = {};
   if (init?.headers) {
     const src =
@@ -59,13 +37,9 @@ export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T>
       headers[k] = v;
     });
   }
-  if (token) headers["Authorization"] = `Bearer ${token}`;
 
   const timeoutMs = init?.timeoutMs ?? FETCH_TIMEOUT_MS;
-  const { signal, cleanup } = buildRequestSignal(
-    init?.signal ?? undefined,
-    timeoutMs,
-  );
+  const { signal, cleanup } = buildRequestSignal(init?.signal ?? undefined, timeoutMs);
 
   let res: Response;
   try {
@@ -79,58 +53,23 @@ export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T>
     cleanup();
   }
 
-  if (res.status === 401 && token) {
-    // Token expired or stale — clear auth state silently
-    useAuth.getState().logout();
-  }
   if (!res.ok) {
-    if (res.status === 401 || res.status === 403) {
-      throw new Error("We're having trouble loading data right now. Please try again later.");
-    } else if (res.status === 429) {
-      throw new Error("Data is busy right now. We'll try again shortly.");
-    } else if (res.status === 503) {
-      throw new Error("Live data is temporarily delayed. We'll try again shortly.");
-    } else if (res.status >= 500) {
-      throw new Error("Something went wrong on our end. Please try again later.");
-    }
+    if (res.status === 404) throw new Error("Not found.");
+    if (res.status === 429) throw new Error("Data is busy right now. We'll try again shortly.");
+    if (res.status === 503) throw new Error("Live data is temporarily delayed. We'll try again shortly.");
+    if (res.status >= 500) throw new Error("Something went wrong on our end. Please try again later.");
     throw new Error("Unable to load data. Please check your connection and try again.");
   }
   return res.json();
 }
 
 export const api = {
-  games: (params?: URLSearchParams, init?: FetchApiInit) =>
-    fetchApi<GameListResponse>(`/api/games${params ? `?${params}` : ""}`, init),
-  historyGames: (params?: URLSearchParams, init?: FetchApiInit) =>
-    fetchApi<GameListResponse>(`/api/history${params ? `?${params}` : ""}`, init),
-  game: (id: number) => fetchApi<GameDetailResponse>(`/api/games/${id}`),
-  flow: (id: number) => fetchApi<GameFlowResponse>(`/api/games/${id}/flow`),
-  fairbetOdds: (params?: URLSearchParams, init?: FetchApiInit) =>
-    fetchApi<BetsResponse>(
-      `/api/fairbet/odds${params ? `?${params}` : ""}`,
-      init,
-    ),
-  fairbetLiveGames: (league?: string) => {
-    const params = new URLSearchParams();
-    if (league) params.set("league", league);
-    const qs = params.toString();
-    return fetchApi<LiveGameInfo[]>(`/api/fairbet/live/games${qs ? `?${qs}` : ""}`);
+  recentGames: (init?: FetchApiInit) =>
+    fetchApi<GameListResponse>("/api/games/recent", init),
+  cards: (gameId: number, opts?: { since?: number }, init?: FetchApiInit) => {
+    const qs = opts?.since !== undefined ? `?since=${opts.since}` : "";
+    return fetchApi<CatchupCardsResponse>(`/api/games/${gameId}/cards${qs}`, init);
   },
-  fairbetLive: (gameId: number, marketCategory?: string, sortBy?: string) => {
-    const params = new URLSearchParams({ game_id: String(gameId) });
-    if (marketCategory) params.set("market_category", marketCategory);
-    if (sortBy) params.set("sort_by", sortBy);
-    return fetchApi<FairbetLiveResponse>(`/api/fairbet/live?${params}`);
-  },
-  golfTournaments: (params?: URLSearchParams, init?: RequestInit) =>
-    fetchApi<GolfTournamentListResponse>(
-      `/api/golf/tournaments${params ? `?${params}` : ""}`,
-      init,
-    ),
-  golfTournament: (eventId: string) =>
-    fetchApi<GolfTournament>(`/api/golf/tournaments/${eventId}`),
-  golfLeaderboard: (eventId: string) =>
-    fetchApi<GolfLeaderboardResponse>(
-      `/api/golf/tournaments/${eventId}/leaderboard`,
-    ),
+  summary: (gameId: number, init?: FetchApiInit) =>
+    fetchApi<CatchupSummaryResponse>(`/api/games/${gameId}/summary`, init),
 };

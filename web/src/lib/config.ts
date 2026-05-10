@@ -6,246 +6,105 @@
 
 export const BACKEND_BASE_URL = "https://sda.dock108.dev";
 
-/**
- * `?tier=free|pro` URL overrides for dev and Playwright (`npm start` uses
- * NODE_ENV=production, so we also enable when NEXT_PUBLIC_SCROLLDOWN_E2E is set
- * at build time — see playwright.config webServer.env + CI build env).
- */
-export function allowDevTierUrlOverrides(): boolean {
-  return (
-    process.env.NODE_ENV !== "production" ||
-    process.env.NEXT_PUBLIC_SCROLLDOWN_E2E === "1"
-  );
-}
+/** The only league this app serves. Forced server-side at the proxy boundary. */
+export const LEAGUE = "mlb";
 
 /** Playwright `webServer` sets this — use for CI-only behavior (rate limits, etc.). */
 export function isPlaywrightServerEnv(): boolean {
   return process.env.SCROLLDOWN_PLAYWRIGHT_WEB_SERVER === "1";
 }
 
-export const CACHE = {
-  GAMES_TTL_MS: 90_000,
-  GAMES_FRESH_MS: 45_000, // skip network if cache is younger than this
-  GAMES_MAX_ENTRIES: 5,
-  GAME_DETAIL_TTL_MS: 5 * 60_000,
-  GAME_DETAIL_MAX_ENTRIES: 8,
-  FLOW_TTL_MS: 5 * 60_000,
-  FLOW_MAX_ENTRIES: 8,
-  FAIRBET_TTL_MS: 3 * 60_000,
-  FAIRBET_FRESH_MS: 90_000,
-  VISIBILITY_AWAY_MS: 5_000, // force refresh when tab hidden longer than this
-};
-
 export const POLLING = {
+  /** Home feed refresh cadence when tab is foregrounded. */
   GAMES_REFRESH_MS: 60_000,
-  LIVE_GAME_POLL_MS: 45_000,
-  LIVE_ODDS_REFRESH_MS: 15_000,
-  READING_RESUME_DELAY_MS: 300, // wait for DOM render before scrolling to saved position
-  FOLLOWING_LIVE_TTL_MS: 120 * 60_000, // 2 hours of inactivity before auto-disabling
-  FOLLOWING_LIVE_CHECK_MS: 60_000, // how often to check for inactivity expiry
-  TOKEN_REFRESH_MS: 10 * 60_000, // silently refresh JWT every 10 min
-  GOLF_LEADERBOARD_REFRESH_MS: 60_000,
-  GOLF_TOURNAMENTS_REFRESH_MS: 5 * 60_000,
+  /** Per-game card poll cadence while the deck is open and game is live. */
+  LIVE_CARDS_POLL_MS: 45_000,
 };
 
 export const API = {
   GAMES_LIMIT: 200,
-  FAIRBET_PAGE_SIZE: 100,
-  FAIRBET_MAX_CONCURRENT: 3,
-  /** `/api/health` upstream ping — generous for CI cold start + parallel E2E load */
   HEALTH_BACKEND_PING_TIMEOUT_MS: 15_000,
   HEALTH_CACHE_MS: 30_000,
-  FAIRBET_REQUEST_TIMEOUT_MS: 12_000,
-  FAIRBET_PAGE_RETRY_ATTEMPTS: 2,
-  FAIRBET_PAGE_RETRY_DELAY_MS: 800,
-  ISR_REVALIDATE_S: 60, // Next.js ISR revalidation for API proxy routes
+  ISR_REVALIDATE_S: 60,
   BFF_CACHE_MAX_ENTRIES: 100,
+  /** Game list (live + recent finals): re-fetch quickly. */
   GAMES_BFF_FRESH_MS: 15_000,
   GAMES_BFF_STALE_MS: 5 * 60_000,
-  GAME_DETAIL_BFF_FRESH_MS: 10_000,
-  GAME_DETAIL_BFF_STALE_MS: 3 * 60_000,
-  GAME_FLOW_BFF_FRESH_MS: 30_000,
-  GAME_FLOW_BFF_STALE_MS: 5 * 60_000,
-};
-
-export const FAIRBET = {
-  MIN_BOOKS: 3, // hide bets with fewer books posting a price
-  EV_HIGHLIGHT_THRESHOLD: 5, // EV% at which a bet gets the strong-positive color
-  ATTRIBUTION_FRESH_MS: 2 * 60_000,         // < 2m: no staleness label
-  ATTRIBUTION_STALE_MS: 15 * 60_000,        // > 15m: amber "May be delayed"
-  ATTRIBUTION_UPDATE_INTERVAL_MS: 30_000,   // re-evaluate attribution label every 30s
-  // Minimum `confidence` value (proxy for sample size) for each EV confidence tier
-  CONFIDENCE_SAMPLE_HIGH: 30,
-  CONFIDENCE_SAMPLE_MEDIUM: 10,
-  MONTE_CARLO_TRIALS: 10_000,               // simulation iterations for Win Probability sheet
-};
-
-export const REALTIME = {
-  WS_FAIL_THRESHOLD: 2,
-  WS_FAIL_WINDOW_MS: 60_000,
-  SSE_FALLBACK_DURATION_MS: 5 * 60_000,
-  BACKOFF_INITIAL_MS: 1_000,
-  BACKOFF_MAX_MS: 30_000,
-  FRESHNESS_INDICATOR_MS: 20_000,
-  RECOVERY_MIN_INTERVAL_MS: 8_000,
+  /** Per-game cards while the game is live: short cache. */
+  CARDS_LIVE_BFF_FRESH_MS: 10_000,
+  CARDS_LIVE_BFF_STALE_MS: 3 * 60_000,
+  /** Per-game cards once the game is final: cache hard, content is immutable. */
+  CARDS_FINAL_BFF_FRESH_MS: 24 * 60 * 60_000,
+  CARDS_FINAL_BFF_STALE_MS: 7 * 24 * 60 * 60_000,
+  /** Summary endpoint: only meaningful for finals; cache hard. */
+  SUMMARY_BFF_FRESH_MS: 24 * 60 * 60_000,
+  SUMMARY_BFF_STALE_MS: 7 * 24 * 60 * 60_000,
+  /** How far back the home feed reaches. */
+  HOME_WINDOW_MS: 48 * 60 * 60 * 1_000,
 };
 
 export const LAYOUT = {
-  HEADER_HEIGHT_WITH_PINS: "88px", // nav + pinned bar
-  HEADER_HEIGHT_DEFAULT: "56px", // nav only
-  MAX_PINNED_GAMES: 10,
+  HEADER_HEIGHT_DEFAULT: "56px",
 };
 
 export const STORAGE_KEYS = {
-  PINNED_GAMES: "sd-pinned-games",
-  READ_STATE: "sd-read-state",
   SETTINGS: "sd-settings",
-  SECTION_LAYOUT: "sd-section-layout",
-  READING_POSITION: "sd-reading-position",
-  AUTH: "sd-auth",
-  GAMES_CACHE: "sd-games-cache",
-  FAIRBET_CACHE: "sd-fairbet-cache",
-  GOLF_CACHE: "sd-golf-cache",
-  ONBOARDING_SEEN: "sd-onboarding-seen",
+  /** First-visit + favorite team. */
+  ONBOARDING: "sd-onboarding",
+  /** Per-game catch-up state (progress index, completed flag). */
+  CATCHUP_STATE: "sd-catchup-state",
   PWA_INSTALL_DISMISSED: "sd-pwa-install-dismissed",
   PWA_SESSION_COUNT: "sd-pwa-session-count",
-  TIER: "sd-tier",
   ANON_ID: "sd-anon-id",
-  SESSION: "sd-session",
-  MY_BETS: "sd-my-bets",
-  FAIRBET_FILTERS: "sd-fairbet-filters",
 };
 
 export const PWA = {
-  /** Show install prompt after this many sessions. */
   INSTALL_MIN_SESSIONS: 2,
-  /** Auto-dismiss offline banner this many ms after reconnection. */
   OFFLINE_AUTO_DISMISS_MS: 3_000,
 };
 
 export const STORAGE = {
-  MAX_READING_POSITIONS: 50,
-  MAX_SECTION_LAYOUTS: 50,
-  MAX_REVEALED_IDS: 500,
-  MAX_SNAPSHOTS: 20,
-  POSITION_MAX_AGE_DAYS: 30,
-  LAYOUT_MAX_AGE_DAYS: 30,
-  MAX_MY_BETS: 200,
-};
-
-export const FRESHNESS = {
-  LABEL_MIN_MS: 10 * 60_000,      // <10min: no label; trust normal live updates
-  RED_THRESHOLD_MS: 15 * 60_000,  // 10–15min: "May be delayed", >15min: "Data delayed"
-  UPDATE_INTERVAL_MS: 30_000,     // re-evaluate label every 30s
-};
-
-export const RENDER = {
-  FAIRBET_BATCH: 25,
-};
-
-/**
- * Same shape as the old /^[^\s@]+@[^\s@]+\.[^\s@]+$/ check, without nested quantifiers
- * (avoids polynomial ReDoS on hostile input).
- */
-export function isValidEmailFormat(email: string): boolean {
-  if (email.length === 0 || email.length > 254) return false;
-  const at = email.indexOf("@");
-  if (at <= 0) return false;
-  if (email.indexOf("@", at + 1) !== -1) return false;
-  const local = email.slice(0, at);
-  const domain = email.slice(at + 1);
-  if (local.length > 64) return false;
-  if (domain.length === 0) return false;
-  if (/[\s@]/.test(local) || /[\s@]/.test(domain)) return false;
-  const dot = domain.indexOf(".");
-  if (dot <= 0 || dot === domain.length - 1) return false;
-  return true;
-}
-
-export const VALIDATION = {
-  PASSWORD_MIN_LENGTH: 8,
+  /** Cap on how many per-game progress entries we keep before evicting oldest. */
+  MAX_CATCHUP_ENTRIES: 200,
+  /** Stored progress entries older than this are pruned. */
+  CATCHUP_MAX_AGE_DAYS: 60,
 };
 
 export const ATTRIBUTION = {
-  /** Displayed in the game detail page footer: "Game data provided by <LABEL>" */
   DATA_SOURCE_LABEL: "SportsDataAPI",
 };
 
-export const AI_STORY = {
-  BANNED_PHRASES: [
-    "both teams fought hard",
-    "thrilling contest",
-    "back and forth",
-    "hard fought",
-  ] as readonly string[],
-  MAX_SENTENCES: 6,
-  MAX_SENTENCES_PER_SECTION: 2,
-  MAX_WORDS: 150,
-  MODEL: "claude-haiku-4-5-20251001",
+/**
+ * Catch-up deck sizing. Tier 1 (scoring + late-game high-leverage) plays are
+ * ALWAYS included. Tier 2 plays are deterministically sampled per gameId to
+ * keep the deck around the target without truncating real key plays.
+ *
+ * Target lives in the middle of the soft window. Sampling stops once tier 1 +
+ * sampled tier 2 reaches HARD_MAX. We never trim tier 1 even if it exceeds
+ * HARD_MAX — those are the moments the user actually came for.
+ */
+export const CATCHUP = {
+  /** Preferred total for an "ordinary" game (5-3 / 6-4 typical shape).
+   *  Wild games push toward HARD_MAX; boring games stay near SOFT_MIN.
+   *  Tuned against the user's deck-shape acceptance bands:
+   *    boring (1-0 duel)         → 5-8 play cards
+   *    ordinary (5-3 / 6-4)      → 8-14 play cards
+   *    wild (extras / comebacks) → 14-18 play cards
+   */
+  TARGET_TOTAL: 12,
+  SOFT_MIN: 5,
+  HARD_MAX: 18,
 };
 
-/**
- * When true, the AI game story section is hidden for all games.
- * Default is true until 50+ stories are reviewed and filler/inaccuracy rate is confirmed <20%.
- */
-export const STORY_QUALITY_GATE = true;
-
-/**
- * Canonical list of Pro-gated feature keys. Every server route and client hook
- * that enforces a paywall must reference one of these keys so the gate surface
- * stays in sync. All values below require a Pro subscription.
- */
-export const FEATURE_GATES = {
-  LIVE_ODDS: "live_odds",
-  FULL_FAIRBET: "full_fairbet",
-  ALL_BOOKS: "all_books",
-  ALL_MARKETS: "all_markets",
-  CROSS_DEVICE_SYNC: "cross_device_sync",
-  ADVANCED_FILTERS: "advanced_filters",
-  LINE_MOVEMENT: "line_movement",
-  EV_SIMULATOR: "ev_simulator",
-  CLV_TRACKING: "clv_tracking",
-  WIN_PROBABILITY: "win_probability",
-  HISTORY: "history",
-} as const;
-
-export type FeatureGateKey = (typeof FEATURE_GATES)[keyof typeof FEATURE_GATES];
-
-export const AUTH = {
-  /** Magic-link token lifetime */
-  MAGIC_TOKEN_TTL_MS: 15 * 60_000,
-  /** Session cookie + JWT lifetime */
-  SESSION_TTL_S: 30 * 24 * 60 * 60,
-  /** Max magic-link requests per IP per window */
-  SEND_LINK_RATE_MAX: 5,
-  SEND_LINK_RATE_WINDOW_MS: 10 * 60_000,
-};
-
-export const ADS = {
-  TOP_FEED_AFTER_INDEX: 2,
-  MID_FEED_AFTER_INDEX: 6,
+/** Outbound box-score destination. Per product decision: MLB.com. */
+export const BOX_SCORE = {
+  /** Function is provided so we can swap providers without a code-wide search. */
+  url: (gameId: number) => `https://www.mlb.com/gameday/${gameId}/final/box`,
+  label: "Full box score on MLB.com",
 };
 
 export const DEFAULTS = {
-  HOME_EXPANDED: [] as string[],
-  TIMELINE_TIERS: [1, 2, 3] as number[],
-  ODDS_FORMAT: "american",
   THEME: "system",
   AWAY_ABBR_FALLBACK: "AWY",
   HOME_ABBR_FALLBACK: "HME",
-};
-
-/** Headline stat labels to show collapsed per sport/position type.
- *  Keys match leagueCode.toLowerCase() for generic stats, or
- *  "nhl_skater" / "nhl_goalie" / "mlb_batter" / "mlb_pitcher" for typed tables.
- *  Labels must match the `label` field of the relevant column definition. */
-export const HEADLINE_STATS: Record<string, readonly string[]> = {
-  nba:         ["PTS", "REB", "AST"],
-  ncaab:       ["PTS", "REB", "AST"],
-  nfl:         ["YDS", "TD"],
-  ncaaf:       ["YDS", "TD"],
-  nhl_skater:  ["G", "A", "PTS"],
-  nhl_goalie:  ["SV", "GA", "SV%"],
-  mlb_batter:  ["H", "RBI", "AVG"],
-  mlb_pitcher: ["IP", "K", "ERA"],
 };

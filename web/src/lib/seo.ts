@@ -1,22 +1,10 @@
 import type { Metadata } from "next";
 import type { GameSummary } from "@/lib/types";
 import {
-  addDaysCalendar,
-  easternCalendarToday,
   gameScheduleDateStr,
   APP_TIMEZONE,
 } from "@/lib/date-utils";
 import { getSiteUrl } from "@/lib/site-config";
-
-export const SUPPORTED_SEO_LEAGUES = ["mlb", "nba", "nhl", "ncaab"] as const;
-export type SeoLeague = (typeof SUPPORTED_SEO_LEAGUES)[number];
-
-export const LEAGUE_LABELS: Record<SeoLeague, string> = {
-  mlb: "MLB",
-  nba: "NBA",
-  nhl: "NHL",
-  ncaab: "NCAAB",
-};
 
 export interface SeoPageInput {
   title: string;
@@ -53,11 +41,11 @@ export function buildSeoMetadata({
     },
     openGraph: {
       type,
-      siteName: "Scroll Down Sports",
+      siteName: "Scroll Down MLB",
       title,
       description,
       url,
-      images: [{ url: imageUrl, width: 1024, height: 1024, alt: "Scroll Down Sports" }],
+      images: [{ url: imageUrl, width: 1024, height: 1024, alt: "Scroll Down MLB" }],
     },
     twitter: {
       card: "summary_large_image",
@@ -66,42 +54,6 @@ export function buildSeoMetadata({
       images: [imageUrl],
     },
   };
-}
-
-export function normalizeLeague(value: string): SeoLeague | null {
-  const key = value.trim().toLowerCase();
-  return SUPPORTED_SEO_LEAGUES.includes(key as SeoLeague) ? (key as SeoLeague) : null;
-}
-
-export function leagueLabel(value: string): string {
-  const league = normalizeLeague(value);
-  return league ? LEAGUE_LABELS[league] : value.toUpperCase();
-}
-
-export function slugifyTeamName(team: string): string {
-  return team
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/&/g, " and ")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
-export function isValidDateParam(value: string): boolean {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-  const date = new Date(`${value}T00:00:00Z`);
-  if (Number.isNaN(date.getTime())) return false;
-  return value === date.toISOString().slice(0, 10);
-}
-
-export function rollingSeoDates(pastDays = 14, futureDays = 7): string[] {
-  const today = easternCalendarToday();
-  const dates: string[] = [];
-  for (let offset = -pastDays; offset <= futureDays; offset++) {
-    dates.push(addDaysCalendar(today, offset));
-  }
-  return dates;
 }
 
 export function formatLongDate(date: string): string {
@@ -123,18 +75,18 @@ export function formatGameTime(gameDate: string): string {
 }
 
 export function gamePath(game: Pick<GameSummary, "id">): string {
-  return `/game/${game.id}`;
+  return `/catchup/${game.id}`;
 }
 
-export function spoilerSafeGameTitle(game: Pick<GameSummary, "awayTeam" | "homeTeam" | "leagueCode">): string {
-  return `${game.awayTeam} at ${game.homeTeam} - ${leagueLabel(game.leagueCode)} spoiler-free game tracker`;
+export function spoilerSafeGameTitle(game: Pick<GameSummary, "awayTeam" | "homeTeam">): string {
+  return `${game.awayTeam} at ${game.homeTeam} - MLB spoiler-free game tracker`;
 }
 
 export function spoilerSafeGameDescription(
-  game: Pick<GameSummary, "awayTeam" | "homeTeam" | "leagueCode" | "gameDate" | "localGameDate">,
+  game: Pick<GameSummary, "awayTeam" | "homeTeam" | "gameDate" | "localGameDate">,
 ): string {
   const date = formatLongDate(gameScheduleDateStr(game));
-  return `Catch up on ${game.awayTeam} at ${game.homeTeam} from ${date} without score spoilers. Follow the ${leagueLabel(game.leagueCode)} timeline, status, and matchup details when you are ready.`;
+  return `Catch up on ${game.awayTeam} at ${game.homeTeam} from ${date} without score spoilers. Follow the MLB play-by-play timeline when you're ready.`;
 }
 
 export function organizationJsonLd() {
@@ -142,7 +94,7 @@ export function organizationJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Scroll Down Sports",
+    name: "Scroll Down MLB",
     url: siteUrl,
     logo: absoluteUrl("/app-icon.png"),
   };
@@ -153,26 +105,24 @@ export function websiteJsonLd() {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
-    name: "Scroll Down Sports",
+    name: "Scroll Down MLB",
     url: siteUrl,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${siteUrl}/?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
   };
 }
 
-export function breadcrumbJsonLd(items: Array<{ name: string; path: string }>) {
+export function sportsEventJsonLd(game: Pick<GameSummary, "id" | "awayTeam" | "homeTeam" | "gameDate">) {
   return {
     "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    itemListElement: items.map((item, index) => ({
-      "@type": "ListItem",
-      position: index + 1,
-      name: item.name,
-      item: absoluteUrl(item.path),
-    })),
+    "@type": "SportsEvent",
+    name: `${game.awayTeam} at ${game.homeTeam}`,
+    url: absoluteUrl(gamePath(game)),
+    startDate: game.gameDate,
+    eventStatus: "https://schema.org/EventScheduled",
+    sport: "MLB",
+    competitor: [
+      { "@type": "SportsTeam", name: game.awayTeam },
+      { "@type": "SportsTeam", name: game.homeTeam },
+    ],
   };
 }
 
@@ -188,28 +138,6 @@ export function itemListJsonLd(games: GameSummary[], path: string) {
       url: absoluteUrl(gamePath(game)),
       name: spoilerSafeGameTitle(game),
     })),
-  };
-}
-
-export function sportsEventJsonLd(game: GameSummary) {
-  return {
-    "@context": "https://schema.org",
-    "@type": "SportsEvent",
-    name: `${game.awayTeam} at ${game.homeTeam}`,
-    url: absoluteUrl(gamePath(game)),
-    startDate: game.gameDate,
-    eventStatus: "https://schema.org/EventScheduled",
-    sport: leagueLabel(game.leagueCode),
-    competitor: [
-      {
-        "@type": "SportsTeam",
-        name: game.awayTeam,
-      },
-      {
-        "@type": "SportsTeam",
-        name: game.homeTeam,
-      },
-    ],
   };
 }
 

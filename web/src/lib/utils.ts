@@ -1,4 +1,3 @@
-import type { OddsFormat } from "./types";
 import { APP_TIMEZONE } from "./date-utils";
 
 export function formatTimeET(dateStr: string): string {
@@ -17,31 +16,6 @@ export function formatDate(dateStr: string): string {
     day: "numeric",
     timeZone: APP_TIMEZONE,
   });
-}
-
-export function formatOdds(price: number, format: OddsFormat): string {
-  switch (format) {
-    case "american":
-      return price > 0 ? `+${price}` : `${price}`;
-    case "decimal": {
-      const decimal =
-        price > 0 ? price / 100 + 1 : 100 / Math.abs(price) + 1;
-      return decimal.toFixed(2);
-    }
-    case "fractional": {
-      const decimal =
-        price > 0 ? price / 100 + 1 : 100 / Math.abs(price) + 1;
-      const frac = decimal - 1;
-      const numerator = Math.round(frac * 100);
-      const denominator = 100;
-      const gcd = greatestCommonDivisor(numerator, denominator);
-      return `${numerator / gcd}/${denominator / gcd}`;
-    }
-  }
-}
-
-function greatestCommonDivisor(a: number, b: number): number {
-  return b === 0 ? a : greatestCommonDivisor(b, a % b);
 }
 
 export function cn(...classes: (string | false | null | undefined)[]): string {

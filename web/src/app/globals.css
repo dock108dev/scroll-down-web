@@ -269,39 +269,2327 @@ body {
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Score change flash — 600ms amber highlight on score update
+   Catch-up experience
+   - Scroll-snap container (one card per viewport)
+   - Mattel-style baseball light field animations
+   - Reveal gate + final reveal
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-@keyframes score-flash {
-  0%   { background-color: transparent; }
-  15%  { background-color: rgba(251, 191, 36, 0.30); }
-  100% { background-color: transparent; }
+
+/* ── Reusable atoms ─────────────────────────────────── */
+.catchup-eyebrow {
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--device-amber-dim, rgb(155, 118, 38));
 }
-.score-flash { animation: score-flash 600ms ease-out; }
-@media (prefers-reduced-motion: reduce) {
-  .score-flash { animation: none; }
+
+/* ── Catch-up header (back/restart) ─────────────────── */
+.catchup-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  height: 44px;
+  padding: 0 0.75rem;
+  background: rgba(7, 8, 10, 0.92);
+  backdrop-filter: saturate(150%) blur(8px);
+  border-bottom: 1px solid rgba(120, 100, 60, 0.20);
+  color: rgb(245, 245, 245);
+}
+.catchup-header-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.625rem;
+  min-height: 36px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-neutral-300);
+  transition: background 160ms ease-out, color 160ms ease-out;
+}
+.catchup-header-action:hover {
+  background: var(--color-neutral-800);
+  color: var(--color-neutral-50);
+}
+.catchup-header-matchup {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: var(--color-neutral-300);
+  text-transform: uppercase;
+}
+
+/* ── Scroll-snap container ──────────────────────────── */
+/* Sized to leave room for the global TopNav (--header-h) plus our own
+   in-flow catch-up header (44px) so each snapped slide is exactly one
+   visible viewport. */
+.catchup-scroller {
+  height: calc(100dvh - var(--header-h, 56px) - 44px);
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  /* ── Catch-up theme tokens ─────────────────────────────
+     The whole catch-up experience is one retro-handheld product. These
+     tokens cascade to every play card, intro card, reveal gate, and
+     final-reveal card so the theme stays coherent. */
+  --catchup-bg:          #07080a;
+  --device-shell:        #15161a;
+  --device-shell-hi:     #1d1f24;
+  --device-shell-lo:     #0a0b0d;
+  --device-screen:       #0a0b0d;
+  --device-screen-deep:  #06070a;
+  --device-border:       rgba(245, 181, 54, 0.32);
+  --device-border-soft:  rgba(245, 181, 54, 0.16);
+  --device-border-bevel: rgba(255, 255, 255, 0.04);
+  --device-amber:        #f6c453;
+  --device-amber-bright: #ffd97a;
+  --device-amber-dim:    #9b7626;
+  --device-text:         #f5f1e8;
+  --device-muted:        #9ca3af;
+  /* Tightened radii — the device feels less "mobile card with rounded
+     corners" and more "injection-molded electronic device front panel".
+     The inset screens are nearly square (3px) for an LCD-window feel. */
+  --device-radius:       8px;
+  --device-radius-screen: 3px;
+
+  background: var(--catchup-bg);
+  color: var(--device-text);
+}
+
+.catchup-scroller-slide {
+  min-height: calc(100dvh - var(--header-h, 56px) - 44px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* ── Device-shell card ──────────────────────────────────
+   Each play card is one unified retro-handheld unit. The outer shell is
+   dark plastic; inner sections (scoreboard / field / result / caption)
+   are inset "screens" lit from within. This wrapper provides:
+   - the outer shell border + bevel + drop-shadow
+   - the gap rhythm between inset screens
+   - a viewport-tall slide so each card snaps cleanly */
+.catchup-card-snap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  height: 100%;
+  max-width: 28rem;
+  margin: 1rem auto 1.5rem;
+  background:
+    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius);
+  box-shadow:
+    inset 0 1px 0 var(--device-border-bevel),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 8px 28px rgba(0, 0, 0, 0.55),
+    0 1px 0 rgba(0, 0, 0, 0.6);
+}
+@media (max-width: 480px) {
+  .catchup-card-snap {
+    margin: 0.5rem auto 1rem;
+    padding: 0.625rem;
+    /* Inherits --device-radius (8px) — no per-breakpoint softening. */
+  }
+}
+
+/* Scoreboard-style top rail. Pure dark panel, brighter LED accents on
+   the inning + score row. */
+/* Scoreboard inset screen — dark LCD area with subtle inner shadow. */
+.catchup-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.5rem 0.6875rem 0.5625rem;
+  border: 1px solid var(--device-border-soft);
+  border-radius: var(--device-radius-screen);
+  background: var(--device-screen);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 0 14px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 0 var(--device-border-bevel);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+/* Meta row — top line of the header. Left band carries inning + outs +
+   batting team; right band carries the score. Wraps to two rows on narrow
+   widths so the score never gets squeezed. */
+.catchup-card-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+}
+.catchup-card-meta-left {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.5rem;
+}
+.catchup-card-meta-sep {
+  color: rgba(255, 220, 150, 0.32);
+  font-size: 0.625rem;
+}
+.catchup-card-inning {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: #fde68a;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.55);
+}
+
+/* On-base row + matchup row separator */
+.catchup-card-runners-band {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  font-variant-numeric: tabular-nums;
+}
+.catchup-card-runners-band-changing {
+  display: inline-grid;
+  grid-template-areas: "stack";
+  align-items: center;
+}
+.catchup-card-runners-band-changing > .catchup-cell {
+  grid-area: stack;
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+}
+
+/* Matchup line — eyebrow labels above big bold names, with a clean "vs"
+   gap separator. The two halves are flex children of equal weight so the
+   row reads as a balanced scoreboard matchup. */
+.catchup-card-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.5rem 0.4375rem;
+  border-top: 1px solid rgba(120, 100, 60, 0.25);
+  border-bottom: 1px solid rgba(120, 100, 60, 0.25);
+  background:
+    linear-gradient(180deg, rgba(251, 191, 36, 0.04) 0%, rgba(0, 0, 0, 0) 70%),
+    rgba(0, 0, 0, 0.25);
+}
+.catchup-card-matchup-side {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.catchup-card-matchup-batter {
+  align-items: flex-start;
+  text-align: left;
+}
+.catchup-card-matchup-pitcher {
+  align-items: flex-end;
+  text-align: right;
+}
+.catchup-card-matchup-eyebrow {
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: rgba(255, 220, 150, 0.55);
+  text-transform: uppercase;
+}
+.catchup-card-batter-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+}
+.catchup-card-matchup-logo {
+  height: 14px;
+  width: 14px;
+  object-fit: contain;
+  flex: 0 0 auto;
+  opacity: 0.9;
+}
+.catchup-card-batter {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.35);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.catchup-card-pitcher {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 230, 180, 0.92);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Stat line under each matchup name. Monospace, dim amber, very tight. */
+.catchup-card-stat-line {
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: rgba(255, 220, 150, 0.62);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 0.0625rem;
+}
+.catchup-card-matchup-batter > .catchup-card-stat-line { padding-left: 1.25rem; }
+.catchup-card-vs {
+  flex: 0 0 auto;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 220, 150, 0.42);
+  text-transform: uppercase;
+  padding: 0 0.25rem;
+  align-self: flex-end;
+  padding-bottom: 0.0625rem;
+}
+
+/* On-base pill row — sits below the matchup. Each occupied base renders
+   as a pill with a diamond glyph + last name + base label. */
+.catchup-card-onbase-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  min-height: 1rem;
+}
+.catchup-card-onbase-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.125rem 0.4375rem;
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 0.3125rem;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 6px rgba(251, 191, 36, 0.08);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: #fde68a;
+}
+.catchup-card-onbase-glyph {
+  font-size: 0.5rem;
+  line-height: 1;
+  color: #fbbf24;
+  text-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.4);
+}
+.catchup-card-onbase-name {
+  letter-spacing: 0.10em;
+  color: #ffffff;
+}
+.catchup-card-onbase-base {
+  color: rgba(255, 220, 150, 0.55);
+  letter-spacing: 0.14em;
+}
+.catchup-card-onbase-empty {
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 220, 150, 0.32);
+  text-transform: uppercase;
+}
+/* Pitch count chip — segmented scoreboard treatment. */
+.catchup-card-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  border-radius: 0.3125rem;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 6px rgba(251, 191, 36, 0.08);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: #fde68a;
+  text-shadow: 0 0 4px rgba(251, 191, 36, 0.6);
+}
+.catchup-card-count::before {
+  content: "B-S";
+  font-size: 0.625rem;
+  letter-spacing: 0.14em;
+  font-weight: 700;
+  color: rgba(255, 220, 150, 0.55);
+  text-shadow: none;
+  margin-right: 0.1875rem;
+}
+
+/* ── Outs dots — three LED bulbs in the situation rail ─── */
+.outs-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4375rem;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid rgba(251, 191, 36, 0.32);
+  border-radius: 0.3125rem;
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 6px rgba(251, 191, 36, 0.08);
+}
+.outs-dots-label {
+  margin-left: 0.1875rem;
+  letter-spacing: 0.14em;
+  color: rgba(255, 220, 150, 0.62);
+  font-size: 0.625rem;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-weight: 700;
+}
+.outs-dot {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: transparent;
+  box-shadow: none;
+  transition: background 240ms ease-out, box-shadow 240ms ease-out, transform 240ms ease-out;
+  transform-origin: center;
+}
+.outs-dot[data-state="on"] {
+  background: #fbbf24;
+  border-color: transparent;
+  box-shadow:
+    0 0 4px rgba(251, 191, 36, 1),
+    0 0 9px rgba(251, 191, 36, 0.6),
+    0 0 16px rgba(251, 191, 36, 0.25);
+}
+.outs-dot[data-state="off"] {
+  background: transparent;
+}
+/* Settled (non-playing) state: lighting dot is already lit; fading dot is dim. */
+.outs-dot[data-state="lighting"] {
+  background: #fbbf24;
+  border-color: transparent;
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.45);
+}
+.outs-dot[data-state="fading"] {
+  background: transparent;
+  border-color: rgba(251, 191, 36, 0.35);
+}
+/* While the card is playing: lighting dots animate ON at the runners phase;
+   fading dots (rare — would mean an out went down somehow) animate OFF. */
+[data-active="true"] .outs-dot[data-state="lighting"] {
+  background: transparent;
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: none;
+  animation: outs-light-up 0.4s ease-out var(--ms-runners, 1.5s) forwards;
+}
+[data-active="true"] .outs-dot[data-state="fading"] {
+  background: #fbbf24;
+  border-color: transparent;
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85);
+  animation: outs-fade-out 0.35s ease-out var(--ms-runners, 1.5s) forwards;
+}
+@keyframes outs-light-up {
+  0%   { background: transparent; box-shadow: none; transform: scale(1); border-color: rgba(251, 191, 36, 0.55); }
+  60%  { background: #fbbf24; box-shadow: 0 0 12px rgba(251, 191, 36, 0.95); transform: scale(1.5); border-color: transparent; }
+  100% { background: #fbbf24; box-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.45); transform: scale(1); border-color: transparent; }
+}
+@keyframes outs-fade-out {
+  0%   { background: #fbbf24; box-shadow: 0 0 4px rgba(251, 191, 36, 0.85); }
+  100% { background: transparent; box-shadow: none; border-color: rgba(251, 191, 36, 0.35); }
+}
+
+/* ── Generic cross-fade for changeable cells ─────────── */
+.catchup-cell {
+  display: inline-block;
+}
+.catchup-cell-pre  { opacity: 0; }
+.catchup-cell-post { opacity: 1; }
+[data-active="true"] .catchup-card-runners-band-changing > .catchup-cell-pre {
+  opacity: 1;
+  animation: catchup-cell-pre-fade 0.35s ease-out var(--ms-runners, 1.55s) forwards;
+}
+[data-active="true"] .catchup-card-runners-band-changing > .catchup-cell-post {
+  opacity: 0;
+  animation: catchup-cell-post-fade 0.35s ease-in calc(var(--ms-runners, 1.65s) + 100ms) forwards;
+}
+@keyframes catchup-cell-pre-fade {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-4px); }
+}
+@keyframes catchup-cell-post-fade {
+  0%   { opacity: 0; transform: translateY(6px) scale(0.85); }
+  60%  { opacity: 1; transform: translateY(0) scale(1.18); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.catchup-card-score {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.25rem 0.625rem 0.25rem 0.875rem;
+  border: 1px solid rgba(120, 100, 60, 0.45);
+  border-radius: 0.25rem;
+  background: rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+}
+.catchup-card-score-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.3125rem;
+}
+.catchup-card-score-abbr {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: rgba(255, 220, 150, 0.55);
+  position: relative;
+}
+/* Batting indicator — small triangular "▸" marker before the abbreviation
+   of whichever team is at bat. Replaces the dropped "RANGERS BATTING" text
+   line; the eye picks it up faster than a label, and it's always next to
+   the team name in the score panel. */
+.catchup-card-score-line[data-batting="true"] .catchup-card-score-abbr {
+  color: #fde68a;
+  text-shadow: 0 0 4px rgba(251, 191, 36, 0.55);
+}
+.catchup-card-score-line[data-batting="true"] .catchup-card-score-abbr::before {
+  content: "▸";
+  position: absolute;
+  left: -0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.625rem;
+  color: #fbbf24;
+  text-shadow: 0 0 5px rgba(251, 191, 36, 0.85);
+}
+.catchup-card-score-line[data-batting="true"] .catchup-card-score-num {
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.55);
+}
+.catchup-card-score-num {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fde68a;
+  text-shadow: 0 0 5px rgba(251, 191, 36, 0.55);
+  letter-spacing: -0.02em;
+  line-height: 1;
+  min-width: 1ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
+  transform-origin: center;
+}
+/* Score-update flash — a tight digital "tick", not a bouncy UI pulse.
+   Reduced peak scale (1.18) and steeper timing reads as a scoreboard
+   incrementing rather than a celebration. */
+[data-active="true"] .catchup-card-score-num[data-flash="true"] {
+  animation: catchup-score-flash 520ms cubic-bezier(0.4, 0, 0.5, 1) forwards;
+}
+@keyframes catchup-score-flash {
+  0%   { transform: scale(1);    color: #fde68a; }
+  25%  { transform: scale(1.18); color: #ffffff;
+         text-shadow:
+           0 0 4px rgba(255, 255, 255, 0.95),
+           0 0 12px rgba(251, 191, 36, 0.85); }
+  100% { transform: scale(1);    color: #fde68a; }
+}
+.catchup-card-score-sep {
+  color: rgba(255, 220, 150, 0.32);
+  font-size: 1rem;
+}
+
+.catchup-card-field {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Result LED strip — same inset-screen vocabulary as the scoreboard,
+   but stretched into a thin amber-edged display under the field. */
+.catchup-result-chip {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.125rem;
+  padding: 0.4375rem 0.875rem;
+  min-height: 2.25rem;
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius-screen);
+  background:
+    linear-gradient(180deg, var(--device-screen-deep) 0%, var(--device-screen) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.65),
+    inset 0 0 12px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 0 var(--device-border-bevel),
+    0 0 0 1px rgba(0, 0, 0, 0.4);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(6px) scale(0.96);
+  transition: opacity 220ms ease-out, transform 220ms cubic-bezier(0.2, 0.7, 0.4, 1.3);
+}
+.catchup-result-chip[data-visible="true"] {
+  /* Mechanical click-in — no overshoot. Reads as a segmented display
+     latching its new value, not a soft UI pop. */
+  animation: catchup-result-chip-pop 220ms cubic-bezier(0.4, 0, 0.5, 1) forwards;
+}
+@keyframes catchup-result-chip-pop {
+  0%   { opacity: 0; transform: translateY(4px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0)   scale(1);    }
+}
+.catchup-result-chip-primary {
+  font-size: 0.9375rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  color: var(--device-amber-bright);
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  line-height: 1;
+}
+.catchup-result-chip-secondary {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  color: var(--device-amber-dim);
+  line-height: 1.1;
+}
+
+/* Narration caption — soft inset rectangle, reads as the "ticker"
+   panel on the device. The narrative <p> inside fades in at reveal. */
+.catchup-card-body {
+  flex: 0 0 auto;
+  min-height: 3.25rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--device-border-soft);
+  border-radius: var(--device-radius-screen);
+  background: var(--device-screen);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.5),
+    inset 0 0 10px rgba(0, 0, 0, 0.45);
+  text-align: left;
+}
+
+/* Scroll-cue chevron — hidden until the card reaches the reveal phase,
+   then fades in slightly after the description lands. */
+.catchup-card-footer {
+  display: flex;
+  justify-content: center;
+  color: rgba(251, 191, 36, 0.40);
+  opacity: 0;
+  transition: opacity 320ms ease-out;
+}
+.catchup-card-snap[data-phase="reveal"] .catchup-card-footer {
+  opacity: 1;
+  transition-delay: 320ms;
+  animation: catchup-scroll-cue 1.6s ease-in-out 640ms infinite;
+}
+@keyframes catchup-scroll-cue {
+  0%, 100% { transform: translateY(0); opacity: 0.7; }
+  50%      { transform: translateY(4px); opacity: 0.3; }
+}
+
+/* ── Narrative fade-in ──────────────────────────────── */
+/* The phase machine times the reveal — no transition-delay needed; we just
+   transition opacity when the parent flips data-active="true" (which the
+   card does only when phase === "reveal"). */
+.catchup-narrative {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: #f5f1e8;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 320ms ease-out, transform 320ms ease-out;
+}
+/* Spec: no opacity below 0.65 for normal text. Active reveal goes to
+   full 1.0 — narration is critical content, never dim. */
+.catchup-narrative[data-active="true"] {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Progress rail ──────────────────────────────────── */
+.catchup-progress {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+}
+.catchup-progress-bar {
+  height: 100%;
+  background: var(--color-blue-500);
+  transition: width 320ms ease-out;
+}
+.catchup-progress-live {
+  position: absolute;
+  right: 0.75rem;
+  top: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-red-500);
+}
+.catchup-progress-live-dot {
+  display: inline-block;
+  height: 0.4rem;
+  width: 0.4rem;
+  border-radius: 999px;
+  background: var(--color-red-500);
+  animation: live-dot 1.6s ease-in-out infinite;
+}
+@keyframes live-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.3; }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Hide mode update pulse — 500ms pulse on reveal area
+   Baseball light field — Mattel-style LED grammar
+   Timed via CSS variables sourced from lib/play-phases.ts:
+     --ms-pitch    moment the pitch dot leaves the mound
+     --ms-trigger  contact / walk / strikeout flash at home
+     --ms-ball     ball trail begins drawing
+     --ms-runners  runner dots animate, base bulbs cross-fade
+     --ms-settle   after-state holds, narrative still hidden
+     --ms-reveal   description fades in
+     --ms-ready    scroll cue chevron fades in
+   The schedule is per-profile (see SCHEDULES in play-phases.ts) so a home
+   run lingers and a grounder snaps. Total runtime is 2.5–5s per card.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-@keyframes update-pulse {
-  0%   { background-color: rgba(251, 191, 36, 0); }
-  30%  { background-color: rgba(251, 191, 36, 0.08); }
-  100% { background-color: rgba(251, 191, 36, 0); }
+
+/* Outer shell — dark "tabletop console" panel. The amber glow is reserved
+   for actual lit elements; the surround stays cool/dark for contrast. */
+/* Field inset screen — sits inside the device shell as the largest
+   "display" area. Same screen treatment as the scoreboard so the two
+   read as siblings on the same panel. */
+.field-shell {
+  position: relative;
+  width: 100%;
+  max-width: 22rem;
+  margin-inline: auto;
+  aspect-ratio: 1 / 1;
+  background: #000;
+  border-radius: var(--device-radius-screen);
+  border: 1px solid var(--device-border-soft);
+  /* Sharper LCD-window bezel — tight inner shadow, not a soft glow. */
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.7),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.85),
+    inset 0 -1px 0 var(--device-border-bevel);
+  isolation: isolate;
+  overflow: visible;
 }
-.update-pulse { animation: update-pulse 500ms ease-out; }
+/* "Stadium glow" — a barely-perceptible amber radial that breathes very
+   slowly. Subliminal: the user shouldn't see a shimmer, only sense the
+   panel is "alive." Absolute rgba contribution stays in 0.0225-0.03. */
+.field-stadium-glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    ellipse 70% 55% at 50% 45%,
+    rgba(245, 181, 54, 0.05) 0%,
+    transparent 100%
+  );
+  animation: stadium-ambient-pulse 9.7s ease-in-out infinite;
+  will-change: opacity;
+}
+@keyframes stadium-ambient-pulse {
+  0%, 100% { opacity: 0.60; }
+  45%      { opacity: 0.45; }
+}
+/* During an active contact play, the ambient breath is replaced by a
+   reactive radial gradient that brightens with the ball in flight —
+   the field "feels" the impact. Walks/strikeouts/etc. (data-contact=
+   "false") keep the ambient pulse; nothing fires when there's no ball. */
+[data-playing="true"][data-contact="true"] .field-stadium-glow {
+  animation: ball-flight-glow var(--d-ball, 400ms) ease-out
+             var(--ms-ball, 800ms) both;
+}
+@keyframes ball-flight-glow {
+  0%   { background: radial-gradient(ellipse 70% 55% at 50% 45%, rgba(245, 181, 54, 0.00) 0%, transparent 100%); }
+  30%  { background: radial-gradient(ellipse 70% 55% at 50% 45%, rgba(245, 181, 54, 0.14) 0%, transparent 100%); }
+  100% { background: radial-gradient(ellipse 70% 55% at 50% 45%, rgba(245, 181, 54, 0.04) 0%, transparent 100%); }
+}
+/* Home-run flare — peaks at ~15% then decays over 2s so the stadium
+   reads as bathed in the afterglow of a long ball. Higher specificity
+   than ball-flight-glow above, so it wins on home_run plays. */
+[data-homer="true"][data-playing="true"] .field-stadium-glow {
+  animation: homer-flare 2s ease-out var(--ms-ball, 800ms) both;
+}
+@keyframes homer-flare {
+  0%   { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(245, 181, 54, 0.00) 0%, transparent 100%); }
+  15%  { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(255, 217, 122, 0.38) 0%, transparent 100%); }
+  60%  { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(245, 181, 54, 0.18) 0%, transparent 100%); }
+  100% { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(245, 181, 54, 0.04) 0%, transparent 100%); }
+}
+.field-svg {
+  position: relative;
+  z-index: 1;
+  display: block;
+  /* Imperceptible global beam-current drift on the whole field. Period
+     7.3s — incommensurable with the 3.4 / 4.2 / 5.1 / 9.7s ambient
+     animations so no beat frequency emerges. */
+  animation: phosphor-breath 7.3s ease-in-out infinite;
+}
+@keyframes phosphor-breath {
+  0%, 100% { filter: brightness(1.000); }
+  25%      { filter: brightness(0.978); }
+  60%      { filter: brightness(1.014); }
+}
+
+/* ── Mound rubber: ambient bloom + warmup pulse just before the pitch. ── */
+.field-mound-dot {
+  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.85));
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mound-ambient-bloom 4.2s ease-in-out infinite;
+}
+[data-playing="true"] .field-mound-dot {
+  /* Warmup sits just before the pitch fires; replaces the ambient bloom. */
+  animation: field-mound-warmup 0.5s ease-out
+    calc(var(--ms-pitch, 500ms) - 200ms) 1 forwards;
+}
+@keyframes mound-ambient-bloom {
+  0%, 100% { filter: drop-shadow(0 0 3px   rgba(251, 191, 36, 0.85)); }
+  30%      { filter: drop-shadow(0 0 4.5px rgba(251, 191, 36, 1.00)); }
+  65%      { filter: drop-shadow(0 0 2.5px rgba(251, 191, 36, 0.72)); }
+}
+@keyframes field-mound-warmup {
+  0%   { transform: scale(1);   opacity: 0.85; }
+  60%  { transform: scale(1.5); opacity: 1; }
+  100% { transform: scale(1);   opacity: 0.85; }
+}
+
+/* ── Wall segments / foul lines: per-element phosphor jitter. ──────────
+   Each wall segment carries an animation-delay derived from its index
+   (set inline in BaseballLightField.tsx). Periods are incommensurable
+   with the other ambient cycles (9.7 / 7.3 / 5.1 / 4.2 / 3.4s) and
+   amplitude is held below the "perceptible shimmer" threshold so the
+   variation reads as material, not as a filter. */
+.field-wall-segment {
+  animation: phosphor-wall-flicker 3.4s ease-in-out infinite;
+}
+@keyframes phosphor-wall-flicker {
+  0%, 100% { stroke-opacity: 0.92; }
+  18%      { stroke-opacity: 0.88; }
+  35%      { stroke-opacity: 0.94; }
+  52%      { stroke-opacity: 0.87; }
+  71%      { stroke-opacity: 0.91; }
+  89%      { stroke-opacity: 0.95; }
+}
+.field-foul-line {
+  animation: phosphor-foul-flicker 5.1s ease-in-out infinite;
+}
+@keyframes phosphor-foul-flicker {
+  0%, 100% { stroke-opacity: 0.75; }
+  40%      { stroke-opacity: 0.71; }
+  70%      { stroke-opacity: 0.77; }
+}
+
+/* ── Base bulbs — three lifecycles drive the cross-fade. ── */
+/* Settled (non-playing) state shows the AFTER-state lights. When the card
+   becomes active, "pre" bulbs hold lit through setup, fade out as runners
+   advance; "post" bulbs fade in as runners arrive. */
+.field-base-bulb {
+  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.85));
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 180ms ease-out;
+}
+.field-base-bulb[data-lifecycle="pre"]  { opacity: 0; }
+.field-base-bulb[data-lifecycle="post"] { opacity: 1; }
+.field-base-bulb[data-lifecycle="both"] { opacity: 1; }
+
+[data-playing="true"] .field-base-bulb[data-lifecycle="pre"] {
+  /* Hold lit through setup + pitch + contact, then dim out as runners leave. */
+  animation: field-bulb-out 0.45s ease-out var(--ms-runners, 1.5s) both;
+}
+[data-playing="true"] .field-base-bulb[data-lifecycle="both"] {
+  /* Subtle pulse during setup so the user reads "this base has a runner". */
+  animation: field-bulb-pulse 0.5s ease-in-out 0s 1 normal;
+}
+[data-playing="true"] .field-base-bulb[data-lifecycle="post"] {
+  /* Light up at result_lock — only AFTER runners have arrived. Lighting
+     mid-runners would put the destination bulb on while the runner is
+     still mid-flight. */
+  animation: field-bulb-in 0.4s ease-out var(--ms-settle, 1.9s) both;
+}
+
+@keyframes field-bulb-pulse {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%      { opacity: 0.7;  transform: scale(0.92); }
+}
+
+/* ── Base + batter labels: small last-name tags near each base ─────── */
+/* Pre/post pair animates the same way as BaseBulb — the "before" name
+   dims out and the "after" name fades in during the runners phase. */
+.field-base-label {
+  fill: rgba(255, 220, 150, 0.78);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  letter-spacing: 0.04em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.75);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  pointer-events: none;
+  transition: opacity 180ms ease-out;
+}
+.field-base-label[data-lifecycle="pre"]  { opacity: 0; }
+.field-base-label[data-lifecycle="post"] { opacity: 1; }
+.field-base-label[data-lifecycle="both"] { opacity: 1; }
+[data-playing="true"] .field-base-label[data-lifecycle="pre"] {
+  opacity: 1;
+  animation: field-label-out 0.35s ease-out var(--ms-runners, 1.5s) both;
+}
+[data-playing="true"] .field-base-label[data-lifecycle="post"] {
+  /* Same gating as the post bulb — destination labels appear at
+     result_lock so they don't pre-empt the moving runner. */
+  opacity: 0;
+  animation: field-label-in 0.35s ease-out var(--ms-settle, 1.9s) both;
+}
+@keyframes field-label-out {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+@keyframes field-label-in {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+/* Batter at the plate — visible during setup/pitch/trigger only. */
+.field-batter-label {
+  fill: rgba(255, 220, 150, 0.85);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  letter-spacing: 0.06em;
+  paint-order: stroke;
+  stroke: rgba(0, 0, 0, 0.85);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 220ms ease-out;
+}
+.catchup-card-snap[data-phase="setup"]   .field-batter-label,
+.catchup-card-snap[data-phase="pitch"]   .field-batter-label,
+.catchup-card-snap[data-phase="trigger"] .field-batter-label {
+  opacity: 1;
+}
+@keyframes field-bulb-out {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+@keyframes field-bulb-in {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.25); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* ── Pitch dot — travels straight down mound → home. */
+.field-pitch-pulse {
+  /* Single subtle drop-shadow — the previous double-glow streaked under
+     motion blur and read as a vertical beam on some displays. */
+  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.75));
+}
+[data-playing="true"] .field-pitch-pulse {
+  animation: field-pitch var(--d-pitch, 380ms) cubic-bezier(0.45, 0, 0.55, 1)
+    var(--ms-pitch, 500ms) forwards;
+}
+@keyframes field-pitch {
+  0%   { transform: translate(0, 0);    opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate(0, 75px); opacity: 0; }
+}
+
+/* ── Contact flash at home plate ───────────────────── */
+/* Crisp single-frame burst — like a phosphor "tick" rather than a soft
+   bloom. Faster timing (180ms) and tighter scale (1→1.8) reads as a
+   mechanical impact instead of a UI pulse. */
+.field-contact-flash {
+  transform-origin: center;
+  transform-box: fill-box;
+}
+[data-playing="true"] .field-contact-flash {
+  animation: field-contact 180ms cubic-bezier(0.4, 0, 0.5, 1) var(--ms-trigger, 0.88s) forwards;
+}
+@keyframes field-contact {
+  0%   { opacity: 0;    transform: scale(0.4); }
+  20%  { opacity: 1;    transform: scale(1.8); }
+  100% { opacity: 0;    transform: scale(2.4); }
+}
+
+/* ── Strikeout flash — contained pulse at home, no contact bloom. ── */
+[data-playing="true"] .field-strikeout-flash {
+  animation: field-strikeout 320ms ease-out var(--ms-trigger, 0.88s) forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes field-strikeout {
+  /* Compact pulse at the plate — used to scale to 2× and read as a
+     dramatic burst, but the spec calls for "small pulse, no big beam." */
+  0%   { fill: rgba(251, 191, 36, 0);    transform: scale(0.8); }
+  35%  { fill: rgba(251, 191, 36, 0.85); transform: scale(1.2); }
+  100% { fill: rgba(251, 191, 36, 0);    transform: scale(1.4); }
+}
+
+/* ── HBP flash — red-tinted pulse at the plate (no contact bloom). ── */
+[data-playing="true"] .field-hbp-flash {
+  animation: field-hbp 360ms ease-out var(--ms-trigger, 0.88s) forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes field-hbp {
+  0%   { fill: rgba(248, 113, 113, 0);    transform: scale(1); }
+  30%  { fill: rgba(248, 113, 113, 0.95); transform: scale(1.8); }
+  100% { fill: rgba(248, 113, 113, 0);    transform: scale(2.2); }
+}
+
+/* ── Run-scoring plate pulse — fires when a runner crosses home. ── */
+[data-playing="true"][data-scoring="true"] .field-plate-score-pulse {
+  animation: field-plate-score 720ms ease-out
+    calc(var(--ms-runners, 1.2s) + 240ms) forwards;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+@keyframes field-plate-score {
+  0%   { opacity: 0;   transform: scale(0.5); }
+  40%  { opacity: 1;   transform: scale(1.3); }
+  100% { opacity: 0;   transform: scale(1.6); }
+}
+
+/* ── Ball trail ────────────────────────────────────── */
+/* CRT-style persistence: draw quickly, hold briefly, then fade. The trail
+   is the *memory* of the ball's path — bright but lower than the ball
+   dot itself, so the eye tracks the dot first and reads the trail as
+   afterimage. Per-profile timing comes in via inline CSS variables so
+   home runs linger while ground balls snap and disappear. */
+.field-ball-trail {
+  opacity: 0;
+  /* Single soft glow — the trail is afterimage, not the focal actor. */
+  filter: drop-shadow(0 0 calc(5px * var(--trail-glow, 1)) var(--field-accent));
+}
+[data-playing="true"] .field-ball-trail {
+  animation:
+    field-trail-draw var(--trail-draw-ms, 480ms) cubic-bezier(0.35, 0, 0.45, 1)
+      var(--ms-ball, 1.05s) forwards,
+    field-trail-fade var(--trail-fade-ms, 380ms) ease-out
+      calc(var(--ms-ball, 1.05s) + var(--trail-draw-ms, 480ms) + var(--trail-fade-delay-ms, 220ms)) forwards;
+}
+/* Walk / strikeout / stolen base — no trail draw at all. */
+[data-playing="true"][data-profile="walk"] .field-ball-trail,
+[data-playing="true"][data-profile="strikeout"] .field-ball-trail,
+[data-playing="true"][data-profile="stolen_base"] .field-ball-trail {
+  animation: none;
+  opacity: 0;
+}
+@keyframes field-trail-draw {
+  0%   { stroke-dashoffset: 800; opacity: 0; }
+  10%  { opacity: 1; }
+  100% { stroke-dashoffset: 0;   opacity: 1; }
+}
+@keyframes field-trail-fade {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Traveling ball dot ────────────────────────────── */
+/* The brightest, most-active object on the field. The 3-layer Gaussian
+   bloom that gives it overexposed-LED presence is an SVG <filter>
+   defined in BaseballLightField (id `<reactId>-ball-glow`) and applied
+   via a <g filter> wrapper. CSS here only sets transform-box so the
+   SMIL <animateMotion> ride works cleanly. */
+.field-ball-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Reduced-motion: the dot still appears so the eye knows where the
+   action is, but it doesn't travel — it just blinks at home plate. The
+   `[data-playing]` reduced-motion override in the page-wide block
+   already disables runner motion; the ball dot is similarly silent. */
+@media (prefers-reduced-motion: reduce) {
+  .field-ball-dot { display: none; }
+}
+
+/* Secondary trail — the defensive throw on a double play. Fires on its own
+   delay/draw timing so the eye reads "ball lands → defense fires across". */
+.field-ball-trail-secondary {
+  opacity: 0;
+}
+/* DP secondary trail fires partway through the runners phase — visually
+   the throw across that completes the play. Only renders for double_play_*
+   profiles (the React side gates this). */
+[data-playing="true"] .field-ball-trail-secondary {
+  animation:
+    field-trail-draw 360ms cubic-bezier(0.35, 0, 0.45, 1)
+      calc(var(--ms-runners, 1.2s) + 240ms) forwards,
+    field-trail-fade 320ms ease-out
+      calc(var(--ms-runners, 1.2s) + 720ms) forwards;
+}
+
+/* ── Runner movement trails ────────────────────────── */
+/* Phosphor afterimage drawn behind each moving runner. Same trick as the
+   ball trail but lower-energy — runners are pressure carriers, not the
+   focal actor of the play. Reveal/draw/fade are SMIL <animate> elements
+   on the path itself so timing per-runner is exact. */
+.field-runner-trail {
+  filter: drop-shadow(0 0 3px var(--field-accent));
+  opacity: 0;
+}
+/* Per-style halo intensity. Stroke-width is set inline from TRAIL_WIDTH
+   so each style gets its own visual weight; this layer only adjusts the
+   phosphor halo and any dash patterning that conveys grammar. */
+.field-runner-trail[data-style="steal"] {
+  filter: drop-shadow(0 0 2px var(--field-accent));
+}
+.field-runner-trail[data-style="walk_shuffle"] {
+  filter: drop-shadow(0 0 2px var(--field-accent));
+  stroke-opacity: 0.5;
+}
+.field-runner-trail[data-style="advance"] {
+  stroke-opacity: 0.65;
+}
+.field-runner-trail[data-style="score"] {
+  /* Scores get extra halo — the moment a runner crosses home should
+     read with a touch more weight than a routine advance. */
+  filter:
+    drop-shadow(0 0 2px var(--field-accent))
+    drop-shadow(0 0 6px var(--field-accent));
+}
+.field-runner-trail[data-style="double_play"] {
+  /* DP transfers read as chained mechanics — a dashed trail (5px on,
+     3px gap) is the unmistakable signal that this isn't a live runner. */
+  stroke-dasharray: 5 3;
+}
+
+/* ── Runner advance dots ───────────────────────────── */
+/* Animates SVG cx/cy directly — more reliable than CSS transform on SVG
+   circles when the viewBox is scaled to the container. */
+.field-runner {
+  filter: drop-shadow(0 0 4px var(--field-accent));
+}
+/* Safe runners use SVG <animateMotion> for multi-segment basepath travel
+   (so a HR batter goes home → 1 → 2 → 3 → home). The `set` element handles
+   pre-begin invisibility — no CSS animation needed for the safe case. */
+.field-runner-motion {
+  /* Hidden until the <set> reveal at the runner's begin time. */
+  opacity: 0;
+}
+/* Runner crossing home — slightly brighter to read as a scoring beat. */
+.field-runner-home {
+  filter: drop-shadow(0 0 6px var(--field-accent));
+}
+/* Per-style runner dot weighting. Combined with the SMIL animations on r,
+   fill, and opacity, these filter rules give each style its own visual
+   register: scoring runners burn brighter, retired runners desaturate. */
+.field-runner-score {
+  filter: drop-shadow(0 0 6px var(--field-accent)) brightness(1.35);
+}
+.field-runner-double-play,
+.field-runner-forced-out,
+.field-runner-tagged-out {
+  filter: drop-shadow(0 0 4px var(--field-accent)) saturate(0.5) brightness(0.8);
+}
+/* In-place out flare — strikeouts, popups: a quick scale + opacity bloom
+   at the runner's origin, no travel. Tagged, forced, and double-play
+   outs ride SMIL animateMotion alongside safe advances and don't use
+   this keyframe. */
+.field-runner-out { opacity: 0; transform-box: fill-box; transform-origin: center; }
+[data-playing="true"] .field-runner-out {
+  animation: field-runner-out 540ms ease-out var(--ms-runners, 1.2s) forwards;
+}
+@keyframes field-runner-out {
+  0%   { opacity: 0; transform: scale(1); }
+  40%  { opacity: 1; transform: scale(1.6); }
+  100% { opacity: 0; transform: scale(0.5); }
+}
+
+/* ── Home-run stadium pulse ───────────────────────── */
+[data-playing="true"][data-homer="true"] .field-homer-pulse {
+  animation: field-homer-pulse 900ms ease-out
+    calc(var(--ms-ball, 1.4s) + 200ms) forwards;
+}
+@keyframes field-homer-pulse {
+  0%   { opacity: 0; transform: scale(0.8); transform-origin: center; }
+  35%  { opacity: 1; transform: scale(1.1); }
+  100% { opacity: 0; transform: scale(1.3); }
+}
+
+/* ── Reduced-motion fallback: skip every animation, show settled state. */
+@media (prefers-reduced-motion: reduce) {
+  .catchup-narrative { transition: none; opacity: 1; transform: none; }
+  .catchup-card-footer { opacity: 1; transition: none; animation: none; }
+  [data-playing="true"] .field-mound-dot,
+  [data-playing="true"] .field-base-bulb,
+  [data-playing="true"] .field-pitch-pulse,
+  [data-playing="true"] .field-contact-flash,
+  [data-playing="true"] .field-strikeout-flash,
+  [data-playing="true"] .field-hbp-flash,
+  [data-playing="true"] .field-ball-trail,
+  [data-playing="true"] .field-ball-trail-secondary,
+  [data-playing="true"] .field-runner-out,
+  [data-playing="true"][data-homer="true"] .field-homer-pulse,
+  [data-playing="true"][data-scoring="true"] .field-plate-score-pulse,
+  [data-active="true"] .catchup-card-score-num[data-flash="true"],
+  .field-stadium-glow,
+  .field-svg,
+  .field-mound-dot,
+  .field-wall-segment,
+  .field-foul-line {
+    animation: none;
+  }
+  .field-ball-trail,
+  .field-ball-trail-secondary,
+  .field-runner-trail { stroke-dashoffset: 0; opacity: 0; }
+  .field-runner-motion,
+  .field-runner-trail { display: none; }
+}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Slower live dot pulse — 2s cycle
+   Scene setter slide
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-@keyframes live-dot-pulse {
-  0%   { transform: scale(1); opacity: 0.75; }
-  50%  { transform: scale(2); opacity: 0; }
-  100% { transform: scale(2); opacity: 0; }
+/* ── Scene setter (intro card) ────────────────────────
+   Same device-shell vocabulary as the play card so the very first card
+   establishes the product theme. Three inset screens stacked vertically:
+   banner → matchup → CTA. Optional pitchers + venue lines between. */
+.scene-setter-slide {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
 }
-.animate-live-dot { animation: live-dot-pulse 2s cubic-bezier(0, 0, 0.2, 1) infinite; }
+.scene-setter-device {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 28rem;
+  padding: 0.75rem;
+  background:
+    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius);
+  box-shadow:
+    inset 0 1px 0 var(--device-border-bevel),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 8px 28px rgba(0, 0, 0, 0.55);
+}
+
+/* Inset-screen base — same treatment as the scoreboard / field / result
+   screens on the play card. */
+.scene-setter-screen {
+  border: 1px solid var(--device-border-soft);
+  border-radius: var(--device-radius-screen);
+  background: var(--device-screen);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 0 14px rgba(0, 0, 0, 0.5),
+    inset 0 -1px 0 var(--device-border-bevel);
+}
+
+/* Banner screen — masthead + first pitch on a single thin strip. */
+.scene-setter-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1875rem;
+  padding: 0.5rem 0.75rem;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+}
+.scene-setter-eyebrow {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.32em;
+  color: var(--device-amber);
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+}
+.scene-setter-firstpitch {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--device-muted);
+}
+
+/* Matchup screen — away · @ · home. */
+.scene-setter-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  padding: 1.25rem 0.75rem;
+}
+.scene-setter-vs {
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.5rem;
+  font-weight: 300;
+  color: var(--device-amber-dim);
+  letter-spacing: 0.04em;
+}
+.scene-setter-team {
+  display: flex;
+  width: 7rem;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4375rem;
+  text-align: center;
+}
+.scene-setter-team-logo {
+  height: 3.5rem;
+  width: 3.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+}
+.scene-setter-team-name {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.15;
+  color: var(--device-text);
+}
+.scene-setter-team-abbr {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--device-muted);
+}
+
+/* Probable pitchers — two compact columns inside one inset. */
+.scene-setter-pitchers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+}
+.scene-setter-pitcher-label {
+  margin: 0 0 0.125rem;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--device-amber-dim);
+}
+.scene-setter-pitcher-name {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--device-text);
+}
+
+.scene-setter-venue {
+  margin: 0;
+  text-align: center;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--device-muted);
+}
+
+/* CTA screen — call-to-action with the hidden-score note. */
+.scene-setter-cta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3125rem;
+  padding: 0.6875rem 0.875rem;
+  text-align: center;
+}
+.scene-setter-cta-primary {
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.20em;
+  color: var(--device-amber-bright);
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+}
+.scene-setter-cta-sub {
+  margin: 0;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--device-muted);
+  max-width: 22rem;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Reveal gate + final reveal — same device-shell vocabulary as the
+   play card so the whole experience reads as one handheld unit.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.reveal-gate {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 1rem;
+  overflow: hidden;
+}
+.reveal-gate-stadium {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(245, 181, 54, 0.10), transparent 60%);
+  opacity: 0;
+  transition: opacity 600ms ease-out;
+  pointer-events: none;
+}
+.reveal-gate[data-active="true"] .reveal-gate-stadium {
+  opacity: 1;
+}
+.reveal-gate-inner {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  text-align: center;
+  width: 100%;
+  max-width: 24rem;
+  padding: 1.25rem 1rem;
+  background:
+    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius);
+  box-shadow:
+    inset 0 1px 0 var(--device-border-bevel),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 8px 28px rgba(0, 0, 0, 0.55);
+}
+.reveal-gate-headline {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--device-text);
+}
+.reveal-gate-sub {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--device-muted);
+  line-height: 1.55;
+}
+.reveal-gate-button {
+  margin-top: 0.25rem;
+  padding: 0.75rem 1.5rem;
+  min-height: 48px;
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius-screen);
+  background:
+    linear-gradient(180deg, rgba(245, 181, 54, 0.18) 0%, rgba(245, 181, 54, 0.10) 100%);
+  color: var(--device-amber-bright);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(0, 0, 0, 0.4);
+  transition: background 180ms ease-out, transform 180ms ease-out;
+  cursor: pointer;
+}
+.reveal-gate-button:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(245, 181, 54, 0.26) 0%, rgba(245, 181, 54, 0.16) 100%);
+}
+.reveal-gate-button:disabled { opacity: 0.5; cursor: progress; }
+
+@keyframes reveal-fade-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.reveal-fade-in { animation: reveal-fade-in 600ms cubic-bezier(0.16, 0.84, 0.44, 1); }
 @media (prefers-reduced-motion: reduce) {
-  .animate-live-dot { animation: none; }
+  .reveal-fade-in { animation: none; }
+}
+
+/* Final reveal — wrapped in the same device shell as the play card. The
+   score row and the recap each become inset screens. */
+.final-reveal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  margin: 1rem auto 1.5rem;
+  width: calc(100% - 1.5rem);
+  max-width: 28rem;
+  background:
+    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius);
+  box-shadow:
+    inset 0 1px 0 var(--device-border-bevel),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 8px 28px rgba(0, 0, 0, 0.55);
+}
+.final-reveal-score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.875rem 0.75rem 1rem;
+  border: 1px solid var(--device-border-soft);
+  border-radius: var(--device-radius-screen);
+  background: var(--device-screen);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 0 14px rgba(0, 0, 0, 0.5);
+}
+.final-reveal-score-row {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+.final-reveal-score-sep {
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.5rem;
+  color: var(--device-amber-dim);
+}
+.final-reveal-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.375rem;
+  width: 6.5rem;
+}
+.final-reveal-team-score {
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 2.25rem;
+  font-weight: 800;
+  color: var(--device-muted);
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.final-reveal-team-name {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--device-muted);
+  text-align: center;
+  line-height: 1.2;
+}
+.final-reveal-team-winner .final-reveal-team-score {
+  color: var(--device-amber-bright);
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+}
+.final-reveal-team-winner .final-reveal-team-name {
+  color: var(--device-text);
+  font-weight: 700;
+}
+.final-reveal-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--device-border-soft);
+  border-radius: var(--device-radius-screen);
+  background: var(--device-screen);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 0 12px rgba(0, 0, 0, 0.45);
+}
+.final-reveal-summary-heading {
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--device-amber-dim);
+}
+.final-reveal-summary-text {
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  color: var(--device-text);
+  white-space: pre-line;
+}
+.final-reveal-summary-fallback {
+  font-size: 0.875rem;
+  color: var(--device-muted);
+}
+.final-reveal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.final-reveal-secondary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--device-border-soft);
+  border-radius: var(--device-radius-screen);
+  background: var(--device-screen);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--device-text);
+  transition: border-color 180ms, background 180ms;
+}
+.final-reveal-secondary:hover {
+  border-color: var(--device-border);
+  background: var(--device-shell-lo);
+}
+.final-reveal-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.75rem 0.875rem;
+  min-height: 44px;
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius-screen);
+  background:
+    linear-gradient(180deg, rgba(245, 181, 54, 0.18) 0%, rgba(245, 181, 54, 0.10) 100%);
+  color: var(--device-amber-bright);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+}
+.final-reveal-primary:hover {
+  background:
+    linear-gradient(180deg, rgba(245, 181, 54, 0.26) 0%, rgba(245, 181, 54, 0.16) 100%);
+}
+.final-reveal-error {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
+  padding: 4rem 1rem;
+  text-align: center;
+  color: var(--color-neutral-400);
+}
+.final-reveal-skeleton {
+  height: 12rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.75rem;
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Live caught-up + loading + error
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* Live caught-up — same device-shell vocabulary, with a red status dot
+   to read as "live, monitoring." Outer slide centers the device card. */
+.live-caught-up {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 1rem;
+}
+.live-caught-up-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  max-width: 24rem;
+  padding: 1.25rem 1rem;
+  text-align: center;
+  background:
+    linear-gradient(180deg, var(--device-shell-hi) 0%, var(--device-shell) 60%, var(--device-shell-lo) 100%);
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius);
+  box-shadow:
+    inset 0 1px 0 var(--device-border-bevel),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+    0 8px 28px rgba(0, 0, 0, 0.55);
+}
+.live-caught-up-fineprint {
+  margin: 0;
+  font-size: 0.6875rem;
+  color: var(--device-muted);
+}
+.live-caught-up-back {
+  margin-top: 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--device-muted);
+}
+.live-caught-up-back:hover {
+  color: var(--device-text);
+}
+.live-caught-up-pulse {
+  position: relative;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.live-caught-up-pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: rgb(239, 68, 68);
+  opacity: 0.6;
+  animation: live-dot 1.6s ease-in-out infinite;
+}
+.live-caught-up-pulse-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgb(239, 68, 68);
+}
+.live-caught-up-headline {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--device-text);
+}
+.live-caught-up-sub {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--device-muted);
+  line-height: 1.55;
+  max-width: 22rem;
+}
+.live-caught-up-button {
+  margin-top: 0.25rem;
+  padding: 0.75rem 1.5rem;
+  min-height: 48px;
+  border: 1px solid var(--device-border);
+  border-radius: var(--device-radius-screen);
+  background:
+    linear-gradient(180deg, rgba(245, 181, 54, 0.18) 0%, rgba(245, 181, 54, 0.10) 100%);
+  color: var(--device-amber-bright);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.8125rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+.live-caught-up-button:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, rgba(245, 181, 54, 0.26) 0%, rgba(245, 181, 54, 0.16) 100%);
+}
+.live-caught-up-button:disabled { opacity: 0.5; }
+
+.catchup-loading {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 2rem 1.25rem;
+  max-width: 36rem;
+  margin-inline: auto;
+}
+.catchup-loading-bar {
+  height: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 0.375rem;
+}
+.catchup-loading-bar-thin { height: 0.4rem; }
+.catchup-loading-bar-field { height: 14rem; border-radius: 0.75rem; }
+.catchup-loading-bar-half { width: 60%; }
+
+.catchup-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 4rem 1rem;
+  text-align: center;
+  color: var(--color-neutral-400);
+}
+.catchup-error-retry {
+  padding: 0.625rem 1.25rem;
+  min-height: 44px;
+  background: var(--color-neutral-800);
+  color: var(--color-neutral-100);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+.catchup-error-back {
+  font-size: 0.75rem;
+  color: var(--color-neutral-500);
+}
+.catchup-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 4rem 1rem;
+  text-align: center;
+  color: var(--color-neutral-400);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Bridge phase — visual continuity between sampled cards.
+
+   When a play card has `priorAfter` attached, it mounts showing the
+   PREVIOUS card's ending state (outs / runners / base bulbs) and animates
+   to its own situationBefore by --ms-setup (the moment the bridge phase
+   ends). Once bridge concludes the card behaves like a normal play card.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+/* Outs — bridge-lighting dots fire at the bridge→setup boundary so the
+   user sees the dot light up before the pitch arrives. */
+.outs-dot[data-state="bridge-lighting"] {
+  background: #fbbf24;
+  border-color: transparent;
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.45);
+}
+[data-active="true"] .outs-dot[data-state="bridge-lighting"] {
+  background: transparent;
+  border-color: rgba(251, 191, 36, 0.55);
+  box-shadow: none;
+  animation: outs-light-up 0.36s ease-out var(--ms-setup, 0.4s) forwards;
+}
+.outs-dot[data-state="bridge-fading-then-on"] {
+  background: #fbbf24;
+  border-color: transparent;
+  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85);
+}
+
+/* Runners band — prior cell fades OUT at the bridge→setup boundary; pre
+   cell fades IN at the same instant, then later fades out at runners as
+   before. The conditional [data-has-bridge] selector keeps non-bridged
+   cards on the original pre→post timing. */
+.catchup-cell-prior { opacity: 1; }
+[data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-prior {
+  opacity: 1;
+}
+[data-active="true"][data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-prior {
+  animation: catchup-cell-prior-fade 0.32s ease-out var(--ms-setup, 0.4s) forwards;
+}
+@keyframes catchup-cell-prior-fade {
+  0%   { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-3px); }
+}
+/* When a bridge is present, the pre cell starts hidden and emerges at
+   bridge end. It still fades out at runners (handled by the existing rule
+   below). */
+[data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-pre {
+  opacity: 0;
+}
+[data-active="true"][data-has-bridge="true"] .catchup-card-runners-band-changing > .catchup-cell-pre {
+  animation:
+    catchup-cell-pre-emerge 0.32s ease-out var(--ms-setup, 0.4s) forwards,
+    catchup-cell-pre-fade 0.35s ease-out var(--ms-runners, 1.55s) forwards;
+}
+@keyframes catchup-cell-pre-emerge {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Field — prior bulbs fade out at bridge end; "pre" bulbs that emerged
+   during bridge get a brief light-up. */
+.field-base-bulb[data-lifecycle="prior"] {
+  opacity: 1;
+}
+[data-playing="true"] .field-base-bulb[data-lifecycle="prior"] {
+  animation: field-bulb-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
+}
+@keyframes field-bulb-prior-fade {
+  0%   { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.7); }
+}
+/* Prior runner labels also dim out at bridge end. */
+.field-base-label[data-lifecycle="prior"] {
+  opacity: 1;
+}
+[data-playing="true"] .field-base-label[data-lifecycle="prior"] {
+  animation: field-label-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
+}
+@keyframes field-label-prior-fade {
+  0%   { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Rhythm cards — pacing beats inserted by the rhythm planner.
+   Four kinds share one shape with subtle visual differentiation:
+     - inning-transition (END 3RD): standard amber rhythm
+     - quiet-stretch (THROUGH 6th): dimmer, compressed feel
+     - late-game (LATE INNINGS): brighter accent, "pressure on"
+     - final-setup (FINAL APPROACH): brightest, last beat before climax
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.rhythm-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  text-align: center;
+  gap: 1rem;
+}
+.rhythm-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.625rem;
+  flex: 1;
+  padding: 1.5rem 1rem;
+  border: 1px solid var(--device-border-soft);
+  border-radius: var(--device-radius-screen);
+  background: var(--device-screen);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.6),
+    inset 0 0 22px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 0 var(--device-border-bevel);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 360ms ease-out, transform 360ms ease-out;
+}
+.rhythm-card[data-active="true"] .rhythm-card-inner {
+  opacity: 1;
+  transform: translateY(0);
+}
+.rhythm-card-eyebrow {
+  margin: 0;
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  color: rgba(255, 220, 150, 0.45);
+}
+.rhythm-card-label {
+  margin: 0;
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.75rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--device-amber-bright);
+  text-shadow: 0 0 10px rgba(245, 181, 54, 0.42);
+}
+.rhythm-card-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  margin-top: 0.125rem;
+  padding: 0.4rem 0.85rem;
+  border: 1px solid rgba(120, 100, 60, 0.55);
+  border-radius: 0.3rem;
+  background: rgba(0, 0, 0, 0.85);
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+}
+.rhythm-card-score-line {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+.rhythm-card-score-abbr {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  color: rgba(255, 220, 150, 0.55);
+}
+.rhythm-card-score-num {
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #fde68a;
+  text-shadow: 0 0 5px rgba(251, 191, 36, 0.55);
+  line-height: 1;
+}
+.rhythm-card-score-sep {
+  color: rgba(255, 220, 150, 0.32);
+  font-size: 1rem;
+}
+.rhythm-card-subtitle {
+  margin: 0;
+  font-size: 0.875rem;
+  letter-spacing: 0.04em;
+  color: rgba(245, 241, 232, 0.78);
+}
+
+/* Per-kind differentiation — keep changes subtle so the user reads
+   them as different *flavors of pause*, not as separate UI surfaces. */
+
+/* Quiet stretch — dimmer eyebrow + label, less amber glow. The deck
+   genuinely just took a breath; the visual energy drops accordingly. */
+.rhythm-card-quiet-stretch .rhythm-card-eyebrow { color: rgba(255, 220, 150, 0.32); }
+.rhythm-card-quiet-stretch .rhythm-card-label {
+  color: var(--device-amber);
+  text-shadow: 0 0 6px rgba(245, 181, 54, 0.28);
+}
+
+/* Late game — slightly brighter, the device "wakes up". */
+.rhythm-card-late-game .rhythm-card-label {
+  text-shadow: 0 0 14px rgba(245, 181, 54, 0.65);
+}
+.rhythm-card-late-game .rhythm-card-eyebrow {
+  color: rgba(255, 220, 150, 0.7);
+}
+
+/* Final setup — brightest of the four. The reveal is one scroll away. */
+.rhythm-card-final-setup .rhythm-card-label {
+  color: #fff5cc;
+  text-shadow:
+    0 0 6px rgba(255, 245, 204, 0.85),
+    0 0 18px rgba(245, 181, 54, 0.55);
+}
+.rhythm-card-final-setup .rhythm-card-eyebrow {
+  color: rgba(255, 220, 150, 0.85);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rhythm-card-inner {
+    transition: none;
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Catch-up Lab — internal qualitative-review tool.
+   Three-pane layout: fixtures sidebar | deck viewer | planner panel.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.catchup-lab {
+  --lab-bg:        #08090b;
+  --lab-panel:     #11141a;
+  --lab-border:    rgba(245, 181, 54, 0.2);
+  --lab-text:      #e8e8e8;
+  --lab-muted:     #8b95a6;
+  --lab-amber:     #f6c453;
+  --lab-amber-dim: #c89a3e;
+  background: var(--lab-bg);
+  color: var(--lab-text);
+  min-height: 100dvh;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+.lab-header {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--lab-border);
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+}
+.lab-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--lab-amber);
+}
+.lab-subtitle {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--lab-muted);
+  letter-spacing: 0.05em;
+}
+.lab-grid {
+  display: grid;
+  grid-template-columns: 240px 1fr 320px;
+  gap: 1px;
+  background: var(--lab-border);
+  height: calc(100dvh - 50px);
+  overflow: hidden;
+}
+.lab-sidebar,
+.lab-main,
+.lab-debug {
+  background: var(--lab-bg);
+  overflow-y: auto;
+}
+.lab-sidebar {
+  padding: 0.75rem 0.5rem;
+}
+.lab-section-title {
+  margin: 0 0 0.625rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--lab-muted);
+  padding: 0 0.5rem;
+}
+.lab-cat-group {
+  margin-bottom: 0.875rem;
+}
+.lab-cat-label {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--lab-text);
+  padding: 0.3125rem 0.5rem;
+  border-left: 3px solid var(--lab-amber-dim);
+  margin-bottom: 0.25rem;
+}
+.lab-fixture-button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  width: 100%;
+  text-align: left;
+  padding: 0.4375rem 0.625rem;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--lab-text);
+  font-family: ui-monospace, "SF Mono", monospace;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.lab-fixture-button:hover {
+  background: rgba(245, 181, 54, 0.06);
+}
+.lab-fixture-button[data-active="true"] {
+  background: rgba(245, 181, 54, 0.14);
+  border-color: rgba(245, 181, 54, 0.35);
+}
+.lab-fixture-id {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.lab-fixture-score {
+  color: var(--lab-amber);
+  font-size: 0.6875rem;
+}
+.lab-fixture-meta {
+  color: var(--lab-muted);
+  font-size: 0.625rem;
+}
+
+.lab-main {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.lab-empty {
+  color: var(--lab-muted);
+  text-align: center;
+  padding: 3rem 1rem;
+  font-size: 0.875rem;
+}
+.lab-loading {
+  color: var(--lab-muted);
+  text-align: center;
+  padding: 1.5rem;
+  font-size: 0.875rem;
+}
+.lab-fixture-header h2 {
+  margin: 0;
+  font-size: 1rem;
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.04em;
+}
+.lab-fixture-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+.lab-cat-pill {
+  font-size: 0.625rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 999px;
+  color: #0a0a0a;
+}
+.lab-fixture-stat {
+  margin: 0.25rem 0 0;
+  font-size: 0.75rem;
+  color: var(--lab-muted);
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.04em;
+}
+.lab-toggle {
+  margin-left: 0.5rem;
+  background: rgba(245, 181, 54, 0.1);
+  border: 1px solid var(--lab-border);
+  color: var(--lab-amber);
+  font-size: 0.625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 0.1875rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.lab-toggle:hover { background: rgba(245, 181, 54, 0.18); }
+.lab-review-notes {
+  margin: 0.5rem 0 0;
+  padding-left: 1rem;
+  font-size: 0.75rem;
+  color: var(--lab-muted);
+  line-height: 1.5;
+}
+
+/* The deck rendering pane gives the same scroll-snap experience as
+   production but lives inside the lab grid (not full viewport). */
+.lab-deck-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  justify-content: center;
+  border: 1px solid var(--lab-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #07080a;
+}
+.lab-deck-shell .catchup-scroller {
+  height: 100%;
+  width: 100%;
+  max-width: 28rem;
+}
+
+.lab-debug {
+  padding: 0.75rem;
+  font-size: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.875rem;
+}
+.lab-debug-section h3 {
+  margin: 0 0 0.4375rem;
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--lab-amber-dim);
+}
+.lab-debug-section.lab-debug-warn h3 { color: #fb923c; }
+.lab-debug-empty {
+  color: var(--lab-muted);
+  margin: 0;
+  font-style: italic;
+}
+.lab-stats {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.6875rem;
+  color: var(--lab-text);
+}
+.lab-feel-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.lab-feel-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+}
+.lab-feel-phase {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--lab-muted);
+}
+.lab-feel-value { color: var(--lab-text); }
+.lab-rhythm-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4375rem;
+  counter-reset: lab-rhythm;
+}
+.lab-rhythm-list li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.375rem 0.5rem;
+  border-left: 2px solid rgba(245, 181, 54, 0.3);
+  background: rgba(245, 181, 54, 0.04);
+  border-radius: 0 4px 4px 0;
+  counter-increment: lab-rhythm;
+}
+.lab-rhythm-list li::before {
+  content: counter(lab-rhythm);
+  font-size: 0.5625rem;
+  color: var(--lab-muted);
+  letter-spacing: 0.08em;
+}
+.lab-rhythm-kind {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+.lab-rhythm-inning-transition { color: #fbbf24; }
+.lab-rhythm-quiet-stretch     { color: #9ca3af; }
+.lab-rhythm-late-game         { color: #fb923c; }
+.lab-rhythm-final-setup       { color: #fff5cc; }
+.lab-rhythm-reason {
+  font-size: 0.6875rem;
+  color: var(--lab-text);
+  line-height: 1.4;
+}
+.lab-debug-json {
+  font-size: 0.625rem;
+  font-family: ui-monospace, monospace;
+  color: var(--lab-muted);
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 0;
+  overflow-x: auto;
+}
+
+@media (max-width: 1024px) {
+  .lab-grid {
+    grid-template-columns: 200px 1fr 280px;
+  }
+}
+@media (max-width: 768px) {
+  .lab-grid {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+  .lab-sidebar, .lab-debug {
+    max-height: 40vh;
+  }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -329,11 +2617,5 @@ body {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 html {
   scroll-padding-top: var(--header-h, 56px);
-  scroll-padding-bottom: 5rem; /* 4rem BottomTabs + 1rem breathing room */
-}
-@media (max-width: 767px) {
-  /* On mobile the FairBet page stacks header + tabs + filter chips +
-     advanced filters into one tall sticky block. Pad enough that buttons
-     inside bet cards land below it after scrollIntoView. */
-  html { scroll-padding-top: 22rem; }
+  scroll-padding-bottom: 1rem;
 }
