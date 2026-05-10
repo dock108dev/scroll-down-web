@@ -12,8 +12,7 @@ import { CatchupProgress } from "./CatchupProgress";
 import { RevealGate } from "./RevealGate";
 import { FinalReveal } from "./FinalReveal";
 import { NewMomentsBanner } from "./NewMomentsBanner";
-import type { CatchupCard as CatchupCardData, PlayCardData } from "@/lib/types";
-import { computeStageSetter } from "@/lib/stage-setter";
+import type { CatchupCard as CatchupCardData } from "@/lib/types";
 
 interface CatchupExperienceProps {
   gameId: number;
@@ -118,22 +117,6 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
     return ks;
   }, [baseSlides, tailSlide, gameId]);
 
-  // Per-card "stage setter" strings — derived from the delta between
-  // each play card and the previous one in the deck (inning crossings,
-  // skipped batters, high-leverage stakes framing). Computed once at
-  // the deck level so the card itself stays a pure renderer.
-  const stageSetters = useMemo(() => {
-    const map = new Map<string, string>();
-    let prevPlay: PlayCardData | undefined;
-    for (const c of baseSlides) {
-      if (c.kind !== "play") continue;
-      const text = computeStageSetter(c, prevPlay);
-      if (text) map.set(c.cardId, text);
-      prevPlay = c;
-    }
-    return map;
-  }, [baseSlides]);
-
   // Resume to saved progress on first load.
   const initialIndex = useMemo(() => {
     if (cards.length === 0) return 0;
@@ -230,7 +213,6 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
                   homeTeamAbbr={homeTeamAbbr}
                   awayTeamAbbr={awayTeamAbbr}
                   isActive={activeIndex === i}
-                  stageSetter={stageSetters.get(card.cardId)}
                 />
               );
             }

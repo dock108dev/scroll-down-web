@@ -30,12 +30,6 @@ interface CatchupCardProps {
   homeTeamAbbr: string;
   awayTeamAbbr: string;
   isActive: boolean;
-  /** Per-card "stage setter" text — appears for a beat during the
-   *  setup phase to orient the user when something non-trivial changed
-   *  since the previous card (inning crossing, skipped batters, high
-   *  leverage). Falls back to nothing for routine same-half sequences,
-   *  where the matchup row already carries the context. */
-  stageSetter?: string;
 }
 
 /**
@@ -59,7 +53,7 @@ interface CatchupCardProps {
  * Sentence + chevron come in at reveal.
  */
 export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function CatchupCard(
-  { card, homeTeamAbbr, awayTeamAbbr, isActive, stageSetter },
+  { card, homeTeamAbbr, awayTeamAbbr, isActive },
   ref,
 ) {
   const battingTeam = findMlbTeam(card.battingTeamAbbr);
@@ -211,16 +205,6 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       className="catchup-card-snap"
       style={phaseVars as React.CSSProperties}
     >
-      {stageSetter && (
-        <p
-          className="catchup-card-stage-setter"
-          data-testid="stage-setter"
-          aria-live="polite"
-        >
-          {stageSetter}
-        </p>
-      )}
-
       <header className="catchup-card-header" data-testid="score-panel">
         <div className="catchup-card-meta-row">
           <div className="catchup-card-meta-left">
