@@ -1,6 +1,29 @@
 import type { Metadata, Viewport } from "next";
 import Script from "next/script";
+import { VT323, Press_Start_2P } from "next/font/google";
 import "./globals.css";
+
+// Retro CRT mono — used for field labels, scoreboard chips, and any
+// "device readout" surface. VT323 reads like a 70s/80s vector-monitor
+// font without the chunkiness of Press Start 2P, so it's legible at the
+// small sizes the field labels need. next/font self-hosts the file so
+// CSP `font-src 'self'` is satisfied without widening the policy.
+const fontPixelMono = VT323({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-pixel-mono",
+  display: "swap",
+});
+
+// Chunky arcade pixel — reserved for headline display elements
+// (inning labels, result chip primary). Used sparingly because it stops
+// being readable below ~10px.
+const fontPixelDisplay = Press_Start_2P({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-pixel-display",
+  display: "swap",
+});
 import { TopNav } from "@/components/layout/TopNav";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { Footer } from "@/components/layout/Footer";
@@ -59,7 +82,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const siteUrl = getSiteUrl();
   const plausibleDomain = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN ?? getSiteHost();
   return (
-    <html lang="en" className="dark" suppressHydrationWarning>
+    <html
+      lang="en"
+      className={`dark ${fontPixelMono.variable} ${fontPixelDisplay.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <Script
           defer

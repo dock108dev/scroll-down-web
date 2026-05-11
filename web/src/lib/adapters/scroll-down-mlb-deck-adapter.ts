@@ -144,7 +144,15 @@ function adaptPlayCard(
   const movements = card.visual?.runnerMovements ?? [];
   const runnerAdvances = adaptRunnerMovements(movements);
 
-  const ballPath = (card.visual?.trajectory as BallPath | null | undefined) ?? undefined;
+  const rawTrajectory = card.visual?.trajectory as BallPath | null | undefined;
+  // Generic backend `foul` doesn't carry direction. Infer from the
+  // play description ("first base side" / "third base side" / "left" /
+  // "right") so the curl reads correctly. Defaults to left when the
+  // description gives no hint — keeps backward-compatible behavior.
+  const ballPath: BallPath | undefined =
+    rawTrajectory === "foul"
+      ? inferFoulSide(play.description ?? card.description ?? "")
+      : (rawTrajectory ?? undefined);
   const animationProfile = (card.visual?.animationProfile as PlayAnimationProfile | null | undefined) ?? undefined;
   const visualIntensity = (card.visual?.intensity as "low" | "medium" | "high" | null | undefined) ?? undefined;
 
@@ -361,6 +369,32 @@ function pickNarrative(
     return play;
   }
   return card;
+}
+
+
+/**
+ * Choose a foul-side direction from a play description. Looks for
+ * unambiguous "first base side" / "third base side" markers, then for
+ * "right field" / "left field" / "rightfield" / "leftfield", then for
+ * a bare "first base" or "third base" reference. Defaults to "left"
+ * when nothing matches — the historical fallback before the split.
+ */
+function inferFoulSide(description: string): BallPath {
+  const text = description.toLowerCase();
+  // "first base side" / "first-base side" — strongest signal for 1B-side foul.
+  if (/\b(first|1st)[\s-]*base\s+side\b/.test(text)) return "foul_right";
+  if (/\b(third|3rd)[\s-]*base\s+side\b/.test(text)) return "foul_left";
+  // Right-field / left-field foul territory.
+  if (/\bright\s*field\b|\brightfield\b/.test(text)) return "foul_right";
+  if (/\bleft\s*field\b|\bleftfield\b/.test(text)) return "foul_left";
+  // Bare "first/third base" reference — usually a fielder catching the foul.
+  if (/\bfirst\s*base(?:man)?\b|\b1b\b/.test(text)) return "foul_right";
+  if (/\bthird\s*base(?:man)?\b|\b3b\b/.test(text)) return "foul_left";
+  // Bare directional hint ("down the right-field line", "into the
+  // first-base dugout") — last resort before defaulting.
+  if (/\bright\b/.test(text)) return "foul_right";
+  if (/\bleft\b/.test(text)) return "foul_left";
+  return "foul_left";
 }
 
 

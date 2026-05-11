@@ -17,7 +17,7 @@
     "test:unit:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
-    "next": "16.2.4",
+    "next": "16.2.6",
     "react": "19.2.5",
     "react-dom": "19.2.5",
     "zustand": "^5.0.12"
@@ -34,7 +34,7 @@
     "@vitejs/plugin-react": "^6.0.1",
     "@vitest/coverage-v8": "^4.1.5",
     "eslint": "~9.28",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "16.2.6",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4",

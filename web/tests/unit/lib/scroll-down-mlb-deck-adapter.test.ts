@@ -113,6 +113,60 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
     );
   });
 
+  it("infers foul_right when the play description mentions first base / right field", () => {
+    const { cards } = adaptDeck(
+      buildDeck(
+        {
+          eventType: "field_out",
+          description: "Aaron Judge pops out to first baseman Pete Alonso in foul territory.",
+        },
+        {
+          trajectory: "foul",
+          animationProfile: "foul",
+        },
+      ),
+    );
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.ballPath).toBe("foul_right");
+  });
+
+  it("infers foul_left when the play description mentions third base / left field", () => {
+    const { cards } = adaptDeck(
+      buildDeck(
+        {
+          eventType: "field_out",
+          description: "Aaron Judge pops out to third baseman Jose Ramirez in foul territory.",
+        },
+        {
+          trajectory: "foul",
+          animationProfile: "foul",
+        },
+      ),
+    );
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.ballPath).toBe("foul_left");
+  });
+
+  it("defaults foul to foul_left when the description gives no directional hint", () => {
+    const { cards } = adaptDeck(
+      buildDeck(
+        {
+          eventType: "field_out",
+          description: "Aaron Judge pops out in foul territory.",
+        },
+        {
+          trajectory: "foul",
+          animationProfile: "foul",
+        },
+      ),
+    );
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.ballPath).toBe("foul_left");
+  });
+
   it("recovers batter from runnerNamesAfter when movement.runner is empty (walk to first)", () => {
     const { cards } = adaptDeck(
       buildDeck(
