@@ -42,8 +42,8 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
         : "Reconstruct";
 
   const teamNameClass = featured
-    ? "text-base font-semibold text-[#f5f1e8]"
-    : "text-sm font-medium text-[#f5f1e8]";
+    ? "text-base font-semibold text-[color:var(--home-team-text)]"
+    : "text-sm font-medium text-[color:var(--home-team-text)]";
 
   const inner = (
     <>
@@ -63,7 +63,7 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
               {away?.name ?? game.awayTeam}
             </span>
           </div>
-          <span className="text-[rgba(245,181,54,0.30)]">@</span>
+          <span className="text-[color:var(--home-sep-color)]">@</span>
           <div className="flex items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -85,8 +85,8 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
             status.tone === "live"
               ? "shrink-0 inline-flex items-center gap-1 rounded-full border border-red-500/40 bg-red-500/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-red-400"
               : status.tone === "final"
-                ? "shrink-0 rounded-sm border border-[rgba(245,181,54,0.22)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#9b7626]"
-                : "shrink-0 rounded-sm border border-[rgba(245,181,54,0.16)] px-2 py-0.5 text-[10px] font-medium text-[#9b7626]"
+                ? "shrink-0 rounded-sm border border-[color:var(--home-badge-border)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[color:var(--home-badge-text)]"
+                : "shrink-0 rounded-sm border border-[color:var(--home-badge-border-soft)] px-2 py-0.5 text-[10px] font-medium text-[color:var(--home-badge-text)]"
           }
         >
           {status.tone === "live" && (
@@ -97,17 +97,17 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
       </div>
 
       <div className="mt-2 flex items-center justify-between">
-        <span className="text-xs text-neutral-500">
+        <span className="text-xs text-[color:var(--home-badge-text)]">
           {formatDate(game.gameDate)}
         </span>
         {!pregame && (
           <span
             className={
               featured
-                ? "inline-flex items-center gap-1 rounded-md border border-[rgba(246,196,83,0.38)] bg-[rgba(246,196,83,0.12)] px-3 py-1.5 text-xs font-semibold text-[#f6c453]"
+                ? "inline-flex items-center gap-1 rounded-md border border-[color:var(--home-cta-border)] bg-[color:var(--home-cta-bg)] px-3 py-1.5 text-xs font-semibold text-[color:var(--home-cta-color)]"
                 : completed
-                  ? "text-xs text-neutral-500"
-                  : "text-xs font-medium text-[#f6c453] inline-flex items-center gap-1"
+                  ? "text-xs text-[color:var(--home-badge-text)]"
+                  : "text-xs font-medium text-[color:var(--home-cta-color)] inline-flex items-center gap-1"
             }
           >
             {cta}
@@ -132,8 +132,8 @@ export function GameRow({ game, featured = false, completed = false, inProgress 
   );
 
   const className = featured
-    ? "block rounded-lg border border-[rgba(245,181,54,0.32)] [background:linear-gradient(180deg,#1d1f24_0%,#15161a_100%)] px-5 py-5 transition hover:border-[rgba(245,181,54,0.50)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_4px_16px_rgba(0,0,0,0.45)]"
-    : "block rounded-lg border border-[rgba(245,181,54,0.14)] bg-[#13141a] px-4 py-3 transition hover:border-[rgba(245,181,54,0.28)]";
+    ? "block rounded-lg border border-[color:var(--home-card-border-featured)] [background:var(--home-grad-featured)] px-5 py-5 transition hover:border-[color:var(--home-card-border-featured-hover)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04),0_4px_16px_rgba(0,0,0,0.45)]"
+    : "block rounded-lg border border-[color:var(--home-card-border)] bg-[color:var(--home-card-bg)] px-4 py-3 transition hover:border-[color:var(--home-card-border-hover)]";
 
   if (pregame) {
     return (

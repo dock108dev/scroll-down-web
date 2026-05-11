@@ -6,14 +6,15 @@ import type {
   BaseballBaseState,
   PlayAnimationProfile,
   PlayEventType,
-  RunnerNames,
 } from "@/lib/types";
 import {
   FIELDER_POS,
   FIELD_POINTS,
   FOUL_LEFT,
   FOUL_RIGHT,
-  WALL_SEGMENTS,
+  HOME_TO_MOUND_DIRT_WIDTH,
+  INFIELD_DIRT_RADIUS,
+  WALL_RADIUS,
 } from "@/lib/field-geometry";
 import { basepathLength, basepathSvgPath, type RunnerMovement } from "@/lib/runner-paths";
 import type { RunnerMovementStyle } from "@/lib/types";
@@ -36,14 +37,14 @@ import { buildTrajectory } from "@/lib/trajectory";
 
 interface BaseballLightFieldProps {
   /** Optional snapshot of the previously-displayed card's ENDING state.
-   *  When supplied, the field renders bulbs/labels for `prior` initially,
-   *  then crosses into `before` during the card's bridge phase. */
+   *  When supplied, the field renders base-occupancy bulbs for `prior`
+   *  initially, then crosses into `before` during the card's bridge
+   *  phase. Per-base runner NAMES are intentionally not rendered on the
+   *  field — the only place names appear is the scoreboard's matchup
+   *  row above. */
   baseStatePrior?: BaseballBaseState;
-  runnerNamesPrior?: RunnerNames;
   baseStateBefore: BaseballBaseState;
   baseStateAfter?: BaseballBaseState;
-  runnerNamesBefore?: RunnerNames;
-  runnerNamesAfter?: RunnerNames;
   /** Animation plan — path + timing per runner. Required for runner dots. */
   runnerMovements?: RunnerMovement[];
   ballPath?: BallPath;
@@ -51,8 +52,6 @@ interface BaseballLightFieldProps {
   animationProfile?: PlayAnimationProfile;
   scoreBefore?: { home: number; away: number };
   scoreAfter?: { home: number; away: number };
-  /** Last name (or short label) of the batter at home plate. */
-  batterLabel?: string;
   /** ms after mount when the runners phase starts — used to offset SMIL
    *  begin times. Comes from CatchupCard's milestones.runners. */
   runnersBeginMs?: number;
@@ -346,18 +345,14 @@ function hasDefensiveThrowContext(
 
 export function BaseballLightField({
   baseStatePrior,
-  runnerNamesPrior,
   baseStateBefore,
   baseStateAfter,
-  runnerNamesBefore,
-  runnerNamesAfter,
   runnerMovements,
   ballPath = "pitch",
   eventType = "other",
   animationProfile = "other",
   scoreBefore,
   scoreAfter,
-  batterLabel,
   runnersBeginMs,
   accentColor = "#5a8ac6",
   isActive,
@@ -469,11 +464,15 @@ export function BaseballLightField({
         shapeRendering="geometricPrecision"
         aria-hidden="true"
       >
-        {/* Vector-monitor grammar: black background, amber line work, no
-            painted fills. Every visible element is either a stroke or a
-            single solid dot — nothing is gradient-textured. The only
-            gradient remaining is the home-run afterglow halo, which is
-            scoped to the HR event. */}
+        {/* Mattel-handheld grammar: a single kelly-green fair-territory
+            pentagon with a black dirt zone over the mound + the alley to
+            home, white-filled bases and home plate, white foul lines.
+            No basepath chalk runs between 1B↔2B or 2B↔3B — those are
+            dirt on a real diamond and were reading as a UI border on
+            the field. The defs block keeps the ball-glow filter and the
+            home-run afterglow gradient; the analog wobble filter is
+            also retained so the white foul lines pick up a faint
+            phosphor jitter. */}
         <defs>
           <radialGradient id="field-homer-glow" cx="50%" cy="40%" r="60%">
             <stop offset="0%"   stopColor="rgba(251, 191, 36, 0.45)" />
@@ -536,10 +535,50 @@ export function BaseballLightField({
           )}
         </defs>
 
-        {/* Foul lines + basepath wireframe travel through the displacement
-            filter when the card is active so their long straight runs pick
-            up faint analog wobble. The wall segments, mound, runner dots,
-            ball, and bases stay crisp. */}
+        {/* ── Fair-territory grass — kelly-green fan ─────────
+            One single green fill spans the whole fair-territory
+            pentagon: home → foul-left wall point → outer arc →
+            foul-right wall point → home. Sits at the bottom of the
+            paint stack so every white line, dirt patch, base, and
+            moving object lands on top of it. */}
+        <path
+          className="field-grass"
+          d={`M${POS.home.x},${POS.home.y}
+              L${FOUL_LEFT.x},${FOUL_LEFT.y}
+              A${WALL_RADIUS},${WALL_RADIUS} 0 0 1 ${FOUL_RIGHT.x},${FOUL_RIGHT.y} Z`}
+        />
+
+        {/* ── Infield dirt — black mound + home-to-mound alley ──
+            On the Mattel reference the dirt is solid black: a round
+            mound zone in the middle of the green, with a narrow
+            vertical strip running down to home plate. We mirror that
+            with two filled shapes — the rectangle is centered on the
+            x-axis between home and mound, the circle is centered on
+            the mound itself. The two overlap so they fuse into one
+            continuous black shape. */}
+        <rect
+          className="field-dirt"
+          x={POS.home.x - HOME_TO_MOUND_DIRT_WIDTH / 2}
+          y={POS.mound.y}
+          width={HOME_TO_MOUND_DIRT_WIDTH}
+          height={POS.home.y - POS.mound.y}
+        />
+        <circle
+          className="field-dirt"
+          cx={POS.mound.x}
+          cy={POS.mound.y}
+          r={INFIELD_DIRT_RADIUS}
+        />
+
+        {/* ── Foul lines — the only field-chalk strokes ─────
+            Home → 1B wall and home → 3B wall. These pass exactly
+            through 1B and 3B by construction (see field-geometry).
+            The basepath chalk between 1B↔2B and 2B↔3B is intentionally
+            absent — those segments are dirt on a real diamond, and the
+            old amber diamond outline was reading as a futuristic UI
+            border. The displacement filter gives the long straight
+            runs a hair of phosphor jitter so they don't read as a
+            vector tool's geometric output. */}
         <g filter={isActive ? "url(#field-displace-subtle)" : undefined}>
           <line
             x1={POS.home.x}
@@ -547,8 +586,8 @@ export function BaseballLightField({
             x2={FOUL_LEFT.x}
             y2={FOUL_LEFT.y}
             className="field-foul-line"
-            stroke="rgba(255, 207, 64, 0.95)"
-            strokeWidth="2"
+            stroke="#f5efdc"
+            strokeWidth="2.4"
             strokeLinecap="square"
             style={{ animationDelay: "0ms" }}
           />
@@ -558,66 +597,52 @@ export function BaseballLightField({
             x2={FOUL_RIGHT.x}
             y2={FOUL_RIGHT.y}
             className="field-foul-line"
-            stroke="rgba(255, 207, 64, 0.95)"
-            strokeWidth="2"
+            stroke="#f5efdc"
+            strokeWidth="2.4"
             strokeLinecap="square"
             style={{ animationDelay: "1700ms" }}
           />
-          <path
-            d={`M${POS.home.x},${POS.home.y}
-                L${POS.first.x},${POS.first.y}
-                L${POS.second.x},${POS.second.y}
-                L${POS.third.x},${POS.third.y} Z`}
-            fill="none"
-            stroke="rgba(255, 207, 64, 0.98)"
-            strokeWidth="2.5"
-            strokeLinejoin="miter"
-          />
         </g>
 
-        {/* Outfield wall — segmented chunks. Sharper, brighter, square caps.
-            Per-segment animation-delay spreads the phosphor flicker so no
-            two adjacent segments peak or trough together. */}
-        {WALL_SEGMENTS.map((s, i) => (
-          <line
-            key={i}
-            x1={s.x1}
-            y1={s.y1}
-            x2={s.x2}
-            y2={s.y2}
-            className="field-wall-segment"
-            stroke="rgba(255, 207, 64, 1)"
-            strokeWidth="3"
-            strokeLinecap="square"
-            style={{
-              animationDelay: `${(i * 370 + (i % 3) * 130) % 2800}ms`,
-            }}
-          />
-        ))}
-
-        {/* Pitcher's mound — single solid amber dot. The dirt ring is
-            removed; the mound is purely symbolic. */}
-        <circle
-          className="field-mound-dot"
-          cx={POS.mound.x}
-          cy={POS.mound.y}
-          r="3.5"
-          fill="rgba(255, 215, 80, 1)"
+        {/* ── Outfield wall edge — single thin white arc ────
+            Replaces the old segmented amber wall. One smooth white
+            curve from foul-left to foul-right at the outer radius —
+            reads as the painted-on warning track boundary you see on
+            the Mattel field, not as a row of electric segments. */}
+        <path
+          className="field-wall"
+          d={`M${FOUL_LEFT.x},${FOUL_LEFT.y}
+              A${WALL_RADIUS},${WALL_RADIUS} 0 0 1 ${FOUL_RIGHT.x},${FOUL_RIGHT.y}`}
+          fill="none"
+          stroke="#f5efdc"
+          strokeWidth="1.6"
+          strokeLinecap="round"
         />
 
-        {/* Home plate — wireframe pentagon, no fill. The flat edge faces
-            the pitcher (up); the back point faces the catcher (down).
-            In SVG y grows downward, so the point is at home.y + 12. */}
+        {/* Pitcher's rubber — small white pixel on the dirt mound. */}
+        <rect
+          className="field-mound-rubber"
+          x={POS.mound.x - 4}
+          y={POS.mound.y - 1.25}
+          width={8}
+          height={2.5}
+          fill="#f5efdc"
+        />
+
+        {/* Home plate — solid white pentagon. Flat edge faces the
+            pitcher (up); back point faces the catcher (down). In SVG y
+            grows downward, so the point is at home.y + 12. Pure fill
+            so the plate reads as the painted-on Mattel pentagon, not a
+            wireframe glyph. */}
         <path
+          className="field-home-plate"
           d={`M${POS.home.x - 9},${POS.home.y - 5}
               L${POS.home.x + 9},${POS.home.y - 5}
               L${POS.home.x + 11},${POS.home.y + 3}
               L${POS.home.x},${POS.home.y + 12}
               L${POS.home.x - 11},${POS.home.y + 3} Z`}
-          fill="none"
-          stroke="rgba(255, 215, 80, 1)"
-          strokeWidth="2"
-          strokeLinejoin="miter"
+          fill="#f5efdc"
+          stroke="none"
         />
 
         {isRunScoring && (
@@ -636,47 +661,14 @@ export function BaseballLightField({
         <BaseShape pos={POS.second} />
         <BaseShape pos={POS.third} />
 
-        {/* Base bulbs — lifecycle drives the cross-fade. */}
+        {/* Base-occupancy markers — show a clear lit "runner here" dot
+            for each occupied bag. Names live in the scoreboard above
+            (BATTER vs PITCHER), never on the field, so the field stays
+            clean and the eye doesn't have to read four floating name
+            labels during the play. */}
         <BaseBulb pos={POS.first}  base="first"  prior={baseStatePrior?.first}  before={baseStateBefore.first}  after={after.first}  />
         <BaseBulb pos={POS.second} base="second" prior={baseStatePrior?.second} before={baseStateBefore.second} after={after.second} />
         <BaseBulb pos={POS.third}  base="third"  prior={baseStatePrior?.third}  before={baseStateBefore.third}  after={after.third}  />
-
-        {/* Runner-name labels. Prior/pre/post triple handles the bridge +
-            play cross-fade. When the base IS occupied but the name is
-            missing (upstream gap), a placeholder is rendered so the
-            runner is never invisible — the bulb + label always agree on
-            "someone is here." */}
-        <BaseLabel anchor="first"
-          prior={runnerLabel(baseStatePrior?.first, runnerNamesPrior?.first)}
-          before={runnerLabel(baseStateBefore.first, runnerNamesBefore?.first)}
-          after={runnerLabel(after.first, runnerNamesAfter?.first)}
-        />
-        <BaseLabel anchor="second"
-          prior={runnerLabel(baseStatePrior?.second, runnerNamesPrior?.second)}
-          before={runnerLabel(baseStateBefore.second, runnerNamesBefore?.second)}
-          after={runnerLabel(after.second, runnerNamesAfter?.second)}
-        />
-        <BaseLabel anchor="third"
-          prior={runnerLabel(baseStatePrior?.third, runnerNamesPrior?.third)}
-          before={runnerLabel(baseStateBefore.third, runnerNamesBefore?.third)}
-          after={runnerLabel(after.third, runnerNamesAfter?.third)}
-        />
-
-        {batterLabel && (() => {
-          const upper = batterLabel.trim().toUpperCase();
-          return (
-            <text
-              className="field-batter-label"
-              x={POS.home.x}
-              y={POS.home.y + 22}
-              textAnchor="middle"
-              fontSize={labelFontSize(upper)}
-              fontWeight="700"
-            >
-              {upper}
-            </text>
-          );
-        })()}
 
         {showContact && (
           <circle
@@ -825,138 +817,19 @@ export function BaseballLightField({
 
 // ── Sub-components ────────────────────────────────────────
 
-/**
- * Resolve the label that should appear at a base given (state, name).
- *
- * Three cases:
- *   - base empty                        → `undefined` (no label, no bulb)
- *   - base occupied + name known        → the name itself
- *   - base occupied + name missing      → "ON BASE" placeholder so the
- *                                          bulb is never orphaned
- *
- * Upstream backend gaps (a `runner_names` map that doesn't list a base
- * the `base_state` says is occupied) used to render a lit bulb with no
- * label — visually reads as "ghost runner." The placeholder restores
- * the runner's existence.
- */
-function runnerLabel(occupied: boolean | undefined, name: string | undefined): string | undefined {
-  if (!occupied) return undefined;
-  const trimmed = name?.trim();
-  if (trimmed) return trimmed;
-  return "ON BASE";
-}
-
-function BaseLabel({
-  anchor,
-  prior,
-  before,
-  after,
-}: {
-  anchor: "first" | "second" | "third";
-  prior?: string;
-  before?: string;
-  after?: string;
-}) {
-  if (!prior && !before && !after) return null;
-  const priorLabel = prior ? prior.trim() : null;
-  const beforeLabel = before ? before.trim() : null;
-  const afterLabel = after ? after.trim() : null;
-  // No state change at all — just render the persistent label.
-  if (
-    priorLabel === beforeLabel &&
-    beforeLabel === afterLabel &&
-    afterLabel
-  ) {
-    return <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="both" />;
-  }
-  // No bridge change, only play change — keep the existing pre/post pair.
-  if (priorLabel === beforeLabel || !priorLabel) {
-    if (beforeLabel && afterLabel && beforeLabel === afterLabel) {
-      return <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="both" />;
-    }
-    return (
-      <>
-        {beforeLabel && (
-          <BaseLabelText anchor={anchor} text={beforeLabel} lifecycle="pre" />
-        )}
-        {afterLabel && (
-          <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="post" />
-        )}
-      </>
-    );
-  }
-  // Bridge change is real — render up to three labels keyed by lifecycle.
-  return (
-    <>
-      {priorLabel && (
-        <BaseLabelText anchor={anchor} text={priorLabel} lifecycle="prior" />
-      )}
-      {beforeLabel && (
-        <BaseLabelText anchor={anchor} text={beforeLabel} lifecycle="pre" />
-      )}
-      {afterLabel && beforeLabel !== afterLabel && (
-        <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="post" />
-      )}
-    </>
-  );
-}
-
-function BaseLabelText({
-  anchor,
-  text,
-  lifecycle,
-}: {
-  anchor: "first" | "second" | "third";
-  text: string;
-  lifecycle: "prior" | "pre" | "post" | "both";
-}) {
-  const placement: Record<typeof anchor, { x: number; y: number; align: "start" | "middle" | "end" }> = {
-    first:  { x: POS.first.x  + 14, y: POS.first.y  + 4,  align: "start"  },
-    second: { x: POS.second.x,      y: POS.second.y - 14, align: "middle" },
-    third:  { x: POS.third.x  - 14, y: POS.third.y  + 4,  align: "end"    },
-  };
-  const p = placement[anchor];
-  const upper = text.toUpperCase();
-  return (
-    <text
-      className="field-base-label"
-      data-lifecycle={lifecycle}
-      x={p.x}
-      y={p.y}
-      textAnchor={p.align}
-      fontSize={labelFontSize(upper)}
-      fontWeight="700"
-    >
-      {upper}
-    </text>
-  );
-}
-
-/** Per-label font size — shrinks for long full names so we never need to
- *  truncate. Calibrated for first-and-last MLB names ("AARON JUDGE",
- *  "VLADIMIR GUERRERO JR.", "ORLANDO ARCIA") in the 320 viewBox. */
-function labelFontSize(text: string): number {
-  if (text.length <= 8) return 8.5;
-  if (text.length <= 12) return 7.5;
-  if (text.length <= 16) return 6.5;
-  if (text.length <= 20) return 5.6;
-  return 5;
-}
-
 function BaseShape({ pos }: { pos: { x: number; y: number } }) {
-  // Wireframe square rotated 45° so it reads as a baseball diamond base.
-  // No fill — just a sharp amber outline so it sits over the basepath
-  // line as a discrete vector glyph.
+  // Solid white square rotated 45° — the white-diamond base markers
+  // from the Mattel reference. Pure fill, no stroke; pops cleanly
+  // against the kelly-green grass without needing an outline.
   return (
     <g transform={`translate(${pos.x} ${pos.y}) rotate(45)`}>
       <rect
-        x={-7}
-        y={-7}
-        width={14}
-        height={14}
-        fill="none"
-        stroke="rgba(255, 215, 80, 0.95)"
-        strokeWidth={1.75}
+        x={-6}
+        y={-6}
+        width={12}
+        height={12}
+        fill="#f5efdc"
+        stroke="none"
         shapeRendering="crispEdges"
       />
     </g>
@@ -995,17 +868,20 @@ function BaseBulb({
   else if (!before && after) lifecycle = "post";
   else lifecycle = "post";
 
+  // Two-circle marker: a team-accent disc with a chunky cream rim. Sits
+  // right on top of the white base diamond, so an occupied base reads as
+  // a clearly distinct shape from an empty base at a glance — which the
+  // single small accent dot wasn't doing on the green grass.
   return (
-    <circle
+    <g
       className="field-base-bulb"
-      cx={pos.x}
-      cy={pos.y}
-      r={6}
-      fill="#fbbf24"
       data-testid="base-bulb"
       data-base={base}
       data-lifecycle={lifecycle}
-    />
+    >
+      <circle cx={pos.x} cy={pos.y} r={6.5} fill="#f5efdc" />
+      <circle cx={pos.x} cy={pos.y} r={4.5} fill="var(--field-accent)" />
+    </g>
   );
 }
 
