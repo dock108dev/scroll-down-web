@@ -262,15 +262,29 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
               </span>
             )}
             {hasCount && (
-              <span className="catchup-card-count">
-                {(situation.batterName || situation.pitcherName) ? "· " : ""}{situation.balls}-{situation.strikes}
+              <span
+                className="catchup-card-count"
+                data-visible={showAfter ? "true" : "false"}
+                aria-hidden={!showAfter}
+              >
+                {(situation.batterName || situation.pitcherName) && (
+                  <span className="catchup-card-count-sep" aria-hidden>·</span>
+                )}
+                <span className="catchup-card-count-value">
+                  {situation.balls}-{situation.strikes}
+                </span>
               </span>
             )}
           </div>
         )}
 
         {situation.pitcherStatLine && (
-          <p className="catchup-card-pitcher-line" data-testid="pitcher-stat-line">
+          <p
+            className="catchup-card-pitcher-line"
+            data-testid="pitcher-stat-line"
+            data-visible={showAfter ? "true" : "false"}
+            aria-hidden={!showAfter}
+          >
             {situation.pitcherStatLine}
           </p>
         )}
