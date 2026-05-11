@@ -495,17 +495,13 @@ body {
   }
 }
 
-/* Scoreboard-style top rail. Pure dark panel, brighter LED accents on
-   the inning + score row. */
-/* Scoreboard inset screen — dark LCD area with subtle inner shadow and
-   a faint dot-matrix scanline texture (the retro handheld "LCD glass"
-   look — see .catchup-screen-bg shared mixin below). */
+/* Scoreboard-style top rail — a flat stadium-scoreboard panel above
+   the field. Dropped the dot-matrix scanlines + corner vignette that
+   were giving it a CRT/LCD-glass feel; the user called that surface
+   out as "too futuristic" alongside the field. Stays dark so the
+   field's bright green still dominates, just without the screen-glass
+   pretense. */
 .catchup-card-header {
-  /* Reads as a thin instrumentation strip: tighter padding + gap drop the
-     header to ~52px so the field below dominates. Outer margin replaces the
-     shell padding (now zero) so the header still sits inside the device
-     bevel rather than bleeding to the edge. */
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -513,47 +509,13 @@ body {
   padding: 0.25rem 0.5rem 0.3125rem;
   border: 1px solid var(--device-border-soft);
   border-radius: var(--device-radius-screen);
-  background:
-    /* Horizontal scanlines — tight enough to feel "LCD glass" rather
-       than a CRT filter. 2px rhythm at 1x reads as ~1.5 lines/px on a
-       phone. */
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.018) 0px,
-      rgba(255, 255, 255, 0.018) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    /* Vertical dot-matrix — half-stop weaker than the horizontals so the
-       grid reads as "dot rows" rather than crossed bars. */
-    repeating-linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.012) 0px,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    var(--device-screen);
+  background: var(--device-screen);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.6),
     inset 0 0 14px rgba(0, 0, 0, 0.55),
     inset 0 -1px 0 var(--device-border-bevel);
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
-}
-/* Subtle vignette inside the LCD screen — the corners darken so the
-   readout pools light toward the center, like a real backlit LCD. */
-.catchup-card-header::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  border-radius: inherit;
-  background: radial-gradient(
-    ellipse at center,
-    transparent 55%,
-    rgba(0, 0, 0, 0.35) 100%
-  );
 }
 /* Meta row — top line of the header. Left band carries inning + outs +
    batting team; right band carries the score. Wraps to two rows on narrow
@@ -725,31 +687,21 @@ body {
   transition: opacity 360ms ease-out 120ms;
 }
 
-/* ── Outs dots — three LED bulbs in the situation rail ───
-   Chunky recessed-bezel window with the same dot-matrix scanlines as
-   the rest of the LCD glass, so the dots read as "lit segments inside
-   the screen" rather than "round pills sitting on top of UI". */
+/* ── Outs dots — three indicator pills in the situation rail ──
+   Simple recessed panel — the LCD scanline overlay has been removed.
+   Stays dark with a hint of amber inner glow so the lit dots have a
+   surface to sit on. */
 .outs-dots {
-  position: relative;
   display: inline-flex;
   align-items: center;
   gap: 0.4375rem;
   padding: 0.1875rem 0.5rem;
-  border: 1px solid rgba(251, 191, 36, 0.42);
+  border: 1px solid rgba(251, 191, 36, 0.32);
   border-radius: 2px;
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.02) 0px,
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    rgba(0, 0, 0, 0.65);
+  background: rgba(0, 0, 0, 0.55);
   box-shadow:
-    inset 0 0 0 1px rgba(0, 0, 0, 0.55),
-    inset 0 1px 2px rgba(0, 0, 0, 0.55),
-    inset 0 0 6px rgba(251, 191, 36, 0.10);
+    inset 0 1px 1px rgba(0, 0, 0, 0.45),
+    inset 0 0 6px rgba(251, 191, 36, 0.08);
 }
 .outs-dots-label {
   margin-left: 0.1875rem;
@@ -816,31 +768,22 @@ body {
 }
 
 .catchup-card-score {
-  /* Score window — chunky LED-bezel feel. Double border (outer amber
-     trace + inner black inset shadow) gives the "deep recessed display"
-     character of a Mattel handheld score window. Dot-matrix scanlines
-     bleed under the digits so the LCD glass continues across the panel. */
-  position: relative;
+  /* Score window — a flat dark scoreboard panel above the field. Kept
+     the chunky recessed inner shadow that makes the digits feel like
+     they sit "inside" the panel, but dropped the LCD scanline overlay
+     so it doesn't read as a screen. Thin amber trace at the border
+     just to mark the panel edge. */
   display: inline-flex;
   align-items: center;
   gap: 0.625rem;
   padding: 0.25rem 0.625rem 0.25rem 0.875rem;
-  border: 1px solid rgba(251, 191, 36, 0.55);
+  border: 1px solid rgba(251, 191, 36, 0.45);
   border-radius: 2px;
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.02) 0px,
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    rgba(0, 0, 0, 0.88);
+  background: rgba(0, 0, 0, 0.88);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.7),
     inset 0 1px 2px rgba(0, 0, 0, 0.65),
-    inset 0 0 10px rgba(251, 191, 36, 0.12),
-    0 0 0 1px rgba(0, 0, 0, 0.6);
+    inset 0 0 8px rgba(251, 191, 36, 0.08);
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
 }
 .catchup-card-score-line {
@@ -943,13 +886,11 @@ body {
   }
 }
 
-/* Result LED strip — same inset-screen vocabulary as the scoreboard,
-   but stretched into a thin amber-edged display under the field. Inherits
-   the same dot-matrix scanlines as the top header so all three readouts
-   (header / chip / narration) read as the same LCD glass. */
+/* Result chip — the thin stadium-scoreboard strip that latches the
+   play outcome at settle. Same flat-panel vocabulary as the header
+   above; the dot-matrix LCD overlay has been retired. */
 .catchup-result-chip {
   align-self: stretch;
-  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -960,22 +901,7 @@ body {
   min-height: 2.25rem;
   border: 1px solid var(--device-border);
   border-radius: var(--device-radius-screen);
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.018) 0px,
-      rgba(255, 255, 255, 0.018) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    repeating-linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.012) 0px,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    linear-gradient(180deg, var(--device-screen-deep) 0%, var(--device-screen) 100%);
+  background: linear-gradient(180deg, var(--device-screen-deep) 0%, var(--device-screen) 100%);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.65),
     inset 0 0 12px rgba(0, 0, 0, 0.5),
@@ -1128,22 +1054,7 @@ body {
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--device-border-soft);
   border-radius: var(--device-radius-screen);
-  background:
-    repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.018) 0px,
-      rgba(255, 255, 255, 0.018) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    repeating-linear-gradient(
-      to right,
-      rgba(255, 255, 255, 0.012) 0px,
-      rgba(255, 255, 255, 0.012) 1px,
-      transparent 1px,
-      transparent 2px
-    ),
-    var(--device-screen);
+  background: var(--device-screen);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.5),
     inset 0 0 10px rgba(0, 0, 0, 0.45);
@@ -1288,195 +1199,87 @@ body {
 
 /* Outer shell — dark "tabletop console" panel. The amber glow is reserved
    for actual lit elements; the surround stays cool/dark for contrast. */
-/* Field inset screen — sits inside the device shell as the largest
-   "display" area. Same screen treatment as the scoreboard so the two
-   read as siblings on the same panel. */
+/* Field inset screen — the largest "display" area on the card.
+   Switched from the LCD/CRT-glass treatment to a flat dark stadium
+   surround so the kelly-green field reads as a painted-on Mattel-
+   handheld baseball diamond rather than a backlit screen. The CRT
+   scanlines, amber bezel, stadium glow, and phosphor breathing have
+   all been retired here — they were the "too futuristic" surface the
+   user called out. */
 .field-shell {
   position: relative;
-  /* Aspect-1 CRT window. Width drives, aspect-ratio derives height,
-     max-height keeps it from overflowing the flex cell on short
-     viewports. Brighter bezel border + a darker vignette around the
-     panel sells the "lit screen suspended in darkness" identity from
-     vintage tabletop electronic games. */
   width: 100%;
   max-width: 100%;
   max-height: 100%;
   margin: auto;
   aspect-ratio: 1 / 1;
-  background: #000;
+  /* Dark warning-track / dead-zone surround. Sits behind the
+     fair-territory green so the corners of the SVG viewBox don't
+     paint as bright green — only the pentagon does. */
+  background: #050807;
   border-radius: var(--device-radius-screen);
-  border: 1px solid rgba(251, 191, 36, 0.28);
+  border: 1px solid rgba(245, 239, 220, 0.10);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.7),
     inset 0 0 0 1px rgba(0, 0, 0, 0.85),
-    inset 0 0 28px rgba(0, 0, 0, 0.85),
-    0 0 0 1px rgba(251, 191, 36, 0.08),
-    0 0 18px rgba(251, 191, 36, 0.08);
+    inset 0 0 28px rgba(0, 0, 0, 0.7);
   isolation: isolate;
   overflow: hidden;
 }
-/* CRT scanline overlay — repeating-linear-gradient is GPU-cheap and
-   sells the "phosphor screen" identity without animated cost. Sits on
-   top of the field SVG via z-index 2; pointer-events disabled so it
-   never intercepts taps. The vertical mask makes the lines visibly
-   "roll" subtly via animation. */
-.field-shell::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background:
-    /* Horizontal scanlines */
-    repeating-linear-gradient(
-      to bottom,
-      rgba(0, 0, 0, 0) 0px,
-      rgba(0, 0, 0, 0) 2px,
-      rgba(0, 0, 0, 0.22) 2px,
-      rgba(0, 0, 0, 0.22) 3px
-    ),
-    /* Vignette darkening at the corners — bulges the screen visually */
-    radial-gradient(
-      ellipse 100% 80% at 50% 50%,
-      rgba(0, 0, 0, 0) 60%,
-      rgba(0, 0, 0, 0.45) 100%
-    );
-  mix-blend-mode: multiply;
-  border-radius: inherit;
-  animation: crt-scan-drift 8s linear infinite;
-}
-@keyframes crt-scan-drift {
-  0%   { background-position: 0 0,    0 0; }
-  100% { background-position: 0 3px,  0 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .field-shell::after { animation: none; }
-}
-/* "Stadium glow" — a barely-perceptible amber radial that breathes very
-   slowly. Subliminal: the user shouldn't see a shimmer, only sense the
-   panel is "alive." Absolute rgba contribution stays in 0.0225-0.03. */
+/* The .field-stadium-glow element is still rendered but the CRT-amber
+   pulse it used to host has been retired. Kept as an empty hook so
+   the JSX doesn't have to branch on env, and so future ambient
+   treatments (a flicker of stadium lights, etc.) can rejoin here
+   without restructuring the layer stack. */
 .field-stadium-glow {
   position: absolute;
   inset: 0;
   pointer-events: none;
   z-index: 0;
-  background: radial-gradient(
-    ellipse 70% 55% at 50% 45%,
-    rgba(245, 181, 54, 0.05) 0%,
-    transparent 100%
-  );
-  animation: stadium-ambient-pulse 9.7s ease-in-out infinite;
-  will-change: opacity;
-}
-@keyframes stadium-ambient-pulse {
-  0%, 100% { opacity: 0.60; }
-  45%      { opacity: 0.45; }
-}
-/* During an active contact play, the ambient breath is replaced by a
-   reactive radial gradient that brightens with the ball in flight —
-   the field "feels" the impact. Walks/strikeouts/etc. (data-contact=
-   "false") keep the ambient pulse; nothing fires when there's no ball. */
-[data-playing="true"][data-contact="true"] .field-stadium-glow {
-  animation: ball-flight-glow var(--d-ball, 400ms) ease-out
-             var(--ms-ball, 800ms) both;
-}
-@keyframes ball-flight-glow {
-  0%   { background: radial-gradient(ellipse 70% 55% at 50% 45%, rgba(245, 181, 54, 0.00) 0%, transparent 100%); }
-  30%  { background: radial-gradient(ellipse 70% 55% at 50% 45%, rgba(245, 181, 54, 0.14) 0%, transparent 100%); }
-  100% { background: radial-gradient(ellipse 70% 55% at 50% 45%, rgba(245, 181, 54, 0.04) 0%, transparent 100%); }
-}
-/* Home-run flare — peaks at ~15% then decays over 2s so the stadium
-   reads as bathed in the afterglow of a long ball. Higher specificity
-   than ball-flight-glow above, so it wins on home_run plays. */
-[data-homer="true"][data-playing="true"] .field-stadium-glow {
-  animation: homer-flare 2s ease-out var(--ms-ball, 800ms) both;
-}
-@keyframes homer-flare {
-  0%   { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(245, 181, 54, 0.00) 0%, transparent 100%); }
-  15%  { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(255, 217, 122, 0.38) 0%, transparent 100%); }
-  60%  { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(245, 181, 54, 0.18) 0%, transparent 100%); }
-  100% { background: radial-gradient(ellipse 80% 65% at 50% 45%, rgba(245, 181, 54, 0.04) 0%, transparent 100%); }
 }
 .field-svg {
   position: relative;
   z-index: 1;
   display: block;
-  /* Snappier beam-current drift — period dropped to 2.1s with a wider
-     brightness band so the "live phosphor" feel is actually perceptible
-     instead of subliminal. Plus a constant amber boost via saturate()
-     so every lit stroke reads with vintage-CRT vibrance. */
-  filter: saturate(1.25);
-  animation: phosphor-breath 2.1s steps(6, end) infinite;
-}
-@keyframes phosphor-breath {
-  0%, 100% { filter: saturate(1.25) brightness(1);    }
-  20%      { filter: saturate(1.25) brightness(1.06); }
-  35%      { filter: saturate(1.25) brightness(0.94); }
-  55%      { filter: saturate(1.25) brightness(1.04); }
-  80%      { filter: saturate(1.25) brightness(0.97); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .field-svg { animation: none; filter: saturate(1.25); }
 }
 
-/* ── Mound rubber: ambient bloom + warmup pulse just before the pitch. ── */
-.field-mound-dot {
-  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.85));
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: mound-ambient-bloom 4.2s ease-in-out infinite;
+/* ── Grass + dirt fills ──────────────────────────────────
+   Two solid colors, no gradients — the user asked for "one green
+   color, one dirt color." Picked to feel like the Mattel handheld
+   reference: bright kelly green with deep black dirt. The dirt is
+   intentionally black (not brown) because that's what the reference
+   does, and the contrast against green is sharper than any tan would
+   give. */
+.field-grass {
+  fill: #2d8b3c;
 }
-[data-playing="true"] .field-mound-dot {
-  /* Warmup sits just before the pitch fires; replaces the ambient bloom. */
-  animation: field-mound-warmup 0.5s ease-out
-    calc(var(--ms-pitch, 500ms) - 200ms) 1 forwards;
-}
-@keyframes mound-ambient-bloom {
-  0%, 100% { filter: drop-shadow(0 0 3px   rgba(251, 191, 36, 0.85)); }
-  30%      { filter: drop-shadow(0 0 4.5px rgba(251, 191, 36, 1.00)); }
-  65%      { filter: drop-shadow(0 0 2.5px rgba(251, 191, 36, 0.72)); }
-}
-@keyframes field-mound-warmup {
-  0%   { transform: scale(1);   opacity: 0.85; }
-  60%  { transform: scale(1.5); opacity: 1; }
-  100% { transform: scale(1);   opacity: 0.85; }
+.field-dirt {
+  fill: #0a0d0b;
 }
 
-/* ── Wall segments / foul lines: per-element phosphor jitter. ──────────
-   Each wall segment carries an animation-delay derived from its index
-   (set inline in BaseballLightField.tsx). Periods are incommensurable
-   with the other ambient cycles (9.7 / 7.3 / 5.1 / 4.2 / 3.4s) and
-   amplitude is held below the "perceptible shimmer" threshold so the
-   variation reads as material, not as a filter. */
-.field-wall-segment {
-  /* Stepped flicker — discrete frame transitions read as bulb dropouts
-     rather than smooth opacity easing. Period 1.3s lands in the "alive
-     LED" range. */
-  animation: phosphor-wall-flicker 1.3s steps(8, end) infinite;
-}
-@keyframes phosphor-wall-flicker {
-  0%, 100% { stroke-opacity: 1.00; }
-  12%      { stroke-opacity: 0.78; }
-  25%      { stroke-opacity: 1.00; }
-  37%      { stroke-opacity: 0.86; }
-  50%      { stroke-opacity: 1.00; }
-  62%      { stroke-opacity: 0.92; }
-  75%      { stroke-opacity: 1.00; }
-  87%      { stroke-opacity: 0.82; }
+/* ── Wall arc / foul lines ───────────────────────────────
+   Cream-white strokes, no amber phosphor flicker. The wall is a
+   single thin arc now (no segmented chunks), reads as the painted
+   warning-track edge from the Mattel reference. */
+.field-wall {
+  stroke-opacity: 0.85;
 }
 .field-foul-line {
-  animation: phosphor-foul-flicker 1.7s steps(6, end) infinite;
-}
-@keyframes phosphor-foul-flicker {
-  0%, 100% { stroke-opacity: 0.95; }
-  20%      { stroke-opacity: 0.78; }
-  40%      { stroke-opacity: 1.00; }
-  60%      { stroke-opacity: 0.85; }
-  80%      { stroke-opacity: 0.98; }
+  stroke-opacity: 0.95;
 }
 @media (prefers-reduced-motion: reduce) {
-  .field-wall-segment,
   .field-foul-line { animation: none; }
+}
+
+/* Pitcher's rubber — small painted-on pixel on the dirt mound. The
+   old amber LED + ambient bloom + pre-pitch warmup were the loudest
+   "futuristic" element on the field; the rubber is purely structural
+   now, no animation. */
+.field-mound-rubber {
+  shape-rendering: crispEdges;
+}
+.field-home-plate {
+  shape-rendering: geometricPrecision;
 }
 
 /* ── Base bulbs — three lifecycles drive the cross-fade. ── */
@@ -1484,7 +1287,8 @@ body {
    becomes active, "pre" bulbs hold lit through setup, fade out as runners
    advance; "post" bulbs fade in as runners arrive. */
 .field-base-bulb {
-  filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.85));
+  /* Small team-accent dot inside the white base — reads as "a runner
+     is on this bag" without the amber LED phosphor halo. */
   transform-box: fill-box;
   transform-origin: center;
   transition: opacity 180ms ease-out;
@@ -1515,9 +1319,11 @@ body {
 
 /* ── Base + batter labels: small last-name tags near each base ─────── */
 /* Pre/post pair animates the same way as BaseBulb — the "before" name
-   dims out and the "after" name fades in during the runners phase. */
+   dims out and the "after" name fades in during the runners phase.
+   Cream fill + black halo so the names stay readable whether they sit
+   on the kelly-green grass or the black dirt path beneath them. */
 .field-base-label {
-  fill: #fff3b0;
+  fill: #f5efdc;
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   letter-spacing: 0.06em;
   paint-order: stroke;
@@ -1525,7 +1331,6 @@ body {
   stroke-width: 2.8;
   stroke-linejoin: round;
   pointer-events: none;
-  filter: drop-shadow(0 0 2px rgba(255, 207, 64, 0.8));
   transition: opacity 180ms ease-out;
 }
 .field-base-label[data-lifecycle="pre"]  { opacity: 0; }
@@ -1550,9 +1355,11 @@ body {
   100% { opacity: 1; }
 }
 
-/* Batter at the plate — visible during setup/pitch/trigger only. */
+/* Batter at the plate — visible during setup/pitch/trigger only.
+   Cream fill + heavy black halo so the name reads cleanly when it sits
+   on the dirt alley below home plate. */
 .field-batter-label {
-  fill: #fff7c4;
+  fill: #f5efdc;
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   letter-spacing: 0.08em;
   paint-order: stroke;
@@ -1560,7 +1367,6 @@ body {
   stroke-width: 2.8;
   stroke-linejoin: round;
   pointer-events: none;
-  filter: drop-shadow(0 0 3px rgba(255, 207, 64, 0.85));
   opacity: 0;
   transition: opacity 220ms ease-out;
 }
