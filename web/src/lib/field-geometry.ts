@@ -91,6 +91,20 @@ export const FOUL_LEFT: Point = lineHitsWall({
   y: FIELD_POINTS.third.y - FIELD_POINTS.home.y,
 });
 
+// ── Infield dirt fan ─────────────────────────────────────
+// The black "dirt" zone on the Mattel handheld covers the pitcher's
+// mound area and the alley from home plate up to the mound. We model
+// the dirt as a circle around the mound + a narrow rectangle from home
+// to the mound, both clipped to the fair-territory pentagon by virtue
+// of sitting under the white foul lines.
+export const INFIELD_DIRT_RADIUS = 46;
+
+/** Width of the dirt alley from home plate up to the mound, in viewBox
+ *  units. Sized to feel like the Mattel reference — wide enough to
+ *  read as a deliberate dirt strip, narrow enough that 1B/3B remain
+ *  cleanly on the green side of it. */
+export const HOME_TO_MOUND_DIRT_WIDTH = 22;
+
 /** Wall angle (math-CCW from +x axis) at FOUL_RIGHT — used by anything
  *  that walks the wall arc (segment generator, fielder positioning). */
 export const FOUL_ANGLE_RIGHT = Math.atan2(
