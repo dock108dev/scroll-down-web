@@ -6,7 +6,7 @@ import type { BallPath } from "@/lib/types";
 const EPS = 0.5; // half a unit of viewBox tolerance for endpoint comparisons
 
 const ALL_PATHS: BallPath[] = [
-  "none", "pitch", "foul",
+  "none", "pitch", "foul", "foul_left", "foul_right",
   "home_run_left", "home_run_center", "home_run_right",
   "ground_3b", "ground_ss", "ground_p", "ground_2b", "ground_1b",
   "line_left", "line_center", "line_right",
@@ -183,10 +183,41 @@ describe("trajectory: classification table is complete", () => {
       ["fly_lf", "fly"], ["fly_lcf", "fly"], ["fly_cf", "fly"],
       ["fly_rcf", "fly"], ["fly_rf", "fly"],
       ["home_run_left", "home_run"], ["home_run_center", "home_run"], ["home_run_right", "home_run"],
-      ["popup", "popup"], ["foul", "foul"],
+      ["popup", "popup"],
+      ["foul", "foul"], ["foul_left", "foul"], ["foul_right", "foul"],
     ];
     for (const [p, cls] of expected) {
       expect(trajectoryClass(p)).toBe(cls);
     }
   });
 });
+
+describe("trajectory: directional fouls", () => {
+  it("foul_left lands LEFT of home plate; foul_right lands RIGHT", () => {
+    const left = buildTrajectory("foul_left")!;
+    const right = buildTrajectory("foul_right")!;
+    const leftEnd = parseFinalPoint(left);
+    const rightEnd = parseFinalPoint(right);
+    // Home plate x = 160 in the canonical viewBox.
+    expect(leftEnd.x).toBeLessThan(160);
+    expect(rightEnd.x).toBeGreaterThan(160);
+  });
+
+  it("foul and foul_left produce identical SVG paths (backward-compat default)", () => {
+    expect(buildTrajectory("foul")).toBe(buildTrajectory("foul_left"));
+  });
+
+  it("foul_right is the mirror image of foul_left across home-plate's x-axis", () => {
+    const left = parseFinalPoint(buildTrajectory("foul_left")!);
+    const right = parseFinalPoint(buildTrajectory("foul_right")!);
+    expect(left.y).toBeCloseTo(right.y, 5);
+    expect(160 - left.x).toBeCloseTo(right.x - 160, 5);
+  });
+});
+
+function parseFinalPoint(d: string): { x: number; y: number } {
+  // Quadratic bezier — final pair after Q is the endpoint.
+  const m = d.match(/Q\s*[-\d.]+\s+[-\d.]+\s+([-\d.]+)\s+([-\d.]+)/);
+  if (!m) throw new Error(`unparseable path: ${d}`);
+  return { x: Number(m[1]), y: Number(m[2]) };
+}

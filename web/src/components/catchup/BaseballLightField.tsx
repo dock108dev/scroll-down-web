@@ -547,7 +547,7 @@ export function BaseballLightField({
             x2={FOUL_LEFT.x}
             y2={FOUL_LEFT.y}
             className="field-foul-line"
-            stroke="rgba(245, 181, 54, 0.75)"
+            stroke="rgba(255, 207, 64, 0.95)"
             strokeWidth="2"
             strokeLinecap="square"
             style={{ animationDelay: "0ms" }}
@@ -558,7 +558,7 @@ export function BaseballLightField({
             x2={FOUL_RIGHT.x}
             y2={FOUL_RIGHT.y}
             className="field-foul-line"
-            stroke="rgba(245, 181, 54, 0.75)"
+            stroke="rgba(255, 207, 64, 0.95)"
             strokeWidth="2"
             strokeLinecap="square"
             style={{ animationDelay: "1700ms" }}
@@ -569,8 +569,8 @@ export function BaseballLightField({
                 L${POS.second.x},${POS.second.y}
                 L${POS.third.x},${POS.third.y} Z`}
             fill="none"
-            stroke="rgba(245, 181, 54, 0.78)"
-            strokeWidth="2"
+            stroke="rgba(255, 207, 64, 0.98)"
+            strokeWidth="2.5"
             strokeLinejoin="miter"
           />
         </g>
@@ -586,8 +586,8 @@ export function BaseballLightField({
             x2={s.x2}
             y2={s.y2}
             className="field-wall-segment"
-            stroke="rgba(245, 181, 54, 0.92)"
-            strokeWidth="2.5"
+            stroke="rgba(255, 207, 64, 1)"
+            strokeWidth="3"
             strokeLinecap="square"
             style={{
               animationDelay: `${(i * 370 + (i % 3) * 130) % 2800}ms`,
@@ -601,8 +601,8 @@ export function BaseballLightField({
           className="field-mound-dot"
           cx={POS.mound.x}
           cy={POS.mound.y}
-          r="3"
-          fill="rgba(251, 191, 36, 0.95)"
+          r="3.5"
+          fill="rgba(255, 215, 80, 1)"
         />
 
         {/* Home plate — wireframe pentagon, no fill. The flat edge faces
@@ -615,8 +615,8 @@ export function BaseballLightField({
               L${POS.home.x},${POS.home.y + 12}
               L${POS.home.x - 11},${POS.home.y + 3} Z`}
           fill="none"
-          stroke="rgba(251, 191, 36, 0.85)"
-          strokeWidth="1.5"
+          stroke="rgba(255, 215, 80, 1)"
+          strokeWidth="2"
           strokeLinejoin="miter"
         />
 
@@ -642,25 +642,28 @@ export function BaseballLightField({
         <BaseBulb pos={POS.third}  base="third"  prior={baseStatePrior?.third}  before={baseStateBefore.third}  after={after.third}  />
 
         {/* Runner-name labels. Prior/pre/post triple handles the bridge +
-            play cross-fade. */}
+            play cross-fade. When the base IS occupied but the name is
+            missing (upstream gap), a placeholder is rendered so the
+            runner is never invisible — the bulb + label always agree on
+            "someone is here." */}
         <BaseLabel anchor="first"
-          prior={baseStatePrior?.first ? runnerNamesPrior?.first : undefined}
-          before={baseStateBefore.first ? runnerNamesBefore?.first : undefined}
-          after={after.first ? runnerNamesAfter?.first : undefined}
+          prior={runnerLabel(baseStatePrior?.first, runnerNamesPrior?.first)}
+          before={runnerLabel(baseStateBefore.first, runnerNamesBefore?.first)}
+          after={runnerLabel(after.first, runnerNamesAfter?.first)}
         />
         <BaseLabel anchor="second"
-          prior={baseStatePrior?.second ? runnerNamesPrior?.second : undefined}
-          before={baseStateBefore.second ? runnerNamesBefore?.second : undefined}
-          after={after.second ? runnerNamesAfter?.second : undefined}
+          prior={runnerLabel(baseStatePrior?.second, runnerNamesPrior?.second)}
+          before={runnerLabel(baseStateBefore.second, runnerNamesBefore?.second)}
+          after={runnerLabel(after.second, runnerNamesAfter?.second)}
         />
         <BaseLabel anchor="third"
-          prior={baseStatePrior?.third ? runnerNamesPrior?.third : undefined}
-          before={baseStateBefore.third ? runnerNamesBefore?.third : undefined}
-          after={after.third ? runnerNamesAfter?.third : undefined}
+          prior={runnerLabel(baseStatePrior?.third, runnerNamesPrior?.third)}
+          before={runnerLabel(baseStateBefore.third, runnerNamesBefore?.third)}
+          after={runnerLabel(after.third, runnerNamesAfter?.third)}
         />
 
         {batterLabel && (() => {
-          const upper = compactLabel(batterLabel).toUpperCase();
+          const upper = batterLabel.trim().toUpperCase();
           return (
             <text
               className="field-batter-label"
@@ -822,6 +825,27 @@ export function BaseballLightField({
 
 // ── Sub-components ────────────────────────────────────────
 
+/**
+ * Resolve the label that should appear at a base given (state, name).
+ *
+ * Three cases:
+ *   - base empty                        → `undefined` (no label, no bulb)
+ *   - base occupied + name known        → the name itself
+ *   - base occupied + name missing      → "ON BASE" placeholder so the
+ *                                          bulb is never orphaned
+ *
+ * Upstream backend gaps (a `runner_names` map that doesn't list a base
+ * the `base_state` says is occupied) used to render a lit bulb with no
+ * label — visually reads as "ghost runner." The placeholder restores
+ * the runner's existence.
+ */
+function runnerLabel(occupied: boolean | undefined, name: string | undefined): string | undefined {
+  if (!occupied) return undefined;
+  const trimmed = name?.trim();
+  if (trimmed) return trimmed;
+  return "ON BASE";
+}
+
 function BaseLabel({
   anchor,
   prior,
@@ -834,9 +858,9 @@ function BaseLabel({
   after?: string;
 }) {
   if (!prior && !before && !after) return null;
-  const priorLabel = prior ? compactLabel(prior) : null;
-  const beforeLabel = before ? compactLabel(before) : null;
-  const afterLabel = after ? compactLabel(after) : null;
+  const priorLabel = prior ? prior.trim() : null;
+  const beforeLabel = before ? before.trim() : null;
+  const afterLabel = after ? after.trim() : null;
   // No state change at all — just render the persistent label.
   if (
     priorLabel === beforeLabel &&
@@ -908,28 +932,15 @@ function BaseLabelText({
   );
 }
 
-/** Last name only, returned at full length. The SVG <text> font-size
- *  shrinks adaptively for long names instead of truncating to ugly
- *  stems ("SODERSTROM" must NOT become "SODERSTRO"). */
-function compactLabel(full: string): string {
-  const trimmed = full.trim();
-  if (!trimmed) return "";
-  const parts = trimmed.split(/\s+/);
-  let last = parts[parts.length - 1];
-  if (/^(Jr\.?|Sr\.?|II|III|IV)$/i.test(last) && parts.length >= 2) {
-    last = parts[parts.length - 2];
-  }
-  return last.replace(/[.,;]$/, "");
-}
-
-/** Per-label font size — shrinks for long names so we never need to
- *  truncate. Calibrated to keep the longest plausible MLB last names
- *  (e.g. "GUERRERO", "BAZZANA", "WALLNER") readable in the 320 viewBox. */
+/** Per-label font size — shrinks for long full names so we never need to
+ *  truncate. Calibrated for first-and-last MLB names ("AARON JUDGE",
+ *  "VLADIMIR GUERRERO JR.", "ORLANDO ARCIA") in the 320 viewBox. */
 function labelFontSize(text: string): number {
-  if (text.length <= 7) return 9;
-  if (text.length <= 9) return 8;
-  if (text.length <= 11) return 7;
-  return 6.2;
+  if (text.length <= 8) return 8.5;
+  if (text.length <= 12) return 7.5;
+  if (text.length <= 16) return 6.5;
+  if (text.length <= 20) return 5.6;
+  return 5;
 }
 
 function BaseShape({ pos }: { pos: { x: number; y: number } }) {
@@ -944,8 +955,8 @@ function BaseShape({ pos }: { pos: { x: number; y: number } }) {
         width={14}
         height={14}
         fill="none"
-        stroke="rgba(251, 191, 36, 0.6)"
-        strokeWidth={1.25}
+        stroke="rgba(255, 215, 80, 0.95)"
+        strokeWidth={1.75}
         shapeRendering="crispEdges"
       />
     </g>

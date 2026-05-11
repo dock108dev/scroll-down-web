@@ -539,11 +539,12 @@ body {
   font-size: 0.625rem;
 }
 .catchup-card-inning {
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.16em;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
   color: var(--lev-amber, #fde68a);
-  text-shadow: 0 0 var(--lev-glow-radius, 8px) rgba(251, 191, 36, 0.55);
+  text-shadow: 0 0 var(--lev-glow-radius, 8px) rgba(251, 191, 36, 0.6);
   transition: color 600ms ease, text-shadow 600ms ease;
 }
 
@@ -564,40 +565,48 @@ body {
 }
 .catchup-card-batter,
 .catchup-card-pitcher {
-  font-size: 0.9375rem;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  /* Retro CRT-readout typography. Wider letter-spacing makes the pixel
+     font breathe in small caps. flex-shrink lets long full names trade
+     space rather than blow out the row. */
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.125rem;
+  font-weight: 400;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  flex: 0 1 auto;
 }
 .catchup-card-batter {
-  color: #ffffff;
-  text-shadow: 0 0 6px rgba(251, 191, 36, 0.35);
+  color: #fff7c4;
+  text-shadow:
+    0 0 4px rgba(255, 207, 64, 0.85),
+    0 0 10px rgba(251, 191, 36, 0.55);
 }
 .catchup-card-pitcher {
-  color: rgba(255, 230, 180, 0.92);
+  color: rgba(255, 220, 140, 0.95);
+  text-shadow: 0 0 6px rgba(251, 191, 36, 0.45);
 }
 .catchup-card-vs {
   flex: 0 0 auto;
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  color: rgba(255, 220, 150, 0.42);
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.75rem;
+  font-weight: 400;
+  letter-spacing: 0.22em;
+  color: rgba(255, 220, 150, 0.55);
   text-transform: uppercase;
 }
 .catchup-card-count {
   flex: 0 0 auto;
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  color: rgba(253, 230, 138, 0.85);
-  text-shadow: 0 0 4px rgba(251, 191, 36, 0.45);
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.12em;
+  color: #fde68a;
+  text-shadow: 0 0 4px rgba(251, 191, 36, 0.55);
   white-space: nowrap;
 }
 
@@ -629,11 +638,11 @@ body {
 }
 .outs-dots-label {
   margin-left: 0.1875rem;
-  letter-spacing: 0.14em;
-  color: rgba(255, 220, 150, 0.62);
-  font-size: 0.625rem;
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: rgba(255, 220, 150, 0.75);
+  font-size: 0.75rem;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-weight: 400;
 }
 .outs-dot {
   display: inline-block;
@@ -696,11 +705,13 @@ body {
   align-items: center;
   gap: 0.625rem;
   padding: 0.25rem 0.625rem 0.25rem 0.875rem;
-  border: 1px solid rgba(120, 100, 60, 0.45);
+  border: 1px solid rgba(251, 191, 36, 0.45);
   border-radius: 0.25rem;
   background: rgba(0, 0, 0, 0.85);
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.6);
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+    inset 0 0 8px rgba(251, 191, 36, 0.08);
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
 }
 .catchup-card-score-line {
   display: inline-flex;
@@ -708,11 +719,12 @@ body {
   gap: 0.3125rem;
 }
 .catchup-card-score-abbr {
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255, 220, 150, 0.55);
+  color: rgba(255, 220, 150, 0.7);
   position: relative;
 }
 /* Batting indicator — small triangular "▸" marker before the abbreviation
@@ -738,19 +750,19 @@ body {
   text-shadow: 0 0 6px rgba(251, 191, 36, 0.55);
 }
 .catchup-card-score-num {
-  /* LED-segment-style numeral. Per the Mattel reference: heavy weight,
-     tight tracking, layered glow so the digit reads as "lit phosphor"
-     not "amber text". The dual shadow gives a tight inner bloom plus a
-     softer halo — same trick a real LED gives off through diffusion. */
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 1.625rem;
-  font-weight: 900;
+  /* LED-segment-style numeral. Pixel font + layered glow so the digit
+     reads as "lit phosphor" rather than "amber text". The dual shadow
+     gives a tight inner bloom plus a softer halo — same trick a real
+     LED gives off through diffusion. */
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.875rem;
+  font-weight: 400;
   color: #ffe79a;
   text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.65),
-    0 0 4px rgba(251, 191, 36, 0.85),
-    0 0 10px rgba(251, 191, 36, 0.45);
-  letter-spacing: -0.01em;
+    0 0 1px rgba(255, 255, 255, 0.75),
+    0 0 5px rgba(251, 191, 36, 0.95),
+    0 0 12px rgba(251, 191, 36, 0.55);
+  letter-spacing: 0;
   line-height: 1;
   min-width: 1.1ch;
   text-align: center;
@@ -1119,13 +1131,11 @@ body {
    read as siblings on the same panel. */
 .field-shell {
   position: relative;
-  /* Aspect-1 LCD window. Width drives, aspect-ratio derives height,
+  /* Aspect-1 CRT window. Width drives, aspect-ratio derives height,
      max-height keeps it from overflowing the flex cell on short
-     viewports. Per BRAINDUMP "field becomes the unquestioned focal
-     point" — the shell no longer caps at 22rem; it grows to whichever
-     constraint hits first (width or available card height). The bezel
-     border is held to one near-invisible hairline so the field reads as
-     "screen suspended in darkness," not "boxed-in panel". */
+     viewports. Brighter bezel border + a darker vignette around the
+     panel sells the "lit screen suspended in darkness" identity from
+     vintage tabletop electronic games. */
   width: 100%;
   max-width: 100%;
   max-height: 100%;
@@ -1133,12 +1143,52 @@ body {
   aspect-ratio: 1 / 1;
   background: #000;
   border-radius: var(--device-radius-screen);
-  border: 1px solid rgba(245, 181, 54, 0.10);
+  border: 1px solid rgba(251, 191, 36, 0.28);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.7),
-    inset 0 0 0 1px rgba(0, 0, 0, 0.85);
+    inset 0 0 0 1px rgba(0, 0, 0, 0.85),
+    inset 0 0 28px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(251, 191, 36, 0.08),
+    0 0 18px rgba(251, 191, 36, 0.08);
   isolation: isolate;
-  overflow: visible;
+  overflow: hidden;
+}
+/* CRT scanline overlay — repeating-linear-gradient is GPU-cheap and
+   sells the "phosphor screen" identity without animated cost. Sits on
+   top of the field SVG via z-index 2; pointer-events disabled so it
+   never intercepts taps. The vertical mask makes the lines visibly
+   "roll" subtly via animation. */
+.field-shell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background:
+    /* Horizontal scanlines */
+    repeating-linear-gradient(
+      to bottom,
+      rgba(0, 0, 0, 0) 0px,
+      rgba(0, 0, 0, 0) 2px,
+      rgba(0, 0, 0, 0.22) 2px,
+      rgba(0, 0, 0, 0.22) 3px
+    ),
+    /* Vignette darkening at the corners — bulges the screen visually */
+    radial-gradient(
+      ellipse 100% 80% at 50% 50%,
+      rgba(0, 0, 0, 0) 60%,
+      rgba(0, 0, 0, 0.45) 100%
+    );
+  mix-blend-mode: multiply;
+  border-radius: inherit;
+  animation: crt-scan-drift 8s linear infinite;
+}
+@keyframes crt-scan-drift {
+  0%   { background-position: 0 0,    0 0; }
+  100% { background-position: 0 3px,  0 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-shell::after { animation: none; }
 }
 /* "Stadium glow" — a barely-perceptible amber radial that breathes very
    slowly. Subliminal: the user shouldn't see a shimmer, only sense the
@@ -1189,15 +1239,22 @@ body {
   position: relative;
   z-index: 1;
   display: block;
-  /* Imperceptible global beam-current drift on the whole field. Period
-     7.3s — incommensurable with the 3.4 / 4.2 / 5.1 / 9.7s ambient
-     animations so no beat frequency emerges. */
-  animation: phosphor-breath 7.3s ease-in-out infinite;
+  /* Snappier beam-current drift — period dropped to 2.1s with a wider
+     brightness band so the "live phosphor" feel is actually perceptible
+     instead of subliminal. Plus a constant amber boost via saturate()
+     so every lit stroke reads with vintage-CRT vibrance. */
+  filter: saturate(1.25);
+  animation: phosphor-breath 2.1s steps(6, end) infinite;
 }
 @keyframes phosphor-breath {
-  0%, 100% { filter: brightness(1.000); }
-  25%      { filter: brightness(0.978); }
-  60%      { filter: brightness(1.014); }
+  0%, 100% { filter: saturate(1.25) brightness(1);    }
+  20%      { filter: saturate(1.25) brightness(1.06); }
+  35%      { filter: saturate(1.25) brightness(0.94); }
+  55%      { filter: saturate(1.25) brightness(1.04); }
+  80%      { filter: saturate(1.25) brightness(0.97); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-svg { animation: none; filter: saturate(1.25); }
 }
 
 /* ── Mound rubber: ambient bloom + warmup pulse just before the pitch. ── */
@@ -1230,23 +1287,34 @@ body {
    amplitude is held below the "perceptible shimmer" threshold so the
    variation reads as material, not as a filter. */
 .field-wall-segment {
-  animation: phosphor-wall-flicker 3.4s ease-in-out infinite;
+  /* Stepped flicker — discrete frame transitions read as bulb dropouts
+     rather than smooth opacity easing. Period 1.3s lands in the "alive
+     LED" range. */
+  animation: phosphor-wall-flicker 1.3s steps(8, end) infinite;
 }
 @keyframes phosphor-wall-flicker {
-  0%, 100% { stroke-opacity: 0.92; }
-  18%      { stroke-opacity: 0.88; }
-  35%      { stroke-opacity: 0.94; }
-  52%      { stroke-opacity: 0.87; }
-  71%      { stroke-opacity: 0.91; }
-  89%      { stroke-opacity: 0.95; }
+  0%, 100% { stroke-opacity: 1.00; }
+  12%      { stroke-opacity: 0.78; }
+  25%      { stroke-opacity: 1.00; }
+  37%      { stroke-opacity: 0.86; }
+  50%      { stroke-opacity: 1.00; }
+  62%      { stroke-opacity: 0.92; }
+  75%      { stroke-opacity: 1.00; }
+  87%      { stroke-opacity: 0.82; }
 }
 .field-foul-line {
-  animation: phosphor-foul-flicker 5.1s ease-in-out infinite;
+  animation: phosphor-foul-flicker 1.7s steps(6, end) infinite;
 }
 @keyframes phosphor-foul-flicker {
-  0%, 100% { stroke-opacity: 0.75; }
-  40%      { stroke-opacity: 0.71; }
-  70%      { stroke-opacity: 0.77; }
+  0%, 100% { stroke-opacity: 0.95; }
+  20%      { stroke-opacity: 0.78; }
+  40%      { stroke-opacity: 1.00; }
+  60%      { stroke-opacity: 0.85; }
+  80%      { stroke-opacity: 0.98; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .field-wall-segment,
+  .field-foul-line { animation: none; }
 }
 
 /* ── Base bulbs — three lifecycles drive the cross-fade. ── */
@@ -1287,14 +1355,15 @@ body {
 /* Pre/post pair animates the same way as BaseBulb — the "before" name
    dims out and the "after" name fades in during the runners phase. */
 .field-base-label {
-  fill: rgba(255, 220, 150, 0.78);
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  letter-spacing: 0.04em;
+  fill: #fff3b0;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  letter-spacing: 0.06em;
   paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.75);
-  stroke-width: 2.4;
+  stroke: rgba(0, 0, 0, 0.92);
+  stroke-width: 2.8;
   stroke-linejoin: round;
   pointer-events: none;
+  filter: drop-shadow(0 0 2px rgba(255, 207, 64, 0.8));
   transition: opacity 180ms ease-out;
 }
 .field-base-label[data-lifecycle="pre"]  { opacity: 0; }
@@ -1321,14 +1390,15 @@ body {
 
 /* Batter at the plate — visible during setup/pitch/trigger only. */
 .field-batter-label {
-  fill: rgba(255, 220, 150, 0.85);
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  letter-spacing: 0.06em;
+  fill: #fff7c4;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  letter-spacing: 0.08em;
   paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.85);
-  stroke-width: 2.4;
+  stroke: rgba(0, 0, 0, 0.95);
+  stroke-width: 2.8;
   stroke-linejoin: round;
   pointer-events: none;
+  filter: drop-shadow(0 0 3px rgba(255, 207, 64, 0.85));
   opacity: 0;
   transition: opacity 220ms ease-out;
 }

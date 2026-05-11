@@ -95,8 +95,10 @@ const PATH_SPEC: Partial<Record<BallPath, TrajectorySpec>> = {
   home_run_right:  { class: "home_run", end: FIELDER_POS.rf, arcFactor: 0.30, apexShift: -0.08 },
 
   // Popup + foul use special-case builders below.
-  popup: { class: "popup", end: FIELD_POINTS.home }, // ignored
-  foul:  { class: "foul",  end: FIELD_POINTS.home }, // ignored
+  popup:      { class: "popup", end: FIELD_POINTS.home }, // ignored
+  foul:       { class: "foul",  end: FIELD_POINTS.home }, // ignored — defaults to left
+  foul_left:  { class: "foul",  end: FIELD_POINTS.home }, // ignored
+  foul_right: { class: "foul",  end: FIELD_POINTS.home }, // ignored
 };
 
 /**
@@ -106,7 +108,11 @@ const PATH_SPEC: Partial<Record<BallPath, TrajectorySpec>> = {
 export function buildTrajectory(path: BallPath): string | null {
   if (path === "none" || path === "pitch") return null;
   if (path === "popup") return buildPopupPath();
-  if (path === "foul") return buildFoulPath();
+  // Generic `foul` defaults to the left side (the historical behavior).
+  // `foul_left` and `foul_right` are explicit and used by the adapter when
+  // it can infer direction from the play description.
+  if (path === "foul" || path === "foul_left") return buildFoulPath("left");
+  if (path === "foul_right") return buildFoulPath("right");
 
   const spec = PATH_SPEC[path];
   if (!spec) return null;
@@ -182,13 +188,21 @@ function buildPopupPath(): string {
   return `M${fmt(home.x)} ${fmt(home.y)} Q${fmt(apex.x)} ${fmt(apex.y)} ${fmt(land.x)} ${fmt(land.y)}`;
 }
 
-/** Short curve into foul territory along the left side. Terminates near
- *  the foul line just outside the basepath (the canonical "foul into the
- *  stands" gesture). */
-function buildFoulPath(): string {
+/** Short curve into foul territory on the named side. Terminates outside
+ *  the basepath/foul line on that side (the canonical "foul into the
+ *  stands" gesture). Mirrors across the home-plate x-axis so left and
+ *  right reads as a true reflection. */
+function buildFoulPath(side: "left" | "right"): string {
   const home = FIELD_POINTS.home;
-  const land = { x: home.x - 78, y: home.y - 12 };
-  const cp = { x: home.x - 30, y: home.y + 6 };
+  const dir = side === "left" ? -1 : 1;
+  // Landing point sits past the basepath in foul territory. y is slightly
+  // ABOVE home plate (y - 12) so the curve reads as "into the air on the
+  // foul side of the line" rather than dribbling behind the catcher.
+  const land = { x: home.x + dir * 78, y: home.y - 12 };
+  // Control point pushes the apex OUT past the foul line so the bezier
+  // visibly arcs into the stands instead of cutting through fair territory.
+  // y > home.y keeps the bow on the catcher side of the basepath.
+  const cp = { x: home.x + dir * 30, y: home.y + 6 };
   return `M${fmt(home.x)} ${fmt(home.y)} Q${fmt(cp.x)} ${fmt(cp.y)} ${fmt(land.x)} ${fmt(land.y)}`;
 }
 
@@ -202,13 +216,22 @@ function fmt(n: number): string {
 
 export function trajectoryClass(path: BallPath): TrajectoryClass | null {
   if (path === "popup") return "popup";
-  if (path === "foul") return "foul";
+  if (path === "foul" || path === "foul_left" || path === "foul_right") return "foul";
   const spec = PATH_SPEC[path];
   return spec?.class ?? null;
 }
 
 export function trajectoryEndpoint(path: BallPath): Point | null {
-  if (path === "popup" || path === "foul" || path === "none" || path === "pitch") return null;
+  if (
+    path === "popup" ||
+    path === "foul" ||
+    path === "foul_left" ||
+    path === "foul_right" ||
+    path === "none" ||
+    path === "pitch"
+  ) {
+    return null;
+  }
   const spec = PATH_SPEC[path];
   if (!spec) return null;
   return spec.class === "home_run" ? projectPastWall(spec.end) : spec.end;

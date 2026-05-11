@@ -106,7 +106,14 @@ export interface RunnerNames {
 export type BallPath =
   | "none"
   | "pitch"
+  // Generic foul — kept for backward compatibility with backend payloads
+  // that don't yet split direction. Renders as `foul_left` by default.
   | "foul"
+  // Directional fouls — curl into the stands on the named side. Adapter
+  // selects from the play description ("third base" / "first base", etc.)
+  // when the backend supplies only the generic `foul` value.
+  | "foul_left"
+  | "foul_right"
   // Home runs — exit OVER the wall toward the appropriate outfield zone.
   // No vertical-beam path; HR direction comes from the play description.
   | "home_run_left"
