@@ -13,10 +13,10 @@ export function TopNav() {
   return (
     <header
       data-testid="top-nav"
-      className="sticky top-0 z-40 border-b border-neutral-800 bg-neutral-950/80 backdrop-blur"
+      className="sticky top-0 z-40 border-b border-[rgba(245,239,220,0.12)] bg-[#050807]/85 text-[#f5efdc] backdrop-blur"
     >
       <nav className="mx-auto flex h-14 max-w-3xl items-center px-4">
-        <Link href="/" className="flex items-center gap-2.5 min-h-[44px]">
+        <Link href="/" className="flex items-center gap-2.5 min-h-[44px] text-[#f5efdc]">
           <Image
             src="/app-icon.png"
             alt="Scroll Down MLB"
@@ -30,7 +30,7 @@ export function TopNav() {
         <div className="flex-1" />
         <Link
           href="/settings"
-          className="flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-neutral-400 hover:text-neutral-50 hover:bg-neutral-800 transition"
+          className="flex items-center justify-center min-h-[44px] min-w-[44px] rounded-full text-[rgba(245,239,220,0.55)] hover:text-[#f5efdc] hover:bg-[rgba(245,239,220,0.06)] transition"
           aria-label="Settings"
           title="Settings"
         >

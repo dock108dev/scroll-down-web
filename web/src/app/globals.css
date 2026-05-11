@@ -249,7 +249,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.20em;
   text-transform: uppercase;
-  color: var(--device-amber-dim, rgb(155, 118, 38));
+  color: rgba(245, 239, 220, 0.55);
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -259,26 +259,33 @@ body {
    vocabulary (gradient shell + bevel + amber border); non-featured
    cards stay flat with quieter amber borders so scanning isn't muddy.
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+/* The home page now shares the catch-up viewer's stadium palette so the
+   transition from the games list into a game doesn't feel like crossing
+   between two different products. The amber-on-black tokens that used
+   to live here were the same "neon on black" surface the user called
+   out across the field overhaul — replaced with a grass / dirt / cream
+   set so the menu reads as the same Mattel-handheld baseball machine
+   as the catch-up screen. */
 .home-deck-page {
-  background-color: #080a0d;
+  background-color: #050807;
   min-height: 100dvh;
 }
 .home-deck {
-  --home-card-bg:                    #13141a;
-  --home-card-bg-featured:           #15161a;
-  --home-grad-featured:              linear-gradient(180deg, #1d1f24 0%, #15161a 100%);
-  --home-card-border:                rgba(245, 181, 54, 0.14);
-  --home-card-border-featured:       rgba(245, 181, 54, 0.32);
-  --home-card-border-hover:          rgba(245, 181, 54, 0.28);
-  --home-card-border-featured-hover: rgba(245, 181, 54, 0.50);
-  --home-cta-color:                  #f6c453;
-  --home-cta-bg:                     rgba(246, 196, 83, 0.12);
-  --home-cta-border:                 rgba(246, 196, 83, 0.38);
-  --home-badge-border:               rgba(245, 181, 54, 0.22);
-  --home-badge-border-soft:          rgba(245, 181, 54, 0.16);
-  --home-badge-text:                 #9b7626;
-  --home-sep-color:                  rgba(245, 181, 54, 0.30);
-  --home-team-text:                  #f5f1e8;
+  --home-card-bg:                    #0b110d;
+  --home-card-bg-featured:           #0d1610;
+  --home-grad-featured:              linear-gradient(180deg, #122019 0%, #0b110d 100%);
+  --home-card-border:                rgba(245, 239, 220, 0.10);
+  --home-card-border-featured:       rgba(245, 239, 220, 0.22);
+  --home-card-border-hover:          rgba(245, 239, 220, 0.22);
+  --home-card-border-featured-hover: rgba(245, 239, 220, 0.38);
+  --home-cta-color:                  #f5efdc;
+  --home-cta-bg:                     rgba(45, 139, 60, 0.18);
+  --home-cta-border:                 rgba(45, 139, 60, 0.55);
+  --home-badge-border:               rgba(245, 239, 220, 0.16);
+  --home-badge-border-soft:          rgba(245, 239, 220, 0.12);
+  --home-badge-text:                 rgba(245, 239, 220, 0.55);
+  --home-sep-color:                  rgba(245, 239, 220, 0.22);
+  --home-team-text:                  #f5efdc;
 }
 
 /* ── Catch-up page shell ─────────────────────────────
@@ -350,20 +357,26 @@ body {
      The whole catch-up experience is one retro-handheld product. These
      tokens cascade to every play card, intro card, reveal gate, and
      final-reveal card so the theme stays coherent. */
-  --catchup-bg:          #07080a;
-  --device-shell:        #15161a;
-  --device-shell-hi:     #1d1f24;
-  --device-shell-lo:     #0a0b0d;
-  --device-screen:       #0a0b0d;
-  --device-screen-deep:  #06070a;
-  --device-border:       rgba(245, 181, 54, 0.32);
-  --device-border-soft:  rgba(245, 181, 54, 0.16);
+  --catchup-bg:          #050807;
+  --device-shell:        #0d1610;
+  --device-shell-hi:     #122019;
+  --device-shell-lo:     #07100a;
+  --device-screen:       #060a07;
+  --device-screen-deep:  #030604;
+  /* "Amber" tokens kept under the original name so dozens of selectors
+     across this file (.catchup-card-inning, .outs-dot, ResultChip
+     digits, ScoreSegment, etc.) didn't need a global rename — but the
+     palette is now stadium-cream, not neon amber. The user repeatedly
+     called the amber-on-black surface "neon on black"; cream-on-dark
+     reads as painted-on signage instead. */
+  --device-border:       rgba(245, 239, 220, 0.22);
+  --device-border-soft:  rgba(245, 239, 220, 0.12);
   --device-border-bevel: rgba(255, 255, 255, 0.04);
-  --device-amber:        #f6c453;
-  --device-amber-bright: #ffd97a;
-  --device-amber-dim:    #9b7626;
-  --device-text:         #f5f1e8;
-  --device-muted:        #9ca3af;
+  --device-amber:        #f5efdc;
+  --device-amber-bright: #ffffff;
+  --device-amber-dim:    rgba(245, 239, 220, 0.55);
+  --device-text:         #f5efdc;
+  --device-muted:        rgba(245, 239, 220, 0.55);
   /* Tightened radii — the device feels less "mobile card with rounded
      corners" and more "injection-molded electronic device front panel".
      The inset screens are nearly square (3px) for an LCD-window feel. */
@@ -424,10 +437,10 @@ body {
      gradient + heavy border were making the card read as "an iOS card
      with rounded corners" rather than a screen suspended in darkness. */
   background: transparent;
-  border: 1px solid rgba(245, 181, 54, calc(var(--lev-border-opacity) * 0.4));
+  border: 1px solid rgba(245, 239, 220, calc(var(--lev-border-opacity) * 0.4));
   border-radius: var(--device-radius);
   box-shadow:
-    0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+    0 0 var(--lev-glow-radius) rgba(245, 239, 220, var(--lev-glow-alpha));
   transition: border-color 600ms ease, box-shadow 600ms ease;
 }
 
@@ -478,13 +491,13 @@ body {
 }
 @keyframes leverage-settle-pulse {
   0% {
-    box-shadow: 0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+    box-shadow: 0 0 var(--lev-glow-radius) rgba(245, 239, 220, var(--lev-glow-alpha));
   }
   60% {
-    box-shadow: 0 0 calc(var(--lev-glow-radius) * 1.8) rgba(246, 196, 83, calc(var(--lev-glow-alpha) + 0.22));
+    box-shadow: 0 0 calc(var(--lev-glow-radius) * 1.8) rgba(245, 239, 220, calc(var(--lev-glow-alpha) + 0.22));
   }
   100% {
-    box-shadow: 0 0 var(--lev-glow-radius) rgba(246, 196, 83, var(--lev-glow-alpha));
+    box-shadow: 0 0 var(--lev-glow-radius) rgba(245, 239, 220, var(--lev-glow-alpha));
   }
 }
 @media (max-width: 480px) {
@@ -542,8 +555,8 @@ body {
   font-size: 0.9375rem;
   font-weight: 400;
   letter-spacing: 0.14em;
-  color: var(--lev-amber, #fde68a);
-  text-shadow: 0 0 var(--lev-glow-radius, 8px) rgba(251, 191, 36, 0.6);
+  color: var(--lev-amber, #f5efdc);
+  text-shadow: 0 0 var(--lev-glow-radius, 8px) rgba(245, 239, 220, 0.6);
   transition: color 600ms ease, text-shadow 600ms ease;
 }
 
@@ -561,7 +574,7 @@ body {
   gap: 0.4375rem;
   padding: 0.5rem 0.5rem 0.375rem;
   background:
-    linear-gradient(180deg, rgba(251, 191, 36, 0.04) 0%, rgba(0, 0, 0, 0) 70%),
+    linear-gradient(180deg, rgba(245, 239, 220, 0.04) 0%, rgba(0, 0, 0, 0) 70%),
     rgba(0, 0, 0, 0.25);
   min-width: 0;
 }
@@ -577,8 +590,8 @@ body {
   height: 1px;
   background: repeating-linear-gradient(
     to right,
-    rgba(246, 196, 83, 0.28) 0,
-    rgba(246, 196, 83, 0.28) 4px,
+    rgba(245, 239, 220, 0.28) 0,
+    rgba(245, 239, 220, 0.28) 4px,
     transparent 4px,
     transparent 8px
   );
@@ -601,14 +614,14 @@ body {
   flex: 0 1 auto;
 }
 .catchup-card-batter {
-  color: #fff7c4;
+  color: #f5efdc;
   text-shadow:
-    0 0 4px rgba(255, 207, 64, 0.85),
-    0 0 10px rgba(251, 191, 36, 0.55);
+    0 0 4px rgba(245, 239, 220, 0.85),
+    0 0 10px rgba(245, 239, 220, 0.55);
 }
 .catchup-card-pitcher {
   color: rgba(255, 220, 140, 0.95);
-  text-shadow: 0 0 6px rgba(251, 191, 36, 0.45);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
 }
 .catchup-card-vs {
   flex: 0 0 auto;
@@ -635,8 +648,8 @@ body {
   font-size: 1rem;
   font-weight: 400;
   letter-spacing: 0.12em;
-  color: #fde68a;
-  text-shadow: 0 0 4px rgba(251, 191, 36, 0.55);
+  color: #f5efdc;
+  text-shadow: 0 0 4px rgba(245, 239, 220, 0.55);
   white-space: nowrap;
   opacity: 0;
   transition: opacity 240ms ease-out;
@@ -656,10 +669,10 @@ body {
   align-items: baseline;
   gap: 0.1875rem;
   padding: 0.0625rem 0.25rem;
-  border: 1px solid rgba(251, 191, 36, 0.32);
+  border: 1px solid rgba(245, 239, 220, 0.32);
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 0 4px rgba(251, 191, 36, 0.10);
+  box-shadow: inset 0 0 4px rgba(245, 239, 220, 0.10);
 }
 
 /* Pitcher stat line — sits below the matchup row inside the same
@@ -696,12 +709,12 @@ body {
   align-items: center;
   gap: 0.4375rem;
   padding: 0.1875rem 0.5rem;
-  border: 1px solid rgba(251, 191, 36, 0.32);
+  border: 1px solid rgba(245, 239, 220, 0.32);
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.55);
   box-shadow:
     inset 0 1px 1px rgba(0, 0, 0, 0.45),
-    inset 0 0 6px rgba(251, 191, 36, 0.08);
+    inset 0 0 6px rgba(245, 239, 220, 0.08);
 }
 .outs-dots-label {
   margin-left: 0.1875rem;
@@ -716,55 +729,55 @@ body {
   width: 9px;
   height: 9px;
   border-radius: 50%;
-  border: 1px solid rgba(251, 191, 36, 0.45);
+  border: 1px solid rgba(245, 239, 220, 0.45);
   background: transparent;
   box-shadow: none;
   transition: background 240ms ease-out, box-shadow 240ms ease-out, transform 240ms ease-out;
   transform-origin: center;
 }
 .outs-dot[data-state="on"] {
-  background: #fbbf24;
+  background: #f5efdc;
   border-color: transparent;
   box-shadow:
-    0 0 4px rgba(251, 191, 36, 1),
-    0 0 9px rgba(251, 191, 36, 0.6),
-    0 0 16px rgba(251, 191, 36, 0.25);
+    0 0 4px rgba(245, 239, 220, 1),
+    0 0 9px rgba(245, 239, 220, 0.6),
+    0 0 16px rgba(245, 239, 220, 0.25);
 }
 .outs-dot[data-state="off"] {
   background: transparent;
 }
 /* Settled (non-playing) state: lighting dot is already lit; fading dot is dim. */
 .outs-dot[data-state="lighting"] {
-  background: #fbbf24;
+  background: #f5efdc;
   border-color: transparent;
-  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 4px rgba(245, 239, 220, 0.85), 0 0 9px rgba(245, 239, 220, 0.45);
 }
 .outs-dot[data-state="fading"] {
   background: transparent;
-  border-color: rgba(251, 191, 36, 0.35);
+  border-color: rgba(245, 239, 220, 0.35);
 }
 /* While the card is playing: lighting dots animate ON at the runners phase;
    fading dots (rare — would mean an out went down somehow) animate OFF. */
 [data-active="true"] .outs-dot[data-state="lighting"] {
   background: transparent;
-  border-color: rgba(251, 191, 36, 0.55);
+  border-color: rgba(245, 239, 220, 0.55);
   box-shadow: none;
   animation: outs-light-up 0.4s ease-out var(--ms-runners, 1.5s) forwards;
 }
 [data-active="true"] .outs-dot[data-state="fading"] {
-  background: #fbbf24;
+  background: #f5efdc;
   border-color: transparent;
-  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85);
+  box-shadow: 0 0 4px rgba(245, 239, 220, 0.85);
   animation: outs-fade-out 0.35s ease-out var(--ms-runners, 1.5s) forwards;
 }
 @keyframes outs-light-up {
-  0%   { background: transparent; box-shadow: none; transform: scale(1); border-color: rgba(251, 191, 36, 0.55); }
-  60%  { background: #fbbf24; box-shadow: 0 0 12px rgba(251, 191, 36, 0.95); transform: scale(1.5); border-color: transparent; }
-  100% { background: #fbbf24; box-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.45); transform: scale(1); border-color: transparent; }
+  0%   { background: transparent; box-shadow: none; transform: scale(1); border-color: rgba(245, 239, 220, 0.55); }
+  60%  { background: #f5efdc; box-shadow: 0 0 12px rgba(245, 239, 220, 0.95); transform: scale(1.5); border-color: transparent; }
+  100% { background: #f5efdc; box-shadow: 0 0 4px rgba(245, 239, 220, 0.85), 0 0 9px rgba(245, 239, 220, 0.45); transform: scale(1); border-color: transparent; }
 }
 @keyframes outs-fade-out {
-  0%   { background: #fbbf24; box-shadow: 0 0 4px rgba(251, 191, 36, 0.85); }
-  100% { background: transparent; box-shadow: none; border-color: rgba(251, 191, 36, 0.35); }
+  0%   { background: #f5efdc; box-shadow: 0 0 4px rgba(245, 239, 220, 0.85); }
+  100% { background: transparent; box-shadow: none; border-color: rgba(245, 239, 220, 0.35); }
 }
 
 .catchup-card-score {
@@ -777,13 +790,13 @@ body {
   align-items: center;
   gap: 0.625rem;
   padding: 0.25rem 0.625rem 0.25rem 0.875rem;
-  border: 1px solid rgba(251, 191, 36, 0.45);
+  border: 1px solid rgba(245, 239, 220, 0.45);
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.88);
   box-shadow:
     inset 0 0 0 1px rgba(0, 0, 0, 0.7),
     inset 0 1px 2px rgba(0, 0, 0, 0.65),
-    inset 0 0 8px rgba(251, 191, 36, 0.08);
+    inset 0 0 8px rgba(245, 239, 220, 0.08);
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
 }
 .catchup-card-score-line {
@@ -805,8 +818,8 @@ body {
    line; the eye picks it up faster than a label, and it's always next to
    the team name in the score panel. */
 .catchup-card-score-line[data-batting="true"] .catchup-card-score-abbr {
-  color: #fde68a;
-  text-shadow: 0 0 4px rgba(251, 191, 36, 0.55);
+  color: #f5efdc;
+  text-shadow: 0 0 4px rgba(245, 239, 220, 0.55);
 }
 .catchup-card-score-line[data-batting="true"] .catchup-card-score-abbr::before {
   content: "▸";
@@ -815,12 +828,12 @@ body {
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.625rem;
-  color: #fbbf24;
-  text-shadow: 0 0 5px rgba(251, 191, 36, 0.85);
+  color: #f5efdc;
+  text-shadow: 0 0 5px rgba(245, 239, 220, 0.85);
 }
 .catchup-card-score-line[data-batting="true"] .catchup-card-score-num {
   color: #ffffff;
-  text-shadow: 0 0 6px rgba(251, 191, 36, 0.55);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.55);
 }
 .catchup-card-score-num {
   /* LED-segment-style numeral. Pixel font + layered glow so the digit
@@ -830,11 +843,11 @@ body {
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 1.875rem;
   font-weight: 400;
-  color: #ffe79a;
+  color: #fff8e0;
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.75),
-    0 0 5px rgba(251, 191, 36, 0.95),
-    0 0 12px rgba(251, 191, 36, 0.55);
+    0 0 5px rgba(245, 239, 220, 0.95),
+    0 0 12px rgba(245, 239, 220, 0.55);
   letter-spacing: 0;
   line-height: 1;
   min-width: 1.1ch;
@@ -850,12 +863,12 @@ body {
   animation: catchup-score-flash 520ms cubic-bezier(0.4, 0, 0.5, 1) forwards;
 }
 @keyframes catchup-score-flash {
-  0%   { transform: scale(1);    color: #fde68a; }
+  0%   { transform: scale(1);    color: #f5efdc; }
   25%  { transform: scale(1.18); color: #ffffff;
          text-shadow:
            0 0 4px rgba(255, 255, 255, 0.95),
-           0 0 12px rgba(251, 191, 36, 0.85); }
-  100% { transform: scale(1);    color: #fde68a; }
+           0 0 12px rgba(245, 239, 220, 0.85); }
+  100% { transform: scale(1);    color: #f5efdc; }
 }
 .catchup-card-score-sep {
   color: rgba(255, 220, 150, 0.32);
@@ -927,7 +940,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.16em;
   color: var(--device-amber-bright);
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
   line-height: 1;
 }
 .catchup-result-chip-secondary {
@@ -964,7 +977,7 @@ body {
 }
 .catchup-result-chip[data-tier="1"] .catchup-result-chip-primary {
   font-size: 1.125rem;
-  text-shadow: 0 0 6px rgba(246, 196, 83, 0.35);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.35);
 }
 @keyframes chip-tier1-pop {
   0%   { opacity: 0; transform: scale(0.90); }
@@ -978,7 +991,7 @@ body {
 }
 .catchup-result-chip[data-tier="2"] .catchup-result-chip-primary {
   font-size: 1.25rem;
-  text-shadow: 0 0 12px rgba(246, 196, 83, 0.65);
+  text-shadow: 0 0 12px rgba(245, 239, 220, 0.65);
 }
 .catchup-result-chip[data-tier="2"] .catchup-result-chip-secondary {
   color: var(--device-amber);
@@ -1001,13 +1014,13 @@ body {
   letter-spacing: 0.08em;
   text-shadow:
     0 0 20px rgba(255, 217, 122, 0.9),
-    0 0 40px rgba(246, 196, 83, 0.45),
+    0 0 40px rgba(245, 239, 220, 0.45),
     0 0 2px rgba(255, 255, 255, 0.6);
 }
 .catchup-result-chip[data-tier="3"] .catchup-result-chip-secondary {
   font-size: 0.9375rem;
   color: var(--device-amber-bright);
-  text-shadow: 0 0 8px rgba(246, 196, 83, 0.5);
+  text-shadow: 0 0 8px rgba(245, 239, 220, 0.5);
 }
 @keyframes chip-tier3-epic {
   0%   { opacity: 0; transform: scale(0.80); }
@@ -1103,7 +1116,7 @@ body {
   display: flex;
   justify-content: center;
   margin: 0.25rem auto 0.5rem;
-  color: rgba(251, 191, 36, 0.40);
+  color: rgba(245, 239, 220, 0.40);
   opacity: 0;
   transition: opacity 320ms ease-out;
 }
@@ -1389,7 +1402,7 @@ body {
 .field-pitch-pulse {
   /* Single subtle drop-shadow — the previous double-glow streaked under
      motion blur and read as a vertical beam on some displays. */
-  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.75));
+  filter: drop-shadow(0 0 3px rgba(245, 239, 220, 0.75));
 }
 [data-playing="true"] .field-pitch-pulse {
   animation: field-pitch var(--d-pitch, 380ms) cubic-bezier(0.45, 0, 0.55, 1)
@@ -1428,9 +1441,9 @@ body {
 @keyframes field-strikeout {
   /* Compact pulse at the plate — used to scale to 2× and read as a
      dramatic burst, but the spec calls for "small pulse, no big beam." */
-  0%   { fill: rgba(251, 191, 36, 0);    transform: scale(0.8); }
-  35%  { fill: rgba(251, 191, 36, 0.85); transform: scale(1.2); }
-  100% { fill: rgba(251, 191, 36, 0);    transform: scale(1.4); }
+  0%   { fill: rgba(245, 239, 220, 0);    transform: scale(0.8); }
+  35%  { fill: rgba(245, 239, 220, 0.85); transform: scale(1.2); }
+  100% { fill: rgba(245, 239, 220, 0);    transform: scale(1.4); }
 }
 
 /* ── HBP flash — red-tinted pulse at the plate (no contact bloom). ── */
@@ -1693,7 +1706,7 @@ body {
   /* See .catchup-card-snap rationale — chassis goes near-transparent so
      the inset screens carry the visual weight, not the bezel. */
   background: transparent;
-  border: 1px solid rgba(245, 181, 54, 0.18);
+  border: 1px solid rgba(245, 239, 220, 0.18);
   border-radius: var(--device-radius);
 }
 
@@ -1724,7 +1737,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.32em;
   color: var(--device-amber);
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
 }
 .scene-setter-firstpitch {
   margin: 0;
@@ -1840,7 +1853,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.20em;
   color: var(--device-amber-bright);
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
 }
 .scene-setter-cta-sub {
   margin: 0;
@@ -1872,7 +1885,7 @@ body {
 .reveal-gate-stadium {
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at center, rgba(245, 181, 54, 0.10), transparent 60%);
+  background: radial-gradient(ellipse at center, rgba(245, 239, 220, 0.10), transparent 60%);
   opacity: 0;
   transition: opacity 600ms ease-out;
   pointer-events: none;
@@ -1891,7 +1904,7 @@ body {
   max-width: 24rem;
   padding: 1.25rem 1rem;
   background: transparent;
-  border: 1px solid rgba(245, 181, 54, 0.18);
+  border: 1px solid rgba(245, 239, 220, 0.18);
   border-radius: var(--device-radius);
 }
 .reveal-gate-headline {
@@ -1914,14 +1927,14 @@ body {
   border: 1px solid var(--device-border);
   border-radius: var(--device-radius-screen);
   background:
-    linear-gradient(180deg, rgba(245, 181, 54, 0.18) 0%, rgba(245, 181, 54, 0.10) 100%);
+    linear-gradient(180deg, rgba(245, 239, 220, 0.18) 0%, rgba(245, 239, 220, 0.10) 100%);
   color: var(--device-amber-bright);
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 0.875rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4),
@@ -1931,7 +1944,7 @@ body {
 }
 .reveal-gate-button:hover:not(:disabled) {
   background:
-    linear-gradient(180deg, rgba(245, 181, 54, 0.26) 0%, rgba(245, 181, 54, 0.16) 100%);
+    linear-gradient(180deg, rgba(245, 239, 220, 0.26) 0%, rgba(245, 239, 220, 0.16) 100%);
 }
 .reveal-gate-button:disabled { opacity: 0.5; cursor: progress; }
 
@@ -1957,7 +1970,7 @@ body {
   width: calc(100% - 1.5rem);
   max-width: 28rem;
   background: transparent;
-  border: 1px solid rgba(245, 181, 54, 0.18);
+  border: 1px solid rgba(245, 239, 220, 0.18);
   border-radius: var(--device-radius);
 }
 .final-reveal-score {
@@ -2006,11 +2019,11 @@ body {
   line-height: 1.2;
 }
 .final-reveal-team-winner .final-reveal-team-score {
-  color: #ffe79a;
+  color: #fff8e0;
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.65),
-    0 0 6px rgba(251, 191, 36, 0.85),
-    0 0 14px rgba(251, 191, 36, 0.45);
+    0 0 6px rgba(245, 239, 220, 0.85),
+    0 0 14px rgba(245, 239, 220, 0.45);
 }
 .final-reveal-team-winner .final-reveal-team-name {
   color: var(--device-text);
@@ -2077,21 +2090,21 @@ body {
   border: 1px solid var(--device-border);
   border-radius: var(--device-radius-screen);
   background:
-    linear-gradient(180deg, rgba(245, 181, 54, 0.18) 0%, rgba(245, 181, 54, 0.10) 100%);
+    linear-gradient(180deg, rgba(245, 239, 220, 0.18) 0%, rgba(245, 239, 220, 0.10) 100%);
   color: var(--device-amber-bright);
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 0.8125rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4);
 }
 .final-reveal-primary:hover {
   background:
-    linear-gradient(180deg, rgba(245, 181, 54, 0.26) 0%, rgba(245, 181, 54, 0.16) 100%);
+    linear-gradient(180deg, rgba(245, 239, 220, 0.26) 0%, rgba(245, 239, 220, 0.16) 100%);
 }
 .final-reveal-error {
   display: flex;
@@ -2132,7 +2145,7 @@ body {
   padding: 1.25rem 1rem;
   text-align: center;
   background: transparent;
-  border: 1px solid rgba(245, 181, 54, 0.18);
+  border: 1px solid rgba(245, 239, 220, 0.18);
   border-radius: var(--device-radius);
 }
 .live-caught-up-fineprint {
@@ -2194,14 +2207,14 @@ body {
   border: 1px solid var(--device-border);
   border-radius: var(--device-radius-screen);
   background:
-    linear-gradient(180deg, rgba(245, 181, 54, 0.18) 0%, rgba(245, 181, 54, 0.10) 100%);
+    linear-gradient(180deg, rgba(245, 239, 220, 0.18) 0%, rgba(245, 239, 220, 0.10) 100%);
   color: var(--device-amber-bright);
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 0.8125rem;
   font-weight: 800;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.45);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     inset 0 -1px 0 rgba(0, 0, 0, 0.4);
@@ -2209,7 +2222,7 @@ body {
 }
 .live-caught-up-button:hover:not(:disabled) {
   background:
-    linear-gradient(180deg, rgba(245, 181, 54, 0.26) 0%, rgba(245, 181, 54, 0.16) 100%);
+    linear-gradient(180deg, rgba(245, 239, 220, 0.26) 0%, rgba(245, 239, 220, 0.16) 100%);
 }
 .live-caught-up-button:disabled { opacity: 0.5; }
 
@@ -2274,20 +2287,20 @@ body {
 /* Outs — bridge-lighting dots fire at the bridge→setup boundary so the
    user sees the dot light up before the pitch arrives. */
 .outs-dot[data-state="bridge-lighting"] {
-  background: #fbbf24;
+  background: #f5efdc;
   border-color: transparent;
-  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85), 0 0 9px rgba(251, 191, 36, 0.45);
+  box-shadow: 0 0 4px rgba(245, 239, 220, 0.85), 0 0 9px rgba(245, 239, 220, 0.45);
 }
 [data-active="true"] .outs-dot[data-state="bridge-lighting"] {
   background: transparent;
-  border-color: rgba(251, 191, 36, 0.55);
+  border-color: rgba(245, 239, 220, 0.55);
   box-shadow: none;
   animation: outs-light-up 0.36s ease-out var(--ms-setup, 0.4s) forwards;
 }
 .outs-dot[data-state="bridge-fading-then-on"] {
-  background: #fbbf24;
+  background: #f5efdc;
   border-color: transparent;
-  box-shadow: 0 0 4px rgba(251, 191, 36, 0.85);
+  box-shadow: 0 0 4px rgba(245, 239, 220, 0.85);
 }
 
 /* Field — prior bulbs fade out at bridge end; "pre" bulbs that emerged
@@ -2377,7 +2390,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.18em;
   color: var(--device-amber-bright);
-  text-shadow: 0 0 10px rgba(245, 181, 54, 0.42);
+  text-shadow: 0 0 10px rgba(245, 239, 220, 0.42);
 }
 .rhythm-card-score {
   display: inline-flex;
@@ -2405,11 +2418,11 @@ body {
   font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 1.625rem;
   font-weight: 900;
-  color: #ffe79a;
+  color: #fff8e0;
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.65),
-    0 0 4px rgba(251, 191, 36, 0.85),
-    0 0 10px rgba(251, 191, 36, 0.45);
+    0 0 4px rgba(245, 239, 220, 0.85),
+    0 0 10px rgba(245, 239, 220, 0.45);
   line-height: 1;
 }
 .rhythm-card-score-sep {
@@ -2431,12 +2444,12 @@ body {
 .rhythm-card-quiet-stretch .rhythm-card-eyebrow { color: rgba(255, 220, 150, 0.32); }
 .rhythm-card-quiet-stretch .rhythm-card-label {
   color: var(--device-amber);
-  text-shadow: 0 0 6px rgba(245, 181, 54, 0.28);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.28);
 }
 
 /* Late game — slightly brighter, the device "wakes up". */
 .rhythm-card-late-game .rhythm-card-label {
-  text-shadow: 0 0 14px rgba(245, 181, 54, 0.65);
+  text-shadow: 0 0 14px rgba(245, 239, 220, 0.65);
 }
 .rhythm-card-late-game .rhythm-card-eyebrow {
   color: rgba(255, 220, 150, 0.7);
@@ -2447,7 +2460,7 @@ body {
   color: #fff5cc;
   text-shadow:
     0 0 6px rgba(255, 245, 204, 0.85),
-    0 0 18px rgba(245, 181, 54, 0.55);
+    0 0 18px rgba(245, 239, 220, 0.55);
 }
 .rhythm-card-final-setup .rhythm-card-eyebrow {
   color: rgba(255, 220, 150, 0.85);
@@ -2468,10 +2481,10 @@ body {
 .catchup-lab {
   --lab-bg:        #08090b;
   --lab-panel:     #11141a;
-  --lab-border:    rgba(245, 181, 54, 0.2);
+  --lab-border:    rgba(245, 239, 220, 0.2);
   --lab-text:      #e8e8e8;
   --lab-muted:     #8b95a6;
-  --lab-amber:     #f6c453;
+  --lab-amber:     #f5efdc;
   --lab-amber-dim: #c89a3e;
   background: var(--lab-bg);
   color: var(--lab-text);
@@ -2553,11 +2566,11 @@ body {
   transition: background 120ms ease;
 }
 .lab-fixture-button:hover {
-  background: rgba(245, 181, 54, 0.06);
+  background: rgba(245, 239, 220, 0.06);
 }
 .lab-fixture-button[data-active="true"] {
-  background: rgba(245, 181, 54, 0.14);
-  border-color: rgba(245, 181, 54, 0.35);
+  background: rgba(245, 239, 220, 0.14);
+  border-color: rgba(245, 239, 220, 0.35);
 }
 .lab-fixture-id {
   font-weight: 700;
@@ -2629,7 +2642,7 @@ body {
 }
 .lab-toggle {
   margin-left: 0.5rem;
-  background: rgba(245, 181, 54, 0.1);
+  background: rgba(245, 239, 220, 0.1);
   border: 1px solid var(--lab-border);
   color: var(--lab-amber);
   font-size: 0.625rem;
@@ -2639,7 +2652,7 @@ body {
   border-radius: 4px;
   cursor: pointer;
 }
-.lab-toggle:hover { background: rgba(245, 181, 54, 0.18); }
+.lab-toggle:hover { background: rgba(245, 239, 220, 0.18); }
 .lab-review-notes {
   margin: 0.5rem 0 0;
   padding-left: 1rem;
@@ -2716,7 +2729,7 @@ body {
   font-size: 0.6875rem;
 }
 .lab-toolbar-button {
-  background: rgba(245, 181, 54, 0.1);
+  background: rgba(245, 239, 220, 0.1);
   border: 1px solid var(--lab-border);
   color: var(--lab-amber);
   padding: 0.3125rem 0.625rem;
@@ -2727,10 +2740,10 @@ body {
   cursor: pointer;
   font-family: inherit;
 }
-.lab-toolbar-button:hover { background: rgba(245, 181, 54, 0.2); }
+.lab-toolbar-button:hover { background: rgba(245, 239, 220, 0.2); }
 .lab-toolbar-button--primary {
   font-weight: 700;
-  background: rgba(245, 181, 54, 0.18);
+  background: rgba(245, 239, 220, 0.18);
 }
 .lab-toolbar-group {
   display: flex;
@@ -2758,7 +2771,7 @@ body {
 }
 .lab-toolbar-pill:hover { color: var(--lab-text); }
 .lab-toolbar-pill[data-active="true"] {
-  background: rgba(245, 181, 54, 0.2);
+  background: rgba(245, 239, 220, 0.2);
   border-color: var(--lab-amber);
   color: var(--lab-amber);
 }
@@ -2783,7 +2796,7 @@ body {
   color: var(--lab-muted);
 }
 .lab-toolbar-toggle[data-on="true"] {
-  border-color: rgba(245, 181, 54, 0.5);
+  border-color: rgba(245, 239, 220, 0.5);
 }
 .lab-toolbar-toggle[data-on="true"] .lab-toolbar-toggle-state {
   color: var(--lab-amber);
@@ -2812,11 +2825,11 @@ body {
 }
 .lab-leverage-pip[data-tier="0"] {
   height: 6px;
-  background: rgba(245, 181, 54, 0.25);
+  background: rgba(245, 239, 220, 0.25);
 }
 .lab-leverage-pip[data-tier="1"] {
   height: 12px;
-  background: rgba(245, 181, 54, 0.6);
+  background: rgba(245, 239, 220, 0.6);
 }
 .lab-leverage-pip[data-tier="2"] {
   height: 18px;
@@ -2846,7 +2859,7 @@ body {
 .lab-audit-table td {
   padding: 0.25rem 0.375rem;
   text-align: left;
-  border-bottom: 1px solid rgba(245, 181, 54, 0.08);
+  border-bottom: 1px solid rgba(245, 239, 220, 0.08);
   vertical-align: top;
 }
 .lab-audit-table thead th {
@@ -2949,8 +2962,8 @@ body {
   flex-direction: column;
   gap: 0.125rem;
   padding: 0.375rem 0.5rem;
-  border-left: 2px solid rgba(245, 181, 54, 0.3);
-  background: rgba(245, 181, 54, 0.04);
+  border-left: 2px solid rgba(245, 239, 220, 0.3);
+  background: rgba(245, 239, 220, 0.04);
   border-radius: 0 4px 4px 0;
   counter-increment: lab-rhythm;
 }
@@ -2966,7 +2979,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
-.lab-rhythm-inning-transition { color: #fbbf24; }
+.lab-rhythm-inning-transition { color: #f5efdc; }
 .lab-rhythm-quiet-stretch     { color: #9ca3af; }
 .lab-rhythm-late-game         { color: #fb923c; }
 .lab-rhythm-final-setup       { color: #fff5cc; }
