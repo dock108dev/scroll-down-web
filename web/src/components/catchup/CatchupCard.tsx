@@ -294,11 +294,8 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
         <BaseballLightField
           key={runId}
           baseStatePrior={hasMeaningfulBridge ? priorAfter?.baseState : undefined}
-          runnerNamesPrior={hasMeaningfulBridge ? priorAfter?.runnerNames : undefined}
           baseStateBefore={baseStateBefore}
           baseStateAfter={baseStateAfter}
-          runnerNamesBefore={card.runnerNamesBefore}
-          runnerNamesAfter={card.runnerNamesAfter}
           runnerMovements={movements}
           runnersBeginMs={milestones.runners}
           ballPath={card.ballPath}
@@ -306,7 +303,6 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
           animationProfile={card.animationProfile}
           scoreBefore={card.scoreBefore}
           scoreAfter={card.scoreAfter}
-          batterLabel={situation.batterName}
           accentColor={accent}
           isActive={isActive}
         />

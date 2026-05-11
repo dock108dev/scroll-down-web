@@ -6,7 +6,6 @@ import type {
   BaseballBaseState,
   PlayAnimationProfile,
   PlayEventType,
-  RunnerNames,
 } from "@/lib/types";
 import {
   FIELDER_POS,
@@ -38,14 +37,14 @@ import { buildTrajectory } from "@/lib/trajectory";
 
 interface BaseballLightFieldProps {
   /** Optional snapshot of the previously-displayed card's ENDING state.
-   *  When supplied, the field renders bulbs/labels for `prior` initially,
-   *  then crosses into `before` during the card's bridge phase. */
+   *  When supplied, the field renders base-occupancy bulbs for `prior`
+   *  initially, then crosses into `before` during the card's bridge
+   *  phase. Per-base runner NAMES are intentionally not rendered on the
+   *  field — the only place names appear is the scoreboard's matchup
+   *  row above. */
   baseStatePrior?: BaseballBaseState;
-  runnerNamesPrior?: RunnerNames;
   baseStateBefore: BaseballBaseState;
   baseStateAfter?: BaseballBaseState;
-  runnerNamesBefore?: RunnerNames;
-  runnerNamesAfter?: RunnerNames;
   /** Animation plan — path + timing per runner. Required for runner dots. */
   runnerMovements?: RunnerMovement[];
   ballPath?: BallPath;
@@ -53,8 +52,6 @@ interface BaseballLightFieldProps {
   animationProfile?: PlayAnimationProfile;
   scoreBefore?: { home: number; away: number };
   scoreAfter?: { home: number; away: number };
-  /** Last name (or short label) of the batter at home plate. */
-  batterLabel?: string;
   /** ms after mount when the runners phase starts — used to offset SMIL
    *  begin times. Comes from CatchupCard's milestones.runners. */
   runnersBeginMs?: number;
@@ -348,18 +345,14 @@ function hasDefensiveThrowContext(
 
 export function BaseballLightField({
   baseStatePrior,
-  runnerNamesPrior,
   baseStateBefore,
   baseStateAfter,
-  runnerNamesBefore,
-  runnerNamesAfter,
   runnerMovements,
   ballPath = "pitch",
   eventType = "other",
   animationProfile = "other",
   scoreBefore,
   scoreAfter,
-  batterLabel,
   runnersBeginMs,
   accentColor = "#5a8ac6",
   isActive,
@@ -668,47 +661,14 @@ export function BaseballLightField({
         <BaseShape pos={POS.second} />
         <BaseShape pos={POS.third} />
 
-        {/* Base bulbs — lifecycle drives the cross-fade. */}
+        {/* Base-occupancy markers — show a clear lit "runner here" dot
+            for each occupied bag. Names live in the scoreboard above
+            (BATTER vs PITCHER), never on the field, so the field stays
+            clean and the eye doesn't have to read four floating name
+            labels during the play. */}
         <BaseBulb pos={POS.first}  base="first"  prior={baseStatePrior?.first}  before={baseStateBefore.first}  after={after.first}  />
         <BaseBulb pos={POS.second} base="second" prior={baseStatePrior?.second} before={baseStateBefore.second} after={after.second} />
         <BaseBulb pos={POS.third}  base="third"  prior={baseStatePrior?.third}  before={baseStateBefore.third}  after={after.third}  />
-
-        {/* Runner-name labels. Prior/pre/post triple handles the bridge +
-            play cross-fade. When the base IS occupied but the name is
-            missing (upstream gap), a placeholder is rendered so the
-            runner is never invisible — the bulb + label always agree on
-            "someone is here." */}
-        <BaseLabel anchor="first"
-          prior={runnerLabel(baseStatePrior?.first, runnerNamesPrior?.first)}
-          before={runnerLabel(baseStateBefore.first, runnerNamesBefore?.first)}
-          after={runnerLabel(after.first, runnerNamesAfter?.first)}
-        />
-        <BaseLabel anchor="second"
-          prior={runnerLabel(baseStatePrior?.second, runnerNamesPrior?.second)}
-          before={runnerLabel(baseStateBefore.second, runnerNamesBefore?.second)}
-          after={runnerLabel(after.second, runnerNamesAfter?.second)}
-        />
-        <BaseLabel anchor="third"
-          prior={runnerLabel(baseStatePrior?.third, runnerNamesPrior?.third)}
-          before={runnerLabel(baseStateBefore.third, runnerNamesBefore?.third)}
-          after={runnerLabel(after.third, runnerNamesAfter?.third)}
-        />
-
-        {batterLabel && (() => {
-          const upper = batterLabel.trim().toUpperCase();
-          return (
-            <text
-              className="field-batter-label"
-              x={POS.home.x}
-              y={POS.home.y + 22}
-              textAnchor="middle"
-              fontSize={labelFontSize(upper)}
-              fontWeight="700"
-            >
-              {upper}
-            </text>
-          );
-        })()}
 
         {showContact && (
           <circle
@@ -857,124 +817,6 @@ export function BaseballLightField({
 
 // ── Sub-components ────────────────────────────────────────
 
-/**
- * Resolve the label that should appear at a base given (state, name).
- *
- * Three cases:
- *   - base empty                        → `undefined` (no label, no bulb)
- *   - base occupied + name known        → the name itself
- *   - base occupied + name missing      → "ON BASE" placeholder so the
- *                                          bulb is never orphaned
- *
- * Upstream backend gaps (a `runner_names` map that doesn't list a base
- * the `base_state` says is occupied) used to render a lit bulb with no
- * label — visually reads as "ghost runner." The placeholder restores
- * the runner's existence.
- */
-function runnerLabel(occupied: boolean | undefined, name: string | undefined): string | undefined {
-  if (!occupied) return undefined;
-  const trimmed = name?.trim();
-  if (trimmed) return trimmed;
-  return "ON BASE";
-}
-
-function BaseLabel({
-  anchor,
-  prior,
-  before,
-  after,
-}: {
-  anchor: "first" | "second" | "third";
-  prior?: string;
-  before?: string;
-  after?: string;
-}) {
-  if (!prior && !before && !after) return null;
-  const priorLabel = prior ? prior.trim() : null;
-  const beforeLabel = before ? before.trim() : null;
-  const afterLabel = after ? after.trim() : null;
-  // No state change at all — just render the persistent label.
-  if (
-    priorLabel === beforeLabel &&
-    beforeLabel === afterLabel &&
-    afterLabel
-  ) {
-    return <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="both" />;
-  }
-  // No bridge change, only play change — keep the existing pre/post pair.
-  if (priorLabel === beforeLabel || !priorLabel) {
-    if (beforeLabel && afterLabel && beforeLabel === afterLabel) {
-      return <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="both" />;
-    }
-    return (
-      <>
-        {beforeLabel && (
-          <BaseLabelText anchor={anchor} text={beforeLabel} lifecycle="pre" />
-        )}
-        {afterLabel && (
-          <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="post" />
-        )}
-      </>
-    );
-  }
-  // Bridge change is real — render up to three labels keyed by lifecycle.
-  return (
-    <>
-      {priorLabel && (
-        <BaseLabelText anchor={anchor} text={priorLabel} lifecycle="prior" />
-      )}
-      {beforeLabel && (
-        <BaseLabelText anchor={anchor} text={beforeLabel} lifecycle="pre" />
-      )}
-      {afterLabel && beforeLabel !== afterLabel && (
-        <BaseLabelText anchor={anchor} text={afterLabel} lifecycle="post" />
-      )}
-    </>
-  );
-}
-
-function BaseLabelText({
-  anchor,
-  text,
-  lifecycle,
-}: {
-  anchor: "first" | "second" | "third";
-  text: string;
-  lifecycle: "prior" | "pre" | "post" | "both";
-}) {
-  const placement: Record<typeof anchor, { x: number; y: number; align: "start" | "middle" | "end" }> = {
-    first:  { x: POS.first.x  + 14, y: POS.first.y  + 4,  align: "start"  },
-    second: { x: POS.second.x,      y: POS.second.y - 14, align: "middle" },
-    third:  { x: POS.third.x  - 14, y: POS.third.y  + 4,  align: "end"    },
-  };
-  const p = placement[anchor];
-  const upper = text.toUpperCase();
-  return (
-    <text
-      className="field-base-label"
-      data-lifecycle={lifecycle}
-      x={p.x}
-      y={p.y}
-      textAnchor={p.align}
-      fontSize={labelFontSize(upper)}
-      fontWeight="700"
-    >
-      {upper}
-    </text>
-  );
-}
-
-/** Per-label font size — shrinks for long full names so we never need to
- *  truncate. Calibrated for first-and-last MLB names ("AARON JUDGE",
- *  "VLADIMIR GUERRERO JR.", "ORLANDO ARCIA") in the 320 viewBox. */
-function labelFontSize(text: string): number {
-  if (text.length <= 8) return 8.5;
-  if (text.length <= 12) return 7.5;
-  if (text.length <= 16) return 6.5;
-  if (text.length <= 20) return 5.6;
-  return 5;
-}
-
 function BaseShape({ pos }: { pos: { x: number; y: number } }) {
   // Solid white square rotated 45° — the white-diamond base markers
   // from the Mattel reference. Pure fill, no stroke; pops cleanly
@@ -1026,17 +868,20 @@ function BaseBulb({
   else if (!before && after) lifecycle = "post";
   else lifecycle = "post";
 
+  // Two-circle marker: a team-accent disc with a chunky cream rim. Sits
+  // right on top of the white base diamond, so an occupied base reads as
+  // a clearly distinct shape from an empty base at a glance — which the
+  // single small accent dot wasn't doing on the green grass.
   return (
-    <circle
+    <g
       className="field-base-bulb"
-      cx={pos.x}
-      cy={pos.y}
-      r={4}
-      fill="var(--field-accent)"
       data-testid="base-bulb"
       data-base={base}
       data-lifecycle={lifecycle}
-    />
+    >
+      <circle cx={pos.x} cy={pos.y} r={6.5} fill="#f5efdc" />
+      <circle cx={pos.x} cy={pos.y} r={4.5} fill="var(--field-accent)" />
+    </g>
   );
 }
 
