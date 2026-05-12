@@ -10,6 +10,7 @@
     "test": "npx playwright test",
     "test:smoke": "npx playwright test --grep @smoke",
     "test:smoke:pr": "npm run build && CI=1 npx playwright test --grep \"@smoke\" --grep-invert \"@live-upstream\"",
+    "test:e2e:coverage": "SCROLLDOWN_E2E_COVERAGE=1 npm run build && SCROLLDOWN_E2E_COVERAGE=1 npx playwright test --grep \"@smoke\" --grep-invert \"@live-upstream\"",
     "test:ui": "npx playwright test --ui",
     "test:headed": "npx playwright test --headed",
     "test:unit": "vitest run --passWithNoTests",
@@ -37,6 +38,7 @@
     "eslint-config-next": "16.2.6",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^29.1.1",
+    "monocart-reporter": "^2.11.2",
     "tailwindcss": "^4.3.0",
     "typescript": "6.0.3",
     "vitest": "^4.1.5"

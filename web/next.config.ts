@@ -22,6 +22,10 @@ const connectSrc = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // When SCROLLDOWN_E2E_COVERAGE=1, emit browser source maps so monocart-reporter
+  // can map v8 coverage from minified production bundles back to src/ paths.
+  // Never enabled in real builds — sourcemaps add weight and leak code structure.
+  productionBrowserSourceMaps: process.env.SCROLLDOWN_E2E_COVERAGE === "1",
   experimental: {
     scrollRestoration: true,
   },

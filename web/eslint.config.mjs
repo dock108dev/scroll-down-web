@@ -17,6 +17,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "coverage/**",
+    "coverage-e2e/**",
+    "monocart-report/**",
+    "assets/monocart-coverage-app.js",
     "next-env.d.ts",
   ]),
 ]);

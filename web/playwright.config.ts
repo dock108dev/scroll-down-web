@@ -1,8 +1,9 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig, devices, type ReporterDescription } from "@playwright/test";
 import os from "os";
 
 const PORT = 3001;
 const BASE_URL = `http://localhost:${PORT}`;
+const COLLECT_COVERAGE = process.env.SCROLLDOWN_E2E_COVERAGE === "1";
 
 /** Forward backend API key into the webServer child (CI + local); matches `src/lib/api-server.ts`. */
 const SPORTS_API_KEY_ENV = (["SPORTS_DATA_API_KEY", "SPORTS_API_KEY", "API_KEY"] as const).reduce<
@@ -18,6 +19,47 @@ const SPORTS_API_KEY_ENV = (["SPORTS_DATA_API_KEY", "SPORTS_API_KEY", "API_KEY"]
  * sports payloads. PR CI runs `npx playwright test --grep "@smoke" --grep-invert "@live-upstream"`
  * (see `.github/workflows/ci.yml`). See `tests/SDA_HANDOFF.md`.
  */
+function buildReporter(): ReporterDescription[] {
+  const out: ReporterDescription[] = process.env.CI
+    ? [["github"], ["line"]]
+    : [["html", { open: "never" }]];
+  if (COLLECT_COVERAGE) {
+    out.push([
+      "monocart-reporter",
+      {
+        name: "Scroll Down MLB E2E",
+        outputFile: "./coverage-e2e/index.html",
+        coverage: {
+          outputDir: "./coverage-e2e",
+          reports: [
+            ["v8"],
+            ["lcovonly", { file: "lcov.info" }],
+            ["console-summary"],
+          ],
+          entryFilter: () => true,
+          // Only count app-owned source files we can reasonably exercise from
+          // the browser. Excludes inline <Script> bodies (which appear under
+          // `localhost-3001/...`), api/route.ts (server-only), and the
+          // top-level error boundary (only fires on uncaught render errors).
+          sourceFilter: (sourcePath: string) => {
+            if (sourcePath.startsWith("localhost-")) return false;
+            if (!sourcePath.includes("/src/")) return false;
+            if (sourcePath.includes("/api/")) return false;
+            if (sourcePath.endsWith("/src/app/error.tsx")) return false;
+            return (
+              sourcePath.includes("/src/components/") ||
+              sourcePath.includes("/src/hooks/") ||
+              sourcePath.includes("/src/stores/") ||
+              sourcePath.includes("/src/app/")
+            );
+          },
+        },
+      },
+    ]);
+  }
+  return out;
+}
+
 export default defineConfig({
   testDir: "./tests",
   // tests/unit/** is run by Vitest (see vitest.config.ts); Playwright must skip it
@@ -29,7 +71,10 @@ export default defineConfig({
   // CI runner is dedicated to this job — use full parallelism.
   workers: process.env.CI ? Math.max(1, os.availableParallelism()) : undefined,
   // Keep GitHub annotations, plus line-by-line progress in CI logs.
-  reporter: process.env.CI ? [["github"], ["line"]] : "html",
+  // When SCROLLDOWN_E2E_COVERAGE=1, add monocart-reporter to collect v8 JS
+  // coverage and emit lcov + an HTML report. See tests/helpers.ts for the
+  // matching per-test coverage fixture.
+  reporter: buildReporter(),
   timeout: 30_000,
   expect: { timeout: 10_000 },
 
