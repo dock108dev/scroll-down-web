@@ -147,6 +147,78 @@ jobs:
           retention-days: 7
 
   # ────────────────────────────────────────────────────────
+  # Playwright — smoke E2E with v8 coverage (monocart). Non-blocking:
+  # uploads the lcov + HTML report so reviewers can see per-file coverage.
+  # Gated below 80% lines (lcov) so a regression fails the job.
+  # ────────────────────────────────────────────────────────
+  playwright-coverage:
+    needs: web
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with browser sourcemaps for coverage mapping
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+          SCROLLDOWN_E2E_COVERAGE: "1"
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+          NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
+          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run smoke tests with coverage
+        run: npx playwright test --grep "@smoke" --grep-invert "@live-upstream"
+        env:
+          SCROLLDOWN_E2E_COVERAGE: "1"
+          SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
+          NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
+          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
+
+      - name: Enforce >=80% lines (lcov)
+        run: |
+          node -e "
+            const fs=require('fs');
+            const lcov=fs.readFileSync('coverage-e2e/lcov.info','utf8');
+            const recs=lcov.split('end_of_record\n').filter(r=>r.trim());
+            let lf=0,lh=0;
+            for (const r of recs){
+              lf+=parseInt(r.match(/LF:(\d+)/)?.[1]||'0');
+              lh+=parseInt(r.match(/LH:(\d+)/)?.[1]||'0');
+            }
+            const pct=lf>0?(100*lh/lf):0;
+            console.log('Line coverage:',pct.toFixed(2)+'% ('+lh+'/'+lf+')');
+            if (pct < 80) { console.error('::error::Line coverage '+pct.toFixed(2)+'% below 80% threshold'); process.exit(1); }
+          "
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-coverage-report
+          path: |
+            web/coverage-e2e/
+          retention-days: 14
+
+  # ────────────────────────────────────────────────────────
   # Docker — build + push image (main branch only)
   # ────────────────────────────────────────────────────────
   docker:

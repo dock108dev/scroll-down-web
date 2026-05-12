@@ -12,6 +12,9 @@
 
 # testing
 /coverage
+/coverage-e2e
+/monocart-report
+/assets/monocart-coverage-app.js
 
 # next.js
 /.next/
