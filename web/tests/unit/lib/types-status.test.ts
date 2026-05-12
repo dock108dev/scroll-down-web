@@ -25,4 +25,15 @@ describe("types status helpers", () => {
     expect(isFinal("live", { isFinal: true })).toBe(true);
     expect(isPregame("live", { isPregame: true })).toBe(true);
   });
+
+  it("falls back to status string when no isLive override is given", () => {
+    expect(isLive("live")).toBe(true);
+    expect(isLive("in_progress")).toBe(true);
+    expect(isLive("delayed" as never)).toBe(false);
+  });
+
+  it("returns false for isFinal/isPregame on non-terminal status with no override", () => {
+    expect(isFinal("live")).toBe(false);
+    expect(isPregame("live")).toBe(false);
+  });
 });
