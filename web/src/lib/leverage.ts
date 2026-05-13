@@ -1,6 +1,3 @@
-// PlayCardData import removed in Phase 5 — `computeLeverage` is gone;
-// the renderer now reads `card.leverageTier` directly from the deck DTO.
-
 export type InningZone = "early" | "middle" | "late" | "extra";
 export type LeverageBand = "low" | "medium" | "high" | "critical";
 
@@ -78,10 +75,3 @@ export const NARRATIVE_TYPOGRAPHY_CLASS: Record<LeverageTier, string> = {
   1: "text-lg font-medium",
   2: "text-xl font-semibold tracking-tight",
 };
-
-// Note: `computeLeverage` was removed in Phase 5. Leverage tier is now
-// decided server-side and arrives on `card.leverageTier`. The renderer
-// reads it directly. This module retains only the presentation tables
-// (CSS class maps, ms-duration constants) keyed off the backend-supplied
-// tier and the inningZone/leverageBand classifiers keyed off inning
-// + score margin (pure presentation, not deck-gen).

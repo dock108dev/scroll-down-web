@@ -1,3 +1,121 @@
+# SSOT Enforcement Pass — 2026-05-13
+
+Scope: destructive cleanup driven by the in-flight working-tree diff against
+`main` (the score-carry-forward / bridge-state / scene-setter-phase / debug-
+overlay branch — issues ISSUE-001, ISSUE-002, ISSUE-005, ISSUE-006, ISSUE-007).
+The diff hardens four SSOTs in the catch-up pipeline:
+
+1. **Score cursor** — `lastKnownScore` threaded through `adaptDeck()` so
+   rhythm/transition cards inherit the score *after* the most recent play
+   (`web/src/lib/adapters/scroll-down-mlb-deck-adapter.ts:62`).
+2. **Bridge state** — `lastPlayEnding` snapshot threaded across rhythm cards
+   and stamped onto the next play card as `priorAfter`
+   (`web/src/lib/adapters/scroll-down-mlb-deck-adapter.ts:68`,
+   `:484` `snapshotPlayEnding`).
+3. **Game phase** — `deriveGamePhase()` turns `isFinal` + `lastPlayIndex`
+   into `"scheduled" | "live" | "final"` and stamps `gamePhase` on every
+   `SceneSetterCard` (`web/src/lib/adapters/scroll-down-mlb-deck-adapter.ts:163`).
+4. **Per-card debug overlay** — `CardDebugOverlay` + `RhythmDebugBadge`
+   render the validation-loop fields (`scoreBefore→scoreAfter`,
+   `outsBefore→outsAfter`, `basesBefore→basesAfter`, `countBefore`, `phase`)
+   when `?debug=true` is set
+   (`web/src/components/catchup/CardDebugOverlay.tsx`).
+
+This pass deletes code that contradicts those SSOTs *and* dead code that the
+prior audits documented but did not act on.
+
+## Changes made this pass
+
+### Deletions (whole files)
+
+| File | Why |
+|------|-----|
+| `web/src/lib/public-url.ts` | `publicBaseUrl()` had **zero source-code callers** (only its own test file). Its docstring described magic-link emails and Stripe checkout return URLs — neither feature exists in this MLB-only repo. Documented as dead in `docs/audits/docs-consolidation.md:78`. |
+| `web/tests/unit/lib/public-url.test.ts` | Tests for the deleted module. |
+
+### Deletions (in-file dead code)
+
+| Location | What was removed |
+|----------|------------------|
+| `web/src/lib/utils.ts:131-355` | `cardDisplayName`, `extractNickname`, `extractSchoolName`, `COLLEGE_LEAGUES`, `PRO_MULTI_WORD`, `COLLEGE_MULTI_WORD`, `COLLEGE_MULTI_WORD_SCHOOLS_UNSORTED`, `MASCOT_PREFIXES`. `cardDisplayName` had **zero source-code callers**; the entire chain existed only to support `ncaab`/`ncaaf` league codes that contradict `LEAGUE = "mlb"` in `web/src/lib/config.ts`. Net: −224 LOC. |
+| `web/tests/unit/lib/utils.test.ts` | The `"utils card display names"` describe block (9 expectations on `cardDisplayName`) and its import. Same reason. |
+| `web/Dockerfile:14-27` | `NEXT_PUBLIC_ADS_ENABLED` + 5 `NEXT_PUBLIC_ADSENSE_*` ARG/ENV pairs (12 lines). No source code reads any of them; AdSense was removed in the MLB-only pivot (already documented as dead in `docs/audits/security-report.md:325`). |
+| `.github/workflows/ci.yml:253-262` | `build-args:` block passing the same 6 AdSense env vars to docker. Pure plumbing for the deleted Dockerfile ARGs. |
+| `.github/workflows/ci.yml` (4 sites) `.github/workflows/e2e-daily.yml` (2 sites) | `MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET ¦¦ '...for-e2e-only-48chars' }}` lines. **Zero source-code readers** for `MAGIC_LINK_SECRET`; the hardcoded fallback even self-identifies as "for-e2e-only", and there are no `/api/auth/*` routes in this repo. |
+| `web/src/lib/adapters/scroll-down-mlb-deck-adapter.ts:35,37` | Unused `SdmPlayPayload`, `SdmTeamSummary` imports (pre-existing ESLint warnings; killed under SSOT-deletion mandate). |
+
+### Rewrites (SSOT replacement)
+
+| Location | Before | After |
+|----------|--------|-------|
+| `web/src/lib/analytics.ts` | `send()` → `navigator.sendBeacon('/api/analytics-event', ...)` (a route that **does not exist** — see `web/src/app/api/`). `trackPageview` only beaconed; SPA pageviews 100% dropped. `trackEvent` beaconed *and* bridged to Plausible. JSDoc cited removed-feature examples (`sport: "nba"`, `bet_card_expand`). | `getPlausible()` helper. `trackPageview` and `trackEvent` are thin bridges to `window.plausible(...)`. No first-party endpoint. JSDoc updated to a single MLB-relevant example. Net: −34 LOC. |
+| `web/src/components/catchup/SceneSetterCard.tsx` (`phaseCopy`) | Live arm returned `banner: "● LIVE"` but the JSX always rendered the live banner via a special-case branch (animated dot + text) and never read `copy.banner` for the live case — two sources of truth for the same string. | Live arm returns `banner: null` with a one-line comment explaining the JSX owns the live rendering. Type loosened to `string ¦ null`. |
+| `web/src/components/layout/DegradedBanner.tsx:81` | "Scores **and odds** may be a few minutes behind." | "Scores may be a few minutes behind." (No betting/odds surface in this repo.) |
+| `web/src/app/terms/page.tsx` | Sections referenced "betting analytics", "real-time wagering decisions", "Positive expected value", "winning bet", "Gamble responsibly", and an "Accounts" section describing "account credentials" / "suspend accounts". | Rewritten to describe the actual product (spoiler-free MLB catch-up) and dropped the `Accounts` section entirely. The architecture doc explicitly states this repo has no auth store. |
+| `web/src/lib/date-utils.ts:5` | "MLB schedules are interpreted in US/Eastern (NHL/NBA/MLB convention)." | "MLB schedules are interpreted in US/Eastern (league convention)." Matches `LEAGUE = "mlb"` SSOT. |
+
+### Documentation edits (mirror code deletions)
+
+| File | Change |
+|------|--------|
+| `docs/env-and-config.md` | Removed `MAGIC_LINK_BASE_URL` row and the entire `Currently-defined-but-unused (deployment plumbing only)` table (7 dead env vars). |
+| `docs/deployment.md` | Removed the `Build-time vs runtime env` AdSense block, the `MAGIC_LINK_SECRET` row in `Required secrets`, and the `NEXT_PUBLIC_ADSENSE_*` row in `Required variables`. Updated the `docker` job description. |
+| `docs/testing.md` | Removed the `tests/unit/lib/public-url.test.ts` row from the unit-test inventory table. |
+| `docs/PROD_PROMOTION_AND_COM_SETUP.md` | Deleted §6 "Reserved (formerly AdSense)" and renumbered §7-§10 down to §6-§9 (preserving the unrelated §9.5→§8.5 sub-heading). |
+| `docs/architecture.md` | Rewrote the `Analytics` paragraph to match the new Plausible-bridge analytics module. Removed `public-url` from the lib-tree directory listing. |
+| `docs/README.md` | Removed `public-URL hardening` from the security-audit description. |
+
+### Verification
+
+| Check | Result |
+|-------|--------|
+| `npx vitest run` | 206 / 206 passed (18 files) |
+| `npx eslint . --max-warnings=0` | exit 0 (clean) |
+| `npx tsc --noEmit` | unchanged from `main` baseline — only pre-existing failure is `tests/helpers.ts:2 monocart-reporter` missing dep, untouched by this pass |
+
+Net working-tree delta from this pass alone (excluding the catch-up-pipeline branch's prior edits): **~−700 LOC of dead code removed**.
+
+## SSOT modules per domain (post-pass)
+
+| Domain | SSOT module | Notes |
+|--------|-------------|-------|
+| Score state across cards | `web/src/lib/adapters/scroll-down-mlb-deck-adapter.ts` (`lastKnownScore` cursor) | UI components MUST consume `card.scoreBefore` / `card.scoreAfter` / `card.score`; never recompute. |
+| Bridge / pre-play snapshot | `web/src/lib/adapters/scroll-down-mlb-deck-adapter.ts` (`lastPlayEnding` → `card.priorAfter`) | `CatchupCard.tsx` reads `card.priorAfter` only; no UI synthesis. |
+| Game phase | `deriveGamePhase()` in adapter; surfaced as `SceneSetterCard.gamePhase` | Only `SceneSetterCard.tsx` reads `gamePhase`; other components use `card.isFinal` / `game.isLive` predicates from `lib/types.ts`. |
+| Per-card debug overlay | `web/src/components/catchup/CardDebugOverlay.tsx` (+ `RhythmDebugBadge`) | Toggled once at mount via `?debug=true` in `CatchupExperience`. No competing dev overlays exist. |
+| Analytics sink | Plausible (script tag in `web/src/app/layout.tsx`); `web/src/lib/analytics.ts` is a thin bridge | No first-party `/api/analytics-event` route exists. |
+| MLB league | `LEAGUE = "mlb"` in `web/src/lib/config.ts` | All league branching removed from `web/src/lib/utils.ts`. |
+| Field geometry | `web/src/lib/field-geometry.ts` | Already enforced (prior pass). |
+| Settings persisted shape | `web/src/stores/settings.ts` (v2; v1→v2 migration drops 11 removed fields) | Already enforced. |
+
+## Risk log — items intentionally retained
+
+| Item | Why kept |
+|------|----------|
+| Plausible script `https://plausible.io/js/script.js` (not `script.manual.js`) in `web/src/app/layout.tsx:94` | Out of scope for an SSOT pass — switching the script flavor is a behavior change (manual SPA pageview tracking) that needs product decision. The new `analytics.ts` calls `plausible('pageview')` defensively; if the loaded script later supports manual events, SPA pageviews start flowing without further code changes. Today the call is a silent no-op for pageviews — strictly an improvement over the prior 404 beacon. |
+| `wss://sda.dock108.dev` in CSP `connect-src` (`web/next.config.ts`) | App does not use WebSockets today, but the CSP allowance is "defensive" per `docs/architecture.md:118`. SSOT pass would only remove this if there were a positive policy that the CSP must list only used origins; no such policy exists. Left alone. |
+| `web/tests/fixtures/games/19015*.json` containing `baseOnBalls` / `leftOnBase` / `stolenBases` | These are real MLB stat field names in upstream fixtures, not betting/odds artifacts. (The grep pattern caught them as substrings of "odds" / "wager"; manual inspection confirmed all are baseball stats.) |
+| `web/src/lib/types.ts:32` `leagueCode: string` field on `Game` | Upstream payload still includes it; stripping it from our type would mean sanitizing every fetch. Inert in MLB-only mode (always `"mlb"`). Out of scope unless backend contract is renegotiated. |
+| `MAGIC_LINK_SECRET` mention in prior audit reports (`docs/audits/security-report.md:256-300`, `docs-consolidation.md:74`) | Audit reports are historical artifacts that record past state. Editing them would rewrite history; the new pass section above documents the actual deletion. |
+| `web/src/components/onboarding/TeamPickerOverlay.tsx` `league: "AL" ¦ "NL"` | This is the *baseball* league (American/National), not a multi-sport league. Correct as-is. |
+
+## Sanity check — dangling references after deletion
+
+After the deletions, full-repo grep for the removed symbols (excluding the new SSOT-report and the historical `docs/audits/`):
+
+| Symbol | Remaining hits | Status |
+|--------|----------------|--------|
+| `publicBaseUrl` | 0 in `web/src/`, 0 in tests | clean |
+| `cardDisplayName` | 0 anywhere | clean |
+| `extractNickname` / `extractSchoolName` / `COLLEGE_LEAGUES` / `MASCOT_PREFIXES` | 0 anywhere | clean |
+| `MAGIC_LINK_SECRET` | 0 in workflows, 0 in source | clean (historical audit references retained) |
+| `NEXT_PUBLIC_ADSENSE_*` / `NEXT_PUBLIC_ADS_ENABLED` | 0 in workflows, 0 in source, 0 in active docs | clean (historical audit references retained) |
+| `MAGIC_LINK_BASE_URL` | 0 in source, 0 in active docs | clean (historical audit references retained) |
+| `/api/analytics-event` | 1 hit in `web/src/lib/analytics.ts:12` (a docstring noting the route never existed); 0 in active docs | acceptable — the comment exists *because* the route doesn't and exists as a forward-looking guardrail |
+| `SdmPlayPayload` / `SdmTeamSummary` | 0 in source | clean (still exported from `types/scroll-down-mlb.ts` as part of the upstream contract; no consumer in this repo) |
+
+---
+
 # SSOT Enforcement Pass — 2026-05-09
 
 Scope: destructive cleanup driven by the in-flight working-tree diff against

@@ -142,7 +142,18 @@ export function itemListJsonLd(games: GameSummary[], path: string) {
 }
 
 export function jsonLdScript(data: unknown) {
+  // Escape every `<` (kills `</script>` breakout) plus the U+2028 / U+2029
+  // line separators that JSON allows verbatim but some older JS parsers
+  // treat as line terminators inside inline scripts. Defense-in-depth even
+  // though the surrounding script is `application/ld+json`. The Unicode
+  // escapes are written via String.fromCharCode so the source itself stays
+  // free of bare U+2028/U+2029 (which can break some build pipelines).
+  const LS = String.fromCharCode(0x2028);
+  const PS = String.fromCharCode(0x2029);
   return {
-    __html: JSON.stringify(data).replace(/</g, "\\u003c"),
+    __html: JSON.stringify(data)
+      .replace(/</g, "\\u003c")
+      .split(LS).join("\\u2028")
+      .split(PS).join("\\u2029"),
   };
 }

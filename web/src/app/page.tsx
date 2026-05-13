@@ -19,7 +19,12 @@ export default async function HomePage() {
   let games: GameSummary[] = [];
   try {
     games = sortAscByGameDate(await fetchHomeSeoGames());
-  } catch {
+  } catch (err) {
+    // Render the SEO shell with no games when the upstream feed is
+    // unavailable — better than failing the SSR pass and yielding a 500
+    // for visitors. Log so a sustained outage isn't silent in operator
+    // logs. See docs/audits/error-handling-report.md §I7.
+    console.warn("[page/home] upstream games feed unavailable:", err);
     games = [];
   }
 

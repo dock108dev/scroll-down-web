@@ -56,30 +56,25 @@ See `web/tests/SDA_HANDOFF.md` for fixture/handoff notes; `web/tests/MINIMAL_SDA
 
 ## Vitest Coverage
 
-Unit tests live in `web/tests/unit/`. Current files:
+Unit tests live in `web/tests/unit/lib/`. To enumerate the current set:
 
-| Path | What it covers |
-|------|----------------|
-| `tests/unit/lib/api-server.test.ts` | `apiFetch`, `cachedApiFetch`, mojibake repair, error mapping |
-| `tests/unit/lib/catchup-cards.test.ts` | `buildCatchupCards`: tier-1 inclusion, tier-2 sampling, audit shape |
-| `tests/unit/lib/rhythm-planner.test.ts` | `planDeckWithReport` ordering and report contents |
-| `tests/unit/lib/leverage.test.ts` | Win Expectancy delta math |
-| `tests/unit/lib/play-validation.test.ts` (if present) | Play-shape validation |
-| `tests/unit/lib/field-geometry.test.ts` | Canonical field coordinates |
-| `tests/unit/lib/runner-paths.test.ts` | Runner path generation |
-| `tests/unit/lib/trajectory.test.ts` | Trajectory class personality (fly / line / ground) |
-| `tests/unit/lib/result-chip.test.ts` | Result chip / event personality |
-| `tests/unit/lib/game-filters.test.ts` | Spoiler-stripping for the home feed |
-| `tests/unit/lib/date-utils.test.ts` | Eastern-timezone date bucketing |
-| `tests/unit/lib/site-config.test.ts` | `getSiteUrl` / `isNoIndexSite` resolution order |
-| `tests/unit/lib/public-url.test.ts` | `publicBaseUrl` precedence (`PUBLIC_BASE_URL` → `MAGIC_LINK_BASE_URL` → site config → request host) |
-| `tests/unit/lib/rate-limit.test.ts` | Sliding-window rate-limit helper (used at the proxy boundary) |
-| `tests/unit/lib/types-status.test.ts` | `isFinal()` / status helpers |
-| `tests/unit/lib/utils.test.ts` | Generic helpers in `lib/utils.ts` |
-| `tests/unit/lib/top-banner-slot.test.tsx` | `top-banner-slot` rendering |
-| `tests/unit/qa/*` | Fixture-driven QA scenarios for the catch-up pipeline |
+```bash
+ls web/tests/unit/lib
+npx vitest list             # full test names per file
+```
 
-Add new unit tests under `tests/unit/` — the config picks them up automatically.
+The directory is the source of truth; there is no hand-maintained mirror to keep in sync. Coverage today, grouped by surface:
+
+| Surface | Specs |
+|---------|-------|
+| Proxy & networking | `api-server.test.ts`, `api.test.ts`, `rate-limit.test.ts` |
+| MLB catch-up pipeline | `scroll-down-mlb-api.test.ts`, `scroll-down-mlb-deck-adapter.test.ts` (includes the score-monotonic suite from ISSUE-003), `leverage.test.ts`, `result-chip.test.ts`, `game-filters.test.ts` |
+| Field visuals | `field-geometry.test.ts`, `runner-paths.test.ts`, `trajectory.test.ts` |
+| Helpers / types | `date-utils.test.ts`, `types-status.test.ts`, `mlb-teams.test.ts`, `utils.test.ts` |
+| SEO / site config | `seo.test.ts`, `site-config.test.ts` |
+| Component | `top-banner-slot.test.tsx` |
+
+Add new unit tests under `tests/unit/` — the Vitest config picks them up automatically.
 
 ## Playwright Coverage
 

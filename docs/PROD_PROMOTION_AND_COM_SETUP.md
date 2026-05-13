@@ -138,13 +138,7 @@ Both envs can share same source data/backend settings.
 
 ---
 
-## 6) Reserved (formerly AdSense)
-
-This section previously covered AdSense site verification for `scrolldownsports.com`. The current build does not render AdSense ad units (the `NEXT_PUBLIC_ADSENSE_*` Docker build-args are still wired in CI but no application code consumes them — see [`deployment.md`](deployment.md#build-time-vs-runtime-env)). Skip until ad work resumes.
-
----
-
-## 7) Promotion Flow You Run
+## 6) Promotion Flow You Run
 
 ## Normal dev deployment
 
@@ -161,7 +155,7 @@ No routine SSH needed after initial server/domain bootstrap.
 
 ---
 
-## 8) Post-Deploy Verification Checklist
+## 7) Post-Deploy Verification Checklist
 
 ## `.com` (prod)
 
@@ -180,7 +174,7 @@ No routine SSH needed after initial server/domain bootstrap.
 
 ---
 
-## 9) Cloudflare-Specific Pitfalls To Avoid
+## 8) Cloudflare-Specific Pitfalls To Avoid
 
 - **Wrong SSL mode**: avoid `Flexible`; use `Full (strict)`.
 - **Over-caching HTML**: avoid rules that cache authenticated or rapidly-changing app routes.
@@ -188,7 +182,7 @@ No routine SSH needed after initial server/domain bootstrap.
 - **Missing apex record**: ensure `@` points to server, not only `www`.
 - **`www` split-brain**: either redirect `www` -> apex or serve both consistently.
 
-## 9.5) Why You Saw Overwrite/Recreate
+## 8.5) Why You Saw Overwrite/Recreate
 
 Your log line:
 
@@ -209,7 +203,7 @@ You do **not** need separate image names for dev vs prod. Same image tag can run
 
 ---
 
-## 10) Exceptions Where SSH Is Still Needed
+## 9) Exceptions Where SSH Is Still Needed
 
 Only for one-time/bootstrap or break-glass cases:
 

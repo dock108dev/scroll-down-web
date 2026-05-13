@@ -1,3 +1,84 @@
+# Cleanup Pass — 2026-05-13
+
+Quality cleanup pass over `web/src/`. Baseline before edits: 206/206 unit
+tests passing, ESLint clean, one pre-existing `tsc` error in `tests/helpers.ts`
+(missing `monocart-reporter` types declaration — outside the scope of this pass).
+
+Verification commands run on completion:
+
+| Check                              | Result                          |
+| ---------------------------------- | ------------------------------- |
+| `./node_modules/.bin/eslint src/`  | clean (exit 0)                  |
+| `./node_modules/.bin/vitest run`   | 206/206 passed (18 files, 2.3s) |
+| `./node_modules/.bin/tsc --noEmit` | unchanged (same pre-existing `monocart-reporter` declaration error in `tests/helpers.ts`; no new errors) |
+
+## Changes made this pass
+
+| File | What changed | Disposition |
+|------|--------------|-------------|
+| `web/src/lib/types.ts` | Deleted the `// ─── Plays / Timeline (raw upstream shape) ──────────────` section and the `PlayEntry` interface (24 LOC). The comment claimed it was "Kept so server-side adapters can read upstream plays" but `grep -r "\\bPlayEntry\\b" web/src web/tests` returned zero importers — the MLB-only pivot left this raw-feed shape orphaned. Adapters now consume the strongly-typed `SdmDeckResponse` / `SdmPlayPayload` from `@/types/scroll-down-mlb` instead. The only surviving references were in `docs/audits/ssot-report.md` describing a data flow that no longer exists. | **Acted (delete)** |
+| `web/src/lib/leverage.ts` | Deleted the top-of-file 2-line `// PlayCardData import removed in Phase 5…` comment and the 6-line `// Note: computeLeverage was removed in Phase 5…` block at the bottom. Both describe a removal that already happened; the file's remaining exports document themselves (`inningZone`, `leverageBand`, `leverageWeightMap`, `NARRATIVE_*` tables). Historical context lives in git. | **Acted (delete)** |
+| `web/src/components/catchup/CatchupCard.tsx:150-153` | Deleted the 4-line fossil comment `// Validation moved to the backend in Phase 3. The deck endpoint runs play-card validation server-side…`. It floats between two unrelated `const` declarations, narrates a removed branch that no longer exists in this file, and adds no information that isn't already visible from the absence of the code it described. | **Acted (delete)** |
+
+No behavioral changes. All deletions are dead/stale narration; the renderer
+output, type surface, and runtime semantics are unchanged.
+
+## Dead code removed
+
+- `PlayEntry` interface (`web/src/lib/types.ts`, 24 LOC including comment
+  header). Confirmed dead via grep across `web/src`, `web/tests`, and the
+  monorepo audit docs — zero non-doc references.
+
+## Files refactored / split
+
+None this pass.
+
+## Files still >500 LOC
+
+| File | LOC | Outcome |
+|------|-----|---------|
+| `web/src/components/catchup/BaseballLightField.tsx` | 1297 | **Justify (defer).** The existing 2026-05-09 pass already specced a three-file split (`field/runner-elements.tsx`, `field/base-elements.tsx`, `field/animation-config.ts`). That plan still applies; this pass scoped to comment/dead-code cleanup so deferring the split keeps the patch tight. The file is internally cohesive: a single SVG render shell, a per-profile timing dispatcher, and the runner/ball/trail subcomponents that depend on those constants. No new accretion since the previous pass. |
+| `web/src/lib/adapters/scroll-down-mlb-deck-adapter.ts` | 524 | **Justify.** One cohesive adapter — `adaptDeck` is the public surface and every helper (`adaptSceneCard`, `adaptPlayCard`, `adaptRhythmCard`, `adaptRunnerMovements`, `inferBatterFromMovements`, `pickNarrative`, `inferFoulSide`, `lastNameOf`, plus the four small parsers) is private to it. Splitting would scatter the wire-shape translation across multiple files without an external consumer to justify the seam. The +24 LOC over budget is rationale dense (~30% explanatory comments documenting the spoiler-safety contract and the `pickNarrative` fallback ladder). |
+
+Files between 400 and 500 LOC (`lib/types.ts` 467 post-trim, `CatchupCard.tsx`
+489 post-trim) all sit at or below the threshold; left as-is.
+
+## Consistency edits
+
+None this pass — no naming / import-order / formatting drift surfaced in the
+files touched.
+
+## Findings deliberately not acted on (justified in place)
+
+- **`web/src/lib/api.ts` + `tests/unit/lib/api.test.ts`** — the legacy
+  `fetchApi` / `api` client is no longer imported by any production code
+  (`useCatchupCards`, `useGamesList`, and `FinalReveal` all use
+  `@/lib/scroll-down-mlb-api`). The only consumer is `api.test.ts`. Deleting
+  would be straightforward (78 + ~120 LOC) but `docs/audits/error-handling-report.md`
+  (§I2, line 154) treats this file as live and cites recent error-handling
+  tightening there. Leaving the delete for a coordinated pass that also
+  updates the error-handling report rather than splitting the work.
+- **`web/src/lib/rate-limit.ts` + `tests/unit/lib/rate-limit.test.ts`** —
+  exports `createRateLimiter` with zero production importers. The
+  `docs/audits/security-report.md` (§2, "No rate limiting on the BFF proxy
+  routes") explicitly documents this as **intentionally kept pending
+  per-route wiring**. Delete would regress a planned hardening.
+- **`web/src/lib/date-utils.ts` exports `addDays` / `fmtDate`** — used only
+  by `tests/unit/lib/date-utils.test.ts`. They are small, self-contained,
+  and likely to be picked up by a future schedule grid; the cost of keeping
+  them is one passing test and 10 LOC. Justified in place.
+- **`web/src/lib/utils.ts` legacy `formatDate` / `formatTimeET` exports** —
+  `formatDate` has no production callers (only `utils.test.ts`). `formatTimeET`
+  is used by `SceneSetterCard` for the first-pitch label. Keeping both
+  together so the date-format surface stays in one file.
+
+## Escalations
+
+None — every finding above is either acted on or justified above with the
+rationale alongside the disposition.
+
+---
+
 # Cleanup Pass — 2026-05-09
 
 Narrow follow-up on the in-flight catchup-card diff (MLB-focused overhaul:

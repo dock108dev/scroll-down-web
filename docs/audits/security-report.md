@@ -1,3 +1,152 @@
+# Security Audit & Hardening Pass — 2026-05-13
+
+Scope: working tree against `origin/main`. Branch is largely a docs-and-tests
+cleanup on top of the MLB-only pivot (deletion of the legacy ad/auth/billing
+surfaces in `Dockerfile` + CI; deletion of `web/src/lib/public-url.ts` and
+`web/src/lib/utils.ts`; visual/UX edits under `components/catchup`). No new
+trust boundaries were introduced. This pass audits what remains and tightens
+the proxy / inline-script / response-header surfaces.
+
+Verification after edits:
+
+| Check                                | Result                        |
+| ------------------------------------ | ----------------------------- |
+| `npx vitest run` (unit)              | 18 files / 206 tests passed   |
+| `npx tsc --noEmit`                   | clean (one pre-existing `monocart-reporter` ambient-types miss in `tests/helpers.ts`, unrelated to this pass) |
+
+## Changes made this pass
+
+- `web/src/lib/seo.ts` — `jsonLdScript()` now also escapes the U+2028 /
+  U+2029 line separators that JSON allows verbatim but some inline-script
+  parsers / older browsers treat as line terminators. The literal Unicode
+  characters are sourced via `String.fromCharCode()` so the source file
+  itself stays free of bare U+2028/U+2029 (which were tripping the `oxc`
+  Vite parser when first written inline). `<` → `<` is preserved.
+- `web/next.config.ts` — broadened `Permissions-Policy` from `camera /
+  microphone / geolocation` to also deny `payment`, `usb`, `magnetometer`,
+  `accelerometer`, `gyroscope`, `interest-cohort`, `browsing-topics` (defense
+  in depth — none of these features are used). Added
+  `Cross-Origin-Opener-Policy: same-origin` to cut XS-Leak / opener-relation
+  attack surface; `Cross-Origin-Resource-Policy` deliberately not set so OG
+  / PWA / share-preview scrapers can still embed the icons.
+- `web/src/app/api/games/[gameId]/cards/route.ts` — added `gameIdStr.length
+  > 64` rejection on top of the existing regex allow-list. Bounds the
+  in-memory cache key (`sdm-deck:${gameIdStr}`) so a crafted multi-megabyte
+  id can't pin a giant string into the BFF cache map.
+- `web/src/app/api/games/[gameId]/summary/route.ts` — same length cap on
+  the reveal proxy, mirroring the cards route.
+- `web/src/lib/api-server.ts` — `ApiError` constructor now passes the
+  upstream body through a `redactSensitive()` filter before composing the
+  `Error.message` snippet that ends up in server logs. Strips
+  `X-API-Key:`, `Authorization: Bearer …`, and JSON-shaped `api_key /
+  access_token / secret` patterns. SDA shouldn't echo our `X-API-Key`
+  back, but a misconfigured upstream proxy debug page could; this closes
+  the log-exposure path. The 200-char snippet cap is preserved.
+
+## Trust boundaries (current state)
+
+| Surface | Boundary | Notes |
+| --- | --- | --- |
+| `/api/games/recent`, `/api/games/[gameId]/cards`, `/api/games/[gameId]/summary` | Browser → Next BFF → `https://sda.dock108.dev` | API key (`SPORTS_DATA_API_KEY`) injected server-side in `apiFetch`. Never reaches the client bundle. Each route validates `gameId` (`/^[A-Za-z0-9_-]+$/`, ≤64 chars) before forwarding. |
+| `/api/health` | Browser → Next BFF → SDA | Probe endpoint with bounded timeout (`API.HEALTH_BACKEND_PING_TIMEOUT_MS=15s`) and 30 s in-process cache. Polled by `DegradedBanner` on a 60 s/5 min cadence. |
+| Inline `<script type="application/ld+json">` | SSR → browser | All sites go through `jsonLdScript()`, which escapes `<` and the line separators. Data is currently constants + team names from upstream (no user input). |
+| Plausible script | Loaded from `https://plausible.io/js/script.js` | Same-origin script tag with no SRI (Plausible doesn't publish stable hashes). Allowed in CSP `script-src` and `connect-src`. |
+| Service worker `web/public/sw.js` | Browser-side caching | Same-origin GET only; static assets cache-first, `/api/games/*` network-first with cache fallback. |
+| LocalStorage / Zustand `persist` | Client-side only | Three stores (`sd-settings`, `sd-onboarding`, `sd-catchup-state`). No tokens, no secrets, no PII beyond a 3-letter favorite-team abbr. |
+
+## Findings — items NOT changed this pass (with rationale)
+
+### 1 — `script-src 'unsafe-inline'` in CSP (low risk; load-bearing)
+
+`web/next.config.ts` keeps `'unsafe-inline'` in `script-src` because Next.js
+relies on inline boot scripts and `next/script` injection. The recognized
+mitigation (a per-request nonce) requires moving away from `output:
+"standalone"`'s static asset model, custom middleware, and a full audit of
+every `<Script>` site. Out of scope for a hardening pass; recorded for the
+follow-up that converts to nonce-based CSP. **Acted: justified-in-place**
+(comment was already in `next.config.ts`).
+
+### 2 — No rate limiting on the BFF proxy routes (low/medium)
+
+`web/src/lib/rate-limit.ts` defines `createRateLimiter()` (sliding-window,
+in-memory) but nothing imports it. The proxy routes inherit the upstream
+SDA rate limit and the in-process BFF cache (`API.BFF_CACHE_MAX_ENTRIES =
+100`), but a single attacker IP can still spike `cards/[gameId]` with
+randomized ids and force cache churn / upstream load. Concrete next step:
+wrap the three `/api/games/*` routes with the existing limiter (60 s
+window, 60 req per IP) keyed on the `x-forwarded-for` header. Holding off
+because the limiter's IP-extraction story across our trust-proxied
+Hetzner deployment hasn't been verified — wiring it without confidence in
+the IP source could either no-op (always one bucket) or false-positive
+shared CGNAT pools. **Smallest next action**: confirm the trust-proxy
+config (`docs/PROD_PROMOTION_AND_COM_SETUP.md` reverse-proxy notes) and
+land a `withRateLimit(handler, { window: 60_000, max: 60 })` HOF in a
+dedicated PR.
+
+### 3 — No Subresource Integrity on Plausible script (low)
+
+`<Script src="https://plausible.io/js/script.js">` in `web/src/app/layout.tsx`
+has no `integrity=`. Plausible's docs note they update the script and don't
+publish stable hashes, so SRI would require a manual rotate-on-update. The
+script is hosted by Plausible (the analytics vendor we already trust for
+data) and CSP restricts `script-src` to that exact origin. Net risk is the
+same as trusting Plausible itself; SRI here is theatre for a managed
+third-party script. **Acted: justified, no edit.**
+
+### 4 — In-memory `apiCache` is single-instance (informational)
+
+`web/src/lib/api-server.ts`'s `apiCache` is a `Map` keyed by upstream
+endpoint and gameId. Single-instance is fine for the current Hetzner
+deployment (one container per env), and the cap (`API.BFF_CACHE_MAX_ENTRIES
+= 100`) plus FIFO eviction in `pruneApiCache()` keeps memory bounded. If
+the deployment ever fans out to multiple replicas behind a load balancer
+the cache will diverge per replica (correctness, not security). Recorded
+here only because the pass touched this file. No action.
+
+### 5 — Health-check log path (already mitigated this pass)
+
+`web/src/app/api/health/route.ts` calls `console.error("[health] backend
+ping failed:", healthPingLogMessage(err))`. `healthPingLogMessage` extracts
+`err.message` (which now goes through `ApiError`'s `redactSensitive` since
+this pass) or the timeout label. No additional change needed.
+
+### 6 — `productionBrowserSourceMaps` only flips on under E2E coverage (informational)
+
+`SCROLLDOWN_E2E_COVERAGE=1` enables source maps in production-style
+builds. CI sets it for the coverage-collection workflow only; the prod
+deploy workflow does not. Documented in `next.config.ts` already; no
+change.
+
+## Surfaces verified clean
+
+- **XSS sinks** — Only `dangerouslySetInnerHTML` usages are JSON-LD blocks
+  in `app/layout.tsx` and `app/page.tsx`, all routed through
+  `jsonLdScript()` (now hardened). All play / scene narration is rendered
+  as JSX text children (React auto-escapes). No `innerHTML`, no `eval`,
+  no `new Function`.
+- **External links** — Only two `target="_blank"` sites in
+  `components/catchup/FinalReveal.tsx`; both already carry `rel="noopener
+  noreferrer"`.
+- **Cookies / auth** — None. The repo has no authentication, no session
+  cookies, no `document.cookie` writers.
+- **SSRF** — `apiFetch` URL is composed from `BACKEND_BASE_URL` (or the
+  CI-only `SPORTS_API_INTERNAL_URL` env) plus a fixed-shape path the
+  routes build with `encodeURIComponent` after the regex allow-list. No
+  user-supplied host or scheme reaches `fetch()`.
+- **Path traversal** — Next route segments cannot contain `/`; the regex
+  allow-list further restricts to `[A-Za-z0-9_-]`.
+- **Error messages to client** — Proxy routes return generic
+  `{ error: "..." }` strings; upstream body never reaches the client.
+  `app/error.tsx` shows the raw error message only when
+  `NODE_ENV === "development"`.
+
+## Escalations
+
+None this pass. Item 2 (rate limiting) is the closest thing to a real
+follow-up but is unblocked by a single config check, not an architectural
+decision.
+
+---
 # Security Audit & Hardening Pass — 2026-05-09
 
 Scope: working tree against `origin/main` (the MLB-focused catchup overhaul,

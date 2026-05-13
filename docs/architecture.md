@@ -99,7 +99,7 @@ The Plausible script loads via `next/script` with `data-domain` defaulting to th
 
 ## Analytics
 
-`web/src/lib/analytics.ts` exposes `trackPageview()` and `trackEvent()` that push events via `navigator.sendBeacon` (or `fetch` with `keepalive`) to `/api/analytics-event`, **and** bridge to Plausible if the script has loaded. There is no `/api/analytics-event` route in this repo — Plausible is the only sink that actually receives events today. `initScrollTracking()` fires `scroll_50` and `scroll_90` once per page load.
+`web/src/lib/analytics.ts` exposes `trackPageview()` and `trackEvent()` as thin bridges to `window.plausible(...)`. Plausible is the only analytics sink in this repo; the helpers no-op on the server, before the script loads, or when the script is blocked. `initScrollTracking()` fires `scroll_50` and `scroll_90` once per page load.
 
 ## Security Headers
 
@@ -180,7 +180,7 @@ web/src/
 └── lib/                           # api-server, api, catchup-cards, rhythm-planner, leverage,
                                    # play-phases, play-validation, narrative, runner-paths,
                                    # trajectory, field-geometry, result-chip, mlb-teams,
-                                   # game-filters, date-utils, site-config, public-url, seo,
+                                   # game-filters, date-utils, site-config, seo,
                                    # seo-data, top-banner-slot, rate-limit, analytics, types,
                                    # config, utils
 ```

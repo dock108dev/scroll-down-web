@@ -4,10 +4,14 @@ import type {
   InningTransitionCard as InningTransitionCardData,
   RhythmCard as RhythmCardData,
 } from "@/lib/types";
+import { RhythmDebugBadge } from "./CardDebugOverlay";
 
 interface RhythmCardProps {
   card: InningTransitionCardData | RhythmCardData;
   isActive: boolean;
+  /** When true, render a debug badge that exposes the rhythm card's score so
+   *  it can be visually compared with the preceding play card's scoreAfter. */
+  showDebug?: boolean;
 }
 
 /**
@@ -20,7 +24,7 @@ interface RhythmCardProps {
  * Different `kind` values get a small eyebrow label change so the user
  * subconsciously reads which sort of pacing beat they just hit.
  */
-export function RhythmCard({ card, isActive }: RhythmCardProps) {
+export function RhythmCard({ card, isActive, showDebug = false }: RhythmCardProps) {
   const eyebrow = eyebrowFor(card.kind);
   return (
     <article
@@ -29,7 +33,15 @@ export function RhythmCard({ card, isActive }: RhythmCardProps) {
       data-card-id={card.cardId}
       data-rhythm-kind={card.kind}
       className={`catchup-card-snap rhythm-card rhythm-card-${card.kind}`}
+      style={showDebug ? { position: "relative" } : undefined}
     >
+      {showDebug && (
+        <RhythmDebugBadge
+          cardIndex={card.index}
+          kind={card.kind}
+          score={card.score}
+        />
+      )}
       <div className="rhythm-card-inner">
         <p className="rhythm-card-eyebrow">{eyebrow}</p>
         <h2 className="rhythm-card-label">{card.label}</h2>

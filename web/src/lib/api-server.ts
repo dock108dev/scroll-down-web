@@ -9,6 +9,20 @@ export function sportsApiKey(): string {
   return process.env.SPORTS_DATA_API_KEY || process.env.SPORTS_API_KEY || process.env.API_KEY || "";
 }
 
+/**
+ * Strip patterns that look like API keys / bearer tokens out of upstream
+ * error bodies before they end up in `Error.message` and (transitively) in
+ * server logs. Belt-and-suspenders: SDA shouldn't echo our `X-API-Key`
+ * back, but a misconfigured upstream proxy could surface it via a debug
+ * page. Conservatively redact common header/JSON shapes.
+ */
+function redactSensitive(s: string): string {
+  return s
+    .replace(/(x-api-key\s*[:=]\s*)["']?[^"'\s,;]+/gi, "$1[redacted]")
+    .replace(/(authorization\s*[:=]\s*)["']?(?:bearer\s+)?[^"'\s,;]+/gi, "$1[redacted]")
+    .replace(/("?(?:api[_-]?key|access[_-]?token|secret)"?\s*[:=]\s*)"?[^"\s,}]+/gi, "$1[redacted]");
+}
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -17,8 +31,10 @@ export class ApiError extends Error {
     // Cap the body in the surfaced message: upstream error pages may include
     // long stack traces or HTML, which would balloon server logs and risk
     // leaking internal details if the message is ever surfaced. The full
-    // body remains on `.body` for callers that knowingly need it.
-    const snippet = body.length > 200 ? `${body.slice(0, 200)}…` : body;
+    // body remains on `.body` for callers that knowingly need it (already
+    // size-capped at fetch time in apiFetch).
+    const safe = redactSensitive(body);
+    const snippet = safe.length > 200 ? `${safe.slice(0, 200)}…` : safe;
     super(`API ${status}: ${snippet}`);
   }
 
@@ -167,6 +183,12 @@ export async function cachedApiFetch<T>(
     if (cached && now - cached.savedAt < options.staleMs && isFallbackEligible(err)) {
       apiCache.delete(cacheKey);
       apiCache.set(cacheKey, cached);
+      // Log so a sustained upstream outage shows up in server logs even
+      // when the user-facing response is a healthy 200 from the stale
+      // cache. See docs/audits/error-handling-report.md §I6.
+      const ageMs = now - cached.savedAt;
+      const reason = err instanceof ApiError ? `ApiError ${err.status}` : String(err);
+      console.warn(`[api-server] serving stale ${cacheKey} (age ${ageMs}ms): ${reason}`);
       return { data: cached.data, cacheStatus: "stale" };
     }
     throw err;

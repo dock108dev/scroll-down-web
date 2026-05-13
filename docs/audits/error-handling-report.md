@@ -1,5 +1,14 @@
 # Error Handling & Suppression Audit
 
+> **Pass-5 (2026-05-13)** — observability sweep of the post-Phase-4 working
+> tree (BFF proxy routes, hook fetches, SSR home/sitemap, browser API
+> wrappers). The previous passes tightened the loud silent-swallow cases;
+> this pass focuses on the remaining quietly-degraded paths where prod
+> *recovers* gracefully but the operator never sees the underlying failure.
+> Eight files changed — see **## Changes made (Pass-5)** below;
+> per-item rationale lives under **§I — Pass-5 findings (observability
+> diff)**.
+>
 > **Pass-4 (2026-05-09)** — incremental sweep of the new dev-only Catchup
 > Lab page (`web/src/app/dev/catchup-lab/page.tsx`) added on top of the
 > Pass-3 working tree. Two silent fetch swallows tightened; everything
@@ -13,6 +22,227 @@
 > below in full. Pass-3 changes are summarized under
 > **## Changes made (Pass-3)**; per-item rationale lives under
 > **§G — Pass-3 findings (catchup diff)** further down.
+
+---
+
+## Changes made (Pass-5)
+
+Working-tree edits on top of Pass-4. Scope: the changed files in the
+current diff (post-Phase-4 swap) — BFF proxy routes, browser fetch
+wrappers, the homepage SSR pass, and the SW-cleanup bootstrap. Theme:
+each of these paths *recovers* from upstream failure correctly, but every
+one was failing silently in the operator log layer. Tightened to log
+with enough context to diagnose without changing user-facing posture.
+
+| File | What changed | Disposition |
+|------|--------------|-------------|
+| `web/src/app/api/games/[gameId]/cards/route.ts` (catch ~line 55) | Split the catch by error type. Non-`ApiError` (i.e. a code bug inside the proxy/cache pipeline, not an upstream issue) now logs to `console.error` before falling through to 500. Previously any throw became an anonymous 500 with no log. | **Acted (tighten)** — §I1 |
+| `web/src/app/api/games/[gameId]/summary/route.ts` (catch ~line 46) | Same split — `ApiError` keeps its translated status; unexpected throws are logged. | **Acted (tighten)** — §I1 |
+| `web/src/app/api/games/recent/route.ts` (catch ~line 36) | Same split — `ApiError` keeps its translated status; unexpected throws are logged. | **Acted (tighten)** — §I1 |
+| `web/src/lib/api.ts` (catch ~line 47) | The fetch wrapper rewrites every network/abort error into a generic user-facing string, dropping the original. Added `{ cause: err }` to both throws so devtools, error-boundary breadcrumbs, and any future log sink see the underlying error. No user-facing copy change. | **Acted (tighten)** — §I2 |
+| `web/src/lib/scroll-down-mlb-api.ts` (catch ~line 68) | Same `cause` propagation on the typed `ScrollDownMlbApiError` wrap. Also expanded the inline justification on the inner error-body `try/catch` (line ~56) — the catch is correct (the status is the signal, not the body) but it was bare `// ignore`. | **Acted (tighten + justify)** — §I2, §I3 |
+| `web/src/app/layout.tsx` (inline SW-cleanup script, ~line 100) | The localhost-only SW unregister + cache cleanup had `.catch(function () {})`. Replaced with `console.warn` so a developer chasing a stuck SW sees a signal. Production path (the `register('/sw.js')` branch) already logged. | **Acted (tighten)** — §I4 |
+| `web/src/lib/api-server.ts` (`cachedApiFetch` stale fallback, ~line 184) | When an upstream failure is masked by serving a stale cached response, we now `console.warn` with the cache key, age, and triggering error. The user-facing posture is unchanged (200 from cache) but a sustained outage that's silently degrading freshness now shows up in the logs. | **Acted (tighten)** — §I6 |
+| `web/src/hooks/useCatchupCards.ts` (poll catch ~line 82) | Pre-existing rationale ("Polling failures are non-fatal — keep the current deck visible") is correct; expanded to cite the report section and explain why initial/refresh failures *do* surface (the explicit retry CTA depends on it). | **Acted (justify)** — §I5 |
+| `web/src/app/sitemap.ts` (catch ~line 50) | The empty catch kept the sitemap valid on upstream failure but never told the operator anything was wrong — a prolonged outage was silently shrinking our index surface. Added a `console.warn` with the underlying error. | **Acted (tighten)** — §I7 |
+| `web/src/app/page.tsx` (catch ~line 22) | Same fix on the SSR homepage path: empty games render is fine UX, but log so a sustained backend outage doesn't pass unnoticed on every render. | **Acted (tighten)** — §I7 |
+
+No behavior change end-users will observe: every existing recovery path
+still produces the same response code, copy, and cache headers. The
+delta is that every "we gracefully degraded" branch now writes one log
+line so the next incident is diagnosable in seconds, not hours.
+
+Verification: `npx vitest run` — 206/206 tests pass. `npx tsc --noEmit`
+clean on every touched file (the one pre-existing error in
+`tests/helpers.ts` for `monocart-reporter` is unrelated to this diff).
+`npx eslint` clean on every touched file.
+
+### Pass-5 counts by severity
+
+| Severity | Count | Action |
+|----------|-------|--------|
+| Critical | 0 | — |
+| High     | 0 | — |
+| Medium   | 3 | Acted (3) — §I1, §I6, §I7 |
+| Low      | 3 | Acted (3) — §I2, §I4, §I7 |
+| Note     | 2 | Acted (justify) (2) — §I3, §I5 |
+
+### Pass-5 inventory of suppressions in the diff
+
+Diff-resident suppressions inspected and **left unchanged** (already at
+the right posture):
+
+- `web/src/lib/api-server.ts:96-98` — `fixMojibake` falls back to the
+  original string when UTF-8 round-trip fails. Correct: any one of a
+  thousand harmless non-mojibake strings will trip the heuristic; the
+  fallback is the safe answer. Pure transform, no security or data
+  integrity surface.
+- `web/src/lib/scroll-down-mlb-api.ts:100-103, 121-126` — 404 → `null`
+  and 409 → `null` on the typed API wrapper. These are documented
+  contract behaviors ("no deck yet", "reveal not available"), not
+  suppressions; the renderers explicitly branch on the `null`.
+- `web/src/components/catchup/FinalReveal.tsx:57-60` — surfaces the
+  caught error into component state for in-pane rendering. Correct
+  posture; not silenced.
+- `web/src/hooks/useGamesList.ts:41-43, 67` — same pattern as
+  `useCatchupCards`: foreground failures surface to `error`, background
+  poll catches are intentionally swallowed (re-pinging is the recovery).
+  Justified pre-existing; no change.
+- `web/src/components/layout/DegradedBanner.tsx:41-44` — health-ping
+  catch increments the fail counter without logging. Correct: the
+  *banner state* is the operator surface here, and Pass-1/2 already
+  established this. A log per ping during an outage would be pure noise.
+- `web/src/components/layout/BetaBanner.tsx:16-21, 37-42` and
+  `web/src/components/layout/PWAInstallPrompt.tsx:17-22, 25-31, 35-39` —
+  `localStorage` access wrapped in `try/catch` returning safe defaults.
+  Correct posture for Safari Private mode / storage-disabled browsers;
+  no observability value in logging a per-render fallback that the user
+  can't act on.
+- `web/src/components/catchup/BaseballLightField.tsx:1276-1295` —
+  already loud-in-dev, silent-in-prod with a documented justification.
+  No change.
+
+### Posture verdict for Pass-5
+
+**Acceptable, and improved.** Every recovery path in the changed-files
+set now produces an operator-visible signal when it triggers. No code
+behavior change for the end user; no copy change in the BFF responses;
+no new failure modes introduced. The Pass-4 verdict ("Acceptable")
+stands and is strengthened.
+
+---
+
+## §I — Pass-5 findings (observability diff)
+
+### I1 — BFF proxy routes silently 500'd on non-ApiError throws
+
+- **Locations**:
+  - `web/src/app/api/games/[gameId]/cards/route.ts:55-61`
+  - `web/src/app/api/games/[gameId]/summary/route.ts:46-58`
+  - `web/src/app/api/games/recent/route.ts:36-39`
+- **Risk lens**: Observability / reliability
+- **Severity**: Medium — these are the three live BFF endpoints. A code
+  bug inside `cachedApiFetch`, the JSON normalizer, the cache map, or
+  any future post-processing would have thrown a non-`ApiError`, hit the
+  generic catch, and returned `{ error: "Failed to fetch …" }` with
+  status 500 to the client and **nothing at all** in the server log.
+- **Disposition**: **Acted (tighten)**. The catch is now structured as
+  "translate `ApiError`, log everything else." The end-user 500 is
+  preserved (cheap to do, no leak), but the operator now sees the
+  underlying error.
+
+```ts
+} catch (err) {
+  if (err instanceof ApiError && err.status === 404) {
+    return NextResponse.json({ error: "No deck for this game yet." }, { status: 404 });
+  }
+  if (err instanceof ApiError) {
+    return NextResponse.json({ error: "Failed to fetch deck" }, { status: err.proxyStatus });
+  }
+  console.error("[api/games/cards] unexpected error", err);
+  return NextResponse.json({ error: "Failed to fetch deck" }, { status: 500 });
+}
+```
+
+The `ApiError` branch was already handled — the value of the change is
+that a `TypeError: Cannot read property '...' of undefined` from a
+schema regression no longer hides behind the same 500.
+
+### I2 — Browser fetch wrappers dropped the original error
+
+- **Locations**:
+  - `web/src/lib/api.ts:47-54`
+  - `web/src/lib/scroll-down-mlb-api.ts:68-83`
+- **Risk lens**: Observability (browser-side)
+- **Severity**: Low — the user-facing message ("Unable to load data…")
+  is still the right copy, but the *original* error (a `TypeError`, a
+  CORS rejection, a SyntaxError from a malformed JSON body) was being
+  discarded. Browser devtools breadcrumbs and any future client-side
+  log sink (Sentry, Datadog RUM, etc.) would have nothing to attribute.
+- **Disposition**: **Acted (tighten)**. Both wrappers now attach the
+  caught error via `{ cause: err }` on the rewrapped `Error` /
+  `ScrollDownMlbApiError`. Zero copy change.
+
+```ts
+throw new Error("Unable to load data. Please check your connection and try again.", { cause: err });
+```
+
+For `ScrollDownMlbApiError` (an ES2022 `Error` subclass), `cause` isn't
+part of the constructor signature, so it's set as a post-construct
+property. Standard Error inspection (`console.error`, devtools) renders
+both.
+
+### I3 — Inner `// ignore` on the error-body reader was unannotated
+
+- **Location**: `web/src/lib/scroll-down-mlb-api.ts:55-61`
+- **Risk lens**: Observability
+- **Severity**: Note — the catch is correct (the HTTP status is the
+  load-bearing signal, the body is best-effort context), but a bare
+  `// ignore` looks like a code smell at first glance.
+- **Disposition**: **Acted (justify)**. Replaced the bare comment with
+  a four-line rationale that names what the body is *for* (extra
+  context) and why losing it is acceptable (status is the signal).
+
+### I4 — Localhost SW-cleanup catches were silent
+
+- **Location**: `web/src/app/layout.tsx` inline `sw-register` script
+  (`.catch(function () {})` on two lines)
+- **Risk lens**: Observability (dev-only)
+- **Severity**: Low — only fires on `localhost` / `*.local`. A
+  developer with a stuck service worker (very common during local Next
+  rebuilds) would see no console signal at all.
+- **Disposition**: **Acted (tighten)**. Both catches now log via
+  `console.warn` with a labeled prefix. Production path is unaffected
+  (it always took the `register('/sw.js').catch(...console.warn...)`
+  branch).
+
+### I5 — `useCatchupCards` poll-failure catch needed an audit anchor
+
+- **Location**: `web/src/hooks/useCatchupCards.ts:82-91`
+- **Risk lens**: Reliability
+- **Severity**: Note — the catch *is* doing the right thing (a polling
+  hiccup must not yank the user to an error state mid-deck), but the
+  inline rationale didn't explain *why* initial/refresh failures are
+  treated differently from poll failures.
+- **Disposition**: **Acted (justify)**. Expanded the comment to state
+  the invariant ("explicit retry CTA depends on initial/refresh
+  surfacing errors") and link to this section.
+
+### I6 — Stale-cache fallback masked sustained upstream outages
+
+- **Location**: `web/src/lib/api-server.ts:182-188`
+- **Risk lens**: Observability / operational
+- **Severity**: Medium — `cachedApiFetch` correctly serves the
+  last-known-good response when upstream is 429/5xx within the stale
+  window. But the user gets a 200 and the operator gets *nothing* —
+  the outage is invisible until the stale window expires and real 500s
+  start landing.
+- **Disposition**: **Acted (tighten)**. Added a `console.warn` with
+  cache key, age in ms, and the triggering `ApiError` status. One log
+  line per stale serve; that's enough to alert on without becoming
+  noise, since the route-level caches dedupe within their fresh
+  window.
+
+```ts
+console.warn(`[api-server] serving stale ${cacheKey} (age ${ageMs}ms): ${reason}`);
+```
+
+### I7 — SSR homepage + sitemap silently fell back to empty
+
+- **Locations**:
+  - `web/src/app/page.tsx:18-25`
+  - `web/src/app/sitemap.ts:33-52`
+- **Risk lens**: Observability / SEO
+- **Severity**: Medium — both paths correctly degrade (homepage renders
+  the SEO shell, sitemap keeps the root entries) when the upstream feed
+  is unavailable. But a prolonged outage would have been silently
+  shrinking our index surface and stripping the homepage every render,
+  with no log signal.
+- **Disposition**: **Acted (tighten)**. Both `try/catch` blocks now
+  log via `console.warn` with the underlying error. The user-facing
+  output (empty games list / minimal sitemap) is unchanged; what
+  changes is that "the feed is down" is now diagnosable from the
+  Next.js server log instead of from end-user reports.
 
 ---
 

@@ -18,14 +18,22 @@ interface SceneSetterCardProps {
 export function SceneSetterCard({ card }: SceneSetterCardProps) {
   const home = findMlbTeam(card.homeTeamAbbr);
   const away = findMlbTeam(card.awayTeamAbbr);
+  const copy = phaseCopy(card.gamePhase, card.firstPitch);
 
   return (
     <div data-testid="catchup-scene-setter" className="scene-setter-slide">
       <article className="scene-setter-device">
         <header className="scene-setter-screen scene-setter-banner">
           <p className="scene-setter-eyebrow">SCROLL DOWN MLB</p>
-          <p className="scene-setter-firstpitch">
-            FIRST PITCH · {formatTimeET(card.firstPitch)}
+          <p className="scene-setter-firstpitch" data-phase={card.gamePhase}>
+            {card.gamePhase === "live" ? (
+              <>
+                <span className="scene-setter-live-dot" aria-hidden="true">●</span>
+                {" "}LIVE
+              </>
+            ) : (
+              copy.banner
+            )}
           </p>
         </header>
 
@@ -55,14 +63,41 @@ export function SceneSetterCard({ card }: SceneSetterCardProps) {
         )}
 
         <div className="scene-setter-screen scene-setter-cta">
-          <p className="scene-setter-cta-primary">SCROLL DOWN TO START</p>
-          <p className="scene-setter-cta-sub">
-            Scores update card by card. Final stays hidden until you reveal.
-          </p>
+          <p className="scene-setter-cta-primary">{copy.cta}</p>
+          <p className="scene-setter-cta-sub">{copy.sub}</p>
         </div>
       </article>
     </div>
   );
+}
+
+function phaseCopy(
+  phase: "scheduled" | "live" | "final",
+  firstPitch: string,
+): { banner: string | null; cta: string; sub: string } {
+  switch (phase) {
+    case "live":
+      // banner: null — the JSX renders an animated `● LIVE` directly so the
+      // dot can carry its own animation hook. No copy string for this slot.
+      return {
+        banner: null,
+        cta: "SCROLL DOWN TO CATCH UP",
+        sub: "Catch up play by play. Score stays hidden until you reveal.",
+      };
+    case "final":
+      return {
+        banner: "FINAL",
+        cta: "SCROLL DOWN FOR THE RECAP",
+        sub: "Score is hidden. Scroll through the key plays to reveal it.",
+      };
+    case "scheduled":
+    default:
+      return {
+        banner: `FIRST PITCH · ${formatTimeET(firstPitch)}`,
+        cta: "SCROLL DOWN TO PREVIEW",
+        sub: "Scores update card by card. Final stays hidden until you reveal.",
+      };
+  }
 }
 
 function TeamColumn({ abbr, name, color }: { abbr: string; name: string; color?: string }) {

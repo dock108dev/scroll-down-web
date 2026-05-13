@@ -57,7 +57,11 @@ async function rawFetch<T>(path: string, init?: FetchInit): Promise<T> {
         const body = await res.text();
         detail = body.slice(0, 200);
       } catch {
-        // ignore
+        // Reading the error body is best-effort: a truncated/streaming
+        // upstream can throw here even though we already have the status.
+        // The status itself is the load-bearing signal, so we fall back to
+        // a status-only message rather than failing the whole request on
+        // a missing body. See docs/audits/error-handling-report.md §I3.
       }
       throw new ScrollDownMlbApiError(
         res.status,
@@ -73,10 +77,15 @@ async function rawFetch<T>(path: string, init?: FetchInit): Promise<T> {
         "Request timed out. Please check your connection and try again.",
       );
     }
-    throw new ScrollDownMlbApiError(
+    // Network/parse failure — preserve the original via `cause` so devtools
+    // and future log sinks see the underlying detail instead of just the
+    // user-facing string. See docs/audits/error-handling-report.md §I2.
+    const wrapped = new ScrollDownMlbApiError(
       0,
       "Unable to reach Scroll Down MLB. Check your connection and try again.",
     );
+    (wrapped as { cause?: unknown }).cause = err;
+    throw wrapped;
   } finally {
     clearTimeout(timer);
     if (userSignal) userSignal.removeEventListener("abort", onUserAbort);

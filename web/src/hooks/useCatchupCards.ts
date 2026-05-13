@@ -81,7 +81,10 @@ export function useCatchupCards(gameId: number): UseCatchupCardsReturn {
         setError(null);
       } catch (err) {
         if (controller.signal.aborted) return;
-        // Polling failures are non-fatal — keep the current deck visible.
+        // Polling failures are non-fatal — keep the current deck visible
+        // rather than yanking the user to an error state. Initial/refresh
+        // failures *do* surface so the explicit retry CTA can react. See
+        // docs/audits/error-handling-report.md §I5.
         if (mode === "poll") return;
         setError(err instanceof Error ? err.message : "Failed to load game");
       } finally {

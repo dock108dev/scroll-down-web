@@ -46,9 +46,12 @@ export async function fetchApi<T>(path: string, init?: FetchApiInit): Promise<T>
     res = await fetch(path, { ...init, headers, signal });
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") {
-      throw new Error("Request timed out. Please check your connection and try again.");
+      throw new Error("Request timed out. Please check your connection and try again.", { cause: err });
     }
-    throw new Error("Unable to load data. Please check your connection and try again.");
+    // Preserve the original error via `cause` so devtools / future log
+    // sinks see the underlying network detail instead of a stripped
+    // user-facing string. See docs/audits/error-handling-report.md §I2.
+    throw new Error("Unable to load data. Please check your connection and try again.", { cause: err });
   } finally {
     cleanup();
   }

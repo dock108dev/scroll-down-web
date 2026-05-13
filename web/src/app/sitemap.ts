@@ -47,8 +47,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         ),
       );
     }
-  } catch {
-    // Keep the sitemap valid even when the upstream feed is unavailable.
+  } catch (err) {
+    // Keep the sitemap valid (root pages only) when the upstream feed is
+    // unavailable. We deliberately don't fail the sitemap build, but log
+    // so a prolonged outage that's silently shrinking our index surface
+    // shows up in server logs. See
+    // docs/audits/error-handling-report.md §I7.
+    console.warn("[sitemap] upstream games feed unavailable:", err);
   }
 
   return entries;

@@ -12,7 +12,7 @@ Single Next.js web app under [`web/`](web/). The product is an MLB-only catch-up
 
 The app is a thin frontend over the `sports-data-admin` backend (`sda.dock108.dev`). Server-side proxy routes inject the `X-API-Key` header so credentials never reach the browser. The backend is the source of truth for game data; the frontend builds the card deck, plans rhythm, and renders the field/runner/trajectory visuals.
 
-The product roadmap and design intent live in [`BRAINDUMP.md`](BRAINDUMP.md). Active issues live in [`.aidlc/issues/`](.aidlc/issues/).
+The product roadmap and design intent live in [`BRAINDUMP.md`](../BRAINDUMP.md) (workspace root). Active issues live in [`.aidlc/issues/`](../.aidlc/issues/) (workspace root). Both directories live one level up because the workspace holds both this app and its `sports-data-admin` backend.
 
 ## Run Locally
 

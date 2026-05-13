@@ -17,27 +17,12 @@ All variables read from the runtime env. None are required at build time except 
 | `SPORTS_API_INTERNAL_URL` | `https://sda.dock108.dev` (`BACKEND_BASE_URL`) | Override the backend URL. Use the Docker network DNS name when running both behind the same reverse proxy. |
 | `SPORTS_GAMEFLOW_PATH` | `/api/admin/sports/games/{id}/gameflow` | Override the per-game recap path used by `/api/games/[gameId]/summary`. |
 | `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | `getSiteHost()` | Plausible `data-domain` injected on the loader script. |
-| `PUBLIC_BASE_URL` | — | Canonical site origin used by SEO metadata, sitemap, and `publicBaseUrl()` in API routes that need to mint outbound URLs. |
+| `PUBLIC_BASE_URL` | — | Canonical site origin used by SEO metadata and sitemap. |
 | `SITE_URL` | — | Alias for `PUBLIC_BASE_URL`, read second by `getSiteUrl()`. |
-| `MAGIC_LINK_BASE_URL` | — | Legacy alias accepted by `publicBaseUrl()` so existing deployments don't need to rename their env file when this repo migrated off magic-link auth. No magic-link code path consumes it today. |
 | `SITE_NOINDEX` | auto (`true` on the `.dev` host, `false` otherwise) | `true` forces `noindex` in `robots.ts` / `sitemap.ts` and the root metadata. |
 | `NODE_ENV` | (set by Next.js) | `production` makes `/dev/*` routes return 404 and is also the fallback gate in `getSiteUrl`. |
 | `SCROLLDOWN_PLAYWRIGHT_WEB_SERVER` | unset | Set to `1` by `playwright.config.ts` so `/api/health` skips upstream pings during E2E. |
 | `NEXT_TELEMETRY_DISABLED` | `1` in Dockerfile + CI | Disable Next.js telemetry. |
-
-### Currently-defined-but-unused (deployment plumbing only)
-
-These are accepted by the Dockerfile / CI but **not consumed by application code in this repo**. They are leftover from a previous product direction and are documented only because someone reading the deployment yaml will see them. Removing them does not change runtime behavior.
-
-| Variable | Where it appears | Notes |
-|----------|------------------|-------|
-| `NEXT_PUBLIC_ADS_ENABLED` | Dockerfile `ARG`, ci.yml build-args | No reader in `web/src/`. |
-| `NEXT_PUBLIC_ADSENSE_CLIENT_ID` | Dockerfile, ci.yml | No reader. |
-| `NEXT_PUBLIC_ADSENSE_HOME_FEED_SLOT` | Dockerfile, ci.yml | No reader. |
-| `NEXT_PUBLIC_ADSENSE_GAME_DETAIL_SLOT` | Dockerfile, ci.yml | No reader. |
-| `NEXT_PUBLIC_ADSENSE_FAIRBET_SLOT` | Dockerfile, ci.yml | No reader. |
-| `NEXT_PUBLIC_ADSENSE_BOTTOM_SLOT` | Dockerfile, ci.yml | No reader. |
-| `MAGIC_LINK_SECRET` | ci.yml (with hardcoded fallback) | No reader. The CI fallback exists so fork PRs without org secrets still build. |
 
 ## Centralized Config
 

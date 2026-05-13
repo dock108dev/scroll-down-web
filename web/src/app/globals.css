@@ -294,12 +294,24 @@ body {
    banner → progress → scroller. The scroller flex-grows to fill, which is
    what gives `.catchup-scroller-slide { height: 100% }` something
    resolvable to anchor against. (Previously slides used min-height, which
-   broke percentage-height children — see fix-plan Phase 1.) */
+   broke percentage-height children — see fix-plan Phase 1.)
+
+   Viewport unit: svh (small viewport) is preferred. dvh recomputes every
+   time iOS Safari's URL bar animates in/out, which reflows the scroll-snap
+   container mid-swipe and produces visible card jumps. svh tracks the
+   shortest layout (bar treated as visible), so the height is stable across
+   the bar animation. The base rule keeps dvh as the fallback for older
+   browsers; the @supports block upgrades to svh where available. */
 .catchup-page-shell {
   display: flex;
   flex-direction: column;
   height: calc(100dvh - var(--header-h, 56px));
   background: var(--catchup-bg, #07080a);
+}
+@supports (height: 100svh) {
+  .catchup-page-shell {
+    height: calc(100svh - var(--header-h, 56px));
+  }
 }
 
 /* ── Catch-up header (back/restart) ─────────────────── */
@@ -415,11 +427,13 @@ body {
   --lev-glow-alpha:     0;
   display: flex;
   flex-direction: column;
-  /* Zero padding + gap let the field-shell press to the device-shell edges
-     so the field reads as a true LCD window. Each inner section re-applies
-     its own outer margin for breathing room. overflow: hidden clips the
-     edge-to-edge field cleanly against the shell's rounded corners. */
-  gap: 0;
+  /* 12px row gap is the breathing rhythm between header → field → result
+     chip → footer. Zero padding still lets the field-shell press to the
+     device-shell side edges (the gap is row-only, no inline contribution),
+     so the field continues to read as a true LCD window while no two
+     siblings sit flush. overflow: hidden clips the edge-to-edge field
+     cleanly against the shell's rounded corners. */
+  gap: 0.75rem;
   padding: 0;
   overflow: hidden;
   /* flex:1 fills the slide vertically — height:100% used to be here but
@@ -518,6 +532,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  /* Top margin holds the header off the device-shell's top edge. The
+     bottom is handled by .catchup-card-snap's row gap so the field has
+     12px of breathing room directly below the scoreboard inset. */
   margin: 0.5rem 0.625rem 0;
   padding: 0.25rem 0.5rem 0.3125rem;
   border: 1px solid var(--device-border-soft);
@@ -632,12 +649,12 @@ body {
   color: rgba(255, 220, 150, 0.55);
   text-transform: uppercase;
 }
-/* Count read-out — gated behind the settle phase. The data we get from
-   the upstream feed is the count at the END of the AB (4-2 for a walk,
-   2-3 for a strikeout), not before the deciding pitch, so showing it
-   pre-resolution would spoil the play AND look inconsistent with the
-   live state on the field. We hold it dim until settle, then bring it
-   up alongside the result chip + post-play score. */
+/* Count read-out — pre-play setup context. The value is the count
+   ENTERING the at-bat (backend `balls_before` / `strikes_before`), so
+   it is safe to show from setup onward. The component sets
+   `data-visible="true"` unconditionally; the base `opacity: 0` rule
+   below is retained only so the element fades in (rather than flashing
+   on) when the card first mounts. */
 .catchup-card-count {
   flex: 0 0 auto;
   display: inline-flex;
@@ -839,11 +856,13 @@ body {
   /* LED-segment-style numeral. Pixel font + layered glow so the digit
      reads as "lit phosphor" rather than "amber text". The dual shadow
      gives a tight inner bloom plus a softer halo — same trick a real
-     LED gives off through diffusion. */
+     LED gives off through diffusion. Color anchored to --device-amber
+     (stadium-cream #f5efdc) so the play, rhythm, and inning-transition
+     scoreboards all share one numeral color token. */
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 1.875rem;
   font-weight: 400;
-  color: #fff8e0;
+  color: var(--device-amber);
   text-shadow:
     0 0 1px rgba(255, 255, 255, 0.75),
     0 0 5px rgba(245, 239, 220, 0.95),
@@ -886,6 +905,19 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  /* The field SVG has a roughly-square viewBox, so on portrait viewports it
+     scales to width and leaves vertical space above/below. Without a
+     treatment that area renders as flat catchup-bg and reads as a broken
+     empty panel. A soft radial vignette behind the field gives that
+     space the "inset LCD stage" feel the device-shell vocabulary uses
+     elsewhere, so the breathing room reads as intentional. */
+  background:
+    radial-gradient(
+      ellipse 110% 80% at center,
+      rgba(6, 10, 7, 0) 0%,
+      rgba(6, 10, 7, 0.55) 60%,
+      rgba(3, 6, 4, 0.95) 100%
+    );
 }
 /* Landscape phones (e.g. iPhone 14 at 844x390) leave only ~200px of card
    height after the app/catchup headers. Letting the field flex-grow into
@@ -1111,11 +1143,18 @@ body {
 }
 
 /* Scroll-cue chevron — hidden until the card reaches the reveal phase,
-   then fades in slightly after the description lands. */
+   then fades in slightly after the description lands.
+
+   padding-bottom uses max(design-intent, env(safe-area-inset-bottom)) so
+   the chevron always has at least 0.5rem of breathing room and clears the
+   iPhone home indicator on notched devices (where the inset is ~34px). */
 .catchup-card-footer {
   display: flex;
   justify-content: center;
-  margin: 0.25rem auto 0.5rem;
+  /* Top spacing is now supplied by .catchup-card-snap's row gap (12px)
+     so the chevron sits 12px below the result chip on every card. */
+  margin: 0 auto;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   color: rgba(245, 239, 220, 0.40);
   opacity: 0;
   transition: opacity 320ms ease-out;
@@ -1679,6 +1718,14 @@ body {
   .field-runner-trail { stroke-dashoffset: 0; opacity: 0; }
   .field-runner-motion,
   .field-runner-trail { display: none; }
+  /* Without the field-bulb-out animation, the `both` fill-mode that normally
+     backward-fills opacity:1 onto pre-play bulbs never runs, so the base
+     rule at line 1309 would leave them permanently invisible. Pin them
+     visible explicitly — they no longer dim during runners, which is the
+     intended reduced-motion behavior. */
+  [data-playing="true"] .field-base-bulb[data-lifecycle="pre"] {
+    opacity: 1;
+  }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1745,6 +1792,24 @@ body {
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--device-muted);
+}
+.scene-setter-firstpitch[data-phase="live"] {
+  color: var(--device-amber-bright);
+  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
+}
+.scene-setter-firstpitch[data-phase="final"] {
+  color: var(--device-amber);
+}
+@keyframes scene-setter-pulse {
+  from { opacity: 1; }
+  to   { opacity: 0.4; }
+}
+.scene-setter-live-dot {
+  color: var(--device-amber);
+  animation: scene-setter-pulse 0.4s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .scene-setter-live-dot { animation: none; }
 }
 
 /* Matchup screen — away · @ · home. */
@@ -1879,7 +1944,9 @@ body {
   justify-content: center;
   flex: 1 1 0;
   min-height: 0;
-  padding: 1rem;
+  /* env(safe-area-inset-bottom) wins on notched phones so the reveal CTA
+     clears the home indicator; otherwise the design-intent 1rem holds. */
+  padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom));
   overflow: hidden;
 }
 .reveal-gate-stadium {
@@ -1966,7 +2033,10 @@ body {
   min-height: 0;
   gap: 0.5rem;
   padding: 0.75rem;
-  margin: 1rem auto 1.5rem;
+  /* Bottom margin keeps the "Watch highlights" / "Back to games" actions
+     off the iPhone home indicator on notched phones; falls back to the
+     design-intent 1.5rem on hardware without a safe-area inset. */
+  margin: 1rem auto max(1.5rem, env(safe-area-inset-bottom));
   width: calc(100% - 1.5rem);
   max-width: 28rem;
   background: transparent;
@@ -2133,7 +2203,9 @@ body {
   justify-content: center;
   flex: 1 1 0;
   min-height: 0;
-  padding: 1rem;
+  /* env(safe-area-inset-bottom) wins on notched phones so the "Check for
+     new plays" CTA clears the home indicator; falls back to 1rem. */
+  padding: 1rem 1rem max(1rem, env(safe-area-inset-bottom));
 }
 .live-caught-up-inner {
   display: flex;
@@ -2392,38 +2464,58 @@ body {
   color: var(--device-amber-bright);
   text-shadow: 0 0 10px rgba(245, 239, 220, 0.42);
 }
+/* Rhythm-card scoreboard is the same design object as the play card's
+   .catchup-card-score panel — flat dark scoreboard with a recessed
+   inner shadow, stadium-cream LED numerals, dim amber abbreviations.
+   Padding/border/shadow/typography all mirror the play card so the
+   user can't read a seam between a play and the rhythm card that
+   follows it. */
 .rhythm-card-score {
   display: inline-flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.625rem;
   margin-top: 0.125rem;
-  padding: 0.4rem 0.85rem;
-  border: 1px solid rgba(120, 100, 60, 0.55);
-  border-radius: 0.3rem;
-  background: rgba(0, 0, 0, 0.85);
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  padding: 0.25rem 0.625rem 0.25rem 0.875rem;
+  border: 1px solid rgba(245, 239, 220, 0.45);
+  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.88);
+  box-shadow:
+    inset 0 0 0 1px rgba(0, 0, 0, 0.7),
+    inset 0 1px 2px rgba(0, 0, 0, 0.65),
+    inset 0 0 8px rgba(245, 239, 220, 0.08);
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
 }
 .rhythm-card-score-line {
   display: inline-flex;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: 0.3125rem;
 }
 .rhythm-card-score-abbr {
-  font-size: 0.625rem;
-  font-weight: 700;
-  letter-spacing: 0.10em;
-  color: rgba(255, 220, 150, 0.55);
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.875rem;
+  font-weight: 400;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(255, 220, 150, 0.7);
 }
 .rhythm-card-score-num {
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 1.625rem;
-  font-weight: 900;
-  color: #fff8e0;
+  /* Same numeral treatment as .catchup-card-score-num — pixel font,
+     stadium-cream color token, dual-layer phosphor glow. Size matches
+     the play card (1.875rem) so the digits read as the same LED. */
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 1.875rem;
+  font-weight: 400;
+  color: var(--device-amber);
   text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.65),
-    0 0 4px rgba(245, 239, 220, 0.85),
-    0 0 10px rgba(245, 239, 220, 0.45);
+    0 0 1px rgba(255, 255, 255, 0.75),
+    0 0 5px rgba(245, 239, 220, 0.95),
+    0 0 12px rgba(245, 239, 220, 0.55);
+  letter-spacing: 0;
   line-height: 1;
+  min-width: 1.1ch;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  display: inline-block;
 }
 .rhythm-card-score-sep {
   color: rgba(255, 220, 150, 0.32);

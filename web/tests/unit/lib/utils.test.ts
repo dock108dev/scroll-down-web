@@ -5,7 +5,6 @@ import {
   formatDate,
   resolveTeamColor,
   teamColorStyle,
-  cardDisplayName,
 } from "@/lib/utils";
 
 describe("utils classnames", () => {
@@ -48,49 +47,6 @@ describe("utils team color resolution", () => {
     document.documentElement.classList.remove("dark");
     expect(resolveTeamColor("#eeeeee", "#111111", "#888")).toMatch(/^#/);
     expect(resolveTeamColor("not-a-color", undefined, "#123456")).toBe("not-a-color");
-  });
-});
-
-describe("utils card display names", () => {
-  it("returns pro nicknames", () => {
-    expect(cardDisplayName("Los Angeles Dodgers", "mlb")).toBe("Dodgers");
-    expect(cardDisplayName("New York Yankees", "mlb")).toBe("Yankees");
-  });
-
-  it("preserves multi-word pro nicknames", () => {
-    expect(cardDisplayName("Toronto Blue Jays", "mlb")).toBe("Blue Jays");
-    expect(cardDisplayName("Chicago White Sox", "mlb")).toBe("White Sox");
-    expect(cardDisplayName("Vegas Golden Knights", "nhl")).toBe("Golden Knights");
-  });
-
-  it("strips mascot from college names", () => {
-    // Single-word mascot — drop the last token
-    expect(cardDisplayName("Duke Blue Devils", "ncaab")).toBe("Duke");
-    expect(cardDisplayName("Kentucky Wildcats", "ncaab")).toBe("Kentucky");
-  });
-
-  it("handles multi-word college mascot overrides", () => {
-    expect(cardDisplayName("North Carolina Tar Heels", "ncaab")).toBe("North Carolina");
-    expect(cardDisplayName("Alabama Crimson Tide", "ncaaf")).toBe("Alabama");
-    expect(cardDisplayName("Notre Dame Fighting Irish", "ncaaf")).toBe("Notre Dame");
-  });
-
-  it("respects multi-word school names that collide with mascot prefixes", () => {
-    // "Bowling Green" school + "Falcons" mascot — would otherwise eat "Green"
-    expect(cardDisplayName("Bowling Green Falcons", "ncaaf")).toBe("Bowling Green");
-    expect(cardDisplayName("Boston College Eagles", "ncaab")).toBe("Boston College");
-  });
-
-  it("uses the mascot-prefix heuristic for two-word mascots", () => {
-    expect(cardDisplayName("Oakland Golden Grizzlies", "ncaab")).toBe("Oakland");
-  });
-
-  it("falls back to abbr when display name exceeds 15 chars", () => {
-    expect(cardDisplayName("South Carolina Upstate Spartans", "ncaab", "USCU")).toBe("USCU");
-  });
-
-  it("returns the full name when a college team has only one word", () => {
-    expect(cardDisplayName("Stanford", "ncaab")).toBe("Stanford");
   });
 });
 

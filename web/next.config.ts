@@ -37,9 +37,33 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "DENY" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+          {
+            key: "Permissions-Policy",
+            // Deny every browser capability the app does not use. Listed
+            // explicitly (rather than `*`) so future Permissions-Policy
+            // additions don't silently grant access.
+            value: [
+              "camera=()",
+              "microphone=()",
+              "geolocation=()",
+              "payment=()",
+              "usb=()",
+              "magnetometer=()",
+              "accelerometer=()",
+              "gyroscope=()",
+              "interest-cohort=()",
+              "browsing-topics=()",
+            ].join(", "),
+          },
           { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
           { key: "X-DNS-Prefetch-Control", value: "off" },
+          // Cross-origin isolation: the app has no OAuth pop-up handshake
+          // and no cross-origin opener relationship to maintain. Locking
+          // COOP cuts XS-Leak / Spectre-style attack surface from any
+          // future opener or popup that does land on these pages. CORP is
+          // intentionally NOT set — the OG image and PWA icons need to
+          // remain embeddable by third-party preview/share scrapers.
+          { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
           {
             key: "Content-Security-Policy",
             value: [

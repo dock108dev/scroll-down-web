@@ -78,7 +78,7 @@ export function DegradedBanner() {
           Delayed
         </span>
         <span className="hidden sm:inline">
-          Scores and odds may be a few minutes behind.
+          Scores may be a few minutes behind.
         </span>
         <span className="sm:hidden">
           Data may be delayed.

@@ -85,6 +85,13 @@ export interface SceneSetterCard {
   awayProbablePitcher?: string | null;
   /** Optional venue (city or park name). */
   venue?: string | null;
+  /** True when the upstream game is in a terminal status. Mirrors
+   *  `SdmDeckResponse.isFinal` so the scene-setter can render phase-aware
+   *  copy without re-deriving from the response envelope. */
+  isFinal: boolean;
+  /** Derived phase. Computed in the adapter from `isFinal` + `lastPlayIndex`
+   *  so the component is a pure renderer. */
+  gamePhase: "scheduled" | "live" | "final";
 }
 
 export interface BaseballBaseState {
@@ -434,34 +441,6 @@ export interface CatchupSummaryResponse {
   winner: "home" | "away" | "tie";
   /** Single narrative summary string from the gameflow endpoint. */
   summary: string;
-}
-
-// ─── Plays / Timeline (raw upstream shape) ──────────────
-// Kept so server-side adapters can read upstream plays. Not consumed by the
-// catch-up UI; that uses `PlayCardData` from the cards proxy.
-
-export interface PlayEntry {
-  eventId?: string;
-  playIndex: number;
-  quarter?: number;
-  gameClock?: string;
-  playType?: string;
-  teamAbbreviation?: string;
-  playerName?: string;
-  description?: string;
-  homeScore?: number;
-  awayScore?: number;
-  score?: { home?: number; away?: number } | null;
-  periodLabel?: string;
-  timeLabel?: string;
-  tier?: number;
-  scoreChanged?: boolean;
-  scoringTeamAbbr?: string;
-  pointsScored?: number;
-  homeScoreBefore?: number;
-  awayScoreBefore?: number;
-  scoreBefore?: { home?: number; away?: number } | null;
-  phase?: string;
 }
 
 // ─── Helpers ────────────────────────────────────────────

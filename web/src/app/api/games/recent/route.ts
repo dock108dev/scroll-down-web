@@ -34,7 +34,13 @@ export async function GET(_req: NextRequest) {
       },
     });
   } catch (err) {
-    const status = err instanceof ApiError && err.proxyStatus ? err.proxyStatus : 500;
-    return NextResponse.json({ error: "Failed to fetch games" }, { status });
+    if (err instanceof ApiError) {
+      return NextResponse.json({ error: "Failed to fetch games" }, { status: err.proxyStatus });
+    }
+    // Non-ApiError reaching here is a code bug, not an upstream issue. Log
+    // so prod incidents are diagnosable instead of presenting as anonymous
+    // 500s. See docs/audits/error-handling-report.md §I1.
+    console.error("[api/games/recent] unexpected error", err);
+    return NextResponse.json({ error: "Failed to fetch games" }, { status: 500 });
   }
 }

@@ -22,7 +22,9 @@ export async function GET(
   { params }: { params: Promise<{ gameId: string }> },
 ) {
   const { gameId: gameIdStr } = await params;
-  if (!gameIdStr || !/^[A-Za-z0-9_-]+$/.test(gameIdStr)) {
+  // 64 chars is far more than any real MLB gamePk; keep it bounded so a
+  // crafted long-id request can't poison the in-memory cache key map.
+  if (!gameIdStr || gameIdStr.length > 64 || !/^[A-Za-z0-9_-]+$/.test(gameIdStr)) {
     return NextResponse.json({ error: "Invalid game id" }, { status: 400 });
   }
 
@@ -51,10 +53,16 @@ export async function GET(
       },
     });
   } catch (err) {
-    const status = err instanceof ApiError && err.proxyStatus ? err.proxyStatus : 500;
     if (err instanceof ApiError && err.status === 404) {
       return NextResponse.json({ error: "No deck for this game yet." }, { status: 404 });
     }
-    return NextResponse.json({ error: "Failed to fetch deck" }, { status });
+    if (err instanceof ApiError) {
+      return NextResponse.json({ error: "Failed to fetch deck" }, { status: err.proxyStatus });
+    }
+    // Non-ApiError reaching here is a code bug, not an upstream issue. Log
+    // so prod incidents are diagnosable instead of presenting as anonymous
+    // 500s. See docs/audits/error-handling-report.md §I1.
+    console.error("[api/games/cards] unexpected error", err);
+    return NextResponse.json({ error: "Failed to fetch deck" }, { status: 500 });
   }
 }

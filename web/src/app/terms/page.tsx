@@ -24,27 +24,18 @@ export default function TermsPage() {
       <section className="space-y-3 text-sm text-neutral-300 leading-relaxed">
         <h2 className="text-lg font-semibold text-neutral-200">Use of the Service</h2>
         <p>
-          Scroll Down Sports provides sports scores, timelines, and betting
-          analytics for informational purposes only. All data is delayed and should
-          not be relied upon for real-time wagering decisions.
+          Scroll Down Sports provides spoiler-free MLB game catch-ups for
+          informational and entertainment purposes only. Game data is delayed
+          and best-effort; do not rely on it for time-sensitive decisions.
         </p>
       </section>
 
       <section className="space-y-3 text-sm text-neutral-300 leading-relaxed">
         <h2 className="text-lg font-semibold text-neutral-200">Disclaimer</h2>
         <p>
-          This is not financial advice. Positive expected value does not guarantee
-          a winning bet. Data accuracy is best-effort; we source from reputable
-          providers but cannot guarantee real-time correctness. Gamble responsibly.
-        </p>
-      </section>
-
-      <section className="space-y-3 text-sm text-neutral-300 leading-relaxed">
-        <h2 className="text-lg font-semibold text-neutral-200">Accounts</h2>
-        <p>
-          You are responsible for maintaining the security of your account
-          credentials. We reserve the right to suspend accounts that violate these
-          terms or abuse the service.
+          Data accuracy is best-effort; we source from reputable providers but
+          cannot guarantee real-time correctness. The service is currently in
+          beta and behavior may change without notice.
         </p>
       </section>
 

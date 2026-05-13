@@ -18,6 +18,7 @@ import type {
   CatchupCardsResponse,
   PlayCardData,
   PlayEventType,
+  PriorAfterState,
   RhythmCard,
   RhythmCardKind,
   RunnerAdvance,
@@ -31,9 +32,7 @@ import type {
 import type {
   SdmDeckCard,
   SdmDeckResponse,
-  SdmPlayPayload,
   SdmRunnerMovement,
-  SdmTeamSummary,
 } from "@/types/scroll-down-mlb";
 
 const HOME_ABBR_FALLBACK = "HME";
@@ -52,9 +51,42 @@ export function adaptDeck(deck: SdmDeckResponse): CatchupCardsResponse {
   const awayName = deck.awayTeam?.displayName ?? "Away";
 
   const cards: CatchupCard[] = [];
+  // Running scoreboard threaded through the loop so rhythm/transition
+  // cards inherit the score *after* the most recent play. The backend
+  // omits `scoreAfter` from the wire for spoiler safety, so the cursor
+  // only advances on play cards (whose `scoreAfter` is computed locally
+  // above). Cursor is spread-copied onto each card to avoid aliasing.
+  // Assumes `deck.cards` arrives in `sortOrder` (backend contract).
+  let lastKnownScore = { home: 0, away: 0 };
+  // Ending snapshot of the most recently emitted play card. Threaded
+  // forward across rhythm cards (quiet-stretch / late-game / final-setup)
+  // so a play card after a pacing card can still bridge from the previous
+  // play's end state. Reset on scene-setter and inning-transition because
+  // those are hard boundaries — the next play is its own opening beat.
+  let lastPlayEnding: PriorAfterState | null = null;
   for (const card of deck.cards) {
     const adapted = adaptCard(card, deck, gameId, homeAbbr, awayAbbr, homeName, awayName);
-    if (adapted) cards.push(adapted);
+    if (!adapted) continue;
+    if (adapted.kind === "play") {
+      lastKnownScore = adapted.scoreAfter;
+      if (lastPlayEnding !== null) {
+        adapted.priorAfter = lastPlayEnding;
+      }
+      lastPlayEnding = snapshotPlayEnding(adapted);
+    } else if (
+      adapted.kind === "inning-transition" ||
+      adapted.kind === "quiet-stretch" ||
+      adapted.kind === "late-game" ||
+      adapted.kind === "final-setup"
+    ) {
+      adapted.score = { ...lastKnownScore };
+      if (adapted.kind === "inning-transition") {
+        lastPlayEnding = null;
+      }
+    } else if (adapted.kind === "scene-setter") {
+      lastPlayEnding = null;
+    }
+    cards.push(adapted);
   }
 
   return {
@@ -112,7 +144,26 @@ function adaptSceneCard(
     homeProbablePitcher: deck.homeProbablePitcher ?? null,
     awayProbablePitcher: deck.awayProbablePitcher ?? null,
     venue: deck.venue ?? null,
+    isFinal: deck.isFinal,
+    gamePhase: deriveGamePhase(deck),
   };
+}
+
+
+/**
+ * Classify the upstream game into scheduled / live / final from the three
+ * signals the deck response already carries. Pure — easy to unit-test.
+ *
+ * `lastPlayIndex > 0` is the live threshold (not `>= 0`): a 0-indexed
+ * placeholder is treated as pre-game to keep the pre-first-pitch UI stable.
+ * `isFinal` wins outright when set, even if the play index is missing.
+ */
+export function deriveGamePhase(
+  deck: Pick<SdmDeckResponse, "isFinal" | "lastPlayIndex">,
+): "scheduled" | "live" | "final" {
+  if (deck.isFinal) return "final";
+  if ((deck.lastPlayIndex ?? -1) > 0) return "live";
+  return "scheduled";
 }
 
 
@@ -428,6 +479,18 @@ function parsePlayIndex(playId: string): number {
 
 function emptyBases(): BaseballBaseState {
   return { first: false, second: false, third: false };
+}
+
+
+function snapshotPlayEnding(card: PlayCardData): PriorAfterState {
+  return {
+    score: card.scoreAfter,
+    baseState: card.baseStateAfter,
+    runnerNames: (card.runnerNamesAfter ?? {}) as RunnerNames,
+    outs: card.outsAfter,
+    inning: card.inning,
+    inningHalf: card.inningHalf,
+  };
 }
 
 

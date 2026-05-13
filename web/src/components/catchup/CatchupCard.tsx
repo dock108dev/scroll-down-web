@@ -24,12 +24,15 @@ import { resultChipTier, type ChipTier } from "@/lib/result-chip";
 import { buildRunnerMovements, totalRunnersDurationMs } from "@/lib/runner-paths";
 import { BaseballLightField } from "./BaseballLightField";
 import { CardNarrative } from "./CardNarrative";
+import { CardDebugOverlay } from "./CardDebugOverlay";
 
 interface CatchupCardProps {
   card: PlayCardData;
   homeTeamAbbr: string;
   awayTeamAbbr: string;
   isActive: boolean;
+  /** When true, render a per-card validation overlay (BRAINDUMP loop). */
+  showDebug?: boolean;
 }
 
 /**
@@ -53,7 +56,7 @@ interface CatchupCardProps {
  * Sentence + chevron come in at reveal.
  */
 export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function CatchupCard(
-  { card, homeTeamAbbr, awayTeamAbbr, isActive },
+  { card, homeTeamAbbr, awayTeamAbbr, isActive, showDebug = false },
   ref,
 ) {
   const battingTeam = findMlbTeam(card.battingTeamAbbr);
@@ -147,11 +150,6 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const narrativeText = (card.narrative ?? card.description ?? "").trim();
   const narrativeVisible = phase === "settle" || phase === "reveal";
 
-  // Validation moved to the backend in Phase 3. The deck endpoint runs
-  // play-card validation server-side and surfaces findings via
-  // `validationWarnings` on the response. Dev-only frontend assertion is
-  // no longer the source of truth.
-
   const battingTeamName = battingTeam?.name ?? card.battingTeamAbbr ?? null;
   const hasCount =
     typeof situation.balls === "number" && typeof situation.strikes === "number";
@@ -203,8 +201,30 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       data-leverage-tier={leverageTier}
       data-score-margin={clampedMargin}
       className="catchup-card-snap"
-      style={phaseVars as React.CSSProperties}
+      style={
+        showDebug
+          ? ({ ...phaseVars, position: "relative" } as React.CSSProperties)
+          : (phaseVars as React.CSSProperties)
+      }
     >
+      {showDebug && (
+        <CardDebugOverlay
+          cardIndex={card.index}
+          cardType={card.kind}
+          scoreBefore={card.scoreBefore}
+          scoreAfter={card.scoreAfter}
+          outsBefore={outsBefore}
+          outsAfter={outsAfter}
+          basesBefore={baseStateBefore}
+          basesAfter={baseStateAfter}
+          countBefore={
+            hasCount
+              ? { balls: situation.balls!, strikes: situation.strikes! }
+              : null
+          }
+          phase={phase}
+        />
+      )}
       <header className="catchup-card-header" data-testid="score-panel">
         <div className="catchup-card-meta-row">
           <div className="catchup-card-meta-left">
@@ -264,8 +284,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
             {hasCount && (
               <span
                 className="catchup-card-count"
-                data-visible={showAfter ? "true" : "false"}
-                aria-hidden={!showAfter}
+                data-visible="true"
               >
                 {(situation.batterName || situation.pitcherName) && (
                   <span className="catchup-card-count-sep" aria-hidden>·</span>

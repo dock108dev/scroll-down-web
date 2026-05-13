@@ -49,6 +49,15 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
   const [revealed, setRevealed] = useState(false);
   const [restartToken, setRestartToken] = useState(0);
 
+  // ── Debug overlay toggle ──────────────────────────────
+  // `?debug=true` enables per-card validation overlays on play and rhythm
+  // cards. Read from the URL once on mount; the value is stable for the
+  // lifetime of the catch-up flow so we don't subscribe to navigation events.
+  const [showDebug] = useState(() => {
+    if (typeof window === "undefined") return false;
+    return new URLSearchParams(window.location.search).get("debug") === "true";
+  });
+
   // ── Take over the viewport while the catch-up flow is mounted ─
   // The flow's page-shell is `height: 100dvh − topnav` and owns its own
   // scroll surface (the scroller). Without locking the document body,
@@ -202,6 +211,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
                   key={card.cardId}
                   card={card}
                   isActive={activeIndex === i}
+                  showDebug={showDebug}
                 />
               );
             }
@@ -213,6 +223,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
                   homeTeamAbbr={homeTeamAbbr}
                   awayTeamAbbr={awayTeamAbbr}
                   isActive={activeIndex === i}
+                  showDebug={showDebug}
                 />
               );
             }

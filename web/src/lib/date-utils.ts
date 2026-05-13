@@ -2,7 +2,7 @@
  * Centralized Eastern-timezone date utilities.
  * SSOT for all date bucketing, formatting, and range calculations.
  *
- * Sports schedules are interpreted in US/Eastern (NHL/NBA/MLB convention).
+ * MLB schedules are interpreted in US/Eastern (league convention).
  * Never mix browser-local calendar arithmetic with Eastern — use
  * `easternCalendarToday` + `addDaysCalendar` for YYYY-MM-DD ranges.
  */

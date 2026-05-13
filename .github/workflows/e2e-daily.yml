@@ -45,7 +45,6 @@ jobs:
           NEXT_TELEMETRY_DISABLED: 1
           SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
           NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
-          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
@@ -56,7 +55,6 @@ jobs:
         env:
           SPORTS_DATA_API_KEY: ${{ secrets.SPORTS_DATA_API_KEY }}
           NEXT_PUBLIC_SCROLLDOWN_E2E: "1"
-          MAGIC_LINK_SECRET: ${{ secrets.MAGIC_LINK_SECRET || 'scroll-down-ci-default-magic-link-secret-for-e2e-only-48chars' }}
 
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}

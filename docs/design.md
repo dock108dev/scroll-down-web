@@ -1,6 +1,6 @@
 # Design Principles & Patterns
 
-The customer-voice direction lives in [`../BRAINDUMP.md`](../BRAINDUMP.md). This file is the developer-facing translation: what the principles imply for code organization, naming, and component composition. When the two disagree, BRAINDUMP wins.
+The customer-voice direction lives in [`BRAINDUMP.md`](../../BRAINDUMP.md) at the workspace root (one level above this repo). This file is the developer-facing translation: what the principles imply for code organization, naming, and component composition. When the two disagree, BRAINDUMP wins.
 
 ## Principles
 

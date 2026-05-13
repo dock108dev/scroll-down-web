@@ -98,13 +98,22 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             var host = location.hostname;
             var isLocal = host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
             if (isLocal) {
+              // Localhost SW/cache cleanup: failures are non-fatal (worst case
+              // is a stale worker that the next hard-refresh evicts), but log
+              // so a developer chasing a stuck SW sees something in the
+              // console instead of silence. See
+              // docs/audits/error-handling-report.md §I4.
               navigator.serviceWorker.getRegistrations().then(function (regs) {
                 regs.forEach(function (r) { r.unregister(); });
-              }).catch(function () {});
+              }).catch(function (err) {
+                console.warn('SW unregister failed:', err);
+              });
               if (window.caches && caches.keys) {
                 caches.keys().then(function (keys) {
                   keys.forEach(function (k) { caches.delete(k); });
-                }).catch(function () {});
+                }).catch(function (err) {
+                  console.warn('SW cache cleanup failed:', err);
+                });
               }
             } else {
               window.addEventListener('load', function () {
