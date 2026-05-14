@@ -16,7 +16,38 @@ export const BASE_ORDER: readonly BaseName[] = ["home", "first", "second", "thir
 /** Number of segments in a base path — used for duration scaling. */
 export function pathSegmentCount(from: BaseName, to: BaseName | "out"): number {
   if (to === "out") return 0;
-  return getBasepathRoute(from, to).length - 1;
+  return getBasepathBaseRoute(from, to).length - 1;
+}
+
+/**
+ * Return the ordered list of bases from `from` to `to`, inclusive on both
+ * ends. A home-run batter goes home → first → second → third → home. A
+ * runner from second to home goes second → third → home.
+ */
+export function getBasepathBaseRoute(from: BaseName, to: BaseName): BaseName[] {
+  // No movement.
+  if (from === to && from !== "home") {
+    return [from];
+  }
+
+  // Special case: home → home means a full lap (home run for the batter).
+  if (from === "home" && to === "home") {
+    return ["home", "first", "second", "third", "home"];
+  }
+
+  // Walk forward through BASE_ORDER from `from` until we reach `to`.
+  // Note this does NOT include the wrap-around for home → home (handled
+  // above) — every other case takes at most 4 forward steps.
+  const bases: BaseName[] = [from];
+  let i = BASE_ORDER.indexOf(from);
+  // Cap iterations at 4 so a malformed input can't infinite-loop.
+  for (let n = 0; n < 4; n++) {
+    i = (i + 1) % BASE_ORDER.length;
+    const stop = BASE_ORDER[i];
+    bases.push(stop);
+    if (stop === to) break;
+  }
+  return bases;
 }
 
 /**
@@ -26,35 +57,7 @@ export function pathSegmentCount(from: BaseName, to: BaseName | "out"): number {
  * second → third → home (3 points / 2 segments).
  */
 export function getBasepathRoute(from: BaseName, to: BaseName): Point[] {
-  // No movement.
-  if (from === to && from !== "home") {
-    return [FIELD_POINTS[from]];
-  }
-
-  // Special case: home → home means a full lap (home run for the batter).
-  if (from === "home" && to === "home") {
-    return [
-      FIELD_POINTS.home,
-      FIELD_POINTS.first,
-      FIELD_POINTS.second,
-      FIELD_POINTS.third,
-      FIELD_POINTS.home,
-    ];
-  }
-
-  // Walk forward through BASE_ORDER from `from` until we reach `to`.
-  // Note this does NOT include the wrap-around for home → home (handled
-  // above) — every other case takes at most 4 forward steps.
-  const points: Point[] = [FIELD_POINTS[from]];
-  let i = BASE_ORDER.indexOf(from);
-  // Cap iterations at 4 so a malformed input can't infinite-loop.
-  for (let n = 0; n < 4; n++) {
-    i = (i + 1) % BASE_ORDER.length;
-    const stop = BASE_ORDER[i];
-    points.push(FIELD_POINTS[stop]);
-    if (stop === to) break;
-  }
-  return points;
+  return getBasepathBaseRoute(from, to).map((base) => FIELD_POINTS[base]);
 }
 
 /** Emit an SVG path string ("M x y L x y L x y …") for the basepath. */
@@ -109,7 +112,20 @@ export interface RunnerMovement {
   /** Per-style timing knob: ms to pulse the destination as the runner
    *  arrives. 0 = no arrival pulse. */
   arrivalPulseMs: number;
+  /** Ordered base route used by the animated marker. */
+  routeBases: BaseName[];
+  /** Terminal semantic for the route. Safe scoring ends at `score`, not a
+   *  persistent home-base occupant. */
+  endsAt: BaseName | "score" | "out";
   /** Original advance — preserved for any downstream needs. */
+  advance: RunnerAdvance;
+}
+
+export interface RunnerRoute {
+  runnerId?: string;
+  runnerLabel: string;
+  bases: BaseName[];
+  endsAt: BaseName | "score" | "out";
   advance: RunnerAdvance;
 }
 
@@ -187,18 +203,8 @@ export function buildRunnerMovements(
   advances: RunnerAdvance[],
   eventType?: PlayEventType,
 ): RunnerMovement[] {
-  const renderableAdvances = sanitizeRunnerAdvances(advances);
-  // Lead-runner ordering: third before second before first before home (batter).
-  const order: Record<BaseName, number> = { third: 0, second: 1, first: 2, home: 3 };
-  const sorted = [...renderableAdvances].sort((a, b) => {
-    const oa = order[a.from] ?? 4;
-    const ob = order[b.from] ?? 4;
-    if (oa !== ob) return oa - ob;
-    // Tiebreak: scoring moves before non-scoring (rare, but stable).
-    const sa = a.to === "home" ? 0 : 1;
-    const sb = b.to === "home" ? 0 : 1;
-    return sa - sb;
-  });
+  const routes = buildRunnerRoutes(advances);
+  const sorted = routes.map((route) => route.advance);
 
   // Stagger walks the SAME style across siblings — pick the dominant
   // (most numerous) style for the play and apply its stagger uniformly.
@@ -208,7 +214,8 @@ export function buildRunnerMovements(
   const dominantStyle = pickDominantStyle(sorted, eventType);
   const sharedStagger = STYLE_TIMING[dominantStyle].staggerMs;
 
-  return sorted.map((adv, i): RunnerMovement => {
+  return routes.map((route, i): RunnerMovement => {
+    const adv = route.advance;
     const style = classifyRunnerStyle(adv, eventType);
     const t = STYLE_TIMING[style];
     const segs = adv.to === "out" ? 1 : pathSegmentCount(adv.from, adv.to);
@@ -225,6 +232,41 @@ export function buildRunnerMovements(
       style,
       trailFadeMs: t.trailFadeMs,
       arrivalPulseMs: t.arrivalPulseMs,
+      routeBases: route.bases,
+      endsAt: route.endsAt,
+      advance: adv,
+    };
+  });
+}
+
+/**
+ * Deterministic base-running routes. This only consumes explicit movement
+ * entries from the event/DTO layer; it does not diff base state or invent
+ * motion. The one special case is represented in the explicit movement
+ * itself: a home-run batter is `home → home`, which expands to a full lap.
+ */
+export function buildRunnerRoutes(advances: RunnerAdvance[]): RunnerRoute[] {
+  const renderableAdvances = sanitizeRunnerAdvances(advances);
+  // Lead-runner ordering: third before second before first before home (batter).
+  const order: Record<BaseName, number> = { third: 0, second: 1, first: 2, home: 3 };
+  const sorted = [...renderableAdvances].sort((a, b) => {
+    const oa = order[a.from] ?? 4;
+    const ob = order[b.from] ?? 4;
+    if (oa !== ob) return oa - ob;
+    // Tiebreak: scoring moves before non-scoring (rare, but stable).
+    const sa = a.to === "home" ? 0 : 1;
+    const sb = b.to === "home" ? 0 : 1;
+    return sa - sb;
+  });
+
+  return sorted.map((adv): RunnerRoute => {
+    const destination = adv.to === "out" ? adv.outAt : adv.to;
+    const bases = destination ? getBasepathBaseRoute(adv.from, destination) : [adv.from];
+    return {
+      runnerId: adv.runnerId,
+      runnerLabel: adv.runnerName ?? adv.runnerId ?? "runner",
+      bases,
+      endsAt: adv.to === "out" ? "out" : adv.to === "home" ? "score" : adv.to,
       advance: adv,
     };
   });

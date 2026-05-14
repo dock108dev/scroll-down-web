@@ -161,8 +161,10 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const outsAfter = card.outsAfter;
   const baseStateBefore = situation.baseState;
   const baseStateAfter = card.baseStateAfter;
-  const visibleBaseState = revealRequested ? baseStateAfter : baseStateBefore;
-  const visibleRunnerNames = revealRequested ? card.runnerNamesAfter : card.runnerNamesBefore;
+  const runnersHaveSettled =
+    revealRequested && (phase === "settle" || phase === "reveal" || phase === "advance");
+  const visibleBaseState = runnersHaveSettled ? baseStateAfter : baseStateBefore;
+  const visibleRunnerNames = runnersHaveSettled ? card.runnerNamesAfter : card.runnerNamesBefore;
   const priorAfter = card.priorAfter;
   // Bridging beat is meaningful only when the prior state actually differs
   // from this card's beforeState. Otherwise mounting straight into setup

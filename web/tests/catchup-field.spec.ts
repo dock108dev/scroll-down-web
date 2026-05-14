@@ -213,6 +213,8 @@ test.describe("@smoke field rendering", () => {
     await card.getByRole("button", { name: /reveal pitch/i }).click();
     await expect(card).toHaveAttribute("data-reveal-state", "revealing");
     await expect(card).toHaveAttribute("data-event-type", "single");
+    await expect(card.locator("[data-testid='base-bulb'][data-base='third']")).toHaveCount(1);
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='third']")).toHaveAttribute("data-runner", "R DEVERS");
     await expect(card.locator("[data-testid='result-badge']")).toBeVisible();
     expect(await card.locator("[data-testid='runner-marker'], [data-testid='run-scored']").count()).toBeGreaterThan(0);
     expect(await card.locator(".field-runner-direction-dot").count()).toBeGreaterThan(0);
@@ -222,6 +224,98 @@ test.describe("@smoke field rendering", () => {
     await expect(card.locator("[data-testid='runner-marker'], [data-testid='run-scored']")).toHaveCount(0);
     await expect(card.locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
     await expect(card.locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "C SCHMITT");
+  });
+
+  test("home run batter runs a full basepath lap before the field clears", async ({ page }) => {
+    const homer = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-solo-hr-route`,
+      sortOrder: 1,
+      inning: 3,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        playId: "30001",
+        eventType: "home_run",
+        label: "HOME RUN",
+        subLabel: "SOLO SHOT",
+        description: "Cal Raleigh circles the bases.",
+        batterName: "Cal Raleigh",
+        outsBefore: 0,
+        outsAfter: 0,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: false, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: {},
+        scoreBefore: { home: 0, away: 0 },
+        runsScoredOnPlay: 1,
+      },
+      visual: {
+        trajectory: "home_run_center",
+        intensity: "high",
+        animationProfile: "home_run",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), homer] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const card = page.locator("[data-testid='play-card']").first();
+    await card.getByRole("button", { name: /reveal pitch/i }).click();
+    const route = "home-first-second-third-home";
+    await expect(card.locator("[data-testid='run-scored']")).toHaveAttribute("data-route", route);
+    await expect(card.locator(".field-runner-guide")).toHaveAttribute("data-route", route);
+    await expect(card.locator(".field-runner-direction-dot")).toHaveCount(4);
+    await expect(card.locator("[data-testid='play-narration-panel']")).toHaveAttribute("data-visible", "true");
+    await expect(card.locator("[data-testid='run-scored']")).toHaveCount(0);
+    await expect(card.locator("[data-testid='base-bulb']")).toHaveCount(0);
+  });
+
+  test("extra-base batter movement follows each base instead of flashing at the destination", async ({ page }) => {
+    const double = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-batter-double-route`,
+      sortOrder: 1,
+      inning: 4,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        playId: "40001",
+        eventType: "double",
+        label: "DOUBLE",
+        subLabel: null,
+        description: "Nico Hoerner doubles into the gap.",
+        batterName: "Nico Hoerner",
+        outsBefore: 0,
+        outsAfter: 0,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: false, second: true, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: { second: "Nico Hoerner" },
+        scoreBefore: { home: 0, away: 0 },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "line_center",
+        intensity: "medium",
+        animationProfile: "line_drive",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), double] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const card = page.locator("[data-testid='play-card']").first();
+    await card.getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(card.locator("[data-testid='runner-marker']")).toHaveAttribute("data-route", "home-first-second");
+    await expect(card.locator(".field-runner-direction-dot")).toHaveCount(2);
+    await expect(card.locator("[data-testid='play-narration-panel']")).toHaveAttribute("data-visible", "true");
+    await expect(card.locator("[data-testid='runner-marker']")).toHaveCount(0);
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='second']")).toHaveAttribute("data-runner", "N HOERNER");
   });
 
   test("walk and strikeout previews do not leak base or out changes", async ({ page }) => {

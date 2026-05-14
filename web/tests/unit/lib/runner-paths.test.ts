@@ -3,7 +3,9 @@ import {
   basepathLength,
   basepathSvgPath,
   buildRunnerMovements,
+  buildRunnerRoutes,
   classifyRunnerStyle,
+  getBasepathBaseRoute,
   getBasepathRoute,
   pathSegmentCount,
   totalRunnersDurationMs,
@@ -126,6 +128,23 @@ describe("getBasepathRoute", () => {
   });
 });
 
+describe("getBasepathBaseRoute", () => {
+  it("names every base touched by a home-run batter", () => {
+    expect(getBasepathBaseRoute("home", "home")).toEqual([
+      "home",
+      "first",
+      "second",
+      "third",
+      "home",
+    ]);
+  });
+
+  it("names every base touched by extra-base hits", () => {
+    expect(getBasepathBaseRoute("home", "second")).toEqual(["home", "first", "second"]);
+    expect(getBasepathBaseRoute("home", "third")).toEqual(["home", "first", "second", "third"]);
+  });
+});
+
 describe("pathSegmentCount", () => {
   it("counts segments correctly for common advances", () => {
     expect(pathSegmentCount("home", "first")).toBe(1);
@@ -179,6 +198,8 @@ describe("buildRunnerMovements (HR sequencing)", () => {
     ];
     const [third, batter] = buildRunnerMovements(advances);
     expect(batter.durationMs).toBeGreaterThan(third.durationMs);
+    expect(batter.routeBases).toEqual(["home", "first", "second", "third", "home"]);
+    expect(batter.endsAt).toBe("score");
   });
 
   it("flags scoring movements", () => {
@@ -188,6 +209,28 @@ describe("buildRunnerMovements (HR sequencing)", () => {
     ]);
     expect(movements.find((m) => m.from === "third")?.scores).toBe(true);
     expect(movements.find((m) => m.from === "first")?.scores).toBe(false);
+  });
+});
+
+describe("buildRunnerRoutes", () => {
+  it("builds deterministic base-running routes from explicit movements only", () => {
+    const routes = buildRunnerRoutes([
+      { from: "home", to: "second", runnerName: "Nico Hoerner" },
+      { from: "second", to: "home", runnerName: "Dansby Swanson" },
+    ]);
+    expect(routes.map((route) => route.runnerLabel)).toEqual(["Dansby Swanson", "Nico Hoerner"]);
+    expect(routes[0].bases).toEqual(["second", "third", "home"]);
+    expect(routes[0].endsAt).toBe("score");
+    expect(routes[1].bases).toEqual(["home", "first", "second"]);
+    expect(routes[1].endsAt).toBe("second");
+  });
+
+  it("keeps a home-run batter as a full lap, not a home-plate flash", () => {
+    const [route] = buildRunnerRoutes([
+      { from: "home", to: "home", runnerName: "Cal Raleigh" },
+    ]);
+    expect(route.bases).toEqual(["home", "first", "second", "third", "home"]);
+    expect(route.endsAt).toBe("score");
   });
 });
 

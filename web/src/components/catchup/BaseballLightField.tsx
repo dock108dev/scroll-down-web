@@ -938,6 +938,7 @@ function RunnerAdvanceGuideSvg({
   const beginMs = runnersStart + movement.beginMs;
   const fadeMs = beginMs + movement.durationMs + Math.max(120, movement.trailFadeMs);
   const route = getBasepathRoute(movement.from, destination);
+  const routeBases = movement.routeBases;
   const guideDots = route.slice(1).map((point, i) => {
     const prev = route[i];
     return {
@@ -950,7 +951,12 @@ function RunnerAdvanceGuideSvg({
   const destinationPoint = FIELD_POINTS[destination];
 
   return (
-    <g className="field-runner-guide" data-style={movement.style}>
+    <g
+      className="field-runner-guide"
+      data-style={movement.style}
+      data-route={routeBases.join("-")}
+      data-ends-at={movement.endsAt}
+    >
       <circle
         className="field-runner-base-pulse field-runner-base-pulse-origin"
         cx={origin.x}
@@ -1027,6 +1033,8 @@ function RunnerDotSvg({
         data-testid="runner-marker"
         data-from={movement.from}
         data-to="out"
+        data-route={movement.routeBases.join("-")}
+        data-ends-at={movement.endsAt}
       />
     );
   }
@@ -1039,6 +1047,7 @@ function RunnerDotSvg({
   const isOut = movement.to === "out";
   const destination = movement.to === "out" ? movement.outAt! : movement.to;
   const path = basepathSvgPath(movement.from, destination);
+  const route = movement.routeBases.join("-");
   const isHome = movement.scores;
   const isOutShrink =
     style === "double_play" || style === "forced_out" || style === "tagged_out";
@@ -1101,6 +1110,8 @@ function RunnerDotSvg({
         data-out-at={movement.outAt}
         data-style={style}
         data-scores={isHome ? "true" : "false"}
+        data-route={route}
+        data-ends-at={movement.endsAt}
       >
         {/* For shrink-out styles the opacity is animated, so we skip the
             <set> reveal and let the values list begin from full opacity. */}
