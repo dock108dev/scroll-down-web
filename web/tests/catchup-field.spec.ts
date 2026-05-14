@@ -108,10 +108,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "line_center",
-        runnerMovements: [
-          { runner: "Devers", from: "third", to: "home", style: "score" },
-          { runner: "Schmitt", from: "home", to: "first", style: "advance" },
-        ],
         intensity: "medium",
         animationProfile: "line_drive",
       },
@@ -162,10 +158,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "line_center",
-        runnerMovements: [
-          { runner: "Devers", from: "third", to: "home", style: "score" },
-          { runner: "Schmitt", from: "home", to: "first", style: "advance" },
-        ],
         intensity: "medium",
         animationProfile: "line_drive",
       },
@@ -212,7 +204,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "pitch",
-        runnerMovements: [{ runner: "Xavier Edwards", from: "home", to: "first", style: "advance" }],
         intensity: "low",
         animationProfile: "walk",
       },
@@ -240,7 +231,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "pitch",
-        runnerMovements: [],
         intensity: "low",
         animationProfile: "strikeout",
       },
@@ -289,7 +279,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "pitch",
-        runnerMovements: [{ runner: "Xavier Edwards", from: "home", to: "first", style: "walk_shuffle" }],
         intensity: "low",
         animationProfile: "walk",
       },
@@ -315,10 +304,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "line_right",
-        runnerMovements: [
-          { runner: "Xavier Edwards", from: "first", to: "second", style: "advance" },
-          { runner: "Casey Schmitt", from: "home", to: "first", style: "advance" },
-        ],
         intensity: "medium",
         animationProfile: "line_drive",
       },
@@ -372,7 +357,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "none",
-        runnerMovements: [{ runner: "Casey Schmitt", from: "home", to: "second", style: "advance" }],
         intensity: "medium",
         animationProfile: "line_drive",
       },
@@ -480,7 +464,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "pitch",
-        runnerMovements: [],
         intensity: "low",
         animationProfile: "strikeout",
       },
@@ -526,7 +509,12 @@ test.describe("@smoke field rendering", () => {
     await cards.first().getByRole("button", { name: /reveal pitch/i }).click();
     await expect(cards.first()).not.toHaveAttribute("data-reveal-state", "preview");
 
-    await expect(cards.nth(1)).toHaveAttribute("data-active", "true", { timeout: 12000 });
+    // Auto-advance is gated on the phase machine reaching `advance` (post
+    // narrative fade-in), not the moment reveal is requested. The strikeout
+    // schedule lands in `advance` around ~2.9s, so the 10s auto-advance
+    // delay scrolls the next card in at ~12.9s. Allow generous headroom
+    // for CI variance.
+    await expect(cards.nth(1)).toHaveAttribute("data-active", "true", { timeout: 16000 });
     await expect(cards.nth(1)).toHaveAttribute("data-reveal-state", "preview");
   });
 
@@ -549,7 +537,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "ground_ss",
-        runnerMovements: [],
         intensity: "medium",
         animationProfile: "double_play_grounder",
       },
@@ -574,7 +561,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "ground_2b",
-        runnerMovements: [],
         intensity: "low",
         animationProfile: "routine_grounder",
       },
@@ -618,7 +604,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "pitch",
-        runnerMovements: [{ runner: "Corbin Carroll", from: "first", to: "second", style: "advance" }],
         intensity: "low",
         animationProfile: "strikeout",
       },
@@ -641,7 +626,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "none",
-        runnerMovements: [{ runner: "Josh Jung", from: "second", to: "third", style: "advance" }],
         intensity: "low",
         animationProfile: "shallow_fly",
       },
@@ -677,6 +661,125 @@ test.describe("@smoke field rendering", () => {
     await expect(cards.nth(1).locator(".field-ball-trail")).toHaveCount(0);
   });
 
+  test("two pre-pitch runners render both bulbs and labels without user interaction", async ({ page }) => {
+    // Per BRAINDUMP: runners are not spoilers. A card whose before-state
+    // already has two runners on base must render both base indicators
+    // AND both first-initial last-name labels at first paint — the user
+    // should see the diamond context before clicking reveal.
+    const twoRunnersAtBat = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-two-runner-preview`,
+      sortOrder: 1,
+      inning: 5,
+      half: "bottom",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "field_out",
+        label: "FLYOUT",
+        description: "A flyout with two runners on; both hold their bases.",
+        outsBefore: 0,
+        outsAfter: 1,
+        baseStateBefore: { first: true, second: true, third: false },
+        baseStateAfter: { first: true, second: true, third: false },
+        runnerNamesBefore: { first: "Casey Schmitt", second: "Rafael Devers" },
+        runnerNamesAfter: { first: "Casey Schmitt", second: "Rafael Devers" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "fly_cf",
+        intensity: "medium",
+        animationProfile: "shallow_fly",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), twoRunnersAtBat] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const card = page.locator("[data-testid='play-card']").first();
+    await expect(card).toHaveAttribute("data-reveal-state", "preview");
+    // Both base indicators are lit pre-pitch.
+    await expect(card.locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
+    await expect(card.locator("[data-testid='base-bulb'][data-base='second']")).toHaveCount(1);
+    await expect(card.locator("[data-testid='base-bulb'][data-base='third']")).toHaveCount(0);
+    // Both runner labels are visible pre-pitch in FIRST_INITIAL LAST_NAME form.
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='first']"))
+      .toHaveAttribute("data-runner", "C SCHMITT");
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='second']"))
+      .toHaveAttribute("data-runner", "R DEVERS");
+    // No runner-movement overlays exist before the user interacts.
+    await expect(card.locator("[data-testid='runner-marker']")).toHaveCount(0);
+  });
+
+  test("held-runner label DOM survives reveal without remount across all reveal states", async ({ page }) => {
+    // Runner labels are scene context, not reveal content. For a held
+    // runner (same name, same base before/after) the underlying DOM node
+    // must stay mounted across preview → revealing → revealed/advance so
+    // the label does not flicker or rerender from scratch.
+    const heldOnSecond = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-held-runner-stability`,
+      sortOrder: 1,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "strikeout",
+        label: "STRIKEOUT",
+        description: "Strikeout looking; the runner on second holds.",
+        outsBefore: 0,
+        outsAfter: 1,
+        baseStateBefore: { first: false, second: true, third: false },
+        baseStateAfter: { first: false, second: true, third: false },
+        runnerNamesBefore: { second: "Josh Jung" },
+        runnerNamesAfter: { second: "Josh Jung" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "pitch",
+        intensity: "low",
+        animationProfile: "strikeout",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), heldOnSecond] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const card = page.locator("[data-testid='play-card']").first();
+    const label = card.locator("[data-testid='base-runner-label'][data-base='second']");
+    await expect(label).toHaveAttribute("data-runner", "J JUNG");
+
+    // Tag the underlying SVG <g> with a unique marker attribute before
+    // reveal. If React remounts the node on reveal, the marker is lost
+    // and the post-reveal lookup will fail.
+    await label.evaluate((el) => {
+      el.setAttribute("data-stability-marker", "preview-paint");
+    });
+
+    await card.getByRole("button", { name: /reveal pitch/i }).click();
+
+    // Same locator must resolve to the same DOM node — preserved marker
+    // proves no remount happened across the reveal-state transition.
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='second'][data-stability-marker='preview-paint']"))
+      .toHaveCount(1);
+    await expect(label).toHaveAttribute("data-runner", "J JUNG");
+
+    // Label has no transition or animation on opacity — would cause a
+    // visible flicker if it did. The CSS contract is enforced by inspecting
+    // computed style: animation-name must be 'none' and transition-property
+    // must not target opacity.
+    const labelAnimation = await label.evaluate((el) => {
+      const style = window.getComputedStyle(el);
+      return {
+        animation: style.animationName,
+        transitionProperty: style.transitionProperty,
+      };
+    });
+    expect(labelAnimation.animation).toBe("none");
+    expect(labelAnimation.transitionProperty).not.toMatch(/\bopacity\b/);
+  });
+
   test("inning-ending out clears bases without fake stranded-runner movement", async ({ page }) => {
     const inningEnder = makePlayCard({
       id: `${DEFAULT_GAME_ID}-inning-ending-out`,
@@ -698,7 +801,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "ground_2b",
-        runnerMovements: [{ runner: "Maxwell Waldschmidt", from: "first", to: "second", style: "advance" }],
         intensity: "low",
         animationProfile: "routine_grounder",
       },
@@ -723,7 +825,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "none",
-        runnerMovements: [],
         intensity: "low",
         animationProfile: "shallow_fly",
       },
@@ -777,7 +878,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "pitch",
-        runnerMovements: [],
         intensity: "low",
         animationProfile: "walk",
       },
@@ -801,7 +901,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "ground_3b",
-        runnerMovements: [],
         intensity: "medium",
         animationProfile: "routine_grounder",
       },
@@ -869,7 +968,6 @@ test.describe("@smoke field rendering", () => {
       },
       visual: {
         trajectory: "home_run_center",
-        runnerMovements: [],
         intensity: "high",
         animationProfile: "home_run",
       },
@@ -932,7 +1030,6 @@ test.describe("@smoke field rendering", () => {
         },
         visual: {
           trajectory: p.trajectory,
-          runnerMovements: [],
           intensity: "medium",
           animationProfile: p.profile,
         },

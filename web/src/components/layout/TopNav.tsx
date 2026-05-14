@@ -13,7 +13,7 @@ export function TopNav() {
   return (
     <header
       data-testid="top-nav"
-      className="sticky top-0 z-40 border-b border-[rgba(245,239,220,0.12)] bg-[#050807]/85 text-[#f5efdc] backdrop-blur"
+      className="sticky top-0 z-40 border-b border-[rgba(245,239,220,0.12)] bg-[#050807]/85 text-[#f5efdc] backdrop-blur pt-[env(safe-area-inset-top)]"
     >
       <nav className="mx-auto flex h-14 max-w-3xl items-center px-4">
         <Link href="/" className="flex items-center gap-2.5 min-h-[44px] text-[#f5efdc]">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useCatchupCards } from "@/hooks/useCatchupCards";
 import { useCatchupProgress } from "@/stores/catchup-progress";
@@ -55,6 +55,11 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
   const [targetIndex, setTargetIndex] = useState<number | undefined>();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [revealedPlayIds, setRevealedPlayIds] = useState<Record<string, true>>({});
+  // Tracks which cards' phase machines have completed the `advance`
+  // transition (narrative fade-in done). Auto-advance is gated on this
+  // rather than on `revealedPlayIds` so the timer only starts after a
+  // fully-revealed card per the BRAINDUMP 4-phase model.
+  const [advanceReadyPlayIds, setAdvanceReadyPlayIds] = useState<Record<string, true>>({});
 
   // ── Debug overlay toggle ──────────────────────────────
   // `?debug=true` enables per-card validation overlays on play and rhythm
@@ -98,6 +103,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
     }
     setRevealed(false);
     setRevealedPlayIds({});
+    setAdvanceReadyPlayIds({});
     setSettingsOpen(false);
     setActiveIndex(0);
     setTargetIndex(0);
@@ -140,9 +146,27 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
   const activePlayCard = activeSlide?.kind === "play" ? activeSlide : null;
   const activePlayId = activePlayCard?.cardId ?? null;
   const activePlayRevealed = activePlayId ? revealedPlayIds[activePlayId] === true : false;
+  const activePlayAdvanceReady = activePlayId ? advanceReadyPlayIds[activePlayId] === true : false;
+
+  // Live mirror of activePlayId. The auto-advance timer captures this ref
+  // (not the closure) so a callback that fires in the narrow window between
+  // the user scrolling and React re-rendering reads the post-scroll value
+  // and skips the stale advance. Sync via useLayoutEffect so the ref is
+  // current before the browser paints the new render and before any timer
+  // macrotask runs.
+  const activePlayIdRef = useRef<string | null>(activePlayId);
+  useLayoutEffect(() => {
+    activePlayIdRef.current = activePlayId;
+  }, [activePlayId]);
 
   const revealPlay = useCallback((cardId: string) => {
     setRevealedPlayIds((prev) => (
+      prev[cardId] ? prev : { ...prev, [cardId]: true }
+    ));
+  }, []);
+
+  const markAdvanceReady = useCallback((cardId: string) => {
+    setAdvanceReadyPlayIds((prev) => (
       prev[cardId] ? prev : { ...prev, [cardId]: true }
     ));
   }, []);
@@ -159,16 +183,26 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
     return Math.min(Math.max(0, saved), slideKeys.length - 1);
   }, [savedEntry, cards.length, slideKeys.length]);
 
+  // Auto-advance fires only after the active card has fully revealed
+  // (phase machine reached `advance`). The timer callback reads
+  // activePlayIdRef.current — not the closure — to close the race window
+  // where the timer fires just before React processes a scroll-driven
+  // activeIndex change. Without the ref read, both the timer's
+  // advanceFromPlay closure and its activePlayId arg are captured from the
+  // same render, so the secondary `activePlayId !== cardId` guard inside
+  // advanceFromPlay can't tell that the user has already moved on.
   useEffect(() => {
     if (!activePlayId) return;
-    if (!activePlayRevealed) return;
+    if (!activePlayAdvanceReady) return;
     if (autoAdvanceDelayMs <= 0) return;
     if (settingsOpen) return;
+    const capturedId = activePlayId;
     const timer = window.setTimeout(() => {
-      advanceFromPlay(activePlayId);
+      if (activePlayIdRef.current !== capturedId) return;
+      advanceFromPlay(capturedId);
     }, autoAdvanceDelayMs);
     return () => window.clearTimeout(timer);
-  }, [activePlayId, activePlayRevealed, autoAdvanceDelayMs, settingsOpen, advanceFromPlay]);
+  }, [activePlayId, activePlayAdvanceReady, autoAdvanceDelayMs, settingsOpen, advanceFromPlay]);
 
   // ── Auto-apply newer decks when caught up ─────────────
   // The hook stages newer decks as `pendingDeck` rather than swapping in
@@ -215,6 +249,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
       data-settings-open={settingsOpen ? "true" : "false"}
       data-active-play-id={activePlayId ?? ""}
       data-active-play-revealed={activePlayRevealed ? "true" : "false"}
+      data-active-play-advance-ready={activePlayAdvanceReady ? "true" : "false"}
     >
       <CatchupHeader
         awayTeamAbbr={awayTeamAbbr}
@@ -273,6 +308,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
                   isActive={activeIndex === i}
                   isRevealed={revealedPlayIds[card.cardId] === true}
                   onReveal={revealPlay}
+                  onAdvanceReady={markAdvanceReady}
                   autoRevealDelayMs={autoRevealDelayMs}
                   showDebug={showDebug}
                 />

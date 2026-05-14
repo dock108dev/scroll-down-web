@@ -57,6 +57,11 @@ interface BaseballLightFieldProps {
   accentColor?: string;
   /** Drives the animation timeline. */
   isActive: boolean;
+  /** Backend-authoritative suppression of the batted-ball overlay. When
+   *  true the trajectory path is not drawn even if `ballPath` is a
+   *  zone-style value — upstream has decided this play has no confident
+   *  batted-ball path (caught stealing, wild pitch, throwing error, etc.). */
+  suppressMovementLines?: boolean;
 }
 
 const POS = FIELD_POINTS;
@@ -251,7 +256,7 @@ function resolveExtraTrails(
   return [];
 }
 
-function hasConfidentBattedBallPath(
+export function hasConfidentBattedBallPath(
   ballPath: BallPath,
   profile: PlayAnimationProfile,
 ): boolean {
@@ -265,6 +270,25 @@ function hasConfidentBattedBallPath(
     ballPath.startsWith("foul") ||
     ballPath.startsWith("home_run_")
   );
+}
+
+/**
+ * Post-reveal overlay gate for the batted-ball trajectory:
+ *   1. authoritative: backend may explicitly suppress via `suppressMovementLines`
+ *   2. value-based: `ballPath`/`animationProfile` must read as a real hit
+ *
+ * Returning false means "render no overlay" — per the product rule, no
+ * overlay is always preferable to a wrong one. The pre-reveal gate lives
+ * upstream in `CatchupCard` (it hardwires `ballPath` to `"none"` until
+ * the user reveals).
+ */
+export function shouldShowBattedBallOverlay(
+  ballPath: BallPath,
+  profile: PlayAnimationProfile,
+  suppressMovementLines?: boolean,
+): boolean {
+  if (suppressMovementLines === true) return false;
+  return hasConfidentBattedBallPath(ballPath, profile);
 }
 
 
@@ -282,9 +306,14 @@ export function BaseballLightField({
   runnersBeginMs,
   accentColor = "#5a8ac6",
   isActive,
+  suppressMovementLines,
 }: BaseballLightFieldProps) {
   const trail = buildTrajectory(ballPath);
-  const hasBattedBallOverlay = hasConfidentBattedBallPath(ballPath, animationProfile);
+  const hasBattedBallOverlay = shouldShowBattedBallOverlay(
+    ballPath,
+    animationProfile,
+    suppressMovementLines,
+  );
   // Per-mount unique IDs so the ball dot's <animateMotion><mpath>
   // references the right trail path. SVG IDs are document-scoped and
   // multiple cards can be in the DOM at once (offscreen); these IDs

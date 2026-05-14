@@ -16,8 +16,11 @@ import type { PlayAnimationProfile } from "./types";
  *  runners — runners cross-fade base lights, dots animate base→base, outs blink
  *  settle  — everything holds in its final state (no narrative yet)
  *  reveal  — narrative fades in, then the scroll cue
+ *  advance — narrative fade-in has completed; card is ready to be advanced
+ *            past (consumed by the auto-advance timer). Visually identical
+ *            to reveal — same content stays on screen.
  *
- * `idle` is the off-screen state. `reveal` is the terminal state.
+ * `idle` is the off-screen state. `advance` is the terminal state.
  */
 export type PlayPhase =
   | "idle"
@@ -28,7 +31,8 @@ export type PlayPhase =
   | "ball"
   | "runners"
   | "settle"
-  | "reveal";
+  | "reveal"
+  | "advance";
 
 /** Duration (ms) of each phase. A duration of 0 means the phase is skipped
  *  for this profile (no time spent there). */
@@ -198,6 +202,7 @@ export function usePlayPhase(
   isActive: boolean,
   profile: PlayAnimationProfile | undefined,
   overrides?: Partial<PhaseSchedule>,
+  narrativeRevealDurMs: number = 0,
 ): { phase: PlayPhase; runId: number; milestones: PhaseMilestones } {
   // Initial phase depends on whether a bridge beat is configured. When
   // bridge > 0 the card mounts in `bridge` (showing prior state) and
@@ -207,6 +212,7 @@ export function usePlayPhase(
   const reduceMotion = usePrefersReducedMotion();
   const milestones = getPhaseMilestones(profile, overrides);
   const hasBridge = (overrides?.bridge ?? 0) > 0;
+  const advanceHold = Math.max(0, narrativeRevealDurMs);
 
   useEffect(() => {
     if (!isActive) return;
@@ -219,6 +225,7 @@ export function usePlayPhase(
 
     if (reduceMotion) {
       timers.push(setTimeout(() => dispatch({ type: "advance", to: "reveal" }), 1));
+      timers.push(setTimeout(() => dispatch({ type: "advance", to: "advance" }), 2));
       return () => timers.forEach(clearTimeout);
     }
 
@@ -241,6 +248,15 @@ export function usePlayPhase(
     }
     timers.push(setTimeout(() => dispatch({ type: "advance", to: "settle" }), milestones.settle));
     timers.push(setTimeout(() => dispatch({ type: "advance", to: "reveal" }), milestones.reveal));
+    // `advance` fires once the narrative fade-in has completed — the card is
+    // visually unchanged from `reveal`, but downstream consumers (auto-
+    // advance timer) gate off this terminal state.
+    timers.push(
+      setTimeout(
+        () => dispatch({ type: "advance", to: "advance" }),
+        milestones.reveal + advanceHold,
+      ),
+    );
 
     return () => timers.forEach(clearTimeout);
     // milestones is derived from `profile`; depending on each milestone
@@ -249,6 +265,7 @@ export function usePlayPhase(
     isActive,
     reduceMotion,
     hasBridge,
+    advanceHold,
     milestones.bridge,
     milestones.setup,
     milestones.pitch,
