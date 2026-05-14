@@ -13,8 +13,10 @@
  * `movements`, `matchup` identity, `result` flags, and `revealType`. The
  * adapter looks up each play card's event by `playIndex` and copies
  * those fields onto the renderer's card. It does NOT re-derive movements
- * from a base-state diff, and it does NOT infer the batter from
- * movement entries — both are sourced from the wire.
+ * from a base-state diff when event movements are present, and it does
+ * NOT infer the batter from movement entries — both are sourced from
+ * the wire. Older PlayPayload-only decks still use the legacy base diff
+ * so cached fixtures remain animated.
  *
  * The one local computation: `scoreAfter`, which the wire deliberately
  * omits (spoiler-safety contract). The adapter computes it as
@@ -45,6 +47,7 @@ import type {
   SdmHalfInningEvent,
   SdmBaseMovement,
 } from "@/types/scroll-down-mlb";
+import { diffBaseStatesToAdvances } from "@/lib/runner-state";
 
 const HOME_ABBR_FALLBACK = "HME";
 const AWAY_ABBR_FALLBACK = "AWY";
@@ -266,12 +269,18 @@ function adaptPlayCard(
   // Runner advances drive the in-card animation. Source of truth is the
   // wire's `event.movements` — the backend builds these deterministically
   // from `situation_before.bases` vs `situation_after.bases` plus the
-  // batter's destination from event context. The renderer used to
-  // re-derive these via a local base-state diff; that path is gone now
-  // that the wire ships authoritative movements.
-  const runnerAdvances: RunnerAdvance[] | undefined = event
+  // batter's destination from event context. Legacy fixtures and older
+  // cached decks do not carry `halfInnings`, so only that path falls back
+  // to the old local base-state diff.
+  const runnerAdvances: RunnerAdvance[] = event
     ? event.movements.map(movementToAdvance)
-    : undefined;
+    : diffBaseStatesToAdvances(baseStateBefore, baseStateAfter, {
+        runnerNamesBefore: runnerNamesBefore as RunnerNames,
+        runnerNamesAfter: runnerNamesAfter as RunnerNames,
+        eventType: (play.eventType as PlayEventType | null | undefined) ?? undefined,
+        runsScored: play.runsScoredOnPlay ?? 0,
+        outsRecorded: Math.max(0, (play.outsAfter ?? 0) - (play.outsBefore ?? 0)),
+      });
 
   const rawTrajectory = card.visual?.trajectory as BallPath | null | undefined;
   // Generic backend `foul` doesn't carry direction. Infer from the
