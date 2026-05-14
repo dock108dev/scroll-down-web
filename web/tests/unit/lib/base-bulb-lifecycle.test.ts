@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
-  abbrevRunner,
+  formatRunnerLabel,
   computeBaseBulbLifecycle,
 } from "@/lib/base-bulb-lifecycle";
 
@@ -41,26 +41,25 @@ describe("computeBaseBulbLifecycle", () => {
   });
 });
 
-describe("abbrevRunner", () => {
+describe("formatRunnerLabel", () => {
   it("returns empty string for undefined / empty / whitespace", () => {
-    expect(abbrevRunner(undefined)).toBe("");
-    expect(abbrevRunner("")).toBe("");
-    expect(abbrevRunner("   ")).toBe("");
+    expect(formatRunnerLabel(undefined)).toBe("");
+    expect(formatRunnerLabel("")).toBe("");
+    expect(formatRunnerLabel("   ")).toBe("");
   });
 
-  it("keeps the last whitespace-delimited token", () => {
-    expect(abbrevRunner("Xavier Edwards")).toBe("EDWARDS");
-    expect(abbrevRunner("Liam Hicks")).toBe("HICKS");
+  it("formats first initial plus last name", () => {
+    expect(formatRunnerLabel("Corbin Carroll")).toBe("C CARROLL");
+    expect(formatRunnerLabel("Josh Jung")).toBe("J JUNG");
+    expect(formatRunnerLabel("Gabriel Moreno")).toBe("G MORENO");
+    expect(formatRunnerLabel("Maxwell Waldschmidt")).toBe("M WALDSCHMIDT");
   });
 
-  it("clips to 8 chars without ellipsis", () => {
-    expect(abbrevRunner("Vladimir Guerrero")).toBe("GUERRERO");
-    expect(abbrevRunner("Bobby Witt-Jr.")).toBe("WITT-JR.");
-    // 9-char surname → trimmed, no trailing dots.
-    expect(abbrevRunner("Foo Goldschmidt")).toBe("GOLDSCHM");
+  it("does not emit last-name-only labels", () => {
+    expect(formatRunnerLabel("Edwards")).toBe("");
   });
 
   it("uppercases", () => {
-    expect(abbrevRunner("juan soto")).toBe("SOTO");
+    expect(formatRunnerLabel("juan soto")).toBe("J SOTO");
   });
 });

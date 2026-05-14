@@ -1513,19 +1513,8 @@ body {
   shape-rendering: geometricPrecision;
 }
 
-/* ── Base bulbs — five lifecycles cover every (prior, before, after) tuple.
-   Computed by computeBaseBulbLifecycle in lib/base-bulb-lifecycle.ts.
-
-     arrive  - destination-only: hidden through play, fades in at settle
-     depart  - lit on first paint, fades out at runners
-     hold    - solid lit the whole time (no animation)
-     release - lit through bridge, fades out at setup end
-     swap    - prior runner releases at setup, different runner arrives
-               at settle. Bag is briefly empty mid-play.
-
-   Default is opacity:1 so any rendered bulb is visible from first paint.
-   The only lifecycle that starts hidden is `arrive` — every other case
-   needs to show the runner the user already knows is on the bag. */
+/* ── Base bulbs: pure occupancy markers. The card chooses the visible
+   base snapshot; the field never blends prior/before/after runner state. */
 .field-base-bulb {
   transform-box: fill-box;
   transform-origin: center;
@@ -1533,73 +1522,28 @@ body {
   filter: drop-shadow(0 0 1.2px rgba(0, 0, 0, 0.55));
   opacity: 1;
 }
-.field-base-bulb[data-lifecycle="arrive"] { opacity: 0; }
 
-[data-playing="true"] .field-base-bulb[data-lifecycle="depart"] {
-  animation: field-bulb-out 0.45s ease-out var(--ms-runners, 1.5s) both;
-}
-[data-playing="true"] .field-base-bulb[data-lifecycle="arrive"] {
-  /* Light up at result_lock — only AFTER runners have arrived. Lighting
-     mid-runners would put the destination bulb on while the runner is
-     still mid-flight. */
-  animation: field-bulb-in 0.4s ease-out var(--ms-settle, 1.9s) both;
-}
-[data-playing="true"] .field-base-bulb[data-lifecycle="release"] {
-  animation: field-bulb-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
-}
-[data-playing="true"] .field-base-bulb[data-lifecycle="swap"] {
-  /* Same bag occupied entering and leaving the play, but by different
-     runners. Dim the prior bulb briefly so the runner-motion phase
-     reads cleanly, then re-light at settle when the new runner arrives. */
-  animation: field-bulb-swap 1s ease-out var(--ms-setup, 0.4s) both;
-}
-
-@keyframes field-bulb-swap {
-  /* Times are scaled into the 1s window; the bulb is dimmed-not-dark
-     so the bag is never visually absent. The bridge already showed the
-     prior runner lit, so this is a soft handoff, not a flicker. */
-  0%   { opacity: 1;   transform: scale(1); }
-  30%  { opacity: 0.3; transform: scale(0.85); }
-  70%  { opacity: 0.3; transform: scale(0.85); }
-  100% { opacity: 1;   transform: scale(1); }
-}
-
-/* ── Base labels: small last-name tags rendered next to each occupied bag.
-   Mirrors the bulb's lifecycle so the name a user reads matches the bulb
-   that's lit. Cream fill + black halo so the names stay readable on
-   both kelly-green grass and black dirt. */
+/* ── Base labels: compact first-initial + last-name tags rendered beside
+   occupied bags. Dark pill background keeps them readable without making
+   the labels visually louder than the field. */
 .field-base-label {
-  fill: #f5efdc;
+  pointer-events: none;
+  opacity: 0.94;
+  filter: drop-shadow(0 0 2px rgba(0, 0, 0, 0.65));
+}
+.field-base-label-bg {
+  fill: rgba(2, 6, 5, 0.76);
+  stroke: rgba(245, 239, 220, 0.44);
+  stroke-width: 0.8;
+}
+.field-base-label-text {
+  fill: rgba(245, 239, 220, 0.92);
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   letter-spacing: 0.06em;
   paint-order: stroke;
-  stroke: rgba(0, 0, 0, 0.92);
-  stroke-width: 2.8;
+  stroke: rgba(0, 0, 0, 0.7);
+  stroke-width: 1.4;
   stroke-linejoin: round;
-  pointer-events: none;
-  transition: opacity 180ms ease-out;
-  opacity: 1;
-}
-.field-base-label[data-lifecycle="arrive"] { opacity: 0; }
-[data-playing="true"] .field-base-label[data-lifecycle="depart"] {
-  animation: field-label-out 0.35s ease-out var(--ms-runners, 1.5s) both;
-}
-[data-playing="true"] .field-base-label[data-lifecycle="arrive"] {
-  animation: field-label-in 0.35s ease-out var(--ms-settle, 1.9s) both;
-}
-[data-playing="true"] .field-base-label[data-lifecycle="release"] {
-  animation: field-label-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
-}
-[data-playing="true"] .field-base-label[data-lifecycle="swap"] {
-  animation: field-bulb-swap 1s ease-out var(--ms-setup, 0.4s) both;
-}
-@keyframes field-label-out {
-  0%   { opacity: 1; }
-  100% { opacity: 0; }
-}
-@keyframes field-label-in {
-  0%   { opacity: 0; }
-  100% { opacity: 1; }
 }
 
 /* Batter at the plate — visible during setup/pitch/trigger only.
@@ -1918,19 +1862,6 @@ body {
   .field-runner-trail { stroke-dashoffset: 0; opacity: 0; }
   .field-runner-motion,
   .field-runner-trail { display: none; }
-  /* With animations disabled, pin every lifecycle to its final-state
-     opacity. `arrive` is the only token that starts at 0; everything
-     else is already at 1 via the default rule. */
-  .field-base-bulb[data-lifecycle="arrive"],
-  .field-base-label[data-lifecycle="arrive"] {
-    opacity: 1;
-  }
-  .field-base-bulb[data-lifecycle="depart"],
-  .field-base-bulb[data-lifecycle="release"],
-  .field-base-label[data-lifecycle="depart"],
-  .field-base-label[data-lifecycle="release"] {
-    opacity: 0;
-  }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

@@ -50,16 +50,20 @@ export function computeBaseBulbLifecycle(
 }
 
 /**
- * Mattel-style runner-name truncation for on-field labels. Strips to
- * the last whitespace-delimited token and clips to 8 chars with no
- * ellipsis — short enough to fit beside the small base squares without
- * crowding the basepaths.
+ * Compact runner label for the field: FIRST_INITIAL LAST_NAME. Names
+ * that do not include at least first + last are treated as unavailable
+ * so the UI does not fall back to inconsistent last-name-only tags.
  */
-export function abbrevRunner(fullName: string | undefined): string {
+export function formatRunnerLabel(fullName: string | undefined): string {
   if (!fullName) return "";
   const trimmed = fullName.trim();
   if (!trimmed) return "";
   const parts = trimmed.split(/\s+/);
+  if (parts.length < 2) return "";
+  const firstInitial = parts[0]?.[0];
   const last = parts[parts.length - 1];
-  return last.slice(0, 8).toUpperCase();
+  if (!firstInitial || !last) return "";
+  return `${firstInitial} ${last}`.toUpperCase();
 }
+
+export const abbrevRunner = formatRunnerLabel;

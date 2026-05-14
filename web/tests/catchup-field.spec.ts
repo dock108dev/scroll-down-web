@@ -101,8 +101,8 @@ test.describe("@smoke field rendering", () => {
         outsAfter: 2,
         baseStateBefore: { first: false, second: false, third: true },
         baseStateAfter: { first: true, second: false, third: false },
-        runnerNamesBefore: { third: "Devers" },
-        runnerNamesAfter: { first: "Schmitt" },
+        runnerNamesBefore: { third: "Rafael Devers" },
+        runnerNamesAfter: { first: "Casey Schmitt" },
         scoreBefore: { home: 0, away: 0 },
         runsScoredOnPlay: 1,
       },
@@ -133,6 +133,7 @@ test.describe("@smoke field rendering", () => {
     await expect(card.locator("[data-testid='outs-state']")).toHaveAttribute("data-outs-after", "1");
     await expect(card.locator("[data-testid='base-bulb']")).toHaveCount(1);
     await expect(card.locator("[data-testid='base-bulb']").first()).toHaveAttribute("data-base", "third");
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='third']")).toHaveAttribute("data-runner", "R DEVERS");
     await expect(card.locator("[data-testid='runner-marker']")).toHaveCount(0);
   });
 
@@ -154,8 +155,8 @@ test.describe("@smoke field rendering", () => {
         outsAfter: 2,
         baseStateBefore: { first: false, second: false, third: true },
         baseStateAfter: { first: true, second: false, third: false },
-        runnerNamesBefore: { third: "Devers" },
-        runnerNamesAfter: { first: "Schmitt" },
+        runnerNamesBefore: { third: "Rafael Devers" },
+        runnerNamesAfter: { first: "Casey Schmitt" },
         scoreBefore: { home: 0, away: 0 },
         runsScoredOnPlay: 1,
       },
@@ -185,6 +186,8 @@ test.describe("@smoke field rendering", () => {
     await expect(card.locator("[data-testid='outs-state']")).toHaveAttribute("data-outs-after", "2");
     await expect(card.locator("[data-testid='play-narration-panel']")).toHaveAttribute("data-visible", "true");
     await expect(card.locator("[data-testid='run-scored']")).toHaveCount(1);
+    await expect(card.locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "C SCHMITT");
   });
 
   test("walk and strikeout previews do not leak base or out changes", async ({ page }) => {
@@ -281,12 +284,12 @@ test.describe("@smoke field rendering", () => {
         baseStateBefore: { first: false, second: false, third: false },
         baseStateAfter: { first: true, second: false, third: false },
         runnerNamesBefore: {},
-        runnerNamesAfter: { first: "Edwards" },
+        runnerNamesAfter: { first: "Xavier Edwards" },
         runsScoredOnPlay: 0,
       },
       visual: {
         trajectory: "pitch",
-        runnerMovements: [{ runner: "Edwards", from: "home", to: "first", style: "walk_shuffle" }],
+        runnerMovements: [{ runner: "Xavier Edwards", from: "home", to: "first", style: "walk_shuffle" }],
         intensity: "low",
         animationProfile: "walk",
       },
@@ -306,15 +309,15 @@ test.describe("@smoke field rendering", () => {
         outsAfter: 0,
         baseStateBefore: { first: true, second: false, third: false },
         baseStateAfter: { first: true, second: true, third: false },
-        runnerNamesBefore: { first: "Edwards" },
-        runnerNamesAfter: { first: "Schmitt", second: "Edwards" },
+        runnerNamesBefore: { first: "Xavier Edwards" },
+        runnerNamesAfter: { first: "Casey Schmitt", second: "Xavier Edwards" },
         runsScoredOnPlay: 0,
       },
       visual: {
         trajectory: "line_right",
         runnerMovements: [
-          { runner: "Edwards", from: "first", to: "second", style: "advance" },
-          { runner: "Schmitt", from: "home", to: "first", style: "advance" },
+          { runner: "Xavier Edwards", from: "first", to: "second", style: "advance" },
+          { runner: "Casey Schmitt", from: "home", to: "first", style: "advance" },
         ],
         intensity: "medium",
         animationProfile: "line_drive",
@@ -348,6 +351,7 @@ test.describe("@smoke field rendering", () => {
     await expect(cards.nth(1).locator("[data-testid='result-badge']")).toHaveCount(0);
     await expect(cards.nth(1)).not.toContainText("WALK");
     await expect(cards.nth(1).locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
+    await expect(cards.nth(1).locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "X EDWARDS");
   });
 
   test("double without source trajectory does not invent a throw-home line", async ({ page }) => {
@@ -363,12 +367,12 @@ test.describe("@smoke field rendering", () => {
         baseStateBefore: { first: false, second: false, third: false },
         baseStateAfter: { first: false, second: true, third: false },
         runnerNamesBefore: {},
-        runnerNamesAfter: { second: "Schmitt" },
+        runnerNamesAfter: { second: "Casey Schmitt" },
         runsScoredOnPlay: 0,
       },
       visual: {
         trajectory: "none",
-        runnerMovements: [{ runner: "Schmitt", from: "home", to: "second", style: "advance" }],
+        runnerMovements: [{ runner: "Casey Schmitt", from: "home", to: "second", style: "advance" }],
         intensity: "medium",
         animationProfile: "line_drive",
       },
@@ -496,7 +500,7 @@ test.describe("@smoke field rendering", () => {
         baseStateBefore: { first: false, second: false, third: false },
         baseStateAfter: { first: true, second: false, third: false },
         runnerNamesBefore: {},
-        runnerNamesAfter: { first: "Schmitt" },
+        runnerNamesAfter: { first: "Casey Schmitt" },
         runsScoredOnPlay: 0,
       },
     });
@@ -539,8 +543,8 @@ test.describe("@smoke field rendering", () => {
         outsAfter: 2,
         baseStateBefore: { first: true, second: true, third: true },
         baseStateAfter: { first: false, second: false, third: true },
-        runnerNamesBefore: { first: "Flores", second: "Lee", third: "Devers" },
-        runnerNamesAfter: { third: "Devers" },
+        runnerNamesBefore: { first: "Wilmer Flores", second: "Jung Hoo Lee", third: "Rafael Devers" },
+        runnerNamesAfter: { third: "Rafael Devers" },
         runsScoredOnPlay: 0,
       },
       visual: {
@@ -595,11 +599,165 @@ test.describe("@smoke field rendering", () => {
     await expect(cards.nth(1).locator("[data-testid='preview-reveal-control']")).toBeVisible();
   });
 
+  test("stationary runners stay visible without movement overlays", async ({ page }) => {
+    const runnerOnFirstStays = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-first-stays`,
+      sortOrder: 1,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "strikeout",
+        label: "STRIKEOUT",
+        description: "The batter strikes out; the runner holds first.",
+        outsBefore: 0,
+        outsAfter: 1,
+        baseStateBefore: { first: true, second: false, third: false },
+        baseStateAfter: { first: true, second: false, third: false },
+        runnerNamesBefore: { first: "Corbin Carroll" },
+        runnerNamesAfter: { first: "Corbin Carroll" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "pitch",
+        runnerMovements: [{ runner: "Corbin Carroll", from: "first", to: "second", style: "advance" }],
+        intensity: "low",
+        animationProfile: "strikeout",
+      },
+    });
+    const runnerOnSecondStays = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-second-stays`,
+      sortOrder: 2,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "field_out",
+        label: "FLYOUT",
+        description: "A flyout; the runner holds second.",
+        outsBefore: 1,
+        outsAfter: 2,
+        baseStateBefore: { first: false, second: true, third: false },
+        baseStateAfter: { first: false, second: true, third: false },
+        runnerNamesBefore: { second: "Josh Jung" },
+        runnerNamesAfter: { second: "Josh Jung" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "none",
+        runnerMovements: [{ runner: "Josh Jung", from: "second", to: "third", style: "advance" }],
+        intensity: "low",
+        animationProfile: "shallow_fly",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), runnerOnFirstStays, runnerOnSecondStays] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const cards = page.locator("[data-testid='play-card']");
+    await expect(cards.first().locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
+    await expect(cards.first().locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "C CARROLL");
+    await expect(cards.first().locator("[data-testid='runner-marker']")).toHaveCount(0);
+    await cards.first().getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(cards.first().locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
+    await expect(cards.first().locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "C CARROLL");
+    await expect(cards.first().locator("[data-testid='runner-marker']")).toHaveCount(0);
+    await expect(cards.first().locator(".field-runner-trail")).toHaveCount(0);
+
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[2] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    await expect(cards.nth(1).locator("[data-testid='base-bulb'][data-base='second']")).toHaveCount(1);
+    await expect(cards.nth(1).locator("[data-testid='base-runner-label'][data-base='second']")).toHaveAttribute("data-runner", "J JUNG");
+    await cards.nth(1).getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(cards.nth(1).locator("[data-testid='base-bulb'][data-base='second']")).toHaveCount(1);
+    await expect(cards.nth(1).locator("[data-testid='runner-marker']")).toHaveCount(0);
+    await expect(cards.nth(1).locator(".field-ball-trail")).toHaveCount(0);
+  });
+
+  test("inning-ending out clears bases without fake stranded-runner movement", async ({ page }) => {
+    const inningEnder = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-inning-ending-out`,
+      sortOrder: 1,
+      inning: 1,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "field_out",
+        label: "GROUNDOUT",
+        description: "A groundout ends the inning; the runner is stranded.",
+        outsBefore: 2,
+        outsAfter: 3,
+        baseStateBefore: { first: true, second: false, third: false },
+        baseStateAfter: { first: false, second: false, third: false },
+        runnerNamesBefore: { first: "Maxwell Waldschmidt" },
+        runnerNamesAfter: {},
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "ground_2b",
+        runnerMovements: [{ runner: "Maxwell Waldschmidt", from: "first", to: "second", style: "advance" }],
+        intensity: "low",
+        animationProfile: "routine_grounder",
+      },
+    });
+    const nextInning = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-new-inning-empty`,
+      sortOrder: 2,
+      inning: 1,
+      half: "bottom",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "field_out",
+        label: "FLYOUT",
+        description: "The new half-inning begins with empty bases.",
+        outsBefore: 0,
+        outsAfter: 1,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: false, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: {},
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "none",
+        runnerMovements: [],
+        intensity: "low",
+        animationProfile: "shallow_fly",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), inningEnder, nextInning] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const cards = page.locator("[data-testid='play-card']");
+    await expect(cards.first().locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
+    await expect(cards.first().locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "M WALDSCHMIDT");
+    await cards.first().getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(cards.first().locator("[data-testid='base-bulb']")).toHaveCount(0);
+    await expect(cards.first().locator("[data-testid='runner-marker']")).toHaveCount(0);
+
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[2] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    await expect(cards.nth(1)).toHaveAttribute("data-reveal-state", "preview");
+    await expect(cards.nth(1).locator("[data-testid='base-bulb']")).toHaveCount(0);
+    await expect(cards.nth(1).locator("[data-testid='runner-marker']")).toHaveCount(0);
+  });
+
   test("on-base runner is visible on first-paint of the next at-bat (screenshot-bug repro)", async ({ page }) => {
     // The bug from IMG_0072–IMG_0077: a walk puts a runner on first, then
-    // the next at-bat shows an empty diamond through pitch/ball. After the
-    // BaseBulb lifecycle rewrite, a base whose state is the same entering
-    // and leaving the play maps to lifecycle="hold" with static opacity:1.
+    // the next at-bat shows an empty diamond through pitch/ball. The field
+    // now renders the explicit visible base snapshot, so first base must
+    // be present immediately in preview instead of waiting for reveal.
     const walk = makePlayCard({
       id: `${DEFAULT_GAME_ID}-walk`,
       sortOrder: 1,
@@ -665,9 +823,9 @@ test.describe("@smoke field rendering", () => {
     const reachCard = page.locator("[data-testid='play-card']").nth(1);
     await expect(reachCard).toBeVisible();
 
-    // First base: occupied before AND after → lifecycle="hold".
+    // First base is occupied in preview.
     const firstBulb = reachCard.locator("[data-testid='base-bulb'][data-base='first']");
-    await expect(firstBulb).toHaveAttribute("data-lifecycle", "hold");
+    await expect(firstBulb).toHaveAttribute("data-occupied", "true");
     // Bulb must be visible from first paint — the bug was opacity:0 here.
     const firstAccentOpacity = await firstBulb.evaluate((g) => {
       const inner = g.querySelector("circle:nth-child(2)") as SVGElement | null;
@@ -680,11 +838,12 @@ test.describe("@smoke field rendering", () => {
     await expect(thirdBulb).toHaveCount(0);
 
     // Runner label for Edwards on first should be present pre-play.
-    const firstLabel = reachCard.locator("text.field-base-label[data-base='first']");
-    await expect(firstLabel).toHaveText("EDWARDS");
+    const firstLabel = reachCard.locator("[data-testid='base-runner-label'][data-base='first']");
+    await expect(firstLabel).toHaveAttribute("data-runner", "X EDWARDS");
 
     await reachCard.getByRole("button", { name: /reveal pitch/i }).click();
-    await expect(thirdBulb).toHaveAttribute("data-lifecycle", "arrive");
+    await expect(thirdBulb).toHaveAttribute("data-occupied", "true");
+    await expect(reachCard.locator("[data-testid='base-runner-label'][data-base='third']")).toHaveAttribute("data-runner", "X EDWARDS");
   });
 
   test("rhythm card after a scoring play carries the post-play score forward (BRAINDUMP §1)", async ({ page }) => {

@@ -8,11 +8,7 @@ import type {
   PlayEventType,
   RunnerNames,
 } from "@/lib/types";
-import {
-  abbrevRunner,
-  computeBaseBulbLifecycle,
-  type BaseBulbLifecycle,
-} from "@/lib/base-bulb-lifecycle";
+import { formatRunnerLabel } from "@/lib/base-bulb-lifecycle";
 import {
   FIELDER_POS,
   FIELD_POINTS,
@@ -42,18 +38,11 @@ import { buildTrajectory } from "@/lib/trajectory";
  */
 
 interface BaseballLightFieldProps {
-  /** Optional snapshot of the previously-displayed card's ENDING state.
-   *  When supplied, the field renders base-occupancy bulbs for `prior`
-   *  initially, then crosses into `before` during the card's bridge
-   *  phase. Runner names for each snapshot are passed through so the
-   *  on-field labels can hand off prior → before → after in lockstep
-   *  with the bulb's lifecycle. */
-  baseStatePrior?: BaseballBaseState;
-  baseStateBefore: BaseballBaseState;
-  baseStateAfter?: BaseballBaseState;
-  runnerNamesPrior?: RunnerNames;
-  runnerNamesBefore?: RunnerNames;
-  runnerNamesAfter?: RunnerNames;
+  /** The single explicit base snapshot to render right now. Preview passes
+   *  pre-pitch state; revealed passes post-play state. The field does not
+   *  derive or blend runner occupancy. */
+  visibleBaseState: BaseballBaseState;
+  visibleRunnerNames?: RunnerNames;
   /** Animation plan — path + timing per runner. Required for runner dots. */
   runnerMovements?: RunnerMovement[];
   ballPath?: BallPath;
@@ -282,12 +271,8 @@ function hasConfidentBattedBallPath(
 // ── Component ─────────────────────────────────────────────
 
 export function BaseballLightField({
-  baseStatePrior,
-  baseStateBefore,
-  baseStateAfter,
-  runnerNamesPrior,
-  runnerNamesBefore,
-  runnerNamesAfter,
+  visibleBaseState,
+  visibleRunnerNames,
   runnerMovements,
   ballPath = "pitch",
   eventType = "other",
@@ -356,7 +341,6 @@ export function BaseballLightField({
 
   const homer = eventType === "home_run";
   const isHbp = eventType === "hit_by_pitch";
-  const after = baseStateAfter ?? baseStateBefore;
 
   const runs = scoreBefore && scoreAfter
     ? Math.max(0, (scoreAfter.home - scoreBefore.home) + (scoreAfter.away - scoreBefore.away))
@@ -601,43 +585,27 @@ export function BaseballLightField({
         <BaseShape pos={POS.second} />
         <BaseShape pos={POS.third} />
 
-        {/* Base-occupancy markers — show a clear lit "runner here" dot
-            for each occupied bag, plus a small last-name label so the
-            user knows WHO is on each base entering the play. The label
-            handoff (prior → before → after) tracks the bulb lifecycle
-            so the name a user reads matches the bulb that's lit. */}
-        <BaseBulb pos={POS.first}  base="first"  prior={baseStatePrior?.first}  before={baseStateBefore.first}  after={after.first}  />
-        <BaseBulb pos={POS.second} base="second" prior={baseStatePrior?.second} before={baseStateBefore.second} after={after.second} />
-        <BaseBulb pos={POS.third}  base="third"  prior={baseStatePrior?.third}  before={baseStateBefore.third}  after={after.third}  />
+        {/* Base occupancy renders from one explicit visible snapshot. */}
+        <BaseBulb pos={POS.first}  base="first"  occupied={visibleBaseState.first} />
+        <BaseBulb pos={POS.second} base="second" occupied={visibleBaseState.second} />
+        <BaseBulb pos={POS.third}  base="third"  occupied={visibleBaseState.third} />
         <BaseLabel
           pos={POS.first}
           base="first"
-          prior={baseStatePrior?.first}
-          before={baseStateBefore.first}
-          after={after.first}
-          namePrior={runnerNamesPrior?.first}
-          nameBefore={runnerNamesBefore?.first}
-          nameAfter={runnerNamesAfter?.first}
+          occupied={visibleBaseState.first}
+          name={visibleRunnerNames?.first}
         />
         <BaseLabel
           pos={POS.second}
           base="second"
-          prior={baseStatePrior?.second}
-          before={baseStateBefore.second}
-          after={after.second}
-          namePrior={runnerNamesPrior?.second}
-          nameBefore={runnerNamesBefore?.second}
-          nameAfter={runnerNamesAfter?.second}
+          occupied={visibleBaseState.second}
+          name={visibleRunnerNames?.second}
         />
         <BaseLabel
           pos={POS.third}
           base="third"
-          prior={baseStatePrior?.third}
-          before={baseStateBefore.third}
-          after={after.third}
-          namePrior={runnerNamesPrior?.third}
-          nameBefore={runnerNamesBefore?.third}
-          nameAfter={runnerNamesAfter?.third}
+          occupied={visibleBaseState.third}
+          name={visibleRunnerNames?.third}
         />
 
         {showContact && (
@@ -734,7 +702,7 @@ export function BaseballLightField({
             Drawn FIRST so dots render on top. */}
         {(runnerMovements ?? []).map((m, i) => (
           <RunnerTrailSvg
-            key={`trail-${m.from}-${m.to}-${i}`}
+            key={`trail-${m.advance.runnerId ?? m.advance.runnerName ?? `${m.from}-${m.to}-${i}`}`}
             movement={m}
             runnersStart={runnersStart}
           />
@@ -743,7 +711,7 @@ export function BaseballLightField({
         {/* Runner movement — animated along multi-segment basepaths. */}
         {(runnerMovements ?? []).map((m, i) => (
           <RunnerDotSvg
-            key={`${m.from}-${m.to}-${i}`}
+            key={`runner-${m.advance.runnerId ?? m.advance.runnerName ?? `${m.from}-${m.to}-${i}`}`}
             movement={m}
             runnersStart={runnersStart}
             accentColor={accentColor}
@@ -809,18 +777,13 @@ function BaseShape({ pos }: { pos: { x: number; y: number } }) {
 function BaseBulb({
   pos,
   base,
-  prior,
-  before,
-  after,
+  occupied,
 }: {
   pos: { x: number; y: number };
   base: "first" | "second" | "third";
-  prior?: boolean;
-  before: boolean;
-  after: boolean;
+  occupied: boolean;
 }) {
-  const lifecycle = computeBaseBulbLifecycle({ prior, before, after });
-  if (lifecycle === null) return null;
+  if (!occupied) return null;
 
   // Two-circle marker: a team-accent disc with a chunky cream rim. Sits
   // on top of the white base diamond, so an occupied base reads as a
@@ -832,7 +795,7 @@ function BaseBulb({
       className="field-base-bulb"
       data-testid="base-bulb"
       data-base={base}
-      data-lifecycle={lifecycle}
+      data-occupied="true"
     >
       <circle cx={pos.x} cy={pos.y} r={8.5} fill="#f5efdc" />
       <circle
@@ -859,58 +822,53 @@ const BASE_LABEL_OFFSET: Record<"first" | "second" | "third", { dx: number; dy: 
 function BaseLabel({
   pos,
   base,
-  prior,
-  before,
-  after,
-  namePrior,
-  nameBefore,
-  nameAfter,
+  occupied,
+  name,
 }: {
   pos: { x: number; y: number };
   base: "first" | "second" | "third";
-  prior?: boolean;
-  before: boolean;
-  after: boolean;
-  namePrior?: string;
-  nameBefore?: string;
-  nameAfter?: string;
+  occupied: boolean;
+  name?: string;
 }) {
-  const lifecycle = computeBaseBulbLifecycle({ prior, before, after });
-  if (lifecycle === null) return null;
-  // Pick the name that matches whichever lit-phase the bulb is in. For
-  // `swap` we render whichever name we have — the CSS dim mid-play
-  // covers the handoff so the labels don't need to swap text mid-flight.
-  const name = pickLabelName(lifecycle, namePrior, nameBefore, nameAfter);
-  if (!name) return null;
+  if (!occupied) return null;
+  const label = formatRunnerLabel(name);
+  if (!label) return null;
   const off = BASE_LABEL_OFFSET[base];
+  const width = Math.max(38, label.length * 6 + 10);
+  const height = 13;
+  const x = pos.x + off.dx;
+  const y = pos.y + off.dy;
+  const rectX = off.anchor === "middle"
+    ? x - width / 2
+    : off.anchor === "end"
+      ? x - width
+      : x;
   return (
-    <text
+    <g
       className="field-base-label"
+      data-testid="base-runner-label"
       data-base={base}
-      data-lifecycle={lifecycle}
-      x={pos.x + off.dx}
-      y={pos.y + off.dy}
-      textAnchor={off.anchor}
-      fontSize={9}
+      data-runner={label}
     >
-      {abbrevRunner(name)}
-    </text>
+      <rect
+        className="field-base-label-bg"
+        x={rectX}
+        y={y - height + 3}
+        width={width}
+        height={height}
+        rx={4}
+      />
+      <text
+        className="field-base-label-text"
+        x={x}
+        y={y}
+        textAnchor={off.anchor}
+        fontSize={8}
+      >
+        {label}
+      </text>
+    </g>
   );
-}
-
-function pickLabelName(
-  lifecycle: BaseBulbLifecycle,
-  prior: string | undefined,
-  before: string | undefined,
-  after: string | undefined,
-): string | undefined {
-  switch (lifecycle) {
-    case "hold":    return before ?? prior ?? after;
-    case "depart":  return before ?? prior;
-    case "release": return prior ?? before;
-    case "arrive":  return after;
-    case "swap":    return prior ?? before ?? after;
-  }
 }
 
 /**

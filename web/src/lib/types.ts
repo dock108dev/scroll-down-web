@@ -149,6 +149,9 @@ export type BallPath =
 export interface RunnerAdvance {
   from: "home" | "first" | "second" | "third";
   to: "first" | "second" | "third" | "home" | "out";
+  runnerId?: string;
+  runnerName?: string;
+  reason?: string;
   /** When the runner is out, the spot they were tagged or forced. Drives
    *  the runner-dot animation: instead of flaring in place, the dot first
    *  travels to `outAt` and then flares out there. */

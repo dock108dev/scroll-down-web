@@ -115,7 +115,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   );
 
   const isPlayingReveal = isActive && revealRequested;
-  const { phase, runId } = usePlayPhase(isPlayingReveal, card.animationProfile, overrides);
+  const { phase } = usePlayPhase(isPlayingReveal, card.animationProfile, overrides);
   const presentationPhase = revealRequested ? phase : "preview";
   const milestones = getPhaseMilestones(card.animationProfile, overrides);
   const schedule = getPhaseSchedule(card.animationProfile, overrides);
@@ -137,6 +137,8 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const outsAfter = card.outsAfter;
   const baseStateBefore = situation.baseState;
   const baseStateAfter = card.baseStateAfter;
+  const visibleBaseState = revealRequested ? baseStateAfter : baseStateBefore;
+  const visibleRunnerNames = revealRequested ? card.runnerNamesAfter : card.runnerNamesBefore;
   const priorAfter = card.priorAfter;
   // Bridging beat is meaningful only when the prior state actually differs
   // from this card's beforeState. Otherwise mounting straight into setup
@@ -343,13 +345,9 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
 
       <div className="catchup-card-field">
         <BaseballLightField
-          key={revealRequested ? runId : `preview-${card.cardId}`}
-          baseStatePrior={revealRequested && hasMeaningfulBridge ? priorAfter?.baseState : undefined}
-          baseStateBefore={baseStateBefore}
-          baseStateAfter={revealRequested ? baseStateAfter : baseStateBefore}
-          runnerNamesPrior={revealRequested && hasMeaningfulBridge ? priorAfter?.runnerNames : undefined}
-          runnerNamesBefore={card.runnerNamesBefore}
-          runnerNamesAfter={revealRequested ? card.runnerNamesAfter : card.runnerNamesBefore}
+          key={card.cardId}
+          visibleBaseState={visibleBaseState}
+          visibleRunnerNames={visibleRunnerNames}
           runnerMovements={revealRequested ? movements : []}
           runnersBeginMs={milestones.runners}
           ballPath={revealRequested ? card.ballPath : "none"}

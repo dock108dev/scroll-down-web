@@ -2,15 +2,18 @@
  * Adapter: backend Scroll Down MLB DTO -> existing renderer types.
  *
  * STRICT RULE: this adapter only TRANSLATES shapes. It does not make
- * decisions. Selection, narrative, leverage tier, runner movement
- * classification, trajectory classification, and result chip labels are
- * all decided server-side. The adapter copies them through.
+ * decisions. Selection, narrative, leverage tier, trajectory
+ * classification, and result chip labels are all decided server-side. The
+ * adapter copies them through.
  *
  * The one local computation: `scoreAfter`, which the backend deliberately
  * does NOT serialize (spoiler-safety contract). The adapter computes it
  * from `scoreBefore + runsScoredOnPlay` attributed to the batting team
  * (top inning => away, bottom inning => home). This number stays in
- * memory for animation only — it is never sent back to the wire.
+ * memory for animation only — it is never sent back to the wire. Runner
+ * movement overlays are the other local computation: they are derived
+ * from before/after base snapshots so stale or guessed backend animation
+ * payloads cannot move runners who held their base.
  */
 
 import type {
@@ -21,7 +24,6 @@ import type {
   PriorAfterState,
   RhythmCard,
   RhythmCardKind,
-  RunnerAdvance,
   RunnerNames,
   SceneSetterCard,
   InningTransitionCard,
@@ -29,6 +31,7 @@ import type {
   BaseballBaseState,
   PlayAnimationProfile,
 } from "@/lib/types";
+import { diffBaseStatesToAdvances } from "@/lib/runner-state";
 import type {
   SdmDeckCard,
   SdmDeckResponse,
@@ -200,7 +203,13 @@ function adaptPlayCard(
   const runnerNamesAfter = play.runnerNamesAfter ?? {};
 
   const movements = card.visual?.runnerMovements ?? [];
-  const runnerAdvances = adaptRunnerMovements(movements);
+  const runnerAdvances = diffBaseStatesToAdvances(baseStateBefore, baseStateAfter, {
+    runnerNamesBefore: runnerNamesBefore as RunnerNames,
+    runnerNamesAfter: runnerNamesAfter as RunnerNames,
+    eventType: (play.eventType as PlayEventType | null | undefined) ?? undefined,
+    runsScored: play.runsScoredOnPlay ?? 0,
+    outsRecorded: Math.max(0, (play.outsAfter ?? 0) - (play.outsBefore ?? 0)),
+  });
 
   const rawTrajectory = card.visual?.trajectory as BallPath | null | undefined;
   // Generic backend `foul` doesn't carry direction. Infer from the
@@ -322,24 +331,6 @@ function adaptRhythmCard(
     toInning: inning,
     toHalf: half,
   };
-}
-
-
-/**
- * Map the backend's runner movements (with style + outAt) onto the
- * renderer's `RunnerAdvance` shape. Style is dropped here because the
- * frontend renderer re-classifies via `classifyRunnerStyle` for animation
- * timing — but the from/to/outAt selection itself is the backend's
- * decision.
- */
-function adaptRunnerMovements(
-  movements: SdmRunnerMovement[],
-): RunnerAdvance[] {
-  return movements.map((m) => ({
-    from: m.from,
-    to: m.to,
-    outAt: m.outAt ?? undefined,
-  }));
 }
 
 
