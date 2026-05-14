@@ -46,7 +46,7 @@ export interface SdmKeyStat {
   detail?: string | null;
 }
 
-export type SdmRunnerStyle = "advance" | "score" | "out" | "hold";
+export type SdmRunnerStyle = "advance" | "score" | "out" | "hold" | "walk_shuffle";
 
 export interface SdmRunnerMovement {
   runner: string;
