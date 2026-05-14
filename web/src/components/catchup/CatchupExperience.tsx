@@ -12,6 +12,8 @@ import { CatchupProgress } from "./CatchupProgress";
 import { RevealGate } from "./RevealGate";
 import { FinalReveal } from "./FinalReveal";
 import { NewMomentsBanner } from "./NewMomentsBanner";
+import { CatchupSettingsDrawer } from "./CatchupSettingsDrawer";
+import { useSettings } from "@/stores/settings";
 import type { CatchupCard as CatchupCardData } from "@/lib/types";
 
 interface CatchupExperienceProps {
@@ -44,10 +46,15 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
   const savedEntry = useCatchupProgress((s) => s.entries[gameId]);
   const setProgress = useCatchupProgress((s) => s.setProgress);
   const markCompleted = useCatchupProgress((s) => s.markCompleted);
+  const autoRevealDelayMs = useSettings((s) => s.autoRevealDelayMs);
+  const autoAdvanceDelayMs = useSettings((s) => s.autoAdvanceDelayMs);
 
   const [activeIndex, setActiveIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [restartToken, setRestartToken] = useState(0);
+  const [targetIndex, setTargetIndex] = useState<number | undefined>();
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [revealedPlayIds, setRevealedPlayIds] = useState<Record<string, true>>({});
 
   // ── Debug overlay toggle ──────────────────────────────
   // `?debug=true` enables per-card validation overlays on play and rhythm
@@ -90,7 +97,10 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
       if (!ok) return;
     }
     setRevealed(false);
+    setRevealedPlayIds({});
+    setSettingsOpen(false);
     setActiveIndex(0);
+    setTargetIndex(0);
     setProgress(gameId, 0, lastPlayIndex);
     setRestartToken((t) => t + 1);
   }, [gameId, lastPlayIndex, setProgress]);
@@ -126,12 +136,39 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
     return ks;
   }, [baseSlides, tailSlide, gameId]);
 
+  const activeSlide = baseSlides[activeIndex];
+  const activePlayCard = activeSlide?.kind === "play" ? activeSlide : null;
+  const activePlayId = activePlayCard?.cardId ?? null;
+  const activePlayRevealed = activePlayId ? revealedPlayIds[activePlayId] === true : false;
+
+  const revealPlay = useCallback((cardId: string) => {
+    setRevealedPlayIds((prev) => (
+      prev[cardId] ? prev : { ...prev, [cardId]: true }
+    ));
+  }, []);
+
+  const advanceFromPlay = useCallback((cardId: string) => {
+    if (activePlayId !== cardId) return;
+    setTargetIndex(Math.min(activeIndex + 1, slideKeys.length - 1));
+  }, [activeIndex, activePlayId, slideKeys.length]);
+
   // Resume to saved progress on first load.
   const initialIndex = useMemo(() => {
     if (cards.length === 0) return 0;
     const saved = savedEntry?.cardIndex ?? 0;
     return Math.min(Math.max(0, saved), slideKeys.length - 1);
   }, [savedEntry, cards.length, slideKeys.length]);
+
+  useEffect(() => {
+    if (!activePlayId) return;
+    if (!activePlayRevealed) return;
+    if (autoAdvanceDelayMs <= 0) return;
+    if (settingsOpen) return;
+    const timer = window.setTimeout(() => {
+      advanceFromPlay(activePlayId);
+    }, autoAdvanceDelayMs);
+    return () => window.clearTimeout(timer);
+  }, [activePlayId, activePlayRevealed, autoAdvanceDelayMs, settingsOpen, advanceFromPlay]);
 
   // ── Auto-apply newer decks when caught up ─────────────
   // The hook stages newer decks as `pendingDeck` rather than swapping in
@@ -171,12 +208,22 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
   }
 
   return (
-    <div className="catchup-page-shell">
+    <div
+      className="catchup-page-shell"
+      data-auto-reveal-ms={autoRevealDelayMs}
+      data-auto-advance-ms={autoAdvanceDelayMs}
+      data-settings-open={settingsOpen ? "true" : "false"}
+      data-active-play-id={activePlayId ?? ""}
+      data-active-play-revealed={activePlayRevealed ? "true" : "false"}
+    >
       <CatchupHeader
         awayTeamAbbr={awayTeamAbbr}
         homeTeamAbbr={homeTeamAbbr}
         onRestart={handleRestart}
+        settingsOpen={settingsOpen}
+        onToggleSettings={() => setSettingsOpen((open) => !open)}
       />
+      <CatchupSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
       <NewMomentsBanner visible={hasNewDeck && !onTail && !revealed} onApply={applyPendingDeck} />
       <CatchupProgress
         total={slideKeys.length}
@@ -188,6 +235,7 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
         initialIndex={initialIndex}
         onActiveIndexChange={setActiveIndex}
         restartToken={restartToken}
+        targetIndex={targetIndex}
       >
         {[
           ...baseSlides.map((card, i) => {
@@ -223,6 +271,9 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
                   homeTeamAbbr={homeTeamAbbr}
                   awayTeamAbbr={awayTeamAbbr}
                   isActive={activeIndex === i}
+                  isRevealed={revealedPlayIds[card.cardId] === true}
+                  onReveal={revealPlay}
+                  autoRevealDelayMs={autoRevealDelayMs}
                   showDebug={showDebug}
                 />
               );
@@ -269,10 +320,14 @@ function CatchupHeader({
   awayTeamAbbr,
   homeTeamAbbr,
   onRestart,
+  settingsOpen,
+  onToggleSettings,
 }: {
   awayTeamAbbr: string;
   homeTeamAbbr: string;
   onRestart: () => void;
+  settingsOpen: boolean;
+  onToggleSettings: () => void;
 }) {
   return (
     <div className="catchup-header">
@@ -285,19 +340,35 @@ function CatchupHeader({
       <span className="catchup-header-matchup">
         {awayTeamAbbr} <span className="text-neutral-700">@</span> {homeTeamAbbr}
       </span>
-      <button
-        type="button"
-        onClick={onRestart}
-        className="catchup-header-action"
-        aria-label="Restart catch-up from the first pitch"
-        title="Start over"
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="1 4 1 10 7 10" />
-          <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
-        </svg>
-        <span>Restart</span>
-      </button>
+      <div className="catchup-header-controls">
+        <button
+          type="button"
+          onClick={onToggleSettings}
+          className="catchup-header-action catchup-header-icon-action"
+          aria-label="Open catch-up settings"
+          aria-expanded={settingsOpen}
+          title="Catch-up settings"
+          data-testid="catchup-settings-button"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6V20a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-.6 1.7 1.7 0 0 0-1.88.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1H4a2 2 0 1 1 0-4h.09a1.7 1.7 0 0 0 .6-1 1.7 1.7 0 0 0-.34-1.88l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6V4a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 .6 1.7 1.7 0 0 0 1.88-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.28.35.5.68.6 1H20a2 2 0 1 1 0 4h-.09c-.1.32-.32.65-.51 1Z" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          onClick={onRestart}
+          className="catchup-header-action"
+          aria-label="Restart catch-up from the first pitch"
+          title="Start over"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="1 4 1 10 7 10" />
+            <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10" />
+          </svg>
+          <span>Restart</span>
+        </button>
+      </div>
     </div>
   );
 }

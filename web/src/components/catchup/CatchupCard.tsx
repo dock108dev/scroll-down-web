@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useMemo, useState } from "react";
+import { forwardRef, useEffect, useMemo } from "react";
 import type {
   BaseballBaseState,
   PlayCardData,
@@ -31,6 +31,9 @@ interface CatchupCardProps {
   homeTeamAbbr: string;
   awayTeamAbbr: string;
   isActive: boolean;
+  isRevealed: boolean;
+  onReveal: (cardId: string) => void;
+  autoRevealDelayMs?: number;
   /** When true, render a per-card validation overlay (BRAINDUMP loop). */
   showDebug?: boolean;
 }
@@ -56,11 +59,10 @@ interface CatchupCardProps {
  * Sentence + chevron come in at reveal.
  */
 export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function CatchupCard(
-  { card, homeTeamAbbr, awayTeamAbbr, isActive, showDebug = false },
+  { card, homeTeamAbbr, awayTeamAbbr, isActive, isRevealed, onReveal, autoRevealDelayMs = 0, showDebug = false },
   ref,
 ) {
-  const [revealedCardId, setRevealedCardId] = useState<string | null>(null);
-  const revealRequested = isActive && revealedCardId === card.cardId;
+  const revealRequested = isActive && isRevealed;
   const battingTeam = findMlbTeam(card.battingTeamAbbr);
   const accent = battingTeam?.primaryColorDark ?? "#5a8ac6";
 
@@ -119,6 +121,16 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const schedule = getPhaseSchedule(card.animationProfile, overrides);
   const reduceMotion = usePrefersReducedMotion();
   const narrativeRevealDur = reduceMotion ? 0 : NARRATIVE_REVEAL_DUR_MS[leverageTier];
+
+  useEffect(() => {
+    if (!isActive) return;
+    if (isRevealed) return;
+    if (autoRevealDelayMs <= 0) return;
+    const timer = window.setTimeout(() => {
+      onReveal(card.cardId);
+    }, autoRevealDelayMs);
+    return () => window.clearTimeout(timer);
+  }, [autoRevealDelayMs, card.cardId, isActive, isRevealed, onReveal]);
 
   const situation = card.situationBefore;
   const outsBefore = situation.outs ?? 0;
@@ -205,6 +217,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       data-event-type={revealRequested ? card.eventType ?? "other" : "hidden"}
       data-active={isActive ? "true" : "false"}
       data-phase={presentationPhase}
+      data-auto-reveal-ms={autoRevealDelayMs}
       data-reveal-state={
         !revealRequested
           ? "preview"
@@ -367,7 +380,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       {!revealRequested ? (
         <PreviewPitchControl
           batterName={situation.batterName}
-          onReveal={() => setRevealedCardId(card.cardId)}
+          onReveal={() => onReveal(card.cardId)}
         />
       ) : (
         <ResultChip

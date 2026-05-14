@@ -38,7 +38,7 @@ import { jsonLdScript } from "@/lib/seo";
 
 export const viewport: Viewport = {
   viewportFit: "cover",
-  themeColor: "#0a0a0a",
+  themeColor: "#050807",
 };
 
 export function generateMetadata(): Metadata {
@@ -59,6 +59,14 @@ export function generateMetadata(): Metadata {
         { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
       ],
       apple: "/apple-touch-icon.png",
+    },
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: "black-translucent",
+      title: "Scroll Down MLB",
+    },
+    formatDetection: {
+      telephone: false,
     },
     openGraph: {
       type: "website",

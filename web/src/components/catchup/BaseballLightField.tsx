@@ -192,45 +192,6 @@ const SAC_FLY_RELAY_PATHS: Partial<Record<BallPath, string>> = {
   fly_rf:  `M${FIELDER_POS.rf.x} ${FIELDER_POS.rf.y} Q${POS.first.x} ${POS.first.y} ${POS.home.x} ${POS.home.y}`,
 };
 
-// Two-segment relay throw paths (OF → cutoff infielder → home), keyed by
-// ball path. The cutoff man is SS for left-side balls, 2B for right-side
-// balls, and SS for center. Used by deep_fly and line_drive profiles —
-// see resolveExtraTrails().
-const RELAY_THROW_PATHS: Partial<Record<BallPath, { ofToCutoff: string; cutoffToHome: string }>> = {
-  fly_lf: {
-    ofToCutoff:   `M${FIELDER_POS.lf.x} ${FIELDER_POS.lf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
-    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-  fly_lcf: {
-    ofToCutoff:   `M${FIELDER_POS.lcf.x} ${FIELDER_POS.lcf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
-    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-  fly_cf: {
-    ofToCutoff:   `M${FIELDER_POS.cf.x} ${FIELDER_POS.cf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
-    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-  fly_rcf: {
-    ofToCutoff:   `M${FIELDER_POS.rcf.x} ${FIELDER_POS.rcf.y} L${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y}`,
-    cutoffToHome: `M${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y} Q${POS.mound.x + 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-  fly_rf: {
-    ofToCutoff:   `M${FIELDER_POS.rf.x} ${FIELDER_POS.rf.y} L${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y}`,
-    cutoffToHome: `M${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y} Q${POS.mound.x + 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-  line_left: {
-    ofToCutoff:   `M${FIELDER_POS.lf.x} ${FIELDER_POS.lf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
-    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-  line_center: {
-    ofToCutoff:   `M${FIELDER_POS.cf.x} ${FIELDER_POS.cf.y} L${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y}`,
-    cutoffToHome: `M${FIELDER_POS.shortstop.x} ${FIELDER_POS.shortstop.y} Q${POS.mound.x - 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-  line_right: {
-    ofToCutoff:   `M${FIELDER_POS.rf.x} ${FIELDER_POS.rf.y} L${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y}`,
-    cutoffToHome: `M${FIELDER_POS.second_base.x} ${FIELDER_POS.second_base.y} Q${POS.mound.x + 15} ${POS.mound.y + 10} ${POS.home.x} ${POS.home.y}`,
-  },
-};
-
 const EXTRA_TRAILS: Partial<Record<PlayAnimationProfile, ExtraTrailDef[]>> = {
   // SS pivot to first base on a 6-4-3 / 6-3 turn.
   double_play_grounder: [
@@ -280,20 +241,11 @@ const EXTRA_TRAILS: Partial<Record<PlayAnimationProfile, ExtraTrailDef[]>> = {
   ],
 };
 
-/** Resolve the extra trails for a profile/ball-path pairing. Profiles whose
- *  trail geometry depends on where the ball was hit (sacrifice_fly,
- *  deep_fly, line_drive) fall through so the fielder-to-home arc varies
- *  by ball direction.
- *
- *  `hasDefensiveThrowContext` is the gate that suppresses the relay arc
- *  on plays where no runner is trying to score or advance into scoring
- *  position — on a routine single up the middle with the bases empty,
- *  drawing OF→cutoff→home reads as random extra lines on the diamond.
- *  See ISSUE: user-reported "stray lines on a single". */
+/** Resolve extra defensive throw trails only when the profile explicitly
+ *  supports them. Generic hits should not invent relay/cutoff geometry. */
 function resolveExtraTrails(
   profile: PlayAnimationProfile,
   ballPath: BallPath,
-  hasDefensiveThrowContext: boolean,
 ): ExtraTrailDef[] {
   const base = EXTRA_TRAILS[profile];
   if (base) return base;
@@ -303,52 +255,29 @@ function resolveExtraTrails(
       return [{ path, beginOffsetMs: 180, durationMs: 340, fadeTailMs: 80, glowScale: 0.9 }];
     }
   }
-  // relay_throw was originally specced as a top-level profile gated by a
-  // /\brelay\b|\bcutoff\b/i description regex. The current MLB fixture
-  // corpus contains zero matches for those terms, so the classifier
-  // would never assign it — silently dead code. Demoted to two ExtraTrail
-  // segments on deep_fly and line_drive instead, varying by ball path.
-  // See ISSUE note: Step 4 fallback documented in catchup-cards.ts.
-  if (profile === "deep_fly" || profile === "line_drive") {
-    if (!hasDefensiveThrowContext) return [];
-    const relay = RELAY_THROW_PATHS[ballPath];
-    if (relay) {
-      return [
-        { path: relay.ofToCutoff,   beginOffsetMs: 160,           durationMs: 300, fadeTailMs: 60, glowScale: 1.0 },
-        { path: relay.cutoffToHome, beginOffsetMs: 160 + 300 + 80, durationMs: 320, fadeTailMs: 80, glowScale: 1.0 },
-      ];
-    }
-  }
+  // Do not infer relay/cutoff throws from generic deep_fly or line_drive
+  // profiles. Those profiles often represent doubles/singles where the feed
+  // lacks explicit throw data; drawing OF→home lines there lies to the user.
+  // Keep throw overlays limited to profile-specific defensive events above.
   return [];
 }
 
-
-/** True when this play has a runner whose movement justifies showing the
- *  defensive relay throw — a runner crossing home, or a runner advancing
- *  more than one base from second/third. On a clean single with nobody
- *  on, the relay arc has no narrative referent and reads as visual
- *  noise. */
-function hasDefensiveThrowContext(
-  movements: RunnerMovement[] | undefined,
-  scoreBefore: { home: number; away: number } | undefined,
-  scoreAfter: { home: number; away: number } | undefined,
+function hasConfidentBattedBallPath(
+  ballPath: BallPath,
+  profile: PlayAnimationProfile,
 ): boolean {
-  if (scoreBefore && scoreAfter) {
-    const runs =
-      Math.max(0, scoreAfter.home - scoreBefore.home) +
-      Math.max(0, scoreAfter.away - scoreBefore.away);
-    if (runs > 0) return true;
-  }
-  if (!movements) return false;
-  return movements.some((m) => {
-    if (m.to === "home") return true;
-    if (m.from === "second" && m.to === "third") return true;
-    if (m.from === "first" && m.to === "third") return true;
-    if (m.to === "out") return true;
-    if (m.style === "tagged_out" || m.style === "forced_out" || m.style === "double_play") return true;
-    return false;
-  });
+  if (ballPath === "none" || ballPath === "pitch") return false;
+  if (profile === "walk" || profile === "strikeout" || profile === "stolen_base") return false;
+  return (
+    ballPath === "popup" ||
+    ballPath.startsWith("ground_") ||
+    ballPath.startsWith("line_") ||
+    ballPath.startsWith("fly_") ||
+    ballPath.startsWith("foul") ||
+    ballPath.startsWith("home_run_")
+  );
 }
+
 
 // ── Component ─────────────────────────────────────────────
 
@@ -370,6 +299,7 @@ export function BaseballLightField({
   isActive,
 }: BaseballLightFieldProps) {
   const trail = buildTrajectory(ballPath);
+  const hasBattedBallOverlay = hasConfidentBattedBallPath(ballPath, animationProfile);
   // Per-mount unique IDs so the ball dot's <animateMotion><mpath>
   // references the right trail path. SVG IDs are document-scoped and
   // multiple cards can be in the DOM at once (offscreen); these IDs
@@ -386,8 +316,7 @@ export function BaseballLightField({
   // string that bypassed the type system (e.g. stale persisted data).
   // See docs/audits/error-handling-report.md §G2.
   const glow = PROFILE_GLOW[animationProfile] ?? PROFILE_GLOW.other;
-  const defensiveThrow = hasDefensiveThrowContext(runnerMovements, scoreBefore, scoreAfter);
-  const extraTrails = resolveExtraTrails(animationProfile, ballPath, defensiveThrow);
+  const extraTrails = resolveExtraTrails(animationProfile, ballPath);
   const runnersStart = runnersBeginMs ?? milestones.runners;
 
   // Profile-scaled bloom radii for the ball dot SVG filter. The floors
@@ -417,8 +346,7 @@ export function BaseballLightField({
     eventType !== "wild_pitch" &&
     eventType !== "passed_ball" &&
     eventType !== "catcher_interference" &&
-    ballPath !== "none" &&
-    ballPath !== "pitch";
+    hasBattedBallOverlay;
 
   const showPitch =
     eventType !== "stolen_base" &&
@@ -754,10 +682,10 @@ export function BaseballLightField({
           />
         )}
 
-        {trail && (
+        {trail && hasBattedBallOverlay && (
           <path
             id={trailPathId}
-            className="field-ball-trail"
+            className="field-ball-trail field-ball-trail-batted"
             d={trail}
             fill="none"
             stroke="var(--field-accent)"
@@ -777,7 +705,7 @@ export function BaseballLightField({
             <Fragment key={pathId}>
               <path
                 id={pathId}
-                className="field-ball-trail field-ball-trail-secondary"
+                className="field-ball-trail field-ball-trail-throw"
                 d={def.path}
                 fill="none"
                 stroke="var(--field-accent)"
@@ -1365,8 +1293,8 @@ function BallDot({
  *  position without threading the trail's origin point separately.
  *
  *  See docs/audits/error-handling-report.md §G1. The regex miss is
- *  unreachable for any path we ship today (every entry in EXTRA_TRAILS,
- *  SAC_FLY_RELAY_PATHS, and RELAY_THROW_PATHS is constructed from a
+ *  unreachable for any path we ship today (every entry in EXTRA_TRAILS
+ *  and SAC_FLY_RELAY_PATHS is constructed from a
  *  template literal whose head is `M${num} ${num}`), but the silent
  *  fallback to home plate would mask a future misconfiguration as a
  *  random glowing dot. Surface it loudly in dev; keep the fallback in
@@ -1376,7 +1304,7 @@ function extraTrailStartPoint(d: string): { x: number; y: number } {
   if (!m) {
     if (process.env.NODE_ENV !== "production") {
       console.error(
-        "[BaseballLightField] extra-trail path missing M-prefix; check EXTRA_TRAILS / SAC_FLY_RELAY_PATHS / RELAY_THROW_PATHS",
+        "[BaseballLightField] extra-trail path missing M-prefix; check EXTRA_TRAILS / SAC_FLY_RELAY_PATHS",
         { path: d },
       );
     }

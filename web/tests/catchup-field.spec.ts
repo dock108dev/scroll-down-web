@@ -264,6 +264,268 @@ test.describe("@smoke field rendering", () => {
     await expect(cards.nth(1).locator("[data-testid='result-badge']")).toHaveCount(0);
   });
 
+  test("revealed result state does not bleed into the next preview", async ({ page }) => {
+    const walk = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-stale-walk`,
+      sortOrder: 1,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "walk",
+        label: "WALK",
+        subLabel: null,
+        description: "Xavier Edwards walks.",
+        ballsBefore: 3,
+        strikesBefore: 1,
+        outsBefore: 0,
+        outsAfter: 0,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: true, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: { first: "Edwards" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "pitch",
+        runnerMovements: [{ runner: "Edwards", from: "home", to: "first", style: "walk_shuffle" }],
+        intensity: "low",
+        animationProfile: "walk",
+      },
+    });
+    const single = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-stale-single`,
+      sortOrder: 2,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "single",
+        label: "SINGLE",
+        subLabel: null,
+        description: "A clean single follows.",
+        ballsBefore: 0,
+        strikesBefore: 0,
+        outsBefore: 0,
+        outsAfter: 0,
+        baseStateBefore: { first: true, second: false, third: false },
+        baseStateAfter: { first: true, second: true, third: false },
+        runnerNamesBefore: { first: "Edwards" },
+        runnerNamesAfter: { first: "Schmitt", second: "Edwards" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "line_right",
+        runnerMovements: [
+          { runner: "Edwards", from: "first", to: "second", style: "advance" },
+          { runner: "Schmitt", from: "home", to: "first", style: "advance" },
+        ],
+        intensity: "medium",
+        animationProfile: "line_drive",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), walk, single] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[1] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    const cards = page.locator("[data-testid='play-card']");
+    await cards.first().getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(cards.first().locator("[data-testid='result-badge']")).toContainText("WALK");
+
+    await scroller.evaluate((el) => {
+      const child = el.children[2] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    await expect(cards.nth(1)).toHaveAttribute("data-reveal-state", "preview");
+    await expect(cards.nth(1)).toHaveAttribute("data-event-type", "hidden");
+    await expect(cards.nth(1).locator("[data-testid='preview-reveal-control']")).toBeVisible();
+    await expect(cards.nth(1).locator("[data-testid='result-badge']")).toHaveCount(0);
+    await expect(cards.nth(1)).not.toContainText("WALK");
+    await expect(cards.nth(1).locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
+  });
+
+  test("double without source trajectory does not invent a throw-home line", async ({ page }) => {
+    const double = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-double-no-location`,
+      sortOrder: 1,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "double",
+        label: "DOUBLE",
+        subLabel: null,
+        description: "A double, with no hit location from the source feed.",
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: false, second: true, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: { second: "Schmitt" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "none",
+        runnerMovements: [{ runner: "Schmitt", from: "home", to: "second", style: "advance" }],
+        intensity: "medium",
+        animationProfile: "line_drive",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), double] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const card = page.locator("[data-testid='play-card']").first();
+    await card.getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(card.locator(".field-ball-trail")).toHaveCount(0);
+    await expect(card.locator("[data-testid='runner-marker']")).toHaveCount(1);
+  });
+
+  test("catch-up playback settings persist locally", async ({ page }) => {
+    await mockSdmRoutes(page, { recent: makeRecentResponse(), deck: makeDeckResponse() });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    await page.locator("[data-testid='catchup-settings-button']").click();
+    const drawer = page.locator("[data-testid='catchup-settings-drawer']");
+    await expect(drawer).toBeVisible();
+    await drawer.locator("[data-testid='auto-reveal-setting']").getByRole("button", { name: "2s", exact: true }).click();
+    await drawer.locator("[data-testid='auto-advance-setting']").getByRole("button", { name: "15s", exact: true }).click();
+    await drawer.getByRole("button", { name: /close/i }).click();
+
+    await page.reload();
+    await page.locator("[data-testid='catchup-settings-button']").click();
+    const reopened = page.locator("[data-testid='catchup-settings-drawer']");
+    await expect(reopened.locator("[data-testid='auto-reveal-setting']").getByRole("button", { name: "2s", exact: true })).toHaveAttribute("data-active", "true");
+    await expect(reopened.locator("[data-testid='auto-advance-setting']").getByRole("button", { name: "15s", exact: true })).toHaveAttribute("data-active", "true");
+  });
+
+  test("auto reveal fires once for the active event", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        "sd-settings",
+        JSON.stringify({
+          state: {
+            theme: "system",
+            showStaleBanners: true,
+            autoRevealDelayMs: 1000,
+            autoAdvanceDelayMs: 0,
+            spoilerSafeMode: true,
+          },
+          version: 3,
+        }),
+      );
+    });
+    await mockSdmRoutes(page, { recent: makeRecentResponse(), deck: makeDeckResponse() });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[1] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    const card = page.locator("[data-testid='play-card']").first();
+    await expect(card).toHaveAttribute("data-active", "true");
+    await expect(card).toHaveAttribute("data-auto-reveal-ms", "1000");
+
+    await expect(page.locator(".catchup-page-shell")).toHaveAttribute("data-auto-reveal-ms", "1000");
+    await expect(page.locator(".catchup-page-shell")).toHaveAttribute("data-active-play-id", `${DEFAULT_GAME_ID}-10002`);
+
+    await expect(card).toHaveAttribute("data-reveal-state", "preview");
+    await expect(card.locator("[data-testid='preview-reveal-control']")).toBeVisible();
+    await expect(card).not.toHaveAttribute("data-reveal-state", "preview", { timeout: 4500 });
+    await expect(card.locator("[data-testid='result-badge']")).toBeVisible();
+  });
+
+  test("auto advance only scrolls after the active event is revealed", async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.setItem(
+        "sd-settings",
+        JSON.stringify({
+          state: {
+            theme: "system",
+            showStaleBanners: true,
+            autoRevealDelayMs: 0,
+            autoAdvanceDelayMs: 10000,
+            spoilerSafeMode: true,
+          },
+          version: 3,
+        }),
+      );
+    });
+    const first = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-auto-advance-first`,
+      sortOrder: 1,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "strikeout",
+        label: "STRIKEOUT",
+        description: "Mitchell strikes out swinging.",
+        outsBefore: 1,
+        outsAfter: 2,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: false, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: {},
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "pitch",
+        runnerMovements: [],
+        intensity: "low",
+        animationProfile: "strikeout",
+      },
+    });
+    const second = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-auto-advance-second`,
+      sortOrder: 2,
+      inning: 1,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "single",
+        label: "SINGLE",
+        description: "The next batter singles.",
+        outsBefore: 2,
+        outsAfter: 2,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: true, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: { first: "Schmitt" },
+        runsScoredOnPlay: 0,
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), first, second] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[1] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    const cards = page.locator("[data-testid='play-card']");
+    await expect(cards.first()).toHaveAttribute("data-active", "true");
+    await expect(cards.nth(1)).toHaveAttribute("data-active", "false");
+
+    await page.waitForTimeout(1100);
+    await expect(cards.first()).toHaveAttribute("data-active", "true");
+    await cards.first().getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(cards.first()).not.toHaveAttribute("data-reveal-state", "preview");
+
+    await expect(cards.nth(1)).toHaveAttribute("data-active", "true", { timeout: 12000 });
+    await expect(cards.nth(1)).toHaveAttribute("data-reveal-state", "preview");
+  });
+
   test("bases-loaded and empty-base preview fixtures render deterministic situations", async ({ page }) => {
     const basesLoaded = makePlayCard({
       id: `${DEFAULT_GAME_ID}-bases-loaded`,
