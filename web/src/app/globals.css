@@ -1334,46 +1334,61 @@ body {
   shape-rendering: geometricPrecision;
 }
 
-/* ── Base bulbs — three lifecycles drive the cross-fade. ── */
-/* Settled (non-playing) state shows the AFTER-state lights. When the card
-   becomes active, "pre" bulbs hold lit through setup, fade out as runners
-   advance; "post" bulbs fade in as runners arrive. */
+/* ── Base bulbs — five lifecycles cover every (prior, before, after) tuple.
+   Computed by computeBaseBulbLifecycle in lib/base-bulb-lifecycle.ts.
+
+     arrive  - destination-only: hidden through play, fades in at settle
+     depart  - lit on first paint, fades out at runners
+     hold    - solid lit the whole time (no animation)
+     release - lit through bridge, fades out at setup end
+     swap    - prior runner releases at setup, different runner arrives
+               at settle. Bag is briefly empty mid-play.
+
+   Default is opacity:1 so any rendered bulb is visible from first paint.
+   The only lifecycle that starts hidden is `arrive` — every other case
+   needs to show the runner the user already knows is on the bag. */
 .field-base-bulb {
-  /* Small team-accent dot inside the white base — reads as "a runner
-     is on this bag" without the amber LED phosphor halo. */
   transform-box: fill-box;
   transform-origin: center;
   transition: opacity 180ms ease-out;
+  filter: drop-shadow(0 0 1.2px rgba(0, 0, 0, 0.55));
+  opacity: 1;
 }
-.field-base-bulb[data-lifecycle="pre"]  { opacity: 0; }
-.field-base-bulb[data-lifecycle="post"] { opacity: 1; }
-.field-base-bulb[data-lifecycle="both"] { opacity: 1; }
+.field-base-bulb[data-lifecycle="arrive"] { opacity: 0; }
 
-[data-playing="true"] .field-base-bulb[data-lifecycle="pre"] {
-  /* Hold lit through setup + pitch + contact, then dim out as runners leave. */
+[data-playing="true"] .field-base-bulb[data-lifecycle="depart"] {
   animation: field-bulb-out 0.45s ease-out var(--ms-runners, 1.5s) both;
 }
-[data-playing="true"] .field-base-bulb[data-lifecycle="both"] {
-  /* Subtle pulse during setup so the user reads "this base has a runner". */
-  animation: field-bulb-pulse 0.5s ease-in-out 0s 1 normal;
-}
-[data-playing="true"] .field-base-bulb[data-lifecycle="post"] {
+[data-playing="true"] .field-base-bulb[data-lifecycle="arrive"] {
   /* Light up at result_lock — only AFTER runners have arrived. Lighting
      mid-runners would put the destination bulb on while the runner is
      still mid-flight. */
   animation: field-bulb-in 0.4s ease-out var(--ms-settle, 1.9s) both;
 }
-
-@keyframes field-bulb-pulse {
-  0%, 100% { opacity: 1;    transform: scale(1); }
-  50%      { opacity: 0.7;  transform: scale(0.92); }
+[data-playing="true"] .field-base-bulb[data-lifecycle="release"] {
+  animation: field-bulb-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
+}
+[data-playing="true"] .field-base-bulb[data-lifecycle="swap"] {
+  /* Same bag occupied entering and leaving the play, but by different
+     runners. Dim the prior bulb briefly so the runner-motion phase
+     reads cleanly, then re-light at settle when the new runner arrives. */
+  animation: field-bulb-swap 1s ease-out var(--ms-setup, 0.4s) both;
 }
 
-/* ── Base + batter labels: small last-name tags near each base ─────── */
-/* Pre/post pair animates the same way as BaseBulb — the "before" name
-   dims out and the "after" name fades in during the runners phase.
-   Cream fill + black halo so the names stay readable whether they sit
-   on the kelly-green grass or the black dirt path beneath them. */
+@keyframes field-bulb-swap {
+  /* Times are scaled into the 1s window; the bulb is dimmed-not-dark
+     so the bag is never visually absent. The bridge already showed the
+     prior runner lit, so this is a soft handoff, not a flicker. */
+  0%   { opacity: 1;   transform: scale(1); }
+  30%  { opacity: 0.3; transform: scale(0.85); }
+  70%  { opacity: 0.3; transform: scale(0.85); }
+  100% { opacity: 1;   transform: scale(1); }
+}
+
+/* ── Base labels: small last-name tags rendered next to each occupied bag.
+   Mirrors the bulb's lifecycle so the name a user reads matches the bulb
+   that's lit. Cream fill + black halo so the names stay readable on
+   both kelly-green grass and black dirt. */
 .field-base-label {
   fill: #f5efdc;
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
@@ -1384,19 +1399,20 @@ body {
   stroke-linejoin: round;
   pointer-events: none;
   transition: opacity 180ms ease-out;
-}
-.field-base-label[data-lifecycle="pre"]  { opacity: 0; }
-.field-base-label[data-lifecycle="post"] { opacity: 1; }
-.field-base-label[data-lifecycle="both"] { opacity: 1; }
-[data-playing="true"] .field-base-label[data-lifecycle="pre"] {
   opacity: 1;
+}
+.field-base-label[data-lifecycle="arrive"] { opacity: 0; }
+[data-playing="true"] .field-base-label[data-lifecycle="depart"] {
   animation: field-label-out 0.35s ease-out var(--ms-runners, 1.5s) both;
 }
-[data-playing="true"] .field-base-label[data-lifecycle="post"] {
-  /* Same gating as the post bulb — destination labels appear at
-     result_lock so they don't pre-empt the moving runner. */
-  opacity: 0;
+[data-playing="true"] .field-base-label[data-lifecycle="arrive"] {
   animation: field-label-in 0.35s ease-out var(--ms-settle, 1.9s) both;
+}
+[data-playing="true"] .field-base-label[data-lifecycle="release"] {
+  animation: field-label-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
+}
+[data-playing="true"] .field-base-label[data-lifecycle="swap"] {
+  animation: field-bulb-swap 1s ease-out var(--ms-setup, 0.4s) both;
 }
 @keyframes field-label-out {
   0%   { opacity: 1; }
@@ -1718,13 +1734,18 @@ body {
   .field-runner-trail { stroke-dashoffset: 0; opacity: 0; }
   .field-runner-motion,
   .field-runner-trail { display: none; }
-  /* Without the field-bulb-out animation, the `both` fill-mode that normally
-     backward-fills opacity:1 onto pre-play bulbs never runs, so the base
-     rule at line 1309 would leave them permanently invisible. Pin them
-     visible explicitly — they no longer dim during runners, which is the
-     intended reduced-motion behavior. */
-  [data-playing="true"] .field-base-bulb[data-lifecycle="pre"] {
+  /* With animations disabled, pin every lifecycle to its final-state
+     opacity. `arrive` is the only token that starts at 0; everything
+     else is already at 1 via the default rule. */
+  .field-base-bulb[data-lifecycle="arrive"],
+  .field-base-label[data-lifecycle="arrive"] {
     opacity: 1;
+  }
+  .field-base-bulb[data-lifecycle="depart"],
+  .field-base-bulb[data-lifecycle="release"],
+  .field-base-label[data-lifecycle="depart"],
+  .field-base-label[data-lifecycle="release"] {
+    opacity: 0;
   }
 }
 
@@ -2375,24 +2396,12 @@ body {
   box-shadow: 0 0 4px rgba(245, 239, 220, 0.85);
 }
 
-/* Field — prior bulbs fade out at bridge end; "pre" bulbs that emerged
-   during bridge get a brief light-up. */
-.field-base-bulb[data-lifecycle="prior"] {
-  opacity: 1;
-}
-[data-playing="true"] .field-base-bulb[data-lifecycle="prior"] {
-  animation: field-bulb-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
-}
+/* Keyframes shared by the `release` lifecycle on bulbs and labels — a
+   prior runner who was lit through the bridge phase fades out at the
+   bridge→setup boundary as the play prepares to start. */
 @keyframes field-bulb-prior-fade {
   0%   { opacity: 1; transform: scale(1); }
   100% { opacity: 0; transform: scale(0.7); }
-}
-/* Prior runner labels also dim out at bridge end. */
-.field-base-label[data-lifecycle="prior"] {
-  opacity: 1;
-}
-[data-playing="true"] .field-base-label[data-lifecycle="prior"] {
-  animation: field-label-prior-fade 0.35s ease-out var(--ms-setup, 0.4s) forwards;
 }
 @keyframes field-label-prior-fade {
   0%   { opacity: 1; }

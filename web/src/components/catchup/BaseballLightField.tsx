@@ -6,7 +6,13 @@ import type {
   BaseballBaseState,
   PlayAnimationProfile,
   PlayEventType,
+  RunnerNames,
 } from "@/lib/types";
+import {
+  abbrevRunner,
+  computeBaseBulbLifecycle,
+  type BaseBulbLifecycle,
+} from "@/lib/base-bulb-lifecycle";
 import {
   FIELDER_POS,
   FIELD_POINTS,
@@ -39,12 +45,15 @@ interface BaseballLightFieldProps {
   /** Optional snapshot of the previously-displayed card's ENDING state.
    *  When supplied, the field renders base-occupancy bulbs for `prior`
    *  initially, then crosses into `before` during the card's bridge
-   *  phase. Per-base runner NAMES are intentionally not rendered on the
-   *  field — the only place names appear is the scoreboard's matchup
-   *  row above. */
+   *  phase. Runner names for each snapshot are passed through so the
+   *  on-field labels can hand off prior → before → after in lockstep
+   *  with the bulb's lifecycle. */
   baseStatePrior?: BaseballBaseState;
   baseStateBefore: BaseballBaseState;
   baseStateAfter?: BaseballBaseState;
+  runnerNamesPrior?: RunnerNames;
+  runnerNamesBefore?: RunnerNames;
+  runnerNamesAfter?: RunnerNames;
   /** Animation plan — path + timing per runner. Required for runner dots. */
   runnerMovements?: RunnerMovement[];
   ballPath?: BallPath;
@@ -347,6 +356,9 @@ export function BaseballLightField({
   baseStatePrior,
   baseStateBefore,
   baseStateAfter,
+  runnerNamesPrior,
+  runnerNamesBefore,
+  runnerNamesAfter,
   runnerMovements,
   ballPath = "pitch",
   eventType = "other",
@@ -662,13 +674,43 @@ export function BaseballLightField({
         <BaseShape pos={POS.third} />
 
         {/* Base-occupancy markers — show a clear lit "runner here" dot
-            for each occupied bag. Names live in the scoreboard above
-            (BATTER vs PITCHER), never on the field, so the field stays
-            clean and the eye doesn't have to read four floating name
-            labels during the play. */}
+            for each occupied bag, plus a small last-name label so the
+            user knows WHO is on each base entering the play. The label
+            handoff (prior → before → after) tracks the bulb lifecycle
+            so the name a user reads matches the bulb that's lit. */}
         <BaseBulb pos={POS.first}  base="first"  prior={baseStatePrior?.first}  before={baseStateBefore.first}  after={after.first}  />
         <BaseBulb pos={POS.second} base="second" prior={baseStatePrior?.second} before={baseStateBefore.second} after={after.second} />
         <BaseBulb pos={POS.third}  base="third"  prior={baseStatePrior?.third}  before={baseStateBefore.third}  after={after.third}  />
+        <BaseLabel
+          pos={POS.first}
+          base="first"
+          prior={baseStatePrior?.first}
+          before={baseStateBefore.first}
+          after={after.first}
+          namePrior={runnerNamesPrior?.first}
+          nameBefore={runnerNamesBefore?.first}
+          nameAfter={runnerNamesAfter?.first}
+        />
+        <BaseLabel
+          pos={POS.second}
+          base="second"
+          prior={baseStatePrior?.second}
+          before={baseStateBefore.second}
+          after={after.second}
+          namePrior={runnerNamesPrior?.second}
+          nameBefore={runnerNamesBefore?.second}
+          nameAfter={runnerNamesAfter?.second}
+        />
+        <BaseLabel
+          pos={POS.third}
+          base="third"
+          prior={baseStatePrior?.third}
+          before={baseStateBefore.third}
+          after={after.third}
+          namePrior={runnerNamesPrior?.third}
+          nameBefore={runnerNamesBefore?.third}
+          nameAfter={runnerNamesAfter?.third}
+        />
 
         {showContact && (
           <circle
@@ -836,8 +878,6 @@ function BaseShape({ pos }: { pos: { x: number; y: number } }) {
   );
 }
 
-type Lifecycle = "prior" | "pre" | "post" | "both";
-
 function BaseBulb({
   pos,
   base,
@@ -851,27 +891,14 @@ function BaseBulb({
   before: boolean;
   after: boolean;
 }) {
-  // Lifecycle compresses the state of this bulb across (prior → before → after):
-  //   priorOnly      - lit before this card mounted, dims at bridge
-  //   bridge-onset   - dark before mount, lights at bridge, persists to "on"
-  //   pre            - lit at bridge end / before pitch, dims at runners
-  //   post           - dark before play, lights at runners
-  //   both           - lit through everything (no animation needed)
-  const wasPrior = prior !== undefined ? prior : before;
-  if (!wasPrior && !before && !after) return null;
-
-  let lifecycle: Lifecycle;
-  if (wasPrior && before && after) lifecycle = "both";
-  else if (!wasPrior && before && after) lifecycle = "pre"; // emerges at bridge, holds
-  else if (wasPrior && !before) lifecycle = "prior"; // lit, then released at bridge
-  else if (before && !after) lifecycle = "pre";
-  else if (!before && after) lifecycle = "post";
-  else lifecycle = "post";
+  const lifecycle = computeBaseBulbLifecycle({ prior, before, after });
+  if (lifecycle === null) return null;
 
   // Two-circle marker: a team-accent disc with a chunky cream rim. Sits
-  // right on top of the white base diamond, so an occupied base reads as
-  // a clearly distinct shape from an empty base at a glance — which the
-  // single small accent dot wasn't doing on the green grass.
+  // on top of the white base diamond, so an occupied base reads as a
+  // clearly distinct shape from an empty base at a glance. The bulb is
+  // sized so the cream rim halos just outside the white square (~8.5 >
+  // the square's 8.49 circumscribed radius).
   return (
     <g
       className="field-base-bulb"
@@ -879,10 +906,83 @@ function BaseBulb({
       data-base={base}
       data-lifecycle={lifecycle}
     >
-      <circle cx={pos.x} cy={pos.y} r={6.5} fill="#f5efdc" />
-      <circle cx={pos.x} cy={pos.y} r={4.5} fill="var(--field-accent)" />
+      <circle cx={pos.x} cy={pos.y} r={8.5} fill="#f5efdc" />
+      <circle
+        cx={pos.x}
+        cy={pos.y}
+        r={6}
+        fill="var(--field-accent)"
+        stroke="rgba(0,0,0,0.35)"
+        strokeWidth={0.6}
+      />
     </g>
   );
+}
+
+// Per-base anchor offsets for the runner-name label. Tucked to the
+// outside of each bag so labels never sit on a basepath used by an
+// animated RunnerDotSvg.
+const BASE_LABEL_OFFSET: Record<"first" | "second" | "third", { dx: number; dy: number; anchor: "start" | "middle" | "end" }> = {
+  first:  { dx: 14, dy: 4,   anchor: "start"  },
+  second: { dx: 0,  dy: -12, anchor: "middle" },
+  third:  { dx: -14, dy: 4,  anchor: "end"    },
+};
+
+function BaseLabel({
+  pos,
+  base,
+  prior,
+  before,
+  after,
+  namePrior,
+  nameBefore,
+  nameAfter,
+}: {
+  pos: { x: number; y: number };
+  base: "first" | "second" | "third";
+  prior?: boolean;
+  before: boolean;
+  after: boolean;
+  namePrior?: string;
+  nameBefore?: string;
+  nameAfter?: string;
+}) {
+  const lifecycle = computeBaseBulbLifecycle({ prior, before, after });
+  if (lifecycle === null) return null;
+  // Pick the name that matches whichever lit-phase the bulb is in. For
+  // `swap` we render whichever name we have — the CSS dim mid-play
+  // covers the handoff so the labels don't need to swap text mid-flight.
+  const name = pickLabelName(lifecycle, namePrior, nameBefore, nameAfter);
+  if (!name) return null;
+  const off = BASE_LABEL_OFFSET[base];
+  return (
+    <text
+      className="field-base-label"
+      data-base={base}
+      data-lifecycle={lifecycle}
+      x={pos.x + off.dx}
+      y={pos.y + off.dy}
+      textAnchor={off.anchor}
+      fontSize={9}
+    >
+      {abbrevRunner(name)}
+    </text>
+  );
+}
+
+function pickLabelName(
+  lifecycle: BaseBulbLifecycle,
+  prior: string | undefined,
+  before: string | undefined,
+  after: string | undefined,
+): string | undefined {
+  switch (lifecycle) {
+    case "hold":    return before ?? prior ?? after;
+    case "depart":  return before ?? prior;
+    case "release": return prior ?? before;
+    case "arrive":  return after;
+    case "swap":    return prior ?? before ?? after;
+  }
 }
 
 /**

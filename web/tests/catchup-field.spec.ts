@@ -81,6 +81,95 @@ test.describe("@smoke field rendering", () => {
     expect(await bulbs.count()).toBeGreaterThanOrEqual(2);
   });
 
+  test("on-base runner is visible on first-paint of the next at-bat (screenshot-bug repro)", async ({ page }) => {
+    // The bug from IMG_0072–IMG_0077: a walk puts a runner on first, then
+    // the next at-bat shows an empty diamond through pitch/ball. After the
+    // BaseBulb lifecycle rewrite, a base whose state is the same entering
+    // and leaving the play maps to lifecycle="hold" with static opacity:1.
+    const walk = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-walk`,
+      sortOrder: 1,
+      inning: 1,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "walk",
+        label: "WALK",
+        subLabel: null,
+        batterName: "Xavier Edwards",
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter:  { first: true,  second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter:  { first: "Xavier Edwards" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "pitch",
+        runnerMovements: [],
+        intensity: "low",
+        animationProfile: "walk",
+      },
+    });
+    const reach = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-reach`,
+      sortOrder: 2,
+      inning: 1,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "error",
+        label: "REACHED ON ERROR",
+        subLabel: null,
+        batterName: "Liam Hicks",
+        baseStateBefore: { first: true,  second: false, third: false },
+        baseStateAfter:  { first: true,  second: false, third: true  },
+        runnerNamesBefore: { first: "Xavier Edwards" },
+        runnerNamesAfter:  { first: "Liam Hicks", third: "Xavier Edwards" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "ground_3b",
+        runnerMovements: [],
+        intensity: "medium",
+        animationProfile: "routine_grounder",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), walk, reach] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    // Scroll to the reach-on-error card (the second at-bat).
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[2] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    const reachCard = page.locator("[data-testid='play-card']").nth(1);
+    await expect(reachCard).toBeVisible();
+
+    // First base: occupied before AND after → lifecycle="hold".
+    const firstBulb = reachCard.locator("[data-testid='base-bulb'][data-base='first']");
+    await expect(firstBulb).toHaveAttribute("data-lifecycle", "hold");
+    // Bulb must be visible from first paint — the bug was opacity:0 here.
+    const firstAccentOpacity = await firstBulb.evaluate((g) => {
+      const inner = g.querySelector("circle:nth-child(2)") as SVGElement | null;
+      return inner ? Number(window.getComputedStyle(inner).opacity) : 0;
+    });
+    expect(firstAccentOpacity).toBeGreaterThanOrEqual(0.9);
+
+    // Third base: empty before, occupied after → lifecycle="arrive".
+    const thirdBulb = reachCard.locator("[data-testid='base-bulb'][data-base='third']");
+    await expect(thirdBulb).toHaveAttribute("data-lifecycle", "arrive");
+
+    // Runner label for Edwards on first should be present pre-play.
+    const firstLabel = reachCard.locator("text.field-base-label[data-base='first']");
+    await expect(firstLabel).toHaveText("EDWARDS");
+  });
+
   test("walks the major animation profiles: home_run, walk, strikeout, double_play, ground", async ({ page }) => {
     // Each profile exercises a different branch in BaseballLightField (ball
     // trajectory, fade timing, runner-style mapping) — covering them on the
