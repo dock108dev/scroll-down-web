@@ -49,21 +49,41 @@ export function computeBaseBulbLifecycle(
   return "release";
 }
 
+export interface RunnerLabelSource {
+  id?: string | number | null;
+  name?: string | null;
+}
+
 /**
- * Compact runner label for the field: FIRST_INITIAL LAST_NAME. Names
- * that do not include at least first + last are treated as unavailable
- * so the UI does not fall back to inconsistent last-name-only tags.
+ * Compact runner label for the field: FIRST_INITIAL LAST_NAME. Unknown or
+ * malformed names render a stable fallback so occupied bases never disappear
+ * just because the feed omitted identity.
  */
-export function formatRunnerLabel(fullName: string | undefined): string {
-  if (!fullName) return "";
+export function formatRunnerLabel(
+  player: RunnerLabelSource | string | null | undefined,
+  fallback = "RUNNER",
+): string {
+  const fullName =
+    typeof player === "string"
+      ? player
+      : player?.name;
+  if (!fullName) return fallback;
   const trimmed = fullName.trim();
-  if (!trimmed) return "";
-  const parts = trimmed.split(/\s+/);
-  if (parts.length < 2) return "";
+  if (!trimmed) return fallback;
+  const parts = trimmed.split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return fallback;
   const firstInitial = parts[0]?.[0];
-  const last = parts[parts.length - 1];
-  if (!firstInitial || !last) return "";
+  const last = lastNamePart(parts);
+  if (!firstInitial || !last) return fallback;
   return `${firstInitial} ${last}`.toUpperCase();
 }
 
 export const abbrevRunner = formatRunnerLabel;
+
+function lastNamePart(parts: string[]): string {
+  let last = parts[parts.length - 1];
+  if (/^(jr\.?|sr\.?|ii|iii|iv|v)$/i.test(last) && parts.length >= 2) {
+    last = parts[parts.length - 2];
+  }
+  return last.replace(/[.,;:]$/, "");
+}

@@ -48,6 +48,12 @@ import type {
   SdmBaseMovement,
 } from "@/types/scroll-down-mlb";
 import { diffBaseStatesToAdvances } from "@/lib/runner-state";
+import {
+  inferTerminalPitchResult,
+  normalizeDisplayCount,
+  type BaseballCount,
+} from "@/lib/baseball-count";
+import { formatRunnerLabel } from "@/lib/base-bulb-lifecycle";
 
 const HOME_ABBR_FALLBACK = "HME";
 const AWAY_ABBR_FALLBACK = "AWY";
@@ -250,18 +256,35 @@ function adaptPlayCard(
     event?.scoreChange ??
     play.scoreChange ??
     runsToScoreChange(play.runsScoredOnPlay ?? 0, inningHalf);
-  const scoreAfter = {
-    home: scoreBefore.home + scoreChange.home,
-    away: scoreBefore.away + scoreChange.away,
+  const validationContext = {
+    gameId,
+    cardId: card.id,
+    eventId: event?.sequence,
+    playIndex,
+    inning,
+    half: inningHalf,
   };
+  const scoreAfter = normalizeScoreAfter(scoreBefore, scoreChange, validationContext);
 
-  const baseStateBefore: BaseballBaseState =
-    event?.baseStateBefore ?? play.baseStateBefore ?? emptyBases();
-  const baseStateAfter: BaseballBaseState =
-    event?.baseStateAfter ?? play.baseStateAfter ?? emptyBases();
+  const baseStateBefore = normalizeBaseState(
+    event?.baseStateBefore ?? play.baseStateBefore,
+    { ...validationContext, phase: "before" },
+  );
+  const baseStateAfter = normalizeBaseState(
+    event?.baseStateAfter ?? play.baseStateAfter,
+    { ...validationContext, phase: "after" },
+  );
 
-  const runnerNamesBefore = play.runnerNamesBefore ?? {};
-  const runnerNamesAfter = play.runnerNamesAfter ?? {};
+  const runnerNamesBefore = sanitizeRunnerNames(
+    enrichRunnerNamesFromMovements(play.runnerNamesBefore ?? {}, event?.movements, "from"),
+    baseStateBefore,
+    { ...validationContext, phase: "before" },
+  );
+  const runnerNamesAfter = sanitizeRunnerNames(
+    enrichRunnerNamesFromMovements(play.runnerNamesAfter ?? {}, event?.movements, "to"),
+    baseStateAfter,
+    { ...validationContext, phase: "after" },
+  );
 
   // Runner advances drive the in-card animation. Source of truth is the
   // wire's `event.movements` — the backend builds these deterministically
@@ -270,7 +293,7 @@ function adaptPlayCard(
   // cached decks do not carry `halfInnings`, so only that path falls back
   // to the old local base-state diff.
   const runnerAdvances: RunnerAdvance[] = event
-    ? event.movements.map(movementToAdvance)
+    ? sanitizeRunnerAdvances(event.movements.map(movementToAdvance), validationContext)
     : diffBaseStatesToAdvances(baseStateBefore, baseStateAfter, {
         runnerNamesBefore: runnerNamesBefore as RunnerNames,
         runnerNamesAfter: runnerNamesAfter as RunnerNames,
@@ -316,6 +339,30 @@ function adaptPlayCard(
     (eventTypeFromEvent as PlayEventType | null | undefined) ??
     (play.eventType as PlayEventType | null | undefined) ??
     undefined;
+  const terminalResult = inferTerminalPitchResult(resolvedEventType, event);
+  const rawCountBefore = readCount(event, "before") ?? countFromUnknown({
+    balls: play.ballsBefore ?? undefined,
+    strikes: play.strikesBefore ?? undefined,
+  });
+  const rawCountAfter = countFromUnknown(readCount(event, "after"));
+  const displayCountBefore = normalizeDisplayCount(
+    rawCountBefore,
+    terminalResult,
+    "preview",
+    { ...validationContext, phase: "preview" },
+  );
+  const displayCountAfter = normalizeDisplayCount(
+    rawCountAfter ?? rawCountBefore,
+    terminalResult,
+    "revealed",
+    { ...validationContext, phase: "revealed" },
+  );
+  if (rawCountAfter) {
+    normalizeDisplayCount(rawCountAfter, terminalResult, "revealed", {
+      ...validationContext,
+      phase: "after",
+    });
+  }
 
   return {
     kind: "play",
@@ -332,15 +379,25 @@ function adaptPlayCard(
     scoreBefore,
     scoreAfter,
     situationBefore: {
-      outs: event?.outsBefore ?? play.outsBefore ?? undefined,
-      balls: play.ballsBefore ?? undefined,
-      strikes: play.strikesBefore ?? undefined,
+      outs: normalizeOuts(event?.outsBefore ?? play.outsBefore, {
+        ...validationContext,
+        phase: "before",
+      }),
+      balls: displayCountBefore?.balls,
+      strikes: displayCountBefore?.strikes,
+      rawCountAfter,
+      displayCountBefore,
+      displayCountAfter,
+      terminalResult,
       baseState: baseStateBefore,
       batterName: batterName ?? undefined,
       pitcherName: event?.matchup.pitcher?.name ?? play.pitcherName ?? undefined,
       pitcherStatLine: play.pitcherStatLine ?? undefined,
     },
-    outsAfter: event?.outsAfter ?? play.outsAfter ?? 0,
+    outsAfter: normalizeOuts(event?.outsAfter ?? play.outsAfter, {
+      ...validationContext,
+      phase: "after",
+    }) ?? 0,
     baseStateAfter,
     runnerNamesBefore: runnerNamesBefore as RunnerNames,
     runnerNamesAfter: runnerNamesAfter as RunnerNames,
@@ -429,6 +486,168 @@ function movementToAdvance(move: SdmBaseMovement): RunnerAdvance {
   };
 }
 
+type ValidationPhase = "before" | "after" | "preview" | "revealed";
+
+interface RenderValidationContext {
+  gameId: number;
+  cardId?: string;
+  eventId?: string | number;
+  playIndex?: number;
+  inning?: number;
+  half?: "top" | "bottom";
+  phase?: ValidationPhase;
+}
+
+function normalizeOuts(
+  value: number | null | undefined,
+  context: RenderValidationContext,
+): number | undefined {
+  if (value == null) return undefined;
+  if (!Number.isFinite(value)) {
+    logDeckValidation("invalid_outs", { ...context, value });
+    return undefined;
+  }
+  const normalized = Math.min(3, Math.max(0, Math.trunc(value)));
+  if (normalized !== value) {
+    logDeckValidation("invalid_outs", { ...context, value, normalized });
+  }
+  return normalized;
+}
+
+function normalizeBaseState(
+  state: Partial<BaseballBaseState> | null | undefined,
+  context: RenderValidationContext,
+): BaseballBaseState {
+  if (!state) return emptyBases();
+  const normalized = {
+    first: state.first === true,
+    second: state.second === true,
+    third: state.third === true,
+  };
+  for (const base of BASE_KEYS) {
+    if (state[base] !== undefined && typeof state[base] !== "boolean") {
+      logDeckValidation("invalid_base_state", { ...context, base, value: state[base] });
+    }
+  }
+  return normalized;
+}
+
+function normalizeScoreAfter(
+  before: { home: number; away: number },
+  change: { home: number; away: number },
+  context: RenderValidationContext,
+): { home: number; away: number } {
+  const next = {
+    home: before.home + change.home,
+    away: before.away + change.away,
+  };
+  if (next.home < before.home || next.away < before.away) {
+    logDeckValidation("score_decreased", { ...context, before, change, next });
+    return {
+      home: Math.max(before.home, next.home),
+      away: Math.max(before.away, next.away),
+    };
+  }
+  return next;
+}
+
+const BASE_KEYS = ["first", "second", "third"] as const;
+type OccupiedBase = (typeof BASE_KEYS)[number];
+
+function sanitizeRunnerNames(
+  names: Partial<RunnerNames>,
+  baseState: BaseballBaseState,
+  context: RenderValidationContext,
+): RunnerNames {
+  const out: RunnerNames = {};
+  const seen = new Set<string>();
+  for (const base of BASE_KEYS) {
+    if (!baseState[base]) continue;
+    const raw = names[base];
+    const label = formatRunnerLabel(raw, `U ${base.toUpperCase()}`);
+    if (seen.has(label)) {
+      logDeckValidation("duplicate_runner_label", { ...context, base, label });
+      continue;
+    }
+    seen.add(label);
+    if (raw && raw.trim()) {
+      out[base] = raw;
+    }
+  }
+  return out;
+}
+
+function enrichRunnerNamesFromMovements(
+  names: Partial<RunnerNames>,
+  movements: SdmBaseMovement[] | undefined,
+  endpoint: "from" | "to",
+): RunnerNames {
+  const out: RunnerNames = { ...names };
+  if (!movements) return out;
+  for (const movement of movements) {
+    const base = movement[endpoint];
+    if (!isOccupiedBase(base)) continue;
+    if (!out[base] && movement.runner?.name) {
+      out[base] = movement.runner.name;
+    }
+  }
+  return out;
+}
+
+function sanitizeRunnerAdvances(
+  advances: RunnerAdvance[],
+  context: RenderValidationContext,
+): RunnerAdvance[] {
+  const seen = new Set<string>();
+  const out: RunnerAdvance[] = [];
+  for (const adv of advances) {
+    if (adv.from === adv.to && adv.from !== "home") {
+      logDeckValidation("stationary_runner_movement", { ...context, runnerId: adv.runnerId, from: adv.from, to: adv.to });
+      continue;
+    }
+    const runnerKey = adv.runnerId ?? adv.runnerName ?? "unknown";
+    const key = `${runnerKey}:${adv.from}:${adv.to}:${adv.outAt ?? ""}`;
+    if (seen.has(key)) {
+      logDeckValidation("duplicate_runner_movement", { ...context, runnerKey, from: adv.from, to: adv.to });
+      continue;
+    }
+    seen.add(key);
+    out.push(adv);
+  }
+  return out;
+}
+
+function countFromUnknown(value: unknown): BaseballCount | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const balls = (value as { balls?: unknown }).balls;
+  const strikes = (value as { strikes?: unknown }).strikes;
+  if (typeof balls !== "number" || typeof strikes !== "number") return undefined;
+  return { balls, strikes };
+}
+
+function readCount(event: SdmHalfInningEvent | undefined, side: "before" | "after"): BaseballCount | undefined {
+  if (!event) return undefined;
+  const maybeEvent = event as unknown as {
+    situationBefore?: { count?: unknown } | null;
+    situationAfter?: { count?: unknown } | null;
+    before?: { count?: unknown } | null;
+    after?: { count?: unknown } | null;
+  };
+  return countFromUnknown(
+    side === "before"
+      ? maybeEvent.situationBefore?.count ?? maybeEvent.before?.count
+      : maybeEvent.situationAfter?.count ?? maybeEvent.after?.count,
+  );
+}
+
+function isOccupiedBase(base: string): base is OccupiedBase {
+  return base === "first" || base === "second" || base === "third";
+}
+
+function logDeckValidation(code: string, detail: Record<string, unknown>): void {
+  if (typeof console === "undefined") return;
+  console.warn("[scroll-down-mlb] deck validation warning", { code, ...detail });
+}
 
 /**
  * Build the `playIndex → HalfInningEvent` index. Skips containers
@@ -441,7 +660,27 @@ function indexEventsByPlayIndex(
   const out = new Map<number, SdmHalfInningEvent>();
   if (!containers) return out;
   for (const container of containers) {
+    const eventIds = new Set<string>();
     for (const event of container.events) {
+      const eventId = `${container.gameId}:${container.inning}:${container.half}:${event.sequence}:${event.playIndex}`;
+      if (eventIds.has(eventId)) {
+        logDeckValidation("duplicate_event_id", {
+          gameId: container.gameId,
+          inning: container.inning,
+          half: container.half,
+          eventId,
+          playIndex: event.playIndex,
+        });
+      }
+      eventIds.add(eventId);
+      if (out.has(event.playIndex)) {
+        logDeckValidation("duplicate_play_index", {
+          gameId: container.gameId,
+          inning: container.inning,
+          half: container.half,
+          playIndex: event.playIndex,
+        });
+      }
       out.set(event.playIndex, event);
     }
   }

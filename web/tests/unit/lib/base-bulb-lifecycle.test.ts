@@ -42,10 +42,10 @@ describe("computeBaseBulbLifecycle", () => {
 });
 
 describe("formatRunnerLabel", () => {
-  it("returns empty string for undefined / empty / whitespace", () => {
-    expect(formatRunnerLabel(undefined)).toBe("");
-    expect(formatRunnerLabel("")).toBe("");
-    expect(formatRunnerLabel("   ")).toBe("");
+  it("returns a stable fallback for undefined / empty / whitespace", () => {
+    expect(formatRunnerLabel(undefined)).toBe("RUNNER");
+    expect(formatRunnerLabel("")).toBe("RUNNER");
+    expect(formatRunnerLabel("   ")).toBe("RUNNER");
   });
 
   it("formats first initial plus last name", () => {
@@ -56,7 +56,12 @@ describe("formatRunnerLabel", () => {
   });
 
   it("does not emit last-name-only labels", () => {
-    expect(formatRunnerLabel("Edwards")).toBe("");
+    expect(formatRunnerLabel("Edwards")).toBe("RUNNER");
+  });
+
+  it("accepts player summary objects", () => {
+    expect(formatRunnerLabel({ id: "123", name: "Cedric Mayo" })).toBe("C MAYO");
+    expect(formatRunnerLabel({ id: "123", name: "" })).toBe("RUNNER");
   });
 
   it("uppercases", () => {

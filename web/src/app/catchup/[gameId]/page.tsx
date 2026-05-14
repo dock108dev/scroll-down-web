@@ -2,6 +2,7 @@
 
 import { use, useEffect } from "react";
 import { CatchupExperience } from "@/components/catchup/CatchupExperience";
+import { CatchupErrorBoundary } from "@/components/catchup/CatchupErrorBoundary";
 import { trackEvent } from "@/lib/analytics";
 
 export default function CatchupPage({
@@ -24,5 +25,13 @@ export default function CatchupPage({
     );
   }
 
-  return <CatchupExperience gameId={gameId} />;
+  return (
+    <CatchupErrorBoundary
+      title="Could not render this game."
+      boundaryKey={`game:${gameId}`}
+      context={{ gameId, scope: "game-loader" }}
+    >
+      <CatchupExperience gameId={gameId} />
+    </CatchupErrorBoundary>
+  );
 }

@@ -319,6 +319,58 @@ describe("scroll-down-mlb deck adapter — wire-event sourcing", () => {
     expect(play.situationBefore.strikes).toBe(1);
   });
 
+  it("normalizes impossible backend counts before render", () => {
+    const deck = buildDeck({ ballsBefore: 4, strikesBefore: 3 });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.situationBefore.balls).toBe(3);
+    expect(play.situationBefore.strikes).toBe(2);
+    expect(play.situationBefore.displayCountBefore).toEqual({ balls: 3, strikes: 2 });
+  });
+
+  it("separates terminal raw count from display count", () => {
+    const deck = buildDeck({ ballsBefore: 3, strikesBefore: 2 }, undefined, {
+      eventOverrides: {
+        eventType: "walk",
+        result: makeResult({
+          label: "WALK",
+          description: "Walk.",
+          eventType: "walk",
+          isWalk: true,
+          isHit: false,
+          isScoringPlay: false,
+        }),
+        ...({
+          situationAfter: { count: { balls: 4, strikes: 2 } },
+        } as unknown as Partial<SdmHalfInningEvent>),
+      },
+    });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.situationBefore.terminalResult).toBe("walk");
+    expect(play.situationBefore.displayCountBefore).toEqual({ balls: 3, strikes: 2 });
+    expect(play.situationBefore.rawCountAfter).toEqual({ balls: 4, strikes: 2 });
+    expect(play.situationBefore.displayCountAfter).toEqual({ balls: 0, strikes: 0 });
+  });
+
+  it("deduplicates invalid runner labels without dropping occupied bases", () => {
+    const deck = buildDeck(
+      {
+        baseStateBefore: { first: true, second: true, third: false },
+        runnerNamesBefore: { first: "Aaron Judge", second: "A Judge" },
+      },
+      undefined,
+      { halfInnings: undefined },
+    );
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.situationBefore.baseState).toEqual({ first: true, second: true, third: false });
+    expect(play.runnerNamesBefore).toEqual({ first: "Aaron Judge" });
+  });
+
   it("preview does NOT apply scoreChange — scoreBefore is unchanged", () => {
     const deck = buildDeck({}, undefined, {
       eventOverrides: {

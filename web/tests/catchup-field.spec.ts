@@ -32,6 +32,46 @@ test.describe("@smoke field rendering", () => {
     await expect(card.locator("[data-testid='outs-state']")).toBeVisible();
   });
 
+  test("invalid backend counts are normalized before render", async ({ page }) => {
+    const badCount = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-bad-count`,
+      play: {
+        ...makePlayCard().play!,
+        ballsBefore: 4,
+        strikesBefore: 3,
+      },
+    });
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), badCount] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+    const card = page.locator("[data-testid='play-card']").first();
+    await expect(card.locator(".catchup-card-count-value")).toHaveText("3-2");
+    await expect(card.locator(".catchup-card-count-value")).not.toHaveText(/4-|-[3-9]/);
+  });
+
+  test("runner labels are formatted and bad duplicate names fall back without hiding bases", async ({ page }) => {
+    const duplicateNames = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-bad-runner-labels`,
+      play: {
+        ...makePlayCard().play!,
+        baseStateBefore: { first: true, second: true, third: true },
+        runnerNamesBefore: { first: "Cedric Mayo", second: "C Mayo" },
+      },
+    });
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), duplicateNames] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+    const card = page.locator("[data-testid='play-card']").first();
+    await expect(card.locator("[data-testid='base-bulb']")).toHaveCount(3);
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "C MAYO");
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='second']")).toHaveAttribute("data-runner", "U SECOND");
+    await expect(card.locator("[data-testid='base-runner-label'][data-base='third']")).toHaveAttribute("data-runner", "U THIRD");
+  });
+
   test("pitcher-stat-line is shown when the play carries one, hidden otherwise", async ({ page }) => {
     const withPitcher = makePlayCard({
       id: `${DEFAULT_GAME_ID}-with-pitcher`,

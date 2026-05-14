@@ -229,8 +229,14 @@ export type PlayEventType =
 
 export interface SituationBefore {
   outs?: number;
+  /** Backward-compatible display count. Always normalized to MLB live-count
+   *  limits before render: balls 0-3, strikes 0-2. */
   balls?: number;
   strikes?: number;
+  rawCountAfter?: CountState;
+  displayCountBefore?: CountState;
+  displayCountAfter?: CountState;
+  terminalResult?: TerminalPitchResult;
   baseState: BaseballBaseState;
   batterName?: string;
   pitcherName?: string;
@@ -239,6 +245,13 @@ export interface SituationBefore {
    *  the renderer just displays it. Undefined when not available. */
   pitcherStatLine?: string;
 }
+
+export interface CountState {
+  balls: number;
+  strikes: number;
+}
+
+export type TerminalPitchResult = "walk" | "strikeout" | "ball_in_play";
 
 /**
  * Snapshot of the game state at the END of the previously-displayed card.
