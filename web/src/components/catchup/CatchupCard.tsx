@@ -177,6 +177,8 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   // whichever team's number went up at the moment data-flash flips true.
   const showAfter =
     revealRequested && (phase === "settle" || phase === "reveal" || phase === "advance");
+  const showRunnerMovements =
+    revealRequested && phase !== "reveal" && phase !== "advance";
   const score = showAfter ? card.scoreAfter : card.scoreBefore;
   const homeIncreased = card.scoreAfter.home > card.scoreBefore.home;
   const awayIncreased = card.scoreAfter.away > card.scoreBefore.away;
@@ -393,7 +395,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
             key={card.cardId}
             visibleBaseState={visibleBaseState}
             visibleRunnerNames={visibleRunnerNames}
-            runnerMovements={revealRequested ? movements : []}
+            runnerMovements={showRunnerMovements ? movements : []}
             runnersBeginMs={milestones.runners}
             ballPath={revealRequested ? card.ballPath : "none"}
             eventType={revealRequested ? card.eventType : undefined}

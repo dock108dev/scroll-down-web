@@ -18,7 +18,12 @@ import {
   INFIELD_DIRT_RADIUS,
   WALL_RADIUS,
 } from "@/lib/field-geometry";
-import { basepathLength, basepathSvgPath, type RunnerMovement } from "@/lib/runner-paths";
+import {
+  basepathLength,
+  basepathSvgPath,
+  getBasepathRoute,
+  type RunnerMovement,
+} from "@/lib/runner-paths";
 import type { RunnerMovementStyle } from "@/lib/types";
 import { getPhaseMilestones, getPhaseSchedule } from "@/lib/play-phases";
 import { buildTrajectory } from "@/lib/trajectory";
@@ -618,19 +623,19 @@ export function BaseballLightField({
         <BaseBulb pos={POS.first}  base="first"  occupied={visibleBaseState.first} />
         <BaseBulb pos={POS.second} base="second" occupied={visibleBaseState.second} />
         <BaseBulb pos={POS.third}  base="third"  occupied={visibleBaseState.third} />
-        <BaseLabel
+        <BaseRunnerLabel
           pos={POS.first}
           base="first"
           occupied={visibleBaseState.first}
           name={visibleRunnerNames?.first}
         />
-        <BaseLabel
+        <BaseRunnerLabel
           pos={POS.second}
           base="second"
           occupied={visibleBaseState.second}
           name={visibleRunnerNames?.second}
         />
-        <BaseLabel
+        <BaseRunnerLabel
           pos={POS.third}
           base="third"
           occupied={visibleBaseState.third}
@@ -727,8 +732,18 @@ export function BaseballLightField({
           );
         })}
 
+        {/* Runner movement guides — explicit event.movements only. Drawn
+            before trails/dots so the advancing runner paints on top. */}
+        {(runnerMovements ?? []).map((m, i) => (
+          <RunnerAdvanceGuideSvg
+            key={`guide-${m.advance.runnerId ?? m.advance.runnerName ?? `${m.from}-${m.to}-${i}`}`}
+            movement={m}
+            runnersStart={runnersStart}
+          />
+        ))}
+
         {/* Runner movement trails — phosphor afterimage for each runner.
-            Drawn FIRST so dots render on top. */}
+            Drawn under dots but above the guide. */}
         {(runnerMovements ?? []).map((m, i) => (
           <RunnerTrailSvg
             key={`trail-${m.advance.runnerId ?? m.advance.runnerName ?? `${m.from}-${m.to}-${i}`}`}
@@ -839,16 +854,18 @@ function BaseBulb({
   );
 }
 
-// Per-base anchor offsets for the runner-name label. Tucked to the
-// outside of each bag so labels never sit on a basepath used by an
-// animated RunnerDotSvg.
-const BASE_LABEL_OFFSET: Record<"first" | "second" | "third", { dx: number; dy: number; anchor: "start" | "middle" | "end" }> = {
-  first:  { dx: 14, dy: 4,   anchor: "start"  },
-  second: { dx: 0,  dy: -12, anchor: "middle" },
-  third:  { dx: -14, dy: 4,  anchor: "end"    },
+const BASE_LABEL_LAYOUT: Record<"first" | "second" | "third", {
+  dx: number;
+  dy: number;
+  anchor: "start" | "middle" | "end";
+  dominantBaseline: "middle" | "auto";
+}> = {
+  first:  { dx: 16, dy: 0,   anchor: "start",  dominantBaseline: "middle" },
+  second: { dx: 0,  dy: -17, anchor: "middle", dominantBaseline: "auto" },
+  third:  { dx: -16, dy: 0,  anchor: "end",    dominantBaseline: "middle" },
 };
 
-function BaseLabel({
+function BaseRunnerLabel({
   pos,
   base,
   occupied,
@@ -861,10 +878,9 @@ function BaseLabel({
 }) {
   if (!occupied) return null;
   const label = formatRunnerLabel(name, `U ${base.toUpperCase()}`);
-  if (!label) return null;
-  const off = BASE_LABEL_OFFSET[base];
-  const width = Math.max(38, label.length * 6 + 10);
-  const height = 13;
+  const off = BASE_LABEL_LAYOUT[base];
+  const width = Math.max(48, label.length * 6.2 + 12);
+  const height = 15;
   const x = pos.x + off.dx;
   const y = pos.y + off.dy;
   const rectX = off.anchor === "middle"
@@ -872,6 +888,12 @@ function BaseLabel({
     : off.anchor === "end"
       ? x - width
       : x;
+  const rectY = off.dominantBaseline === "middle"
+    ? y - height / 2
+    : y - height + 3;
+  const textY = off.dominantBaseline === "middle"
+    ? y + 0.5
+    : y;
   return (
     <g
       className="field-base-label"
@@ -882,20 +904,87 @@ function BaseLabel({
       <rect
         className="field-base-label-bg"
         x={rectX}
-        y={y - height + 3}
+        y={rectY}
         width={width}
         height={height}
-        rx={4}
+        rx={5}
       />
       <text
         className="field-base-label-text"
         x={x}
-        y={y}
+        y={textY}
         textAnchor={off.anchor}
+        dominantBaseline={off.dominantBaseline}
         fontSize={8}
       >
         {label}
       </text>
+    </g>
+  );
+}
+
+function RunnerAdvanceGuideSvg({
+  movement,
+  runnersStart,
+}: {
+  movement: RunnerMovement;
+  runnersStart: number;
+}) {
+  if (movement.style === "in_place_out") return null;
+  if (movement.to === "out" && !movement.outAt) return null;
+  const destination = movement.to === "out" ? movement.outAt : movement.to;
+  if (!destination || movement.durationMs <= 0) return null;
+
+  const beginMs = runnersStart + movement.beginMs;
+  const fadeMs = beginMs + movement.durationMs + Math.max(120, movement.trailFadeMs);
+  const route = getBasepathRoute(movement.from, destination);
+  const guideDots = route.slice(1).map((point, i) => {
+    const prev = route[i];
+    return {
+      x: (prev.x + point.x) / 2,
+      y: (prev.y + point.y) / 2,
+      delay: beginMs + Math.round((movement.durationMs / Math.max(1, route.length - 1)) * i),
+    };
+  });
+  const origin = FIELD_POINTS[movement.from];
+  const destinationPoint = FIELD_POINTS[destination];
+
+  return (
+    <g className="field-runner-guide" data-style={movement.style}>
+      <circle
+        className="field-runner-base-pulse field-runner-base-pulse-origin"
+        cx={origin.x}
+        cy={origin.y}
+        r="8"
+        opacity="0"
+      >
+        <animate attributeName="opacity" values="0;0.65;0" begin={`${beginMs}ms`} dur="420ms" fill="freeze" />
+        <animate attributeName="r" values="8;14;17" begin={`${beginMs}ms`} dur="420ms" fill="freeze" />
+      </circle>
+      <circle
+        className="field-runner-base-pulse field-runner-base-pulse-destination"
+        cx={destinationPoint.x}
+        cy={destinationPoint.y}
+        r="8"
+        opacity="0"
+      >
+        <animate attributeName="opacity" values="0;0.7;0" begin={`${beginMs + movement.durationMs}ms`} dur="460ms" fill="freeze" />
+        <animate attributeName="r" values="8;15;18" begin={`${beginMs + movement.durationMs}ms`} dur="460ms" fill="freeze" />
+      </circle>
+      {guideDots.map((dot, i) => (
+        <circle
+          key={`${dot.x}-${dot.y}-${i}`}
+          className="field-runner-direction-dot"
+          cx={dot.x}
+          cy={dot.y}
+          r="2.2"
+          opacity="0"
+        >
+          <animate attributeName="opacity" values="0;0.82;0.62;0" begin={`${dot.delay}ms`} dur={`${Math.max(360, movement.durationMs)}ms`} fill="freeze" />
+          <animate attributeName="r" values="1.8;2.8;2.2" begin={`${dot.delay}ms`} dur="360ms" fill="freeze" />
+        </circle>
+      ))}
+      <animate attributeName="opacity" from="1" to="0" begin={`${fadeMs}ms`} dur="180ms" fill="freeze" />
     </g>
   );
 }

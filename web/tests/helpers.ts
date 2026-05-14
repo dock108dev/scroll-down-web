@@ -1,8 +1,10 @@
 import { test as base, expect, type Page, type Route } from "@playwright/test";
 import { addCoverageReport } from "monocart-reporter";
 import type {
+  SdmBaseMovement,
   SdmDeckCard,
   SdmDeckResponse,
+  SdmHalfInningContainer,
   SdmPlayPayload,
   SdmRecentGame,
   SdmRecentResponse,
@@ -181,6 +183,10 @@ export function makeFinalSetupCard(): SdmDeckCard {
 }
 
 export function makeDeckResponse(overrides: Partial<SdmDeckResponse> = {}): SdmDeckResponse {
+  const cards = ensureUniquePlayIds(overrides.cards ?? [makeSceneCard(), makePlayCard()]);
+  const halfInnings = "halfInnings" in overrides
+    ? overrides.halfInnings
+    : makeHalfInningsFromCards(cards);
   return {
     gameId: DEFAULT_GAME_ID,
     deckVersion: "official-abc123",
@@ -206,11 +212,161 @@ export function makeDeckResponse(overrides: Partial<SdmDeckResponse> = {}): SdmD
     venue: "Tropicana Field",
     homeProbablePitcher: null,
     awayProbablePitcher: null,
-    cards: [makeSceneCard(), makePlayCard()],
     plannerReport: { rhythm: [] },
     validationWarnings: [],
     ...overrides,
+    cards,
+    halfInnings,
   };
+}
+
+function ensureUniquePlayIds(cards: SdmDeckCard[]): SdmDeckCard[] {
+  const seen = new Set<number>();
+  return cards.map((card, i) => {
+    if (card.type !== "play" || !card.play) return card;
+    let playIndex = Number(card.play.playId);
+    if (!Number.isFinite(playIndex)) playIndex = 10000 + i;
+    while (seen.has(playIndex)) playIndex += 1;
+    seen.add(playIndex);
+    if (String(playIndex) === card.play.playId) return card;
+    return {
+      ...card,
+      play: {
+        ...card.play,
+        playId: String(playIndex),
+      },
+    };
+  });
+}
+
+function makeHalfInningsFromCards(cards: SdmDeckCard[]): SdmHalfInningContainer[] {
+  const groups = new Map<string, SdmHalfInningContainer>();
+  for (const card of cards) {
+    if (card.type !== "play" || !card.play) continue;
+    const inning = card.inning ?? 1;
+    const half = card.half ?? "top";
+    const key = `${inning}-${half}`;
+    let group = groups.get(key);
+    if (!group) {
+      group = {
+        gameId: DEFAULT_GAME_ID,
+        inning,
+        half,
+        battingTeam: half === "top"
+          ? { id: "1", abbreviation: "SF", displayName: "San Francisco Giants", colorLight: null, colorDark: null }
+          : { id: "2", abbreviation: "TB", displayName: "Tampa Bay Rays", colorLight: null, colorDark: null },
+        fieldingTeam: half === "top"
+          ? { id: "2", abbreviation: "TB", displayName: "Tampa Bay Rays", colorLight: null, colorDark: null }
+          : { id: "1", abbreviation: "SF", displayName: "San Francisco Giants", colorLight: null, colorDark: null },
+        events: [],
+        meta: { scoredRuns: 0, hadActivity: true, hadLeadChange: false, hadTying: false },
+        selectedPlayIndices: [],
+      };
+      groups.set(key, group);
+    }
+    const play = card.play;
+    const scoreChange = scoreChangeForPlay(play, half);
+    group.meta.scoredRuns += scoreChange.home + scoreChange.away;
+    group.selectedPlayIndices.push(Number(play.playId));
+    group.events.push({
+      sequence: group.events.length + 1,
+      playIndex: Number(play.playId),
+      eventType: play.eventType,
+      outsBefore: play.outsBefore,
+      outsAfter: play.outsAfter,
+      baseStateBefore: play.baseStateBefore,
+      baseStateAfter: play.baseStateAfter,
+      scoreBefore: play.scoreBefore,
+      runsScoredOnPlay: play.runsScoredOnPlay,
+      scoreChange,
+      movements: movementsForPlay(play),
+      revealType: "plate_appearance",
+      result: {
+        label: play.label ?? "PLAY",
+        description: play.description ?? "",
+        eventType: play.eventType,
+        isOut: (play.outsAfter ?? 0) > (play.outsBefore ?? 0),
+        isStrikeout: play.eventType === "strikeout",
+        isWalk: play.eventType === "walk",
+        isHit: play.eventType === "single" || play.eventType === "double" || play.eventType === "triple" || play.eventType === "home_run",
+        isScoringPlay: play.runsScoredOnPlay > 0,
+        isInningEnding: play.outsAfter === 3,
+      },
+      matchup: {
+        batter: play.batterName ? { id: playerId(play.batterName), name: play.batterName } : null,
+        pitcher: play.pitcherName ? { id: playerId(play.pitcherName), name: play.pitcherName } : null,
+      },
+      isSelected: true,
+    });
+  }
+  return [...groups.values()];
+}
+
+type Base = "first" | "second" | "third";
+
+function movementsForPlay(play: SdmPlayPayload): SdmBaseMovement[] {
+  const before = play.baseStateBefore ?? { first: false, second: false, third: false };
+  const after = play.baseStateAfter ?? { first: false, second: false, third: false };
+  const beforeNames = play.runnerNamesBefore ?? {};
+  const afterNames = play.runnerNamesAfter ?? {};
+  const bases: Base[] = ["first", "second", "third"];
+  const out: SdmBaseMovement[] = [];
+  const usedAfter = new Set<Base>();
+  let runsRemaining = play.runsScoredOnPlay;
+
+  for (const from of bases) {
+    if (!before[from]) continue;
+    const name = beforeNames[from] ?? `Unknown ${from}`;
+    const to = bases.find((base) => after[base] && afterNames[base] === name);
+    if (to) {
+      usedAfter.add(to);
+      if (to !== from) out.push(baseMovement(name, from, to));
+      continue;
+    }
+    if (runsRemaining > 0) {
+      runsRemaining -= 1;
+      out.push(baseMovement(name, from, "home"));
+    } else if (!after[from]) {
+      out.push(baseMovement(name, from, "out", from));
+    }
+  }
+
+  for (const to of bases) {
+    if (!after[to] || usedAfter.has(to)) continue;
+    const name = afterNames[to] ?? play.batterName ?? `Unknown ${to}`;
+    out.push(baseMovement(name, "home", to));
+  }
+
+  if (play.eventType === "home_run" && play.batterName) {
+    out.push(baseMovement(play.batterName, "home", "home"));
+  }
+
+  return out;
+}
+
+function baseMovement(
+  name: string,
+  from: SdmBaseMovement["from"],
+  to: SdmBaseMovement["to"],
+  outAt?: SdmBaseMovement["outAt"],
+): SdmBaseMovement {
+  return {
+    runner: { id: playerId(name), name },
+    from,
+    to,
+    style: to === "out" ? "out" : to === "home" ? "score" : "advance",
+    outAt: outAt ?? null,
+  };
+}
+
+function scoreChangeForPlay(play: SdmPlayPayload, half: "top" | "bottom") {
+  if (play.scoreChange) return play.scoreChange;
+  const runs = Math.max(0, play.runsScoredOnPlay);
+  return half === "bottom" ? { home: runs, away: 0 } : { home: 0, away: runs };
+}
+
+function playerId(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 }
 
 export function makeRevealResponse(overrides: Partial<SdmRevealResponse> = {}): SdmRevealResponse {

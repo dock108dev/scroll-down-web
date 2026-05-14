@@ -214,10 +214,12 @@ test.describe("@smoke field rendering", () => {
     await expect(card).toHaveAttribute("data-reveal-state", "revealing");
     await expect(card).toHaveAttribute("data-event-type", "single");
     await expect(card.locator("[data-testid='result-badge']")).toBeVisible();
+    expect(await card.locator("[data-testid='runner-marker'], [data-testid='run-scored']").count()).toBeGreaterThan(0);
+    expect(await card.locator(".field-runner-direction-dot").count()).toBeGreaterThan(0);
     await expect(card.locator("[data-testid='score-away']")).toHaveText("1");
     await expect(card.locator("[data-testid='outs-state']")).toHaveAttribute("data-outs-after", "2");
     await expect(card.locator("[data-testid='play-narration-panel']")).toHaveAttribute("data-visible", "true");
-    await expect(card.locator("[data-testid='run-scored']")).toHaveCount(1);
+    await expect(card.locator("[data-testid='runner-marker'], [data-testid='run-scored']")).toHaveCount(0);
     await expect(card.locator("[data-testid='base-bulb'][data-base='first']")).toHaveCount(1);
     await expect(card.locator("[data-testid='base-runner-label'][data-base='first']")).toHaveAttribute("data-runner", "C SCHMITT");
   });

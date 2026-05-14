@@ -47,7 +47,6 @@ import type {
   SdmHalfInningEvent,
   SdmBaseMovement,
 } from "@/types/scroll-down-mlb";
-import { diffBaseStatesToAdvances } from "@/lib/runner-state";
 import {
   inferTerminalPitchResult,
   normalizeDisplayCount,
@@ -286,21 +285,13 @@ function adaptPlayCard(
     { ...validationContext, phase: "after" },
   );
 
-  // Runner advances drive the in-card animation. Source of truth is the
-  // wire's `event.movements` — the backend builds these deterministically
-  // from `situation_before.bases` vs `situation_after.bases` plus the
-  // batter's destination from event context. Legacy fixtures and older
-  // cached decks do not carry `halfInnings`, so only that path falls back
-  // to the old local base-state diff.
+  // Runner advances drive the in-card animation. They must come from the
+  // explicit wire event; when the wire omits movements, render static
+  // before/after state only. This avoids invented diagonal paths or
+  // guessed runner movement on partial legacy payloads.
   const runnerAdvances: RunnerAdvance[] = event
     ? sanitizeRunnerAdvances(event.movements.map(movementToAdvance), validationContext)
-    : diffBaseStatesToAdvances(baseStateBefore, baseStateAfter, {
-        runnerNamesBefore: runnerNamesBefore as RunnerNames,
-        runnerNamesAfter: runnerNamesAfter as RunnerNames,
-        eventType: (play.eventType as PlayEventType | null | undefined) ?? undefined,
-        runsScored: play.runsScoredOnPlay ?? 0,
-        outsRecorded: Math.max(0, (play.outsAfter ?? 0) - (play.outsBefore ?? 0)),
-      });
+    : [];
 
   const rawTrajectory = card.visual?.trajectory as BallPath | null | undefined;
   // Generic backend `foul` doesn't carry direction. Infer from the

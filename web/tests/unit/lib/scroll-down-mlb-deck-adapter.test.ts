@@ -435,7 +435,7 @@ describe("scroll-down-mlb deck adapter — wire-event sourcing", () => {
     expect(play.chipPrimary).toBe("NEW CHIP");
   });
 
-  it("falls back to PlayPayload fields and base diffs when halfInnings is absent (legacy compat)", () => {
+  it("falls back to PlayPayload fields without inventing runner movement when halfInnings is absent", () => {
     const deck = buildDeck(
       {
         batterName: "Bo Bichette",
@@ -452,10 +452,7 @@ describe("scroll-down-mlb deck adapter — wire-event sourcing", () => {
     const play = cards.find((c) => c.kind === "play");
     if (play?.kind !== "play") throw new Error("expected play card");
     expect(play.situationBefore.batterName).toBe("Bo Bichette");
-    expect(play.runnerAdvances).toEqual([
-      expect.objectContaining({ from: "third", to: "home" }),
-      expect.objectContaining({ from: "home", to: "first" }),
-    ]);
+    expect(play.runnerAdvances).toEqual([]);
   });
 
   it("legacy fallback: batter is undefined when both event and play.batterName are absent", () => {
