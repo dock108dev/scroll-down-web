@@ -75,11 +75,262 @@ test.describe("@smoke field rendering", () => {
     const card = page.locator("[data-testid='play-card']").first();
     await expect(card).toBeVisible();
     await expect(card.locator("[data-testid='baseball-field']")).toBeVisible();
-    // Default fixture has runners on 3rd before, 1st after — at least one
-    // base-bulb per occupied state shows up. Bulbs are only rendered for
-    // bases that are/were/will-be occupied (BaseballLightField.tsx).
+    // Preview is spoiler-safe: the default fixture has a runner on 3rd
+    // before and a runner on 1st after, but only the before-state bulb
+    // should exist before the user reveals the pitch.
     const bulbs = card.locator("[data-testid='base-bulb']");
-    expect(await bulbs.count()).toBeGreaterThanOrEqual(2);
+    await expect(bulbs).toHaveCount(1);
+    await expect(bulbs.first()).toHaveAttribute("data-base", "third");
+  });
+
+  test("preview state hides result, after-score, after-outs, narration, and runner advancement", async ({ page }) => {
+    const scoring = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-spoiler-safe-preview`,
+      sortOrder: 1,
+      inning: 7,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "single",
+        label: "SINGLE",
+        subLabel: "RUN SCORES",
+        description: "Casey Schmitt singles home a run.",
+        ballsBefore: 1,
+        strikesBefore: 2,
+        outsBefore: 1,
+        outsAfter: 2,
+        baseStateBefore: { first: false, second: false, third: true },
+        baseStateAfter: { first: true, second: false, third: false },
+        runnerNamesBefore: { third: "Devers" },
+        runnerNamesAfter: { first: "Schmitt" },
+        scoreBefore: { home: 0, away: 0 },
+        runsScoredOnPlay: 1,
+      },
+      visual: {
+        trajectory: "line_center",
+        runnerMovements: [
+          { runner: "Devers", from: "third", to: "home", style: "score" },
+          { runner: "Schmitt", from: "home", to: "first", style: "advance" },
+        ],
+        intensity: "medium",
+        animationProfile: "line_drive",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), scoring] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const card = page.locator("[data-testid='play-card']").first();
+    await expect(card).toHaveAttribute("data-reveal-state", "preview");
+    await expect(card).toHaveAttribute("data-event-type", "hidden");
+    await expect(card.locator("[data-testid='preview-reveal-control']")).toBeVisible();
+    await expect(card.locator("[data-testid='result-badge']")).toHaveCount(0);
+    await expect(card.locator("[data-testid='play-narration-panel']")).toHaveCount(0);
+    await expect(card.locator("[data-testid='score-away']")).toHaveText("0");
+    await expect(card.locator("[data-testid='outs-state']")).toHaveAttribute("data-outs-after", "1");
+    await expect(card.locator("[data-testid='base-bulb']")).toHaveCount(1);
+    await expect(card.locator("[data-testid='base-bulb']").first()).toHaveAttribute("data-base", "third");
+    await expect(card.locator("[data-testid='runner-marker']")).toHaveCount(0);
+  });
+
+  test("revealing a scoring play stages result text, score, outs, and runners after the CTA", async ({ page }) => {
+    const scoring = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-spoiler-safe-reveal`,
+      sortOrder: 1,
+      inning: 7,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "single",
+        label: "SINGLE",
+        subLabel: "RUN SCORES",
+        description: "Casey Schmitt singles home a run.",
+        ballsBefore: 1,
+        strikesBefore: 2,
+        outsBefore: 1,
+        outsAfter: 2,
+        baseStateBefore: { first: false, second: false, third: true },
+        baseStateAfter: { first: true, second: false, third: false },
+        runnerNamesBefore: { third: "Devers" },
+        runnerNamesAfter: { first: "Schmitt" },
+        scoreBefore: { home: 0, away: 0 },
+        runsScoredOnPlay: 1,
+      },
+      visual: {
+        trajectory: "line_center",
+        runnerMovements: [
+          { runner: "Devers", from: "third", to: "home", style: "score" },
+          { runner: "Schmitt", from: "home", to: "first", style: "advance" },
+        ],
+        intensity: "medium",
+        animationProfile: "line_drive",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), scoring] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const card = page.locator("[data-testid='play-card']").first();
+    await card.getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(card).toHaveAttribute("data-reveal-state", "revealing");
+    await expect(card).toHaveAttribute("data-event-type", "single");
+    await expect(card.locator("[data-testid='result-badge']")).toBeVisible();
+    await expect(card.locator("[data-testid='score-away']")).toHaveText("1");
+    await expect(card.locator("[data-testid='outs-state']")).toHaveAttribute("data-outs-after", "2");
+    await expect(card.locator("[data-testid='play-narration-panel']")).toHaveAttribute("data-visible", "true");
+    await expect(card.locator("[data-testid='run-scored']")).toHaveCount(1);
+  });
+
+  test("walk and strikeout previews do not leak base or out changes", async ({ page }) => {
+    const walk = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-preview-walk`,
+      sortOrder: 1,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "walk",
+        label: "WALK",
+        subLabel: null,
+        description: "Xavier Edwards walks.",
+        ballsBefore: 3,
+        strikesBefore: 1,
+        outsBefore: 0,
+        outsAfter: 0,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: true, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: { first: "Xavier Edwards" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "pitch",
+        runnerMovements: [{ runner: "Xavier Edwards", from: "home", to: "first", style: "advance" }],
+        intensity: "low",
+        animationProfile: "walk",
+      },
+    });
+    const strikeout = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-preview-strikeout`,
+      sortOrder: 2,
+      inning: 1,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "strikeout",
+        label: "STRIKEOUT",
+        subLabel: "SWINGING",
+        description: "Mitchell strikes out swinging.",
+        ballsBefore: 1,
+        strikesBefore: 2,
+        outsBefore: 1,
+        outsAfter: 2,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: false, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: {},
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "pitch",
+        runnerMovements: [],
+        intensity: "low",
+        animationProfile: "strikeout",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), walk, strikeout] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const cards = page.locator("[data-testid='play-card']");
+    await expect(cards.first().locator("[data-testid='base-bulb']")).toHaveCount(0);
+    await expect(cards.first().locator("[data-testid='outs-state']")).toHaveAttribute("data-outs-after", "0");
+
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[2] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    await expect(cards.nth(1)).toHaveAttribute("data-reveal-state", "preview");
+    await expect(cards.nth(1).locator("[data-testid='outs-state']")).toHaveAttribute("data-outs-after", "1");
+    await expect(cards.nth(1).locator("[data-testid='result-badge']")).toHaveCount(0);
+  });
+
+  test("bases-loaded and empty-base preview fixtures render deterministic situations", async ({ page }) => {
+    const basesLoaded = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-bases-loaded`,
+      sortOrder: 1,
+      play: {
+        ...makePlayCard().play!,
+        eventType: "double_play",
+        label: "DOUBLE PLAY",
+        description: "Ground ball with the bases loaded.",
+        outsBefore: 0,
+        outsAfter: 2,
+        baseStateBefore: { first: true, second: true, third: true },
+        baseStateAfter: { first: false, second: false, third: true },
+        runnerNamesBefore: { first: "Flores", second: "Lee", third: "Devers" },
+        runnerNamesAfter: { third: "Devers" },
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "ground_ss",
+        runnerMovements: [],
+        intensity: "medium",
+        animationProfile: "double_play_grounder",
+      },
+    });
+    const emptyBases = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-empty-bases`,
+      sortOrder: 2,
+      inning: 2,
+      half: "bottom",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "field_out",
+        label: "GROUNDOUT",
+        description: "Routine groundout.",
+        outsBefore: 2,
+        outsAfter: 3,
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter: { first: false, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter: {},
+        runsScoredOnPlay: 0,
+      },
+      visual: {
+        trajectory: "ground_2b",
+        runnerMovements: [],
+        intensity: "low",
+        animationProfile: "routine_grounder",
+      },
+    });
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), basesLoaded, emptyBases] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    const cards = page.locator("[data-testid='play-card']");
+    await expect(cards.first().locator("[data-testid='base-bulb']")).toHaveCount(3);
+
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[2] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    await expect(cards.nth(1).locator("[data-testid='base-bulb']")).toHaveCount(0);
+    await expect(cards.nth(1).locator("[data-testid='preview-reveal-control']")).toBeVisible();
   });
 
   test("on-base runner is visible on first-paint of the next at-bat (screenshot-bug repro)", async ({ page }) => {
@@ -162,13 +413,16 @@ test.describe("@smoke field rendering", () => {
     });
     expect(firstAccentOpacity).toBeGreaterThanOrEqual(0.9);
 
-    // Third base: empty before, occupied after → lifecycle="arrive".
+    // Third base is an after-state only, so it must not exist before reveal.
     const thirdBulb = reachCard.locator("[data-testid='base-bulb'][data-base='third']");
-    await expect(thirdBulb).toHaveAttribute("data-lifecycle", "arrive");
+    await expect(thirdBulb).toHaveCount(0);
 
     // Runner label for Edwards on first should be present pre-play.
     const firstLabel = reachCard.locator("text.field-base-label[data-base='first']");
     await expect(firstLabel).toHaveText("EDWARDS");
+
+    await reachCard.getByRole("button", { name: /reveal pitch/i }).click();
+    await expect(thirdBulb).toHaveAttribute("data-lifecycle", "arrive");
   });
 
   test("rhythm card after a scoring play carries the post-play score forward (BRAINDUMP §1)", async ({ page }) => {

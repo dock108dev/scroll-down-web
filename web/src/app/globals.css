@@ -382,13 +382,13 @@ body {
      called the amber-on-black surface "neon on black"; cream-on-dark
      reads as painted-on signage instead. */
   --device-border:       rgba(245, 239, 220, 0.22);
-  --device-border-soft:  rgba(245, 239, 220, 0.12);
+  --device-border-soft:  rgba(245, 239, 220, 0.09);
   --device-border-bevel: rgba(255, 255, 255, 0.04);
-  --device-amber:        #f5efdc;
-  --device-amber-bright: #ffffff;
-  --device-amber-dim:    rgba(245, 239, 220, 0.55);
+  --device-amber:        #efe3bd;
+  --device-amber-bright: #fff6d7;
+  --device-amber-dim:    rgba(245, 239, 220, 0.48);
   --device-text:         #f5efdc;
-  --device-muted:        rgba(245, 239, 220, 0.55);
+  --device-muted:        rgba(245, 239, 220, 0.48);
   /* Tightened radii — the device feels less "mobile card with rounded
      corners" and more "injection-molded electronic device front panel".
      The inset screens are nearly square (3px) for an LCD-window feel. */
@@ -433,7 +433,7 @@ body {
      so the field continues to read as a true LCD window while no two
      siblings sit flush. overflow: hidden clips the edge-to-edge field
      cleanly against the shell's rounded corners. */
-  gap: 0.75rem;
+  gap: 0.625rem;
   padding: 0;
   overflow: hidden;
   /* flex:1 fills the slide vertically — height:100% used to be here but
@@ -443,8 +443,8 @@ body {
   flex: 1 1 0;
   min-height: 0;
   width: 100%;
-  max-width: 28rem;
-  margin: 1rem auto 1.5rem;
+  max-width: 27rem;
+  margin: 0.75rem auto 1rem;
   /* Per BRAINDUMP: "stop treating scoreboard / field / captions as equal
      panels". The card chassis is now near-transparent — leverage glow is
      the only outer signal, the field shell is the visual stage. The
@@ -529,17 +529,19 @@ body {
    field's bright green still dominates, just without the screen-glass
    pretense. */
 .catchup-card-header {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 0.1875rem;
   /* Top margin holds the header off the device-shell's top edge. The
      bottom is handled by .catchup-card-snap's row gap so the field has
      12px of breathing room directly below the scoreboard inset. */
-  margin: 0.5rem 0.625rem 0;
-  padding: 0.25rem 0.5rem 0.3125rem;
-  border: 1px solid var(--device-border-soft);
+  margin: 0.5rem 0.75rem 0;
+  padding: 0.3125rem 0.5rem 0.375rem;
+  border: 1px solid rgba(245, 239, 220, 0.14);
   border-radius: var(--device-radius-screen);
-  background: var(--device-screen);
+  background:
+    linear-gradient(180deg, rgba(245, 239, 220, 0.035), rgba(0, 0, 0, 0) 46%),
+    var(--device-screen);
   box-shadow:
     inset 0 1px 0 rgba(0, 0, 0, 0.6),
     inset 0 0 14px rgba(0, 0, 0, 0.55),
@@ -551,17 +553,17 @@ body {
    batting team; right band carries the score. Wraps to two rows on narrow
    widths so the score never gets squeezed. */
 .catchup-card-meta-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem 0.75rem;
-  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 .catchup-card-meta-left {
   display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.375rem 0.5rem;
+  flex-wrap: nowrap;
+  gap: 0.3125rem;
+  min-width: 0;
 }
 .catchup-card-meta-sep {
   color: rgba(255, 220, 150, 0.32);
@@ -569,11 +571,11 @@ body {
 }
 .catchup-card-inning {
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 400;
   letter-spacing: 0.14em;
-  color: var(--lev-amber, #f5efdc);
-  text-shadow: 0 0 var(--lev-glow-radius, 8px) rgba(245, 239, 220, 0.6);
+  color: var(--lev-amber, #efe3bd);
+  text-shadow: 0 0 3px rgba(245, 239, 220, 0.32);
   transition: color 600ms ease, text-shadow 600ms ease;
 }
 
@@ -586,12 +588,12 @@ body {
   position: relative;
   display: flex;
   align-items: baseline;
-  justify-content: center;
+  justify-content: space-between;
   flex-wrap: nowrap;
-  gap: 0.4375rem;
-  padding: 0.5rem 0.5rem 0.375rem;
+  gap: 0.375rem;
+  padding: 0.4375rem 0.5rem 0.3125rem;
   background:
-    linear-gradient(180deg, rgba(245, 239, 220, 0.04) 0%, rgba(0, 0, 0, 0) 70%),
+    linear-gradient(180deg, rgba(245, 239, 220, 0.025) 0%, rgba(0, 0, 0, 0) 70%),
     rgba(0, 0, 0, 0.25);
   min-width: 0;
 }
@@ -607,8 +609,8 @@ body {
   height: 1px;
   background: repeating-linear-gradient(
     to right,
-    rgba(245, 239, 220, 0.28) 0,
-    rgba(245, 239, 220, 0.28) 4px,
+    rgba(245, 239, 220, 0.16) 0,
+    rgba(245, 239, 220, 0.16) 4px,
     transparent 4px,
     transparent 8px
   );
@@ -620,7 +622,7 @@ body {
      font breathe in small caps. flex-shrink lets long full names trade
      space rather than blow out the row. */
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -632,13 +634,11 @@ body {
 }
 .catchup-card-batter {
   color: #f5efdc;
-  text-shadow:
-    0 0 4px rgba(245, 239, 220, 0.85),
-    0 0 10px rgba(245, 239, 220, 0.55);
+  text-shadow: 0 0 3px rgba(245, 239, 220, 0.32);
 }
 .catchup-card-pitcher {
-  color: rgba(255, 220, 140, 0.95);
-  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
+  color: rgba(245, 239, 220, 0.68);
+  text-shadow: none;
 }
 .catchup-card-vs {
   flex: 0 0 auto;
@@ -646,7 +646,7 @@ body {
   font-size: 0.75rem;
   font-weight: 400;
   letter-spacing: 0.22em;
-  color: rgba(255, 220, 150, 0.55);
+  color: rgba(245, 239, 220, 0.36);
   text-transform: uppercase;
 }
 /* Count read-out — pre-play setup context. The value is the count
@@ -662,11 +662,11 @@ body {
   gap: 0.3125rem;
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 1rem;
+  font-size: 0.8125rem;
   font-weight: 400;
   letter-spacing: 0.12em;
-  color: #f5efdc;
-  text-shadow: 0 0 4px rgba(245, 239, 220, 0.55);
+  color: rgba(245, 239, 220, 0.72);
+  text-shadow: none;
   white-space: nowrap;
   opacity: 0;
   transition: opacity 240ms ease-out;
@@ -685,8 +685,8 @@ body {
   display: inline-flex;
   align-items: baseline;
   gap: 0.1875rem;
-  padding: 0.0625rem 0.25rem;
-  border: 1px solid rgba(245, 239, 220, 0.32);
+  padding: 0.0625rem 0.3125rem;
+  border: 1px solid rgba(245, 239, 220, 0.18);
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.55);
   box-shadow: inset 0 0 4px rgba(245, 239, 220, 0.10);
@@ -707,7 +707,7 @@ body {
   font-size: 0.6875rem;
   font-weight: 600;
   letter-spacing: 0.10em;
-  color: rgba(255, 220, 150, 0.62);
+  color: rgba(245, 239, 220, 0.42);
   text-align: center;
   opacity: 0;
   transition: opacity 240ms ease-out;
@@ -724,9 +724,9 @@ body {
 .outs-dots {
   display: inline-flex;
   align-items: center;
-  gap: 0.4375rem;
-  padding: 0.1875rem 0.5rem;
-  border: 1px solid rgba(245, 239, 220, 0.32);
+  gap: 0.3125rem;
+  padding: 0.1875rem 0.4375rem;
+  border: 1px solid rgba(245, 239, 220, 0.20);
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.55);
   box-shadow:
@@ -736,15 +736,15 @@ body {
 .outs-dots-label {
   margin-left: 0.1875rem;
   letter-spacing: 0.18em;
-  color: rgba(255, 220, 150, 0.75);
-  font-size: 0.75rem;
+  color: rgba(245, 239, 220, 0.52);
+  font-size: 0.6875rem;
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-weight: 400;
 }
 .outs-dot {
   display: inline-block;
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   border: 1px solid rgba(245, 239, 220, 0.45);
   background: transparent;
@@ -753,12 +753,11 @@ body {
   transform-origin: center;
 }
 .outs-dot[data-state="on"] {
-  background: #f5efdc;
+  background: #efe3bd;
   border-color: transparent;
   box-shadow:
-    0 0 4px rgba(245, 239, 220, 1),
-    0 0 9px rgba(245, 239, 220, 0.6),
-    0 0 16px rgba(245, 239, 220, 0.25);
+    0 0 3px rgba(245, 239, 220, 0.85),
+    0 0 7px rgba(245, 239, 220, 0.36);
 }
 .outs-dot[data-state="off"] {
   background: transparent;
@@ -805,9 +804,10 @@ body {
      just to mark the panel edge. */
   display: inline-flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.25rem 0.625rem 0.25rem 0.875rem;
-  border: 1px solid rgba(245, 239, 220, 0.45);
+  gap: 0.5rem;
+  justify-self: end;
+  padding: 0.25rem 0.5625rem 0.25rem 0.75rem;
+  border: 1px solid rgba(245, 239, 220, 0.30);
   border-radius: 2px;
   background: rgba(0, 0, 0, 0.88);
   box-shadow:
@@ -823,11 +823,11 @@ body {
 }
 .catchup-card-score-abbr {
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   font-weight: 400;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255, 220, 150, 0.7);
+  color: rgba(245, 239, 220, 0.52);
   position: relative;
 }
 /* Batting indicator — small triangular "▸" marker before the abbreviation
@@ -835,8 +835,8 @@ body {
    line; the eye picks it up faster than a label, and it's always next to
    the team name in the score panel. */
 .catchup-card-score-line[data-batting="true"] .catchup-card-score-abbr {
-  color: #f5efdc;
-  text-shadow: 0 0 4px rgba(245, 239, 220, 0.55);
+  color: rgba(245, 239, 220, 0.88);
+  text-shadow: 0 0 3px rgba(245, 239, 220, 0.28);
 }
 .catchup-card-score-line[data-batting="true"] .catchup-card-score-abbr::before {
   content: "▸";
@@ -849,8 +849,8 @@ body {
   text-shadow: 0 0 5px rgba(245, 239, 220, 0.85);
 }
 .catchup-card-score-line[data-batting="true"] .catchup-card-score-num {
-  color: #ffffff;
-  text-shadow: 0 0 6px rgba(245, 239, 220, 0.55);
+  color: #fff6d7;
+  text-shadow: 0 0 5px rgba(245, 239, 220, 0.36);
 }
 .catchup-card-score-num {
   /* LED-segment-style numeral. Pixel font + layered glow so the digit
@@ -860,13 +860,12 @@ body {
      (stadium-cream #f5efdc) so the play, rhythm, and inning-transition
      scoreboards all share one numeral color token. */
   font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
-  font-size: 1.875rem;
+  font-size: 1.625rem;
   font-weight: 400;
-  color: var(--device-amber);
+  color: var(--device-amber-bright);
   text-shadow:
-    0 0 1px rgba(255, 255, 255, 0.75),
-    0 0 5px rgba(245, 239, 220, 0.95),
-    0 0 12px rgba(245, 239, 220, 0.55);
+    0 0 1px rgba(255, 255, 255, 0.55),
+    0 0 4px rgba(245, 239, 220, 0.50);
   letter-spacing: 0;
   line-height: 1;
   min-width: 1.1ch;
@@ -906,11 +905,11 @@ body {
      (next to the matchup header where it reads as breathing room),
      instead of below (where it read as obvious dead space between the
      field and the chip). The radial vignette below masks both ends. */
-  flex: 1 1 0;
+  flex: 0 1 clamp(15.5rem, 48svh, 22.5rem);
   min-height: 0;
   position: relative;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
   /* The field SVG has a roughly-square viewBox, so on portrait viewports it
      scales to width and leaves vertical space above/below. Without a
@@ -925,6 +924,15 @@ body {
       rgba(6, 10, 7, 0.55) 60%,
       rgba(3, 6, 4, 0.95) 100%
     );
+}
+
+.catchup-card-snap[data-reveal-state="revealing"] .catchup-card-header {
+  animation: catchup-scoreboard-tick 420ms ease-out;
+}
+@keyframes catchup-scoreboard-tick {
+  0%   { border-color: rgba(245, 239, 220, 0.14); }
+  42%  { border-color: rgba(245, 239, 220, 0.34); box-shadow: inset 0 0 14px rgba(245, 239, 220, 0.08); }
+  100% { border-color: rgba(245, 239, 220, 0.14); }
 }
 /* Landscape phones (e.g. iPhone 14 at 844x390) leave only ~200px of card
    height after the app/catchup headers. Letting the field flex-grow into
@@ -948,10 +956,10 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.125rem;
-  margin: 0 0.625rem;
+  margin: 0 0.75rem;
   padding: 0.4375rem 0.875rem;
-  min-height: 2.25rem;
-  border: 1px solid var(--device-border);
+  min-height: 2.5rem;
+  border: 1px solid rgba(245, 239, 220, 0.18);
   border-radius: var(--device-radius-screen);
   background: linear-gradient(180deg, var(--device-screen-deep) 0%, var(--device-screen) 100%);
   box-shadow:
@@ -979,7 +987,7 @@ body {
   font-weight: 800;
   letter-spacing: 0.16em;
   color: var(--device-amber-bright);
-  text-shadow: 0 0 6px rgba(245, 239, 220, 0.45);
+  text-shadow: 0 0 4px rgba(245, 239, 220, 0.28);
   line-height: 1;
 }
 .catchup-result-chip-secondary {
@@ -1102,7 +1110,7 @@ body {
   display: grid;
   grid-template-rows: 0fr;
   min-height: 0;
-  margin: 0 0.625rem;
+  margin: 0 0.75rem;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--device-border-soft);
   border-radius: var(--device-radius-screen);
@@ -1149,6 +1157,65 @@ body {
   z-index: 5;
 }
 
+.catchup-preview-control {
+  align-self: stretch;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.625rem;
+  margin: 0 0.75rem;
+  padding: 0.4375rem 0.5rem 0.4375rem 0.75rem;
+  min-height: 2.5rem;
+  border: 1px solid rgba(245, 239, 220, 0.13);
+  border-radius: var(--device-radius-screen);
+  background:
+    repeating-linear-gradient(
+      90deg,
+      rgba(245, 239, 220, 0.035) 0,
+      rgba(245, 239, 220, 0.035) 1px,
+      transparent 1px,
+      transparent 7px
+    ),
+    linear-gradient(180deg, var(--device-screen-deep) 0%, var(--device-screen) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(0, 0, 0, 0.65),
+    inset 0 0 10px rgba(0, 0, 0, 0.5);
+}
+.catchup-preview-control-kicker {
+  margin: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.6875rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(245, 239, 220, 0.42);
+}
+.catchup-preview-control-button {
+  min-height: 2rem;
+  padding: 0 0.875rem;
+  border: 1px solid rgba(245, 239, 220, 0.34);
+  border-radius: 2px;
+  background: rgba(45, 139, 60, 0.22);
+  color: #fff6d7;
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.8125rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  box-shadow:
+    inset 0 0 6px rgba(245, 239, 220, 0.08),
+    0 0 7px rgba(45, 139, 60, 0.18);
+  transition: border-color 160ms ease-out, background 160ms ease-out, transform 120ms ease-out;
+}
+.catchup-preview-control-button:hover {
+  border-color: rgba(245, 239, 220, 0.52);
+  background: rgba(45, 139, 60, 0.30);
+}
+.catchup-preview-control-button:active {
+  transform: translateY(1px);
+}
+
 /* Scroll-cue chevron — hidden until the card reaches the reveal phase,
    then fades in slightly after the description lands.
 
@@ -1157,6 +1224,8 @@ body {
    iPhone home indicator on notched devices (where the inset is ~34px). */
 .catchup-card-footer {
   display: flex;
+  align-items: center;
+  gap: 0.375rem;
   justify-content: center;
   /* Top spacing is now supplied by .catchup-card-snap's row gap (12px)
      so the chevron sits 12px below the result chip on every card. */
@@ -1165,6 +1234,12 @@ body {
   color: rgba(245, 239, 220, 0.40);
   opacity: 0;
   transition: opacity 320ms ease-out;
+}
+.catchup-card-footer-label {
+  font-family: var(--font-pixel-mono), ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-size: 0.625rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 .catchup-card-snap[data-phase="reveal"] .catchup-card-footer {
   opacity: 1;
@@ -1189,9 +1264,9 @@ body {
      count / labels). A future pass that tries to "retrofy" everything
      should not pull narration sentences into the pixel face — they need
      to stay readable at glance. */
-  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
+  font-family: "Aptos", "Avenir Next", "Gill Sans", "Trebuchet MS", sans-serif;
   font-size: 0.9375rem;
-  line-height: 1.42;
+  line-height: 1.38;
   color: #f5f1e8;
   opacity: 0;
   transform: translateY(6px);

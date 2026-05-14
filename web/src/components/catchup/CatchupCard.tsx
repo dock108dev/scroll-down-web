@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useMemo } from "react";
+import { forwardRef, useMemo, useState } from "react";
 import type {
   BaseballBaseState,
   PlayCardData,
@@ -59,6 +59,8 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   { card, homeTeamAbbr, awayTeamAbbr, isActive, showDebug = false },
   ref,
 ) {
+  const [revealedCardId, setRevealedCardId] = useState<string | null>(null);
+  const revealRequested = isActive && revealedCardId === card.cardId;
   const battingTeam = findMlbTeam(card.battingTeamAbbr);
   const accent = battingTeam?.primaryColorDark ?? "#5a8ac6";
 
@@ -110,7 +112,9 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
     [runnersOverride, bridgeOverride, settleOverride],
   );
 
-  const { phase, runId } = usePlayPhase(isActive, card.animationProfile, overrides);
+  const isPlayingReveal = isActive && revealRequested;
+  const { phase, runId } = usePlayPhase(isPlayingReveal, card.animationProfile, overrides);
+  const presentationPhase = revealRequested ? phase : "preview";
   const milestones = getPhaseMilestones(card.animationProfile, overrides);
   const schedule = getPhaseSchedule(card.animationProfile, overrides);
   const reduceMotion = usePrefersReducedMotion();
@@ -133,7 +137,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   // Score progression — scoreBefore is shown until settle (the result lock
   // beat). Showing scoreAfter sooner would spoil scoring plays. CSS pulses
   // whichever team's number went up at the moment data-flash flips true.
-  const showAfter = phase === "settle" || phase === "reveal";
+  const showAfter = revealRequested && (phase === "settle" || phase === "reveal");
   const score = showAfter ? card.scoreAfter : card.scoreBefore;
   const homeIncreased = card.scoreAfter.home > card.scoreBefore.home;
   const awayIncreased = card.scoreAfter.away > card.scoreBefore.away;
@@ -145,7 +149,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
     secondary: card.chipSecondary,
   };
   const chipTier = resultChipTier(card);
-  const showChip = phase === "settle" || phase === "reveal";
+  const showChip = showAfter;
 
   // The narration panel coexists with the ResultChip beat: settle locks the
   // result, reveal is the terminal state. The reveal branch is required for
@@ -156,7 +160,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   // the user and upstream feed gaps are tracked by validatePlayCard's
   // dev-only warnings. See docs/audits/error-handling-report.md §G4.
   const narrativeText = (card.narrative ?? card.description ?? "").trim();
-  const narrativeVisible = phase === "settle" || phase === "reveal";
+  const narrativeVisible = revealRequested && phase === "reveal";
 
   const battingTeamName = battingTeam?.name ?? card.battingTeamAbbr ?? null;
   const hasCount =
@@ -198,9 +202,16 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       data-testid="play-card"
       data-card-id={card.cardId}
       data-play-id={card.playIndex}
-      data-event-type={card.eventType ?? "other"}
+      data-event-type={revealRequested ? card.eventType ?? "other" : "hidden"}
       data-active={isActive ? "true" : "false"}
-      data-phase={phase}
+      data-phase={presentationPhase}
+      data-reveal-state={
+        !revealRequested
+          ? "preview"
+          : phase === "reveal"
+            ? "revealed"
+            : "revealing"
+      }
       data-has-bridge={hasMeaningfulBridge ? "true" : "false"}
       data-inning={card.inning}
       data-inning-half={card.inningHalf}
@@ -230,7 +241,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
               ? { balls: situation.balls!, strikes: situation.strikes! }
               : null
           }
-          phase={phase}
+          phase={presentationPhase}
         />
       )}
       <header className="catchup-card-header" data-testid="score-panel">
@@ -247,9 +258,9 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
             </span>
             <span className="catchup-card-meta-sep" aria-hidden>·</span>
             <OutsDots
-              prior={hasMeaningfulBridge && priorAfter ? priorAfter.outs : undefined}
+              prior={revealRequested && hasMeaningfulBridge && priorAfter ? priorAfter.outs : undefined}
               before={outsBefore}
-              after={outsAfter}
+              after={revealRequested ? outsAfter : outsBefore}
             />
           </div>
           <div className="catchup-card-score" data-testid="score-display">
@@ -319,28 +330,29 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
 
       <div className="catchup-card-field">
         <BaseballLightField
-          key={runId}
-          baseStatePrior={hasMeaningfulBridge ? priorAfter?.baseState : undefined}
+          key={revealRequested ? runId : `preview-${card.cardId}`}
+          baseStatePrior={revealRequested && hasMeaningfulBridge ? priorAfter?.baseState : undefined}
           baseStateBefore={baseStateBefore}
-          baseStateAfter={baseStateAfter}
-          runnerNamesPrior={hasMeaningfulBridge ? priorAfter?.runnerNames : undefined}
+          baseStateAfter={revealRequested ? baseStateAfter : baseStateBefore}
+          runnerNamesPrior={revealRequested && hasMeaningfulBridge ? priorAfter?.runnerNames : undefined}
           runnerNamesBefore={card.runnerNamesBefore}
-          runnerNamesAfter={card.runnerNamesAfter}
-          runnerMovements={movements}
+          runnerNamesAfter={revealRequested ? card.runnerNamesAfter : card.runnerNamesBefore}
+          runnerMovements={revealRequested ? movements : []}
           runnersBeginMs={milestones.runners}
-          ballPath={card.ballPath}
-          eventType={card.eventType}
-          animationProfile={card.animationProfile}
+          ballPath={revealRequested ? card.ballPath : "none"}
+          eventType={revealRequested ? card.eventType : undefined}
+          animationProfile={revealRequested ? card.animationProfile : undefined}
           scoreBefore={card.scoreBefore}
-          scoreAfter={card.scoreAfter}
+          scoreAfter={revealRequested ? card.scoreAfter : card.scoreBefore}
           accentColor={accent}
-          isActive={isActive}
+          isActive={isPlayingReveal}
         />
-        {narrativeText && (
+        {revealRequested && narrativeText && (
           <div
             className="catchup-card-body catchup-card-body--overlay"
             data-visible={narrativeVisible ? "true" : "false"}
             data-testid="play-narration-panel"
+            aria-hidden={!narrativeVisible}
           >
             <CardNarrative
               text={narrativeText}
@@ -352,14 +364,22 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
         )}
       </div>
 
-      <ResultChip
-        primary={chip.primary}
-        secondary={chip.secondary}
-        tier={chipTier}
-        visible={showChip}
-      />
+      {!revealRequested ? (
+        <PreviewPitchControl
+          batterName={situation.batterName}
+          onReveal={() => setRevealedCardId(card.cardId)}
+        />
+      ) : (
+        <ResultChip
+          primary={chip.primary}
+          secondary={chip.secondary}
+          tier={chipTier}
+          visible={showChip}
+        />
+      )}
 
       <footer className="catchup-card-footer" aria-hidden>
+        <span className="catchup-card-footer-label">NEXT PITCH</span>
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9" />
         </svg>
@@ -369,6 +389,31 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
 });
 
 // ── Subcomponents ─────────────────────────────────────────
+
+function PreviewPitchControl({
+  batterName,
+  onReveal,
+}: {
+  batterName?: string;
+  onReveal: () => void;
+}) {
+  const label = batterName
+    ? `Reveal pitch to ${batterName}`
+    : "Reveal pitch";
+  return (
+    <div className="catchup-preview-control" data-testid="preview-reveal-control">
+      <p className="catchup-preview-control-kicker">On the next pitch</p>
+      <button
+        type="button"
+        className="catchup-preview-control-button"
+        onClick={onReveal}
+        aria-label={label}
+      >
+        Reveal Pitch
+      </button>
+    </div>
+  );
+}
 
 /** Bold device-style result chip — clicks in at the settle (result_lock)
  *  beat, sits between the field and the long-form description. */
