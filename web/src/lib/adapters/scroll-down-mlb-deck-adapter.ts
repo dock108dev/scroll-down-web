@@ -64,7 +64,14 @@ export function adaptDeck(deck: SdmDeckResponse): CatchupCardsResponse {
   // play's end state. Reset on scene-setter and inning-transition because
   // those are hard boundaries — the next play is its own opening beat.
   let lastPlayEnding: PriorAfterState | null = null;
+  // Dedup defensively against the wire: a brief upstream race during a
+  // poll boundary has been observed to ship the same play twice. React
+  // would warn (and the second copy would re-bridge from itself), so we
+  // drop the duplicate at the adapter so downstream stays clean.
+  const seenIds = new Set<string>();
   for (const card of deck.cards) {
+    if (seenIds.has(card.id)) continue;
+    seenIds.add(card.id);
     const adapted = adaptCard(card, deck, gameId, homeAbbr, awayAbbr, homeName, awayName);
     if (!adapted) continue;
     if (adapted.kind === "play") {

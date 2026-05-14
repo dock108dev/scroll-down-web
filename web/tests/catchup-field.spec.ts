@@ -5,6 +5,7 @@ import {
   makeDeckResponse,
   makePlayCard,
   makeRecentResponse,
+  makeRhythmCard,
   makeSceneCard,
   mockSdmRoutes,
   seedOnboarding,
@@ -168,6 +169,61 @@ test.describe("@smoke field rendering", () => {
     // Runner label for Edwards on first should be present pre-play.
     const firstLabel = reachCard.locator("text.field-base-label[data-base='first']");
     await expect(firstLabel).toHaveText("EDWARDS");
+  });
+
+  test("rhythm card after a scoring play carries the post-play score forward (BRAINDUMP §1)", async ({ page }) => {
+    // The documented regression: a HR makes it 1-0, but the next breath
+    // card resets to 0-0. The deck adapter threads `lastKnownScore` onto
+    // every rhythm card; this test exercises the wire all the way through
+    // the renderer so a future refactor can't quietly drop it.
+    const hr = makePlayCard({
+      id: `${DEFAULT_GAME_ID}-hr`,
+      sortOrder: 1,
+      inning: 1,
+      half: "top",
+      play: {
+        ...makePlayCard().play!,
+        eventType: "home_run",
+        label: "HOME RUN",
+        baseStateBefore: { first: false, second: false, third: false },
+        baseStateAfter:  { first: false, second: false, third: false },
+        runnerNamesBefore: {},
+        runnerNamesAfter:  {},
+        scoreBefore: { home: 0, away: 0 },
+        runsScoredOnPlay: 1,
+      },
+      visual: {
+        trajectory: "home_run_center",
+        runnerMovements: [],
+        intensity: "high",
+        animationProfile: "home_run",
+      },
+    });
+    const breath = makeRhythmCard();
+    breath.sortOrder = 2;
+
+    await mockSdmRoutes(page, {
+      recent: makeRecentResponse(),
+      deck: makeDeckResponse({ cards: [makeSceneCard(), hr, breath] }),
+    });
+    await page.goto(`/catchup/${DEFAULT_GAME_ID}`);
+
+    // Scroll past the scoring play to the rhythm card.
+    const scroller = page.locator("[data-testid='catchup-scroller']");
+    await scroller.evaluate((el) => {
+      const child = el.children[2] as HTMLElement | undefined;
+      if (child) child.scrollIntoView({ behavior: "instant", block: "start" });
+    });
+
+    // Generic "rhythm" wire type maps to quiet-stretch in the adapter
+    // (lib/adapters/scroll-down-mlb-deck-adapter.ts) when no kind suffix
+    // is embedded in the card id.
+    const rhythm = page.locator("[data-testid='quiet-stretch-card']");
+    await expect(rhythm).toBeVisible();
+    // SF scored 1, TB still 0. The scoreboard MUST reflect the carried score.
+    const scoreNums = rhythm.locator(".rhythm-card-score-num");
+    await expect(scoreNums.nth(0)).toHaveText("1"); // away (SF)
+    await expect(scoreNums.nth(1)).toHaveText("0"); // home (TB)
   });
 
   test("walks the major animation profiles: home_run, walk, strikeout, double_play, ground", async ({ page }) => {

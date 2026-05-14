@@ -856,3 +856,19 @@ describe("adaptSceneCard — game phase wiring", () => {
     expect(scene.isFinal).toBe(false);
   });
 });
+
+describe("scroll-down-mlb deck adapter — defensive normalization", () => {
+  it("deduplicates cards that share the same wire id (poll-boundary race)", () => {
+    // Two cards with identical id — observed during a live-poll boundary
+    // when the backend briefly emits the same play twice. React would
+    // warn on the duplicate key; the adapter drops the second copy.
+    const deck = buildDeck({});
+    const dup: SdmDeckCard = { ...deck.cards[0], sortOrder: 2 };
+    deck.cards = [deck.cards[0], dup];
+
+    const { cards } = adaptDeck(deck);
+    const playCards = cards.filter((c) => c.kind === "play");
+    expect(playCards).toHaveLength(1);
+    expect(playCards[0].cardId).toBe("p1");
+  });
+});

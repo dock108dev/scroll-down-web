@@ -898,12 +898,19 @@ body {
   /* Field claims all remaining vertical space — header/chip/footer remain
      content-sized so the field reads as the dominant "stage." min-height: 0
      prevents flex overflow on short viewports, position: relative anchors
-     the narration overlay scrim. */
+     the narration overlay scrim.
+
+     align-items: flex-end pulls the square field-shell down toward the
+     result chip on tall portrait viewports. The square SVG only fills
+     width-equal-to-height; any vertical slack now sits ABOVE the field
+     (next to the matchup header where it reads as breathing room),
+     instead of below (where it read as obvious dead space between the
+     field and the chip). The radial vignette below masks both ends. */
   flex: 1 1 0;
   min-height: 0;
   position: relative;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   /* The field SVG has a roughly-square viewBox, so on portrait viewports it
      scales to width and leaves vertical space above/below. Without a
@@ -1177,6 +1184,12 @@ body {
    text fade-in for a staged "container appears → text materializes" feel. */
 .catchup-narrative {
   margin: 0;
+  /* Long-form play description — explicitly body-font, not pixel-mono.
+     The retro VT323 face is reserved for chrome (scoreboard / inning /
+     count / labels). A future pass that tries to "retrofy" everything
+     should not pull narration sentences into the pixel face — they need
+     to stay readable at glance. */
+  font-family: ui-monospace, "SF Mono", "Menlo", "Monaco", monospace;
   font-size: 0.9375rem;
   line-height: 1.42;
   color: #f5f1e8;

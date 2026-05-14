@@ -91,16 +91,24 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const settleOverride = settleBonus > 0
     ? baseSchedule.settle + settleBonus
     : undefined;
-  const overrides =
-    runnersOverride !== undefined ||
-    bridgeOverride !== undefined ||
-    settleOverride !== undefined
-      ? {
-          ...(runnersOverride !== undefined ? { runners: runnersOverride } : {}),
-          ...(bridgeOverride !== undefined ? { bridge: bridgeOverride } : {}),
-          ...(settleOverride !== undefined ? { settle: settleOverride } : {}),
-        }
-      : undefined;
+  // Memoize the overrides object so its reference is stable across
+  // re-renders. usePlayPhase depends on individual milestone values, not
+  // the object itself, but downstream getPhaseMilestones / getPhaseSchedule
+  // callers benefit from a stable identity when this card is consumed
+  // through React.memo'd wrappers (e.g. during live-poll deck swaps).
+  const overrides = useMemo(
+    () =>
+      runnersOverride !== undefined ||
+      bridgeOverride !== undefined ||
+      settleOverride !== undefined
+        ? {
+            ...(runnersOverride !== undefined ? { runners: runnersOverride } : {}),
+            ...(bridgeOverride !== undefined ? { bridge: bridgeOverride } : {}),
+            ...(settleOverride !== undefined ? { settle: settleOverride } : {}),
+          }
+        : undefined,
+    [runnersOverride, bridgeOverride, settleOverride],
+  );
 
   const { phase, runId } = usePlayPhase(isActive, card.animationProfile, overrides);
   const milestones = getPhaseMilestones(card.animationProfile, overrides);
