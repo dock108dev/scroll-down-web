@@ -35,5 +35,12 @@ test.describe("@smoke static pages", () => {
   test("topnav is present across pages", async ({ page }) => {
     await page.goto("/terms");
     await expect(page.locator("[data-testid='top-nav']")).toBeVisible();
+    await expect
+      .poll(() =>
+        page.evaluate(() =>
+          document.documentElement.style.getPropertyValue("--header-h"),
+        ),
+      )
+      .toBe("calc(56px + env(safe-area-inset-top))");
   });
 });

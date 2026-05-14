@@ -44,8 +44,8 @@
    Design tokens — shared (light/dark agnostic) + light mode defaults
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
-  /* ── Header height (set dynamically by TopNav) ───── */
-  --header-h: 56px;
+  /* ── Header height, including safe-area padding added by TopNav ───── */
+  --header-h: calc(56px + env(safe-area-inset-top));
 
   /* ── Radii ─────────────────────────────────────────── */
   --ds-radius-card: 10px;

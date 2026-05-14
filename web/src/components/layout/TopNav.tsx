@@ -5,9 +5,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { LAYOUT } from "@/lib/config";
 
+const HEADER_HEIGHT_CSS = `calc(${LAYOUT.HEADER_HEIGHT_DEFAULT} + env(safe-area-inset-top))`;
+
 export function TopNav() {
   useEffect(() => {
-    document.documentElement.style.setProperty("--header-h", LAYOUT.HEADER_HEIGHT_DEFAULT);
+    document.documentElement.style.setProperty("--header-h", HEADER_HEIGHT_CSS);
   }, []);
 
   return (
