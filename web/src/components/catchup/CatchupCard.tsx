@@ -25,6 +25,7 @@ import { buildRunnerMovements, totalRunnersDurationMs } from "@/lib/runner-paths
 import { BaseballLightField } from "./BaseballLightField";
 import { CardNarrative } from "./CardNarrative";
 import { CardDebugOverlay } from "./CardDebugOverlay";
+import { CatchupErrorBoundary } from "./CatchupErrorBoundary";
 
 interface CatchupCardProps {
   card: PlayCardData;
@@ -201,8 +202,12 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   const narrativeVisible = revealRequested && (phase === "reveal" || phase === "advance");
 
   const battingTeamName = battingTeam?.name ?? card.battingTeamAbbr ?? null;
-  const hasCount =
-    typeof situation.balls === "number" && typeof situation.strikes === "number";
+  const displayCount = situation.displayCountBefore ?? (
+    typeof situation.balls === "number" && typeof situation.strikes === "number"
+      ? { balls: situation.balls, strikes: situation.strikes }
+      : undefined
+  );
+  const hasCount = displayCount !== undefined;
 
   // Leverage context — drives ambient visual weight (glow radius, amber
   // intensity, border opacity) so late-inning close games feel hotter.
@@ -279,7 +284,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
           basesAfter={baseStateAfter}
           countBefore={
             hasCount
-              ? { balls: situation.balls!, strikes: situation.strikes! }
+              ? displayCount
               : null
           }
           phase={presentationPhase}
@@ -350,7 +355,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
                   <span className="catchup-card-count-sep" aria-hidden>·</span>
                 )}
                 <span className="catchup-card-count-value">
-                  {situation.balls}-{situation.strikes}
+                  {displayCount?.balls}-{displayCount?.strikes}
                 </span>
               </span>
             )}
@@ -370,21 +375,36 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       </header>
 
       <div className="catchup-card-field">
-        <BaseballLightField
-          key={card.cardId}
-          visibleBaseState={visibleBaseState}
-          visibleRunnerNames={visibleRunnerNames}
-          runnerMovements={revealRequested ? movements : []}
-          runnersBeginMs={milestones.runners}
-          ballPath={revealRequested ? card.ballPath : "none"}
-          eventType={revealRequested ? card.eventType : undefined}
-          animationProfile={revealRequested ? card.animationProfile : undefined}
-          scoreBefore={card.scoreBefore}
-          scoreAfter={revealRequested ? card.scoreAfter : card.scoreBefore}
-          accentColor={accent}
-          isActive={isPlayingReveal}
-          suppressMovementLines={revealRequested ? card.suppressMovementLines : undefined}
-        />
+        <CatchupErrorBoundary
+          title="Could not render this field."
+          boundaryKey={`${card.cardId}:field:${revealRequested ? "reveal" : "preview"}`}
+          context={{
+            gameId: card.gameId,
+            cardId: card.cardId,
+            eventId: card.playIndex,
+            inning: card.inning,
+            half: card.inningHalf,
+            eventType: card.eventType,
+            baseStateBefore,
+            baseStateAfter,
+          }}
+        >
+          <BaseballLightField
+            key={card.cardId}
+            visibleBaseState={visibleBaseState}
+            visibleRunnerNames={visibleRunnerNames}
+            runnerMovements={revealRequested ? movements : []}
+            runnersBeginMs={milestones.runners}
+            ballPath={revealRequested ? card.ballPath : "none"}
+            eventType={revealRequested ? card.eventType : undefined}
+            animationProfile={revealRequested ? card.animationProfile : undefined}
+            scoreBefore={card.scoreBefore}
+            scoreAfter={revealRequested ? card.scoreAfter : card.scoreBefore}
+            accentColor={accent}
+            isActive={isPlayingReveal}
+            suppressMovementLines={revealRequested ? card.suppressMovementLines : undefined}
+          />
+        </CatchupErrorBoundary>
         {revealRequested && narrativeText && (
           <div
             className="catchup-card-body catchup-card-body--overlay"

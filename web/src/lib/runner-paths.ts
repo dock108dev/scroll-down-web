@@ -187,9 +187,10 @@ export function buildRunnerMovements(
   advances: RunnerAdvance[],
   eventType?: PlayEventType,
 ): RunnerMovement[] {
+  const renderableAdvances = sanitizeRunnerAdvances(advances);
   // Lead-runner ordering: third before second before first before home (batter).
   const order: Record<BaseName, number> = { third: 0, second: 1, first: 2, home: 3 };
-  const sorted = [...advances].sort((a, b) => {
+  const sorted = [...renderableAdvances].sort((a, b) => {
     const oa = order[a.from] ?? 4;
     const ob = order[b.from] ?? 4;
     if (oa !== ob) return oa - ob;
@@ -227,6 +228,20 @@ export function buildRunnerMovements(
       advance: adv,
     };
   });
+}
+
+function sanitizeRunnerAdvances(advances: RunnerAdvance[]): RunnerAdvance[] {
+  const seen = new Set<string>();
+  const out: RunnerAdvance[] = [];
+  for (const adv of advances) {
+    if (adv.from === adv.to && adv.from !== "home") continue;
+    const runnerKey = adv.runnerId ?? adv.runnerName ?? "unknown";
+    const key = `${runnerKey}:${adv.from}:${adv.to}:${adv.outAt ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(adv);
+  }
+  return out;
 }
 
 function pickDominantStyle(

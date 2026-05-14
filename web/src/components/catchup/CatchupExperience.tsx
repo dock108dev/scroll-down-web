@@ -13,6 +13,7 @@ import { RevealGate } from "./RevealGate";
 import { FinalReveal } from "./FinalReveal";
 import { NewMomentsBanner } from "./NewMomentsBanner";
 import { CatchupSettingsDrawer } from "./CatchupSettingsDrawer";
+import { CatchupErrorBoundary } from "./CatchupErrorBoundary";
 import { useSettings } from "@/stores/settings";
 import type { CatchupCard as CatchupCardData } from "@/lib/types";
 
@@ -274,10 +275,37 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
       >
         {[
           ...baseSlides.map((card, i) => {
+            const boundaryContext = {
+              gameId,
+              cardId: card.cardId,
+              cardKind: card.kind,
+              eventId: card.kind === "play" ? card.playIndex : undefined,
+              inning: "inning" in card ? card.inning : undefined,
+              half: "inningHalf" in card ? card.inningHalf : undefined,
+              rawEventSummary: card.kind === "play"
+                ? {
+                    eventType: card.eventType,
+                    count: card.situationBefore.displayCountBefore,
+                    basesBefore: card.situationBefore.baseState,
+                    basesAfter: card.baseStateAfter,
+                  }
+                : undefined,
+            };
+            const wrapSlide = (node: React.ReactNode) => (
+              <CatchupErrorBoundary
+                key={card.cardId}
+                boundaryKey={card.cardId}
+                title={card.kind === "play" ? "Could not render this play." : "Could not render this card."}
+                context={boundaryContext}
+                onSkip={i < slideKeys.length - 1 ? () => setTargetIndex(i + 1) : undefined}
+                onRetry={refresh}
+              >
+                {node}
+              </CatchupErrorBoundary>
+            );
             if (card.kind === "scene-setter") {
-              return (
+              return wrapSlide(
                 <SceneSetterCard
-                  key={card.cardId}
                   card={card}
                   isActive={activeIndex === i}
                 />
@@ -289,9 +317,8 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
               card.kind === "late-game" ||
               card.kind === "final-setup"
             ) {
-              return (
+              return wrapSlide(
                 <RhythmCard
-                  key={card.cardId}
                   card={card}
                   isActive={activeIndex === i}
                   showDebug={showDebug}
@@ -299,9 +326,8 @@ export function CatchupExperience({ gameId }: CatchupExperienceProps) {
               );
             }
             if (card.kind === "play") {
-              return (
+              return wrapSlide(
                 <CatchupCard
-                  key={card.cardId}
                   card={card}
                   homeTeamAbbr={homeTeamAbbr}
                   awayTeamAbbr={awayTeamAbbr}

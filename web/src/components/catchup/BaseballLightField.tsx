@@ -860,7 +860,7 @@ function BaseLabel({
   name?: string;
 }) {
   if (!occupied) return null;
-  const label = formatRunnerLabel(name);
+  const label = formatRunnerLabel(name, `U ${base.toUpperCase()}`);
   if (!label) return null;
   const off = BASE_LABEL_OFFSET[base];
   const width = Math.max(38, label.length * 6 + 10);
