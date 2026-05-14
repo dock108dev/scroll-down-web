@@ -6,14 +6,22 @@
  * classification, and result chip labels are all decided server-side. The
  * adapter copies them through.
  *
- * The one local computation: `scoreAfter`, which the backend deliberately
- * does NOT serialize (spoiler-safety contract). The adapter computes it
- * from `scoreBefore + runsScoredOnPlay` attributed to the batting team
- * (top inning => away, bottom inning => home). This number stays in
- * memory for animation only — it is never sent back to the wire. Runner
- * movement overlays are the other local computation: they are derived
- * from before/after base snapshots so stale or guessed backend animation
- * payloads cannot move runners who held their base.
+ * Normalized event flow: the backend ships a `halfInnings` list of
+ * `ScrollDownHalfInningContainer` containers. Each container's `events`
+ * carry the per-event normalized snapshots — before/after base + outs,
+ * pre-play score, per-team `scoreChange` delta, deterministic
+ * `movements`, `matchup` identity, `result` flags, and `revealType`. The
+ * adapter looks up each play card's event by `playIndex` and copies
+ * those fields onto the renderer's card. It does NOT re-derive movements
+ * from a base-state diff when event movements are present, and it does
+ * NOT infer the batter from movement entries — both are sourced from
+ * the wire. Older PlayPayload-only decks still use the legacy base diff
+ * so cached fixtures remain animated.
+ *
+ * The one local computation: `scoreAfter`, which the wire deliberately
+ * omits (spoiler-safety contract). The adapter computes it as
+ * `scoreBefore + scoreChange` so the post-play scoreboard tween stays
+ * in memory only and is never round-tripped to the wire.
  */
 
 import type {
@@ -24,6 +32,7 @@ import type {
   PriorAfterState,
   RhythmCard,
   RhythmCardKind,
+  RunnerAdvance,
   RunnerNames,
   SceneSetterCard,
   InningTransitionCard,
@@ -31,12 +40,14 @@ import type {
   BaseballBaseState,
   PlayAnimationProfile,
 } from "@/lib/types";
-import { diffBaseStatesToAdvances } from "@/lib/runner-state";
 import type {
   SdmDeckCard,
   SdmDeckResponse,
-  SdmRunnerMovement,
+  SdmHalfInningContainer,
+  SdmHalfInningEvent,
+  SdmBaseMovement,
 } from "@/types/scroll-down-mlb";
+import { diffBaseStatesToAdvances } from "@/lib/runner-state";
 
 const HOME_ABBR_FALLBACK = "HME";
 const AWAY_ABBR_FALLBACK = "AWY";
@@ -52,6 +63,13 @@ export function adaptDeck(deck: SdmDeckResponse): CatchupCardsResponse {
   const awayAbbr = deck.awayTeam?.abbreviation ?? AWAY_ABBR_FALLBACK;
   const homeName = deck.homeTeam?.displayName ?? "Home";
   const awayName = deck.awayTeam?.displayName ?? "Away";
+
+  // Index every wire event by its `playIndex` so play cards can resolve
+  // the normalized event payload in O(1) without iterating the
+  // container list. `halfInnings` may be empty for older fixtures, in
+  // which case the adapter falls back to the legacy PlayPayload-only
+  // path (no batter or movement upgrades available).
+  const eventByPlayIndex = indexEventsByPlayIndex(deck.halfInnings);
 
   const cards: CatchupCard[] = [];
   // Running scoreboard threaded through the loop so rhythm/transition
@@ -75,7 +93,16 @@ export function adaptDeck(deck: SdmDeckResponse): CatchupCardsResponse {
   for (const card of deck.cards) {
     if (seenIds.has(card.id)) continue;
     seenIds.add(card.id);
-    const adapted = adaptCard(card, deck, gameId, homeAbbr, awayAbbr, homeName, awayName);
+    const adapted = adaptCard(
+      card,
+      deck,
+      gameId,
+      homeAbbr,
+      awayAbbr,
+      homeName,
+      awayName,
+      eventByPlayIndex,
+    );
     if (!adapted) continue;
     if (adapted.kind === "play") {
       lastKnownScore = adapted.scoreAfter;
@@ -101,7 +128,12 @@ export function adaptDeck(deck: SdmDeckResponse): CatchupCardsResponse {
 
   return {
     gameId,
-    lastPlayIndex: deck.lastPlayIndex ?? -1,
+    // Preserve the public `lastPlayIndex` contract: this is the latest
+    // upstream playIndex, suitable for `?since=` style polling and
+    // persisted progress. When normalized half-inning events are present,
+    // derive it from their playIndex values; older fixtures fall back to
+    // the deck-level field.
+    lastPlayIndex: deriveLastPlayIndex(deck, eventByPlayIndex),
     isFinal: deck.isFinal,
     cards,
   };
@@ -116,12 +148,13 @@ function adaptCard(
   awayAbbr: string,
   homeName: string,
   awayName: string,
+  eventByPlayIndex: Map<number, SdmHalfInningEvent>,
 ): CatchupCard | null {
   switch (card.type) {
     case "scene":
       return adaptSceneCard(card, deck, gameId, homeAbbr, awayAbbr, homeName, awayName);
     case "play":
-      return adaptPlayCard(card, gameId, homeAbbr, awayAbbr);
+      return adaptPlayCard(card, gameId, homeAbbr, awayAbbr, eventByPlayIndex);
     case "rhythm":
       return adaptRhythmCard(card, gameId, homeAbbr, awayAbbr);
     case "final_setup":
@@ -182,6 +215,7 @@ function adaptPlayCard(
   gameId: number,
   homeAbbr: string,
   awayAbbr: string,
+  eventByPlayIndex: Map<number, SdmHalfInningEvent>,
 ): PlayCardData | null {
   const play = card.play;
   if (!play) return null;
@@ -190,26 +224,60 @@ function adaptPlayCard(
   // Top of inning => away batting, bottom => home batting.
   const battingTeamAbbr = inningHalf === "bottom" ? homeAbbr : awayAbbr;
 
-  const scoreBefore = play.scoreBefore ?? { home: 0, away: 0 };
-  // LOCAL-ONLY post-play scoreboard. Computed from backend-provided
-  // `runsScoredOnPlay` attributed to the batting team. Never re-emitted
-  // on the wire — this stays inside the renderer.
-  const scoreAfter = computeScoreAfter(scoreBefore, play.runsScoredOnPlay, inningHalf);
+  const playIndex = parsePlayIndex(play.playId);
+  const event = eventByPlayIndex.get(playIndex);
 
-  const baseStateBefore: BaseballBaseState = play.baseStateBefore ?? emptyBases();
-  const baseStateAfter: BaseballBaseState = play.baseStateAfter ?? emptyBases();
+  // Prefer the normalized event payload when the half-inning containers
+  // were shipped. Falls back to the PlayPayload-only legacy shape so
+  // older deck fixtures (no halfInnings) still render. The wire-level
+  // event is the source of truth for: pre-play score, per-team
+  // scoreChange, before/after base + outs, runner movements, batter
+  // identity, and result flags.
+  const scoreBefore =
+    event?.scoreBefore ?? play.scoreBefore ?? { home: 0, away: 0 };
+  // LOCAL-ONLY post-play scoreboard. The wire never carries a cumulative
+  // post-play total, so we always compute it as `scoreBefore +
+  // scoreChange`. `scoreChange` is the per-team run delta produced by
+  // this event (zeros for non-scoring plays). NEVER reads any after-
+  // state score field — that path is structurally excluded by the
+  // spoiler-safety contract and would equal the final score on the last
+  // play of a completed game.
+  //
+  // Resolution order: event.scoreChange (canonical) → play.scoreChange
+  // (legacy field on PlayPayload) → derive from `runsScoredOnPlay` ×
+  // batting-team attribution (oldest fixture path, no per-team delta).
+  const scoreChange =
+    event?.scoreChange ??
+    play.scoreChange ??
+    runsToScoreChange(play.runsScoredOnPlay ?? 0, inningHalf);
+  const scoreAfter = {
+    home: scoreBefore.home + scoreChange.home,
+    away: scoreBefore.away + scoreChange.away,
+  };
+
+  const baseStateBefore: BaseballBaseState =
+    event?.baseStateBefore ?? play.baseStateBefore ?? emptyBases();
+  const baseStateAfter: BaseballBaseState =
+    event?.baseStateAfter ?? play.baseStateAfter ?? emptyBases();
 
   const runnerNamesBefore = play.runnerNamesBefore ?? {};
   const runnerNamesAfter = play.runnerNamesAfter ?? {};
 
-  const movements = card.visual?.runnerMovements ?? [];
-  const runnerAdvances = diffBaseStatesToAdvances(baseStateBefore, baseStateAfter, {
-    runnerNamesBefore: runnerNamesBefore as RunnerNames,
-    runnerNamesAfter: runnerNamesAfter as RunnerNames,
-    eventType: (play.eventType as PlayEventType | null | undefined) ?? undefined,
-    runsScored: play.runsScoredOnPlay ?? 0,
-    outsRecorded: Math.max(0, (play.outsAfter ?? 0) - (play.outsBefore ?? 0)),
-  });
+  // Runner advances drive the in-card animation. Source of truth is the
+  // wire's `event.movements` — the backend builds these deterministically
+  // from `situation_before.bases` vs `situation_after.bases` plus the
+  // batter's destination from event context. Legacy fixtures and older
+  // cached decks do not carry `halfInnings`, so only that path falls back
+  // to the old local base-state diff.
+  const runnerAdvances: RunnerAdvance[] = event
+    ? event.movements.map(movementToAdvance)
+    : diffBaseStatesToAdvances(baseStateBefore, baseStateAfter, {
+        runnerNamesBefore: runnerNamesBefore as RunnerNames,
+        runnerNamesAfter: runnerNamesAfter as RunnerNames,
+        eventType: (play.eventType as PlayEventType | null | undefined) ?? undefined,
+        runsScored: play.runsScoredOnPlay ?? 0,
+        outsRecorded: Math.max(0, (play.outsAfter ?? 0) - (play.outsBefore ?? 0)),
+      });
 
   const rawTrajectory = card.visual?.trajectory as BallPath | null | undefined;
   // Generic backend `foul` doesn't carry direction. Infer from the
@@ -222,29 +290,39 @@ function adaptPlayCard(
       : (rawTrajectory ?? undefined);
   const animationProfile = (card.visual?.animationProfile as PlayAnimationProfile | null | undefined) ?? undefined;
   const visualIntensity = (card.visual?.intensity as "low" | "medium" | "high" | null | undefined) ?? undefined;
+  // Authoritative overlay suppression from the upstream classifier.
+  const suppressMovementLines =
+    card.visual?.displayHints?.suppressMovementLines === true ? true : undefined;
 
   const inningLabel = card.title ?? buildInningLabel(inning, inningHalf);
 
-  // Some upstream play rows don't carry batterName (the SDA `player_name`
-  // column is the underlying source — when it's null, `play.batterName`
-  // arrives null too). Recover it from the runner-movement plan: the
-  // batter is the one runner whose movement starts at home plate.
-  const inferredBatterName =
-    play.batterName ??
-    inferBatterFromMovements(movements, runnerNamesAfter, runnerNamesBefore);
+  // Batter identity: prefer `event.matchup.batter.name` (normalized,
+  // backend-canonical, populated even when upstream omits per-play
+  // batter records). Falls back to `play.batterName` (legacy
+  // PlayPayload) when the half-inning event is unavailable. There is
+  // intentionally no movement-inference fallback — the wire is now the
+  // source of truth.
+  const batterName =
+    event?.matchup.batter?.name ?? play.batterName ?? null;
 
-  // Splice the inferred batter name into the curated narrative if the
+  // Splice the resolved batter name into the curated narrative if the
   // backend narrator left the generic "the batter" placeholder. Falls
   // back to the raw MLB play description as a last resort. Keeps the
   // curated tone while restoring the player context.
-  const narrativeText = pickNarrative(card.description, play.description, inferredBatterName);
+  const narrativeText = pickNarrative(card.description, play.description, batterName);
+
+  const eventTypeFromEvent = event?.eventType ?? event?.result.eventType ?? null;
+  const resolvedEventType =
+    (eventTypeFromEvent as PlayEventType | null | undefined) ??
+    (play.eventType as PlayEventType | null | undefined) ??
+    undefined;
 
   return {
     kind: "play",
     gameId,
     cardId: card.id,
     index: card.sortOrder,
-    playIndex: parsePlayIndex(play.playId),
+    playIndex,
     inning,
     inningHalf,
     inningLabel,
@@ -254,25 +332,26 @@ function adaptPlayCard(
     scoreBefore,
     scoreAfter,
     situationBefore: {
-      outs: play.outsBefore ?? undefined,
+      outs: event?.outsBefore ?? play.outsBefore ?? undefined,
       balls: play.ballsBefore ?? undefined,
       strikes: play.strikesBefore ?? undefined,
       baseState: baseStateBefore,
-      batterName: inferredBatterName ?? undefined,
-      pitcherName: play.pitcherName ?? undefined,
+      batterName: batterName ?? undefined,
+      pitcherName: event?.matchup.pitcher?.name ?? play.pitcherName ?? undefined,
       pitcherStatLine: play.pitcherStatLine ?? undefined,
     },
-    outsAfter: play.outsAfter ?? 0,
+    outsAfter: event?.outsAfter ?? play.outsAfter ?? 0,
     baseStateAfter,
     runnerNamesBefore: runnerNamesBefore as RunnerNames,
     runnerNamesAfter: runnerNamesAfter as RunnerNames,
     runnerAdvances,
     ballPath,
-    eventType: (play.eventType as PlayEventType | null | undefined) ?? undefined,
+    eventType: resolvedEventType,
     animationProfile,
     visualIntensity,
+    suppressMovementLines,
     leverageTier: ((card.leverageTier ?? 0) as 0 | 1 | 2),
-    chipPrimary: play.label ?? undefined,
+    chipPrimary: event?.result.label ?? play.label ?? undefined,
     chipSecondary: play.subLabel ?? undefined,
   };
 }
@@ -335,45 +414,58 @@ function adaptRhythmCard(
 
 
 /**
- * Recover the batter's name when the upstream play row didn't carry it
- * directly. The batter is the one runner whose movement begins at home
- * plate — every batted-ball event (single, HR, K, popup, walk, etc.)
- * places a `from: "home"` movement, and its `runner` is the batter.
- *
- * Two fallback layers when that movement's runner string is empty:
- *   1. `runnerNamesAfter[base]` for whichever base the batter ended up on
- *      (single → first, double → second, etc.). Skipped when the batter
- *      went to "out" or "home" (HR) because no after-name is recorded.
- *   2. Diff `runnerNamesAfter` against `runnerNamesBefore` — any name that
- *      appears in `after` but wasn't in `before` must be the batter who
- *      just reached.
- *
- * Returns `null` (not `undefined`) when nothing resolves, so the caller's
- * `??` chain falls through cleanly to that case.
+ * Translate one wire `BaseMovement` into the renderer's `RunnerAdvance`
+ * shape. Direct field rename — no diffing or inference, since the
+ * backend already shipped a deterministic movement entry.
  */
-function inferBatterFromMovements(
-  movements: SdmRunnerMovement[],
-  runnerNamesAfter: Partial<Record<"first" | "second" | "third", string>>,
-  runnerNamesBefore: Partial<Record<"first" | "second" | "third", string>>,
-): string | null {
-  const batterMove = movements.find((m) => m.from === "home");
-  if (batterMove?.runner) return batterMove.runner;
+function movementToAdvance(move: SdmBaseMovement): RunnerAdvance {
+  return {
+    from: move.from,
+    to: move.to,
+    runnerId: move.runner.id ?? undefined,
+    runnerName: move.runner.name,
+    reason: move.reason ?? undefined,
+    outAt: move.outAt ?? undefined,
+  };
+}
 
-  // Did the batter reach a base safely? Check the destination of any
-  // home → base move.
-  if (batterMove && (batterMove.to === "first" || batterMove.to === "second" || batterMove.to === "third")) {
-    const atDest = runnerNamesAfter[batterMove.to];
-    if (atDest) return atDest;
-  }
 
-  // Diff after vs before for any newly-appeared runner name.
-  const bases: Array<"first" | "second" | "third"> = ["first", "second", "third"];
-  const before = new Set(bases.map((b) => runnerNamesBefore[b]).filter(Boolean) as string[]);
-  for (const base of bases) {
-    const name = runnerNamesAfter[base];
-    if (name && !before.has(name)) return name;
+/**
+ * Build the `playIndex → HalfInningEvent` index. Skips containers
+ * gracefully when the wire omits them so the adapter still works against
+ * older deck fixtures (which carry no `halfInnings` at all).
+ */
+function indexEventsByPlayIndex(
+  containers: SdmHalfInningContainer[] | undefined,
+): Map<number, SdmHalfInningEvent> {
+  const out = new Map<number, SdmHalfInningEvent>();
+  if (!containers) return out;
+  for (const container of containers) {
+    for (const event of container.events) {
+      out.set(event.playIndex, event);
+    }
   }
-  return null;
+  return out;
+}
+
+
+/**
+ * Compute the latest upstream playIndex from the half-inning container list.
+ *
+ * `lastPlayIndex` is persisted and documented as a playIndex that can be
+ * sent back to the API as `?since=`, so it must not be replaced with an
+ * event-count cursor. Falls back to the deck-level `lastPlayIndex` for
+ * backward compatibility with older fixtures.
+ */
+function deriveLastPlayIndex(
+  deck: SdmDeckResponse,
+  eventByPlayIndex: Map<number, SdmHalfInningEvent>,
+): number {
+  let latest = deck.lastPlayIndex ?? -1;
+  for (const playIndex of eventByPlayIndex.keys()) {
+    if (playIndex > latest) latest = playIndex;
+  }
+  return latest;
 }
 
 
@@ -383,7 +475,7 @@ function inferBatterFromMovements(
  * Order of preference:
  *   1. Curated narrator output (`cardDescription`) when it already has a
  *      name — emotionally framed, our preferred voice.
- *   2. Curated narrator output with the inferred batter name spliced into
+ *   2. Curated narrator output with the resolved batter name spliced into
  *      the "the batter" placeholder. Restores the actor without losing
  *      tone.
  *   3. Raw upstream MLB play-by-play (`playDescription`) — verbose but
@@ -393,18 +485,18 @@ function inferBatterFromMovements(
 function pickNarrative(
   cardDescription: string,
   playDescription: string | null | undefined,
-  inferredBatterName: string | null,
+  batterName: string | null,
 ): string {
   const card = (cardDescription ?? "").trim();
   const play = (playDescription ?? "").trim();
   if (!card) return play;
-  if (!play && !inferredBatterName) return card;
+  if (!play && !batterName) return card;
 
   const hasBatterPlaceholder = /\bthe batter\b/i.test(card);
   const hasPitcherPlaceholder = /\bthe pitcher\b/i.test(card);
 
-  if (hasBatterPlaceholder && inferredBatterName) {
-    const last = lastNameOf(inferredBatterName);
+  if (hasBatterPlaceholder && batterName) {
+    const last = lastNameOf(batterName);
     // Replace the leading "The batter" (capitalized) once, then any
     // remaining lowercase "the batter" references.
     let out = card.replace(/^The batter\b/, last);
@@ -412,7 +504,7 @@ function pickNarrative(
     return out;
   }
 
-  // Narrator gave up on names entirely and we couldn't infer one — the
+  // Narrator gave up on names entirely and we couldn't resolve one — the
   // raw MLB text is wordier but at least carries them.
   if ((hasBatterPlaceholder || hasPitcherPlaceholder) && play) {
     return play;
@@ -492,16 +584,17 @@ function snapshotPlayEnding(card: PlayCardData): PriorAfterState {
 }
 
 
-function computeScoreAfter(
-  before: { home: number; away: number },
-  runsScored: number,
+/**
+ * Last-resort scoreChange derivation from `runsScoredOnPlay` for older
+ * fixtures that ship neither `event.scoreChange` nor `play.scoreChange`.
+ * Attributes runs to the batting team based on inning half.
+ */
+function runsToScoreChange(
+  runs: number,
   half: "top" | "bottom",
 ): { home: number; away: number } {
-  const safe = Math.max(0, runsScored);
-  if (half === "bottom") {
-    return { home: before.home + safe, away: before.away };
-  }
-  return { home: before.home, away: before.away + safe };
+  const safe = Math.max(0, runs);
+  return half === "bottom" ? { home: safe, away: 0 } : { home: 0, away: safe };
 }
 
 

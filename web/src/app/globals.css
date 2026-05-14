@@ -44,8 +44,8 @@
    Design tokens — shared (light/dark agnostic) + light mode defaults
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 :root {
-  /* ── Header height (set dynamically by TopNav) ───── */
-  --header-h: 56px;
+  /* ── Header height, including safe-area padding added by TopNav ───── */
+  --header-h: calc(56px + env(safe-area-inset-top));
 
   /* ── Radii ─────────────────────────────────────────── */
   --ds-radius-card: 10px;
@@ -173,6 +173,7 @@
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 html {
   background: #050807;
+  overscroll-behavior: none;
 }
 
 body {
@@ -181,7 +182,26 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overscroll-behavior-y: none;
+  overscroll-behavior: none;
+}
+
+/* Suppress Safari's gray tap-flash on every interactive element so taps
+   feel native instead of webby. Components that want their own press
+   feedback (e.g. ripple, color change) still apply via :active styles. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Non-text UI chrome (nav, footer, buttons) shouldn't show iOS text
+   selection handles or the long-press callout. Body copy and headings
+   stay selectable because they aren't matched here. */
+nav,
+footer,
+button,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1525,7 +1545,11 @@ body {
 
 /* ── Base labels: compact first-initial + last-name tags rendered beside
    occupied bags. Dark pill background keeps them readable without making
-   the labels visually louder than the field. */
+   the labels visually louder than the field. Visibility is NOT gated by
+   any [data-reveal-state] — runners are scene context, not reveal
+   content, and must remain visible across preview / revealing /
+   revealed / advance. No opacity transition either, so a held runner's
+   label cannot flicker on the reveal-state attribute flip. */
 .field-base-label {
   pointer-events: none;
   opacity: 0.94;

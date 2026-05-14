@@ -148,7 +148,6 @@ export function makePlayCard(overrides: Partial<SdmDeckCard> = {}): SdmDeckCard 
     },
     visual: {
       trajectory: "fly_cf",
-      runnerMovements: [],
       intensity: "medium",
       animationProfile: "shallow_fly",
     },

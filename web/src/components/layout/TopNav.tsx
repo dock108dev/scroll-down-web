@@ -5,15 +5,17 @@ import Image from "next/image";
 import Link from "next/link";
 import { LAYOUT } from "@/lib/config";
 
+const HEADER_HEIGHT_CSS = `calc(${LAYOUT.HEADER_HEIGHT_DEFAULT} + env(safe-area-inset-top))`;
+
 export function TopNav() {
   useEffect(() => {
-    document.documentElement.style.setProperty("--header-h", LAYOUT.HEADER_HEIGHT_DEFAULT);
+    document.documentElement.style.setProperty("--header-h", HEADER_HEIGHT_CSS);
   }, []);
 
   return (
     <header
       data-testid="top-nav"
-      className="sticky top-0 z-40 border-b border-[rgba(245,239,220,0.12)] bg-[#050807]/85 text-[#f5efdc] backdrop-blur"
+      className="sticky top-0 z-40 border-b border-[rgba(245,239,220,0.12)] bg-[#050807]/85 text-[#f5efdc] backdrop-blur pt-[env(safe-area-inset-top)]"
     >
       <nav className="mx-auto flex h-14 max-w-3xl items-center px-4">
         <Link href="/" className="flex items-center gap-2.5 min-h-[44px] text-[#f5efdc]">

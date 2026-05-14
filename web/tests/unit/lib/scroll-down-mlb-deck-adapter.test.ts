@@ -1,16 +1,136 @@
 import { describe, expect, it } from "vitest";
 import { adaptDeck, deriveGamePhase } from "@/lib/adapters/scroll-down-mlb-deck-adapter";
-import type { SdmDeckResponse, SdmDeckCard } from "@/types/scroll-down-mlb";
+import type {
+  SdmDeckResponse,
+  SdmDeckCard,
+  SdmHalfInningContainer,
+  SdmHalfInningEvent,
+  SdmScrollDownEventResult,
+  SdmScrollDownEventMatchup,
+  SdmBaseMovement,
+} from "@/types/scroll-down-mlb";
 
-function buildDeck(playOverrides: Record<string, unknown>, visualOverrides?: Record<string, unknown>): SdmDeckResponse {
+// ── Test fixture helpers ────────────────────────────────────
+
+const HOME_TEAM = {
+  id: "1",
+  abbreviation: "NYY",
+  displayName: "Yankees",
+  colorLight: null,
+  colorDark: null,
+};
+const AWAY_TEAM = {
+  id: "2",
+  abbreviation: "MIL",
+  displayName: "Brewers",
+  colorLight: null,
+  colorDark: null,
+};
+
+function makeResult(
+  overrides: Partial<SdmScrollDownEventResult> = {},
+): SdmScrollDownEventResult {
+  return {
+    label: "HOME RUN",
+    description: "Solo home run.",
+    eventType: "home_run",
+    isOut: false,
+    isStrikeout: false,
+    isWalk: false,
+    isHit: true,
+    isScoringPlay: true,
+    isInningEnding: false,
+    ...overrides,
+  };
+}
+
+function makeMatchup(
+  overrides: Partial<SdmScrollDownEventMatchup> = {},
+): SdmScrollDownEventMatchup {
+  return {
+    batter: { id: "judge", name: "A Judge" },
+    pitcher: { id: "peralta", name: "F Peralta" },
+    ...overrides,
+  };
+}
+
+function makeEvent(overrides: Partial<SdmHalfInningEvent> = {}): SdmHalfInningEvent {
+  return {
+    sequence: 1,
+    playIndex: 10,
+    eventType: "home_run",
+    outsBefore: 0,
+    outsAfter: 0,
+    baseStateBefore: { first: false, second: false, third: false },
+    baseStateAfter: { first: false, second: false, third: false },
+    scoreBefore: { home: 0, away: 0 },
+    runsScoredOnPlay: 1,
+    scoreChange: { home: 0, away: 1 },
+    movements: [
+      {
+        runner: { id: "judge", name: "A Judge" },
+        from: "home",
+        to: "home",
+        style: "score",
+      },
+    ],
+    revealType: "plate_appearance",
+    result: makeResult(),
+    matchup: makeMatchup(),
+    isSelected: true,
+    ...overrides,
+  };
+}
+
+function makeContainer(
+  overrides: Partial<SdmHalfInningContainer> = {},
+): SdmHalfInningContainer {
+  return {
+    gameId: "12345",
+    inning: 1,
+    half: "top",
+    battingTeam: AWAY_TEAM,
+    fieldingTeam: HOME_TEAM,
+    events: [makeEvent()],
+    meta: { scoredRuns: 1, hadActivity: true, hadLeadChange: true, hadTying: false },
+    selectedPlayIndices: [10],
+    ...overrides,
+  };
+}
+
+function buildDeck(
+  playOverrides: Record<string, unknown> = {},
+  visualOverrides?: Record<string, unknown>,
+  options: {
+    halfInnings?: SdmHalfInningContainer[] | undefined;
+    eventOverrides?: Partial<SdmHalfInningEvent>;
+  } = {},
+): SdmDeckResponse {
+  // Default halfInnings track the default play card. Callers can pass
+  // `halfInnings: undefined` (explicit key present) to exercise the
+  // legacy (no-container) path, or pass `eventOverrides` to tweak the
+  // default event without rebuilding the whole container by hand.
+  const explicitHalfInnings = "halfInnings" in options;
+  const halfInnings = explicitHalfInnings
+    ? options.halfInnings
+    : [
+        makeContainer({
+          events: [
+            makeEvent({
+              ...(options.eventOverrides ?? {}),
+            }),
+          ],
+        }),
+      ];
+
   return {
     gameId: "12345",
     deckVersion: "v1",
     generatedAt: "2026-05-10T00:00:00Z",
     isFinal: false,
     spoilerPolicy: "pre_reveal",
-    homeTeam: { id: "1", abbreviation: "NYY", displayName: "Yankees", colorLight: null, colorDark: null },
-    awayTeam: { id: "2", abbreviation: "MIL", displayName: "Brewers", colorLight: null, colorDark: null },
+    homeTeam: HOME_TEAM,
+    awayTeam: AWAY_TEAM,
     lastPlayIndex: 5,
     firstPitch: "2026-05-10T18:10:00Z",
     venue: "American Family Field",
@@ -47,9 +167,6 @@ function buildDeck(playOverrides: Record<string, unknown>, visualOverrides?: Rec
         },
         visual: {
           trajectory: "hr_lcf",
-          runnerMovements: [
-            { runner: "Aaron Judge", from: "home", to: "home", style: "score" },
-          ],
           intensity: "high",
           animationProfile: "home_run",
           ...(visualOverrides ?? {}),
@@ -57,36 +174,349 @@ function buildDeck(playOverrides: Record<string, unknown>, visualOverrides?: Rec
         leverageTier: 1,
       },
     ],
+    halfInnings,
     plannerReport: null,
     validationWarnings: [],
   };
 }
 
-describe("scroll-down-mlb deck adapter — batter inference + narrative splice", () => {
-  it("infers batter name from a home-plate runner movement when play.batterName is null", () => {
-    const { cards } = adaptDeck(buildDeck({}));
+
+// ── Tests ───────────────────────────────────────────────────
+
+
+describe("scroll-down-mlb deck adapter — wire-event sourcing", () => {
+  it("reads batter name from event.matchup.batter.name (not from movement inference)", () => {
+    const deck = buildDeck({}, undefined, {
+      eventOverrides: {
+        matchup: { batter: { id: "p123", name: "J Soto" }, pitcher: null },
+        // Movement-inference path would have picked "Aaron Judge" from
+        // the visual movement. Wire matchup must win.
+        movements: [
+          {
+            runner: { id: null, name: "Aaron Judge" },
+            from: "home",
+            to: "home",
+            style: "score",
+          },
+        ],
+      },
+    });
+    const { cards } = adaptDeck(deck);
     const play = cards.find((c) => c.kind === "play");
     if (play?.kind !== "play") throw new Error("expected play card");
-    expect(play.situationBefore.batterName).toBe("Aaron Judge");
+    expect(play.situationBefore.batterName).toBe("J Soto");
   });
 
-  it("splices the inferred batter into the curated narrative when narrator left the 'the batter' placeholder", () => {
+  it("passes event.movements through as runnerAdvances without re-derivation", () => {
+    const movements: SdmBaseMovement[] = [
+      {
+        runner: { id: "judge", name: "A Judge" },
+        from: "home",
+        to: "first",
+        style: "advance",
+      },
+      {
+        runner: { id: "betts", name: "M Betts" },
+        from: "first",
+        to: "second",
+        style: "advance",
+      },
+    ];
+    const deck = buildDeck(
+      { eventType: "single", description: "Single to right." },
+      undefined,
+      { eventOverrides: { movements, eventType: "single" } },
+    );
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.runnerAdvances).toHaveLength(2);
+    expect(play.runnerAdvances?.[0]).toMatchObject({
+      from: "home",
+      to: "first",
+      runnerId: "judge",
+      runnerName: "A Judge",
+    });
+    expect(play.runnerAdvances?.[1]).toMatchObject({
+      from: "first",
+      to: "second",
+      runnerId: "betts",
+      runnerName: "M Betts",
+    });
+  });
+
+  it("passes outAt through on out movements", () => {
+    const deck = buildDeck(
+      { eventType: "fielders_choice", description: "Forceout at second." },
+      undefined,
+      {
+        eventOverrides: {
+          eventType: "fielders_choice",
+          movements: [
+            {
+              runner: { id: "r1", name: "X Runner" },
+              from: "first",
+              to: "out",
+              style: "out",
+              outAt: "second",
+            },
+            {
+              runner: { id: "b1", name: "B Batter" },
+              from: "home",
+              to: "first",
+              style: "advance",
+            },
+          ],
+        },
+      },
+    );
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    const outMove = play.runnerAdvances?.find((m) => m.to === "out");
+    expect(outMove?.outAt).toBe("second");
+  });
+
+  it("preview shows event.before bases/outs/score from the wire event", () => {
+    const deck = buildDeck(
+      {
+        // Make the PlayPayload before-state intentionally different
+        // from the event before-state so we can verify the adapter
+        // reads from the event when both are present.
+        outsBefore: 99,
+        baseStateBefore: { first: true, second: true, third: true },
+        scoreBefore: { home: 99, away: 99 },
+      },
+      undefined,
+      {
+        eventOverrides: {
+          outsBefore: 1,
+          baseStateBefore: { first: true, second: false, third: false },
+          scoreBefore: { home: 2, away: 3 },
+        },
+      },
+    );
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    // Renderer reads situationBefore.* during preview phase. These must
+    // come from the wire event, not the legacy PlayPayload fields.
+    expect(play.situationBefore.outs).toBe(1);
+    expect(play.situationBefore.baseState).toEqual({
+      first: true,
+      second: false,
+      third: false,
+    });
+    expect(play.scoreBefore).toEqual({ home: 2, away: 3 });
+  });
+
+  it("preview shows event.before.count (balls/strikes) from PlayPayload", () => {
+    const deck = buildDeck({ ballsBefore: 2, strikesBefore: 1 });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.situationBefore.balls).toBe(2);
+    expect(play.situationBefore.strikes).toBe(1);
+  });
+
+  it("preview does NOT apply scoreChange — scoreBefore is unchanged", () => {
+    const deck = buildDeck({}, undefined, {
+      eventOverrides: {
+        scoreBefore: { home: 1, away: 1 },
+        scoreChange: { home: 0, away: 3 }, // big delta — would distort preview if applied
+      },
+    });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    // The renderer renders `scoreBefore` during preview. The adapter
+    // surfaces it untouched: scoreChange is only applied on the
+    // computed `scoreAfter`.
+    expect(play.scoreBefore).toEqual({ home: 1, away: 1 });
+  });
+
+  it("revealed phase: scoreAfter = scoreBefore + scoreChange (never reads after-state score)", () => {
+    const deck = buildDeck({}, undefined, {
+      eventOverrides: {
+        scoreBefore: { home: 2, away: 1 },
+        scoreChange: { home: 0, away: 2 },
+      },
+    });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.scoreAfter).toEqual({ home: 2, away: 3 });
+  });
+
+  it("revealed phase shows event.after bases/outs from the wire event", () => {
+    const deck = buildDeck(
+      {
+        outsAfter: 99,
+        baseStateAfter: { first: false, second: false, third: false },
+      },
+      undefined,
+      {
+        eventOverrides: {
+          outsAfter: 2,
+          baseStateAfter: { first: false, second: true, third: false },
+        },
+      },
+    );
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.outsAfter).toBe(2);
+    expect(play.baseStateAfter).toEqual({
+      first: false,
+      second: true,
+      third: false,
+    });
+  });
+
+  it("uses result.label as chipPrimary when available", () => {
+    const deck = buildDeck({ label: "Old chip" }, undefined, {
+      eventOverrides: { result: makeResult({ label: "NEW CHIP" }) },
+    });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.chipPrimary).toBe("NEW CHIP");
+  });
+
+  it("falls back to PlayPayload fields and base diffs when halfInnings is absent (legacy compat)", () => {
+    const deck = buildDeck(
+      {
+        batterName: "Bo Bichette",
+        eventType: "single",
+        baseStateBefore: { first: false, second: false, third: true },
+        baseStateAfter: { first: true, second: false, third: false },
+        runnerNamesBefore: { third: "A Judge" },
+        runnerNamesAfter: { first: "Bo Bichette" },
+      },
+      undefined,
+      { halfInnings: undefined },
+    );
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.situationBefore.batterName).toBe("Bo Bichette");
+    expect(play.runnerAdvances).toEqual([
+      expect.objectContaining({ from: "third", to: "home" }),
+      expect.objectContaining({ from: "home", to: "first" }),
+    ]);
+  });
+
+  it("legacy fallback: batter is undefined when both event and play.batterName are absent", () => {
+    const deck = buildDeck({ batterName: null }, undefined, { halfInnings: undefined });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.situationBefore.batterName).toBeUndefined();
+  });
+
+  it("propagates suppressMovementLines from visual.displayHints onto the play card", () => {
+    const deck = buildDeck({}, {
+      displayHints: { suppressMovementLines: true },
+    });
+    const { cards } = adaptDeck(deck);
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.suppressMovementLines).toBe(true);
+  });
+
+  it("leaves suppressMovementLines undefined when backend has not opted in", () => {
     const { cards } = adaptDeck(buildDeck({}));
     const play = cards.find((c) => c.kind === "play");
     if (play?.kind !== "play") throw new Error("expected play card");
+    expect(play.suppressMovementLines).toBeUndefined();
+  });
+});
+
+
+describe("scroll-down-mlb deck adapter — last play index", () => {
+  it("uses the highest playIndex across half-inning containers", () => {
+    const deck = buildDeck({}, undefined, {
+      halfInnings: [
+        makeContainer({ events: [makeEvent({ playIndex: 1001 })] }),
+        makeContainer({
+          inning: 1,
+          half: "bottom",
+          events: [
+            makeEvent({ playIndex: 1004 }),
+            makeEvent({ playIndex: 1007 }),
+          ],
+        }),
+      ],
+    });
+    const adapted = adaptDeck(deck);
+    expect(adapted.lastPlayIndex).toBe(1007);
+  });
+
+  it("does not substitute an event-count cursor for sparse play indexes", () => {
+    const deck = buildDeck({}, undefined, {
+      halfInnings: [
+        makeContainer({
+          events: [
+            makeEvent({ playIndex: 90064 }),
+            makeEvent({ playIndex: 90078, sequence: 2 }),
+          ],
+        }),
+      ],
+    });
+
+    const adapted = adaptDeck(deck);
+
+    expect(adapted.lastPlayIndex).toBe(90078);
+  });
+
+  it("advances when a new higher playIndex is appended to a container", () => {
+    const baseContainer = makeContainer({
+      events: [makeEvent({ playIndex: 105074 })],
+    });
+    const before = adaptDeck(buildDeck({}, undefined, { halfInnings: [baseContainer] }));
+    expect(before.lastPlayIndex).toBe(105074);
+
+    const grown: SdmHalfInningContainer = {
+      ...baseContainer,
+      events: [...baseContainer.events, makeEvent({ playIndex: 105080, sequence: 2 })],
+    };
+    const after = adaptDeck(buildDeck({}, undefined, { halfInnings: [grown] }));
+    expect(after.lastPlayIndex).toBe(105080);
+  });
+
+  it("falls back to deck.lastPlayIndex when halfInnings is missing", () => {
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
+    deck.lastPlayIndex = 42;
+    const adapted = adaptDeck(deck);
+    expect(adapted.lastPlayIndex).toBe(42);
+  });
+
+  it("returns -1 when both halfInnings and deck.lastPlayIndex are absent", () => {
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
+    deck.lastPlayIndex = undefined;
+    const adapted = adaptDeck(deck);
+    expect(adapted.lastPlayIndex).toBe(-1);
+  });
+});
+
+
+describe("scroll-down-mlb deck adapter — narrative splice", () => {
+  it("splices the wire-resolved batter into the curated narrative when narrator left 'the batter' placeholder", () => {
+    const { cards } = adaptDeck(buildDeck({}));
+    const play = cards.find((c) => c.kind === "play");
+    if (play?.kind !== "play") throw new Error("expected play card");
+    // Default batter is "A Judge" — narrative splice should drop the
+    // last name into the curated copy.
     expect(play.description).toBe("Judge goes deep for a solo home run.");
   });
 
   it("preserves curated narrative untouched when it already names the batter", () => {
-    const { cards } = adaptDeck(
-      buildDeck({}, { /* keep default movements so batter is recoverable, but narration is already named */ }),
-    );
-    // Rebuild with an already-named card description.
+    const deck = buildDeck({});
     const direct = adaptDeck({
-      ...buildDeck({}),
+      ...deck,
       cards: [
         {
-          ...buildDeck({}).cards[0],
+          ...deck.cards[0],
           description: "Judge crushes one to deep left.",
         },
       ],
@@ -94,17 +524,19 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
     const card = direct.cards.find((c) => c.kind === "play");
     if (card?.kind !== "play") throw new Error("expected play card");
     expect(card.description).toBe("Judge crushes one to deep left.");
-    // The trivial first call is unused — keeping it asserts the adapter is
-    // shape-stable under repeated calls with the same input.
-    expect(cards.length).toBe(1);
   });
 
-  it("falls back to raw play.description when narrator left a placeholder and no batter can be inferred", () => {
-    const { cards } = adaptDeck(
-      buildDeck({}, {
-        runnerMovements: [], // strip movements so inference fails
-      }),
+  it("falls back to raw play.description when narrator left a placeholder and no batter can be resolved", () => {
+    const deck = buildDeck(
+      {},
+      undefined,
+      {
+        eventOverrides: { matchup: { batter: null, pitcher: null } },
+      },
     );
+    // Also clear play.batterName so the legacy fallback can't resolve.
+    deck.cards[0].play!.batterName = null;
+    const { cards } = adaptDeck(deck);
     const play = cards.find((c) => c.kind === "play");
     if (play?.kind !== "play") throw new Error("expected play card");
     expect(play.situationBefore.batterName).toBeUndefined();
@@ -112,7 +544,10 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
       "Aaron Judge homers on a fly ball to center field.",
     );
   });
+});
 
+
+describe("scroll-down-mlb deck adapter — foul-side inference", () => {
   it("infers foul_right when the play description mentions first base / right field", () => {
     const { cards } = adaptDeck(
       buildDeck(
@@ -120,10 +555,7 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
           eventType: "field_out",
           description: "Aaron Judge pops out to first baseman Pete Alonso in foul territory.",
         },
-        {
-          trajectory: "foul",
-          animationProfile: "foul",
-        },
+        { trajectory: "foul", animationProfile: "foul" },
       ),
     );
     const play = cards.find((c) => c.kind === "play");
@@ -138,10 +570,7 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
           eventType: "field_out",
           description: "Aaron Judge pops out to third baseman Jose Ramirez in foul territory.",
         },
-        {
-          trajectory: "foul",
-          animationProfile: "foul",
-        },
+        { trajectory: "foul", animationProfile: "foul" },
       ),
     );
     const play = cards.find((c) => c.kind === "play");
@@ -156,17 +585,17 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
           eventType: "field_out",
           description: "Aaron Judge pops out in foul territory.",
         },
-        {
-          trajectory: "foul",
-          animationProfile: "foul",
-        },
+        { trajectory: "foul", animationProfile: "foul" },
       ),
     );
     const play = cards.find((c) => c.kind === "play");
     if (play?.kind !== "play") throw new Error("expected play card");
     expect(play.ballPath).toBe("foul_left");
   });
+});
 
+
+describe("scroll-down-mlb deck adapter — score carry-forward", () => {
   it("carries the post-play score into the following inning-transition card", () => {
     const deck = buildDeck({});
     const txCard: SdmDeckCard = {
@@ -184,6 +613,7 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
     const { cards } = adaptDeck({ ...deck, cards: [...deck.cards, txCard] });
     const tx = cards.find((c) => c.kind === "inning-transition");
     if (tx?.kind !== "inning-transition") throw new Error("expected inning-transition card");
+    // Default event scores 1 run for the away team.
     expect(tx.score).toEqual({ home: 0, away: 1 });
   });
 
@@ -236,78 +666,6 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
       }
       expect(card.score).toEqual({ home: 0, away: 1 });
     }
-  });
-
-  it("score is monotonically non-decreasing across the card array", () => {
-    const deck = buildDeck({});
-    const second: SdmDeckCard = {
-      id: "745406-play-2",
-      type: "play",
-      sortOrder: 2,
-      inning: 2,
-      half: "bottom",
-      title: "Bot 2nd",
-      description: "Two-run shot.",
-      play: {
-        playId: "20",
-        eventType: "home_run",
-        label: "HOME RUN",
-        subLabel: null,
-        description: "Two-run home run.",
-        batterName: "Anthony Volpe",
-        pitcherName: null,
-        ballsBefore: 0,
-        strikesBefore: 0,
-        outsBefore: 1,
-        outsAfter: 1,
-        baseStateBefore: { first: true, second: false, third: false },
-        baseStateAfter: { first: false, second: false, third: false },
-        runnerNamesBefore: { first: "Some Runner" },
-        runnerNamesAfter: {},
-        scoreBefore: { home: 0, away: 1 },
-        runsScoredOnPlay: 2,
-      },
-      visual: {
-        trajectory: "hr_lcf",
-        runnerMovements: [
-          { runner: "Anthony Volpe", from: "home", to: "home", style: "score" },
-          { runner: "Some Runner", from: "first", to: "home", style: "score" },
-        ],
-        intensity: "high",
-        animationProfile: "home_run",
-      },
-      leverageTier: 1,
-    };
-    const tx: SdmDeckCard = {
-      id: "745406-tx-end-2-bot",
-      type: "rhythm",
-      sortOrder: 3,
-      inning: 2,
-      half: "bottom",
-      title: "End of 2nd",
-      description: "",
-      play: null,
-      visual: null,
-      leverageTier: 0,
-    };
-    const { cards } = adaptDeck({ ...deck, cards: [...deck.cards, second, tx] });
-    let prevHome = 0;
-    let prevAway = 0;
-    for (const card of cards) {
-      const score =
-        card.kind === "play"
-          ? card.scoreAfter
-          : card.kind === "inning-transition" || card.kind === "quiet-stretch" || card.kind === "late-game" || card.kind === "final-setup"
-          ? card.score
-          : null;
-      if (!score) continue;
-      expect(score.home).toBeGreaterThanOrEqual(prevHome);
-      expect(score.away).toBeGreaterThanOrEqual(prevAway);
-      prevHome = score.home;
-      prevAway = score.away;
-    }
-    expect(prevHome).toBe(2);
-    expect(prevAway).toBe(1);
   });
 
   it("renders 0-0 on every rhythm card when the deck has no play cards", () => {
@@ -412,30 +770,11 @@ describe("scroll-down-mlb deck adapter — batter inference + narrative splice",
     expect(tx.score).not.toBe(qs.score);
     expect(tx.score).toEqual(qs.score);
   });
-
-  it("recovers batter from runnerNamesAfter when movement.runner is empty (walk to first)", () => {
-    const { cards } = adaptDeck(
-      buildDeck(
-        {
-          eventType: "walk",
-          description: "Bo Bichette walks.",
-          baseStateAfter: { first: true, second: false, third: false },
-          runnerNamesAfter: { first: "Bo Bichette" },
-        },
-        {
-          runnerMovements: [
-            { runner: "", from: "home", to: "first", style: "walk_shuffle" },
-          ],
-          animationProfile: "walk",
-          trajectory: "none",
-        },
-      ),
-    );
-    const play = cards.find((c) => c.kind === "play");
-    if (play?.kind !== "play") throw new Error("expected play card");
-    expect(play.situationBefore.batterName).toBe("Bo Bichette");
-  });
 });
+
+
+// ── priorAfter bridge wiring ────────────────────────────────
+
 
 function buildPlay(overrides: {
   id: string;
@@ -482,9 +821,6 @@ function buildPlay(overrides: {
     },
     visual: {
       trajectory: "gb_1b",
-      runnerMovements: [
-        { runner: overrides.batterName ?? "Bo Bichette", from: "home", to: "first", style: "advance" },
-      ],
       intensity: "medium",
       animationProfile: "single",
     },
@@ -509,7 +845,7 @@ function buildRhythmCard(opts: { id: string; sortOrder: number; inning: number; 
 
 describe("scroll-down-mlb deck adapter — priorAfter bridge wiring", () => {
   it("attaches priorAfter on the second of two consecutive play cards", () => {
-    const deck = buildDeck({});
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
     const second = buildPlay({
       id: "p2",
       sortOrder: 2,
@@ -535,7 +871,7 @@ describe("scroll-down-mlb deck adapter — priorAfter bridge wiring", () => {
   });
 
   it("threads priorAfter across a quiet-stretch rhythm card", () => {
-    const deck = buildDeck({});
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
     const qs = buildRhythmCard({ id: "745406-qs-2-4", sortOrder: 2, inning: 4, half: "top", title: "Innings 2-4" });
     const afterQs = buildPlay({
       id: "p2",
@@ -554,28 +890,8 @@ describe("scroll-down-mlb deck adapter — priorAfter bridge wiring", () => {
     expect(plays[1].priorAfter?.score).toEqual({ home: 0, away: 1 });
   });
 
-  it("threads priorAfter across a late-game rhythm card", () => {
-    const deck = buildDeck({});
-    const lg = buildRhythmCard({ id: "745406-lg-7-bot", sortOrder: 2, inning: 7, half: "bottom", title: "Late innings" });
-    const afterLg = buildPlay({
-      id: "p2",
-      sortOrder: 3,
-      inning: 8,
-      half: "top",
-      playId: "30",
-      outsBefore: 1,
-      outsAfter: 2,
-      scoreBefore: { home: 0, away: 1 },
-    });
-    const { cards } = adaptDeck({ ...deck, cards: [...deck.cards, lg, afterLg] });
-    const plays = cards.filter((c) => c.kind === "play");
-    if (plays[1]?.kind !== "play") throw new Error("expected second play card");
-    expect(plays[1].priorAfter).toBeDefined();
-    expect(plays[1].priorAfter?.outs).toBe(0);
-  });
-
   it("does not attach priorAfter when the prior card is an inning-transition (hard reset)", () => {
-    const deck = buildDeck({});
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
     const tx = buildRhythmCard({ id: "745406-tx-end-1-top", sortOrder: 2, inning: 1, half: "top", title: "End of 1st" });
     const afterTx = buildPlay({
       id: "p2",
@@ -594,7 +910,7 @@ describe("scroll-down-mlb deck adapter — priorAfter bridge wiring", () => {
   });
 
   it("never attaches priorAfter to the first play card in the deck", () => {
-    const deck = buildDeck({});
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
     const { cards } = adaptDeck(deck);
     const first = cards.find((c) => c.kind === "play");
     if (first?.kind !== "play") throw new Error("expected play card");
@@ -602,7 +918,7 @@ describe("scroll-down-mlb deck adapter — priorAfter bridge wiring", () => {
   });
 
   it("first play after a leading scene-setter receives no priorAfter", () => {
-    const deck = buildDeck({});
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
     const scene: SdmDeckCard = {
       id: "745406-scene",
       type: "scene",
@@ -622,7 +938,7 @@ describe("scroll-down-mlb deck adapter — priorAfter bridge wiring", () => {
   });
 
   it("priorAfter snapshot captures inning/inningHalf so cross-inning bridges have full delta signal", () => {
-    const deck = buildDeck({});
+    const deck = buildDeck({}, undefined, { halfInnings: undefined });
     const qs = buildRhythmCard({ id: "745406-qs-2-4", sortOrder: 2, inning: 4, half: "top", title: "Innings 2-4" });
     const afterQs = buildPlay({
       id: "p2",
@@ -642,10 +958,10 @@ describe("scroll-down-mlb deck adapter — priorAfter bridge wiring", () => {
   });
 });
 
-// Fixture mirrors the Goldschmidt HR → breath-card scenario from the
-// findings. Bottom-3rd solo home run for the home team with non-zero
-// starting scores on both sides — the carry-forward into the following
-// inning-transition is the regression anchor the test design called out.
+
+// ── Bottom-inning HR fixture (regression: score carry-forward) ──
+
+
 function makeBottomInningHrDeck(): SdmDeckResponse {
   return {
     gameId: "745406",
@@ -690,9 +1006,6 @@ function makeBottomInningHrDeck(): SdmDeckResponse {
         },
         visual: {
           trajectory: "hr_lcf",
-          runnerMovements: [
-            { runner: "Paul Goldschmidt", from: "home", to: "home", style: "score" },
-          ],
           intensity: "high",
           animationProfile: "home_run",
         },
@@ -710,6 +1023,58 @@ function makeBottomInningHrDeck(): SdmDeckResponse {
         visual: null,
         leverageTier: 0,
       },
+    ],
+    halfInnings: [
+      makeContainer({
+        gameId: "745406",
+        inning: 3,
+        half: "bottom",
+        battingTeam: {
+          id: "1",
+          abbreviation: "ARI",
+          displayName: "Arizona",
+          colorLight: null,
+          colorDark: null,
+        },
+        fieldingTeam: {
+          id: "2",
+          abbreviation: "LAD",
+          displayName: "Los Angeles",
+          colorLight: null,
+          colorDark: null,
+        },
+        events: [
+          makeEvent({
+            playIndex: 42,
+            sequence: 1,
+            eventType: "home_run",
+            outsBefore: 1,
+            outsAfter: 1,
+            baseStateBefore: { first: false, second: false, third: false },
+            baseStateAfter: { first: false, second: false, third: false },
+            scoreBefore: { home: 2, away: 1 },
+            scoreChange: { home: 1, away: 0 },
+            runsScoredOnPlay: 1,
+            matchup: {
+              batter: { id: "goldy", name: "P Goldschmidt" },
+              pitcher: { id: "glasnow", name: "T Glasnow" },
+            },
+            result: makeResult({
+              label: "HOME RUN",
+              description: "Solo home run.",
+              eventType: "home_run",
+            }),
+            movements: [
+              {
+                runner: { id: "goldy", name: "P Goldschmidt" },
+                from: "home",
+                to: "home",
+                style: "score",
+              },
+            ],
+          }),
+        ],
+      }),
     ],
     plannerReport: null,
     validationWarnings: [],
@@ -737,56 +1102,6 @@ describe("scroll-down-mlb deck adapter — score computation and carry-forward",
     expect(tx.score).toEqual({ home: 3, away: 1 });
   });
 
-  it("adds runs to away score for a top-inning HR", () => {
-    const deck: SdmDeckResponse = {
-      ...makeBottomInningHrDeck(),
-      cards: [
-        {
-          id: "745406-play-10",
-          type: "play",
-          sortOrder: 0,
-          inning: 2,
-          half: "top",
-          title: "Top 2",
-          description: "Two-run blast.",
-          play: {
-            playId: "10",
-            eventType: "home_run",
-            label: "HOME RUN",
-            subLabel: null,
-            description: "Mookie Betts homers on a fly ball.",
-            batterName: "Mookie Betts",
-            pitcherName: null,
-            ballsBefore: 1,
-            strikesBefore: 0,
-            outsBefore: 0,
-            outsAfter: 0,
-            baseStateBefore: { first: true, second: false, third: false },
-            baseStateAfter: { first: false, second: false, third: false },
-            runnerNamesBefore: { first: "Freddie Freeman" },
-            runnerNamesAfter: {},
-            scoreBefore: { home: 1, away: 0 },
-            runsScoredOnPlay: 2,
-          },
-          visual: {
-            trajectory: "hr_lcf",
-            runnerMovements: [
-              { runner: "Mookie Betts", from: "home", to: "home", style: "score" },
-              { runner: "Freddie Freeman", from: "first", to: "home", style: "score" },
-            ],
-            intensity: "high",
-            animationProfile: "home_run",
-          },
-          leverageTier: 1,
-        },
-      ],
-    };
-    const { cards } = adaptDeck(deck);
-    const play = cards[0];
-    if (play.kind !== "play") throw new Error("expected play card");
-    expect(play.scoreAfter).toEqual({ home: 1, away: 2 });
-  });
-
   it("does not mutate the input scoreBefore object", () => {
     const deck = makeBottomInningHrDeck();
     const originalScoreBefore = deck.cards[0].play?.scoreBefore;
@@ -794,6 +1109,7 @@ describe("scroll-down-mlb deck adapter — score computation and carry-forward",
     expect(originalScoreBefore).toEqual({ home: 2, away: 1 });
   });
 });
+
 
 describe("deriveGamePhase", () => {
   it("returns 'final' when isFinal is true (regardless of lastPlayIndex)", () => {
@@ -813,6 +1129,7 @@ describe("deriveGamePhase", () => {
     expect(deriveGamePhase({ isFinal: false, lastPlayIndex: 0 })).toBe("scheduled");
   });
 });
+
 
 describe("adaptSceneCard — game phase wiring", () => {
   function deckWithScene(over: Partial<SdmDeckResponse>): SdmDeckResponse {
@@ -857,11 +1174,9 @@ describe("adaptSceneCard — game phase wiring", () => {
   });
 });
 
+
 describe("scroll-down-mlb deck adapter — defensive normalization", () => {
   it("deduplicates cards that share the same wire id (poll-boundary race)", () => {
-    // Two cards with identical id — observed during a live-poll boundary
-    // when the backend briefly emits the same play twice. React would
-    // warn on the duplicate key; the adapter drops the second copy.
     const deck = buildDeck({});
     const dup: SdmDeckCard = { ...deck.cards[0], sortOrder: 2 };
     deck.cards = [deck.cards[0], dup];

@@ -86,7 +86,7 @@ export function PWAInstallPrompt() {
       role="complementary"
       aria-label="Install app"
       data-testid="pwa-install-prompt"
-      className="w-full bg-neutral-900 border-b border-neutral-800"
+      className="w-full bg-neutral-900 border-b border-neutral-800 pt-[env(safe-area-inset-top)]"
     >
       <div className="mx-auto flex flex-wrap items-center justify-between gap-2 px-4 py-2 text-xs text-neutral-300 max-w-2xl">
         <span className="min-w-0 flex-1">

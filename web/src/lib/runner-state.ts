@@ -134,6 +134,21 @@ export function diffBaseStates(
   return movements.filter((movement) => movement.from !== movement.to);
 }
 
+export function diffBaseStatesToAdvances(
+  before: BaseballBaseState,
+  after: BaseballBaseState,
+  context: RunnerDiffContext = {},
+): RunnerAdvance[] {
+  return diffBaseStates(before, after, context).map((movement) => ({
+    from: movement.from,
+    to: movement.to,
+    runnerId: movement.runnerId,
+    runnerName: movement.runnerName,
+    reason: movement.reason,
+    outAt: movement.to === "out" && movement.from !== "home" ? movement.from : undefined,
+  }));
+}
+
 function isForcedBatterArrival(
   to: Base,
   before: BaseballBaseState,
@@ -150,21 +165,6 @@ function isForcedBatterArrival(
       eventType === "catcher_interference"
     )
   );
-}
-
-export function diffBaseStatesToAdvances(
-  before: BaseballBaseState,
-  after: BaseballBaseState,
-  context: RunnerDiffContext = {},
-): RunnerAdvance[] {
-  return diffBaseStates(before, after, context).map((movement) => ({
-    from: movement.from,
-    to: movement.to,
-    runnerId: movement.runnerId,
-    runnerName: movement.runnerName,
-    reason: movement.reason,
-    outAt: movement.to === "out" && movement.from !== "home" ? movement.from : undefined,
-  }));
 }
 
 function isForwardMove(from: Base, to: Base): boolean {

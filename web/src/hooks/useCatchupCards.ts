@@ -102,7 +102,14 @@ export function useCatchupCards(gameId: number): UseCatchupCardsReturn {
     setCurrentDeck(null);
     setPendingDeck(null);
     setError(null);
-    fetchDeck("initial").catch(() => {});
+    // fetchDeck already routes errors to the `error` state for non-poll mode.
+    // The .catch here defends against an unexpected rejection in the promise
+    // chain itself (e.g. abort race); log it so it isn't swallowed silently.
+    fetchDeck("initial").catch((err) => {
+      if (typeof console !== "undefined") {
+        console.error("[useCatchupCards] initial fetch promise rejected", err);
+      }
+    });
     return () => abortRef.current?.abort();
     // We deliberately depend on gameId only — fetchDeck closes over
     // currentDeck for the deckVersion compare, but we don't want that
@@ -116,6 +123,10 @@ export function useCatchupCards(gameId: number): UseCatchupCardsReturn {
     if (isFinal) return;
     const id = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;
+      // Polling failures are intentionally non-fatal — fetchDeck already
+      // logs to `error` only for initial/refresh modes. The bare catch
+      // here just prevents an unhandledrejection from the timer.
+      // See docs/audits/error-handling-report.md §F2.
       fetchDeck("poll").catch(() => {});
     }, POLLING.LIVE_CARDS_POLL_MS);
     return () => clearInterval(id);

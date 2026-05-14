@@ -60,7 +60,11 @@ export function useGamesList(): UseGamesListReturn {
     return () => document.removeEventListener("visibilitychange", handler);
   }, [fetchAll]);
 
-  // Background poll while visible.
+  // Background poll while visible. fetchAll routes failures into the `error`
+  // state already; the bare .catch here exists only to prevent an
+  // unhandledrejection bubbling out of the interval callback. The visible
+  // error UI is driven by the state set inside fetchAll.
+  // See docs/audits/error-handling-report.md §F2.
   useEffect(() => {
     const id = setInterval(() => {
       if (typeof document !== "undefined" && document.hidden) return;

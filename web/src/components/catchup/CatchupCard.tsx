@@ -33,6 +33,11 @@ interface CatchupCardProps {
   isActive: boolean;
   isRevealed: boolean;
   onReveal: (cardId: string) => void;
+  /** Fired once per active mount when the phase machine reaches `advance` —
+   *  i.e. narrative fade-in has completed. Parent uses this to gate the
+   *  auto-advance timer on a fully-revealed card, per the BRAINDUMP 4-phase
+   *  model (preview → revealing → revealed → advance). */
+  onAdvanceReady?: (cardId: string) => void;
   autoRevealDelayMs?: number;
   /** When true, render a per-card validation overlay (BRAINDUMP loop). */
   showDebug?: boolean;
@@ -59,7 +64,7 @@ interface CatchupCardProps {
  * Sentence + chevron come in at reveal.
  */
 export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function CatchupCard(
-  { card, homeTeamAbbr, awayTeamAbbr, isActive, isRevealed, onReveal, autoRevealDelayMs = 0, showDebug = false },
+  { card, homeTeamAbbr, awayTeamAbbr, isActive, isRevealed, onReveal, onAdvanceReady, autoRevealDelayMs = 0, showDebug = false },
   ref,
 ) {
   const revealRequested = isActive && isRevealed;
@@ -115,12 +120,24 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   );
 
   const isPlayingReveal = isActive && revealRequested;
-  const { phase } = usePlayPhase(isPlayingReveal, card.animationProfile, overrides);
-  const presentationPhase = revealRequested ? phase : "preview";
-  const milestones = getPhaseMilestones(card.animationProfile, overrides);
-  const schedule = getPhaseSchedule(card.animationProfile, overrides);
   const reduceMotion = usePrefersReducedMotion();
   const narrativeRevealDur = reduceMotion ? 0 : NARRATIVE_REVEAL_DUR_MS[leverageTier];
+  const { phase } = usePlayPhase(
+    isPlayingReveal,
+    card.animationProfile,
+    overrides,
+    narrativeRevealDur,
+  );
+  // `advance` is visually identical to `reveal` (same content stays on
+  // screen) — collapse it to `reveal` for `data-phase` so existing CSS
+  // selectors keyed off `data-phase="reveal"` continue to match.
+  const presentationPhase = revealRequested
+    ? phase === "advance"
+      ? "reveal"
+      : phase
+    : "preview";
+  const milestones = getPhaseMilestones(card.animationProfile, overrides);
+  const schedule = getPhaseSchedule(card.animationProfile, overrides);
 
   useEffect(() => {
     if (!isActive) return;
@@ -131,6 +148,12 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
     }, autoRevealDelayMs);
     return () => window.clearTimeout(timer);
   }, [autoRevealDelayMs, card.cardId, isActive, isRevealed, onReveal]);
+
+  useEffect(() => {
+    if (phase !== "advance") return;
+    if (!onAdvanceReady) return;
+    onAdvanceReady(card.cardId);
+  }, [phase, card.cardId, onAdvanceReady]);
 
   const situation = card.situationBefore;
   const outsBefore = situation.outs ?? 0;
@@ -151,7 +174,8 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   // Score progression — scoreBefore is shown until settle (the result lock
   // beat). Showing scoreAfter sooner would spoil scoring plays. CSS pulses
   // whichever team's number went up at the moment data-flash flips true.
-  const showAfter = revealRequested && (phase === "settle" || phase === "reveal");
+  const showAfter =
+    revealRequested && (phase === "settle" || phase === "reveal" || phase === "advance");
   const score = showAfter ? card.scoreAfter : card.scoreBefore;
   const homeIncreased = card.scoreAfter.home > card.scoreBefore.home;
   const awayIncreased = card.scoreAfter.away > card.scoreBefore.away;
@@ -174,7 +198,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
   // the user and upstream feed gaps are tracked by validatePlayCard's
   // dev-only warnings. See docs/audits/error-handling-report.md §G4.
   const narrativeText = (card.narrative ?? card.description ?? "").trim();
-  const narrativeVisible = revealRequested && phase === "reveal";
+  const narrativeVisible = revealRequested && (phase === "reveal" || phase === "advance");
 
   const battingTeamName = battingTeam?.name ?? card.battingTeamAbbr ?? null;
   const hasCount =
@@ -223,9 +247,11 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
       data-reveal-state={
         !revealRequested
           ? "preview"
-          : phase === "reveal"
-            ? "revealed"
-            : "revealing"
+          : phase === "advance"
+            ? "advance"
+            : phase === "reveal"
+              ? "revealed"
+              : "revealing"
       }
       data-has-bridge={hasMeaningfulBridge ? "true" : "false"}
       data-inning={card.inning}
@@ -357,6 +383,7 @@ export const CatchupCard = forwardRef<HTMLDivElement, CatchupCardProps>(function
           scoreAfter={revealRequested ? card.scoreAfter : card.scoreBefore}
           accentColor={accent}
           isActive={isPlayingReveal}
+          suppressMovementLines={revealRequested ? card.suppressMovementLines : undefined}
         />
         {revealRequested && narrativeText && (
           <div

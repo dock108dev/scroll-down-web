@@ -304,6 +304,13 @@ export interface PlayCardData {
   animationProfile?: PlayAnimationProfile;
   /** Hint for animation amplitude. */
   visualIntensity?: "low" | "medium" | "high";
+  /** Backend-authoritative suppression of the batted-ball overlay. When
+   *  true the field renderer must not draw the trajectory, regardless of
+   *  what `ballPath`/`animationProfile` say — the upstream classifier has
+   *  determined the play has no confident batted-ball path (e.g. caught
+   *  stealing, wild pitch, throwing error). Mirrors backend
+   *  `VisualPayload.displayHints.suppressMovementLines`. */
+  suppressMovementLines?: boolean;
   /** Backend-computed leverage tier (0 routine, 1 elevated, 2 climactic).
    *  Drives narrative pacing constants on the card. Defaults to 0 when the
    *  backend doesn't provide it. */
