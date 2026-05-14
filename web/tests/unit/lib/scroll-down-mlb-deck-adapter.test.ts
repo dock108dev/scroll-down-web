@@ -433,38 +433,55 @@ describe("scroll-down-mlb deck adapter — wire-event sourcing", () => {
 });
 
 
-describe("scroll-down-mlb deck adapter — live game cursor", () => {
-  it("cursor equals total event count across containers", () => {
+describe("scroll-down-mlb deck adapter — last play index", () => {
+  it("uses the highest playIndex across half-inning containers", () => {
     const deck = buildDeck({}, undefined, {
       halfInnings: [
-        makeContainer({ events: [makeEvent({ playIndex: 1 })] }),
+        makeContainer({ events: [makeEvent({ playIndex: 1001 })] }),
         makeContainer({
           inning: 1,
           half: "bottom",
           events: [
-            makeEvent({ playIndex: 2 }),
-            makeEvent({ playIndex: 3 }),
+            makeEvent({ playIndex: 1004 }),
+            makeEvent({ playIndex: 1007 }),
           ],
         }),
       ],
     });
     const adapted = adaptDeck(deck);
-    expect(adapted.lastPlayIndex).toBe(3);
+    expect(adapted.lastPlayIndex).toBe(1007);
   });
 
-  it("cursor increments when a new event is appended to a container", () => {
+  it("does not substitute an event-count cursor for sparse play indexes", () => {
+    const deck = buildDeck({}, undefined, {
+      halfInnings: [
+        makeContainer({
+          events: [
+            makeEvent({ playIndex: 90064 }),
+            makeEvent({ playIndex: 90078, sequence: 2 }),
+          ],
+        }),
+      ],
+    });
+
+    const adapted = adaptDeck(deck);
+
+    expect(adapted.lastPlayIndex).toBe(90078);
+  });
+
+  it("advances when a new higher playIndex is appended to a container", () => {
     const baseContainer = makeContainer({
-      events: [makeEvent({ playIndex: 1 })],
+      events: [makeEvent({ playIndex: 105074 })],
     });
     const before = adaptDeck(buildDeck({}, undefined, { halfInnings: [baseContainer] }));
-    expect(before.lastPlayIndex).toBe(1);
+    expect(before.lastPlayIndex).toBe(105074);
 
     const grown: SdmHalfInningContainer = {
       ...baseContainer,
-      events: [...baseContainer.events, makeEvent({ playIndex: 2, sequence: 2 })],
+      events: [...baseContainer.events, makeEvent({ playIndex: 105080, sequence: 2 })],
     };
     const after = adaptDeck(buildDeck({}, undefined, { halfInnings: [grown] }));
-    expect(after.lastPlayIndex).toBe(2);
+    expect(after.lastPlayIndex).toBe(105080);
   });
 
   it("falls back to deck.lastPlayIndex when halfInnings is missing", () => {

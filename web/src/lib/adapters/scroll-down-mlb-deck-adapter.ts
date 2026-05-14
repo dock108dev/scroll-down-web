@@ -128,15 +128,12 @@ export function adaptDeck(deck: SdmDeckResponse): CatchupCardsResponse {
 
   return {
     gameId,
-    // Live-game cursor: when the wire carries half-inning containers we
-    // derive the cursor from the total number of events shipped so the
-    // "New moments available" banner can detect newly-arrived plays
-    // regardless of whether the upstream feed populates
-    // `deck.lastPlayIndex`. The cursor is monotonic per poll — each new
-    // event appended to a container bumps it by one — so the polling
-    // layer can compare strict-greater-than to detect new content. Falls
-    // back to the deck-level field for backward compatibility.
-    lastPlayIndex: deriveLastPlayCursor(deck, eventByPlayIndex),
+    // Preserve the public `lastPlayIndex` contract: this is the latest
+    // upstream playIndex, suitable for `?since=` style polling and
+    // persisted progress. When normalized half-inning events are present,
+    // derive it from their playIndex values; older fixtures fall back to
+    // the deck-level field.
+    lastPlayIndex: deriveLastPlayIndex(deck, eventByPlayIndex),
     isFinal: deck.isFinal,
     cards,
   };
@@ -453,24 +450,22 @@ function indexEventsByPlayIndex(
 
 
 /**
- * Compute the live-game cursor from the half-inning container list.
+ * Compute the latest upstream playIndex from the half-inning container list.
  *
- * Used by the polling layer ("New moments available" banner) to detect
- * when a fresh poll observed events that weren't present on the prior
- * poll. The cursor must increase monotonically as new events are
- * appended — otherwise a user already at the bottom of the deck would
- * silently miss them.
- *
- * Strategy: total event count across all containers when half-innings
- * are present. Falls back to the deck-level `lastPlayIndex` for
+ * `lastPlayIndex` is persisted and documented as a playIndex that can be
+ * sent back to the API as `?since=`, so it must not be replaced with an
+ * event-count cursor. Falls back to the deck-level `lastPlayIndex` for
  * backward compatibility with older fixtures.
  */
-function deriveLastPlayCursor(
+function deriveLastPlayIndex(
   deck: SdmDeckResponse,
   eventByPlayIndex: Map<number, SdmHalfInningEvent>,
 ): number {
-  if (eventByPlayIndex.size > 0) return eventByPlayIndex.size;
-  return deck.lastPlayIndex ?? -1;
+  let latest = deck.lastPlayIndex ?? -1;
+  for (const playIndex of eventByPlayIndex.keys()) {
+    if (playIndex > latest) latest = playIndex;
+  }
+  return latest;
 }
 
 
