@@ -41,7 +41,7 @@
     "monocart-reporter": "^2.11.2",
     "tailwindcss": "^4.3.0",
     "typescript": "6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.6"
   },
   "overrides": {
     "postcss": "^8.5.10"
